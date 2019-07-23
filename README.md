@@ -3,6 +3,11 @@ A unity asset extractor based on [unitypack](https://github.com/HearthSim/UnityP
 
 The basic structure is from AssetStudio and the object handling is from unitypack.
 
+## Installation
+```cmd
+pip install UnityPy
+```
+
 ## Usage
 ```python
 from UnityPy.AssetManager import AssetManager
