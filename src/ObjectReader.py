@@ -1,6 +1,6 @@
-﻿from EndianBinaryReader import EndianBinaryReader
-from files.SerializedFile import SerializedType
-import classes
+﻿from .EndianBinaryReader import EndianBinaryReader
+from .files.SerializedFile import SerializedType
+from . import classes
 
 
 class ObjectInfo():

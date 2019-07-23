@@ -1,4 +1,4 @@
-﻿from EndianBinaryReader import EndianBinaryReader
+﻿from ..EndianBinaryReader import EndianBinaryReader
 import io
 
 

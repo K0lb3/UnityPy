@@ -1,6 +1,6 @@
-﻿from enums import FileType
-from helpers.CompressionHelper import gzipMagic, brotliMagic
-from EndianBinaryReader import EndianBinaryReader
+﻿from ..enums import FileType
+from .CompressionHelper import gzipMagic, brotliMagic
+from ..EndianBinaryReader import EndianBinaryReader
 import os
 
 

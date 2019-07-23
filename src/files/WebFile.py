@@ -1,6 +1,6 @@
-﻿from helpers import CompressionHelper
+﻿from ..helpers import CompressionHelper
 import os
-from EndianBinaryReader import EndianBinaryReader
+from ..EndianBinaryReader import EndianBinaryReader
 import io
 
 

@@ -1,12 +1,12 @@
 ﻿import os
-from helpers import ImportHelper
-from EndianBinaryReader import EndianBinaryReader
-from Progress import Progress
-from Logger import Logger
-from files import BundleFile, SerializedFile, WebFile
-from ObjectReader import ObjectReader
-from Object import Object
-import classes
+from .helpers import ImportHelper
+from .EndianBinaryReader import EndianBinaryReader
+from .Progress import Progress
+from .Logger import Logger
+from .files import BundleFile, SerializedFile, WebFile
+from .ObjectReader import ObjectReader
+from .Object import Object
+from . import classes
 
 FileType = ImportHelper.FileType
 
@@ -167,120 +167,12 @@ class AssetsManager():
 			assetsFile.Objects = {}
 			for objectInfo in assetsFile.m_Objects:
 				objectReader = ObjectReader(assetsFile.reader, assetsFile, objectInfo)
-				if objectReader.type != classes.Object:
-					print(objectReader.type)
-					print()
 				assetsFile.Objects[objectInfo.m_PathID] = objectReader.Read()
 				self.Progress.Report(i, progressCount)
 
 
+
 '''
-	private void ReadAssets()
-	{
-		Logger.Info("Read assets...");
-
-		var progressCount = assetsFileList.Sum(x => x.m_Objects.Count);
-		int i = 0;
-		Progress.Reset();
-		foreach (var assetsFile in assetsFileList)
-		{
-			assetsFile.Objects = new Dictionary<long, Object>(assetsFile.m_Objects.Count);
-			foreach (var objectInfo in assetsFile.m_Objects)
-			{
-				var objectReader = new ObjectReader(assetsFile.reader, assetsFile, objectInfo);
-				switch (objectReader.type)
-				{
-					case ClassIDType.Animation:
-						assetsFile.Objects.Add(objectInfo.m_PathID, new Animation(objectReader));
-						break;
-					case ClassIDType.AnimationClip:
-						assetsFile.Objects.Add(objectInfo.m_PathID, new AnimationClip(objectReader));
-						break;
-					case ClassIDType.Animator:
-						assetsFile.Objects.Add(objectInfo.m_PathID, new Animator(objectReader));
-						break;
-					case ClassIDType.AnimatorController:
-						assetsFile.Objects.Add(objectInfo.m_PathID, new AnimatorController(objectReader));
-						break;
-					case ClassIDType.AnimatorOverrideController:
-						assetsFile.Objects.Add(objectInfo.m_PathID, new AnimatorOverrideController(objectReader));
-						break;
-					case ClassIDType.AssetBundle:
-						assetsFile.Objects.Add(objectInfo.m_PathID, new AssetBundle(objectReader));
-						break;
-					case ClassIDType.AudioClip:
-						assetsFile.Objects.Add(objectInfo.m_PathID, new AudioClip(objectReader));
-						break;
-					case ClassIDType.Avatar:
-						assetsFile.Objects.Add(objectInfo.m_PathID, new Avatar(objectReader));
-						break;
-					case ClassIDType.Font:
-						assetsFile.Objects.Add(objectInfo.m_PathID, new Font(objectReader));
-						break;
-					case ClassIDType.GameObject:
-						assetsFile.Objects.Add(objectInfo.m_PathID, new GameObject(objectReader));
-						break;
-					case ClassIDType.Material:
-						assetsFile.Objects.Add(objectInfo.m_PathID, new Material(objectReader));
-						break;
-					case ClassIDType.Mesh:
-						assetsFile.Objects.Add(objectInfo.m_PathID, new Mesh(objectReader));
-						break;
-					case ClassIDType.MeshFilter:
-						assetsFile.Objects.Add(objectInfo.m_PathID, new MeshFilter(objectReader));
-						break;
-					case ClassIDType.MeshRenderer:
-						assetsFile.Objects.Add(objectInfo.m_PathID, new MeshRenderer(objectReader));
-						break;
-					case ClassIDType.MonoBehaviour:
-						assetsFile.Objects.Add(objectInfo.m_PathID, new MonoBehaviour(objectReader));
-						break;
-					case ClassIDType.MonoScript:
-						assetsFile.Objects.Add(objectInfo.m_PathID, new MonoScript(objectReader));
-						break;
-					case ClassIDType.MovieTexture:
-						assetsFile.Objects.Add(objectInfo.m_PathID, new MovieTexture(objectReader));
-						break;
-					case ClassIDType.PlayerSettings:
-						assetsFile.Objects.Add(objectInfo.m_PathID, new PlayerSettings(objectReader));
-						break;
-					case ClassIDType.RectTransform:
-						assetsFile.Objects.Add(objectInfo.m_PathID, new RectTransform(objectReader));
-						break;
-					case ClassIDType.Shader:
-						assetsFile.Objects.Add(objectInfo.m_PathID, new Shader(objectReader));
-						break;
-					case ClassIDType.SkinnedMeshRenderer:
-						assetsFile.Objects.Add(objectInfo.m_PathID, new SkinnedMeshRenderer(objectReader));
-						break;
-					case ClassIDType.Sprite:
-						assetsFile.Objects.Add(objectInfo.m_PathID, new Sprite(objectReader));
-						break;
-					case ClassIDType.SpriteAtlas:
-						assetsFile.Objects.Add(objectInfo.m_PathID, new SpriteAtlas(objectReader));
-						break;
-					case ClassIDType.TextAsset:
-						assetsFile.Objects.Add(objectInfo.m_PathID, new TextAsset(objectReader));
-						break;
-					case ClassIDType.Texture2D:
-						assetsFile.Objects.Add(objectInfo.m_PathID, new Texture2D(objectReader));
-						break;
-					case ClassIDType.Transform:
-						assetsFile.Objects.Add(objectInfo.m_PathID, new Transform(objectReader));
-						break;
-					case ClassIDType.VideoClip:
-						assetsFile.Objects.Add(objectInfo.m_PathID, new VideoClip(objectReader));
-						break;
-					default:
-						assetsFile.Objects.Add(objectInfo.m_PathID, new Object(objectReader));
-						break;
-				}
-
-				Progress.Report(++i, progressCount);
-			}
-		}
-	}
-
 	private void ProcessGameObject()
 	{
 		Logger.Info("Process GameObject...");

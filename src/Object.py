@@ -1,5 +1,5 @@
-from enums.BuildTarget import BuildTarget
-from helpers import TypeTreeHelper
+from .enums.BuildTarget import BuildTarget
+from .helpers import TypeTreeHelper
 
 
 class Object():

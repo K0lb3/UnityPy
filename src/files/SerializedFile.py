@@ -1,9 +1,8 @@
 ﻿import os
 import re
-from enums.BuildTarget import BuildTarget
-from EndianBinaryReader import EndianBinaryReader
-from CommonString import CommonString
-from enums.ClassIDType import ClassIDType
+from ..enums import BuildTarget, ClassIDType
+from ..EndianBinaryReader import EndianBinaryReader
+from ..CommonString import CommonString
 
 
 class SerializedFileHeader():
