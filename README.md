@@ -18,8 +18,8 @@ am.LoadFolder(fp)
 am.ReadAssets()
 
 # the structure of the objects is the same as in unitypack
-for assetfile in am.assetFileList:
-    for id, obj in assetFile.Objects.items():
+for assetsfile in am.assetsFileList:
+    for id, obj in assetsFile.Objects.items():
         # the objects are already loaded, so you don't have to do data = obj.read()
         pass
 ````
