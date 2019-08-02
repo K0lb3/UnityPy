@@ -19,7 +19,7 @@ am.load_file(fp)
 # Load all files in a folder
 am.load_folder(fp)
 
-for name, asset in am.assets.objects():
+for name, asset in am.assets.objects.items():
     for id, obj in asset.objects.items():
         data = obj.read()
 ````
