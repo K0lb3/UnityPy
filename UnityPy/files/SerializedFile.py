@@ -1,10 +1,13 @@
 ﻿import os
 import re
+import sys
 
 from ..CommonString import COMMON_STRING
 from ..EndianBinaryReader import EndianBinaryReader
 from ..ObjectReader import ObjectReader
 from ..enums import BuildTarget, ClassIDType
+
+RECURSION_LIMIT = sys.getrecursionlimit()
 
 
 class SerializedFileHeader:
@@ -119,6 +122,7 @@ class SerializedFile:
 		
 		# ReadTypes
 		type_count = reader.read_int()
+		
 		self._types = [
 				self.read_serialized_type()
 				for _ in range(type_count)
@@ -217,6 +221,9 @@ class SerializedFile:
 		return type_
 	
 	def read_type_tree(self, type_tree, level = 0):
+		if level == RECURSION_LIMIT - 1:
+			raise RecursionError
+		
 		type_tree_node = TypeTreeNode()
 		type_tree.append(type_tree_node)
 		type_tree_node.level = level
