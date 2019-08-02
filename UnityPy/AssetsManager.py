@@ -59,7 +59,7 @@ class AssetsManager:
 			self.Logger.info(f"Loading {full_name}")
 			try:
 				assets_file = SerializedFile(self, full_name, reader)
-				self.assets[assets_file.name] = assets_file
+				self.assets[assets_file.file_name] = assets_file
 				
 				for sharedFile in assets_file._externals:
 					shared_file_path = os.path.join(os.path.dirname(full_name), sharedFile.file_name)
@@ -73,13 +73,14 @@ class AssetsManager:
 						
 						if os.path.exists(shared_file_path):
 							self.import_files[shared_file_name] = shared_file_path
+
+				return assets_file
 			
 			except Exception as e:
 				reader.dispose()
 				self.Logger.error(f"Unable to load assets file {file_name}", e)
 		else:
 			reader.dispose()
-		return assets_file
 	
 	def load_assets_from_memory(self, full_name, reader, original_path, unity_version = None):
 		file_name = os.path.basename(full_name)
