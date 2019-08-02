@@ -10,28 +10,22 @@ pip install UnityPy
 
 ## Usage
 ```python
-from UnityPy.AssetManager import AssetManager
+from UnityPy import AssetManager
 
 am = AssetManager()
 
 # Load file via file path
-am.LoadFile(fp)
+am.load_file(fp)
 # Load all files in a folder
-am.LoadFolder(fp)
+am.load_folder(fp)
 
-# Reads the objects of all loaded asset files
-am.ReadAssets()
-
-# the structure of the objects is the same as in unitypack
-for assetsfile in am.assetsFileList:
-    for id, obj in assetsFile.Objects.items():
-        # the objects are already loaded, so you don't have to do data = obj.read()
-        pass
+for name, asset in am.assets.objects():
+    for id, obj in asset.objects.items():
+        data = obj.read()
 ````
 
 ## Goals
 ### near future
-* clean-up of the code
 * adding a documentation
 
 ### far future
