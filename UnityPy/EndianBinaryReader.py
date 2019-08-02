@@ -1,5 +1,5 @@
-import struct
 import io
+import struct
 
 # dummies for now
 Quaternion = object
@@ -10,228 +10,202 @@ Matrix4x4 = object
 Color = object
 
 
-class EndianBinaryReader():
+class EndianBinaryReader:
 	endian = '>'
-	Position = 0
 	
-	def __init__(self, input, endian = '>'):
-		if type(input) == bytes:
-			self.stream = io.BytesIO(input)
+	def __init__(self, input_, endian = '>'):
+		if type(input_) == bytes:
+			self.stream = io.BytesIO(input_)
 		else:
-			self.stream = input
+			self.stream = input_
 		
 		self.endian = endian
 		self.Length = self.stream.seek(0, 2)
 		self.Position = 0
 	
-	# Position
-	def getPosition(self):
+	def get_position(self):
 		return self.stream.tell()
 	
-	def setPosition(self, value):
+	def set_position(self, value):
 		self.stream.seek(value)
 	
-	Position = property(getPosition, setPosition)
+	Position = property(get_position, set_position)
 	
 	@property
 	def bytes(self):
-		lastPos = self.Position
+		last_pos = self.Position
 		self.Position = 0
-		return bytes(self.read())
-		self.Position = lastPos
+		ret = self.read()
+		self.Position = last_pos
+		return ret
 	
-	def Dispose(self):
+	def dispose(self):
 		self.stream.close()
 		pass
 	
 	def read(self, *args):
 		return self.stream.read(*args)
 	
-	def ReadByte(self) -> int:
+	def read_byte(self) -> int:
 		return struct.unpack(self.endian + "b", self.read(1))[0]
 	
-	def ReadSByte(self) -> int:
+	def read_u_byte(self) -> int:
 		return struct.unpack(self.endian + "B", self.read(1))[0]
 	
-	def ReadBytes(self, num) -> bytes:
+	def read_bytes(self, num) -> bytes:
 		return self.read(num)
 	
-	def ReadInt16(self) -> int:
+	def read_short(self) -> int:
 		return struct.unpack(self.endian + "h", self.read(2))[0]
 	
-	# return int.from_bytes(self.read(2), 'little' if self.endian == '<' else 'big', signed = True)
-	
-	def ReadInt32(self) -> int:
+	def read_int(self) -> int:
 		return struct.unpack(self.endian + "i", self.read(4))[0]
 	
-	# return int.from_bytes(self.read(4), 'little' if self.endian == '<' else 'big', signed = True)
-	
-	def ReadInt64(self) -> int:
+	def read_long(self) -> int:
 		return struct.unpack(self.endian + "q", self.read(8))[0]
 	
-	# return int.from_bytes(self.read(8), 'little' if self.endian == '<' else 'big', signed = True)
-	
-	def ReadUInt16(self) -> int:
+	def read_u_short(self) -> int:
 		return struct.unpack(self.endian + "H", self.read(2))[0]
 	
-	# return int.from_bytes(self.read(2), 'little' if self.endian == '<' else 'big', signed = False)
-	
-	def ReadUInt32(self) -> int:
+	def read_u_int(self) -> int:
 		return struct.unpack(self.endian + "I", self.read(4))[0]
 	
-	# return int.from_bytes(self.read(4), 'little' if self.endian == '<' else 'big', signed = False)
-	
-	def ReadUInt64(self) -> int:
+	def read_u_long(self) -> int:
 		return struct.unpack(self.endian + "Q", self.read(8))[0]
 	
-	# return int.from_bytes(self.read(8), 'little' if self.endian == '<' else 'big', signed = False)
-	
-	def ReadSingle(self) -> float:
+	def read_float(self) -> float:
 		return struct.unpack(self.endian + "f", self.read(4))[0]
 	
-	def ReadDouble(self) -> float:
+	def read_double(self) -> float:
 		return struct.unpack(self.endian + "d", self.read(8))[0]
 	
-	def ReadBoolean(self) -> bool:
+	def read_boolean(self) -> bool:
 		return bool(struct.unpack(self.endian + "?", self.read(1))[0])
 	
-	def ReadString(self, size = None, encoding = "utf-8") -> str:
+	def read_string(self, size = None, encoding = "utf-8") -> str:
 		if size is None:
-			ret = self.ReadStringToNull()
+			ret = self.read_string_to_null()
 		else:
-			ret = struct.unpack(self.endian + "%is" %
-			                    (size), self.read(size))[0]
+			ret = struct.unpack(f"{self.endian}{size}is", self.read(size))[0]
 		try:
 			return ret.decode(encoding)
 		except UnicodeDecodeError:
 			return ret
 	
-	def ReadStringToNull(self, maxLength = 32767) -> str:
+	def read_string_to_null(self, max_length = 32767) -> str:
 		ret = []
 		c = b""
-		while c != b"\0" and len(ret) < maxLength and self.Position != self.Length:
+		while c != b"\0" and len(ret) < max_length and self.Position != self.Length:
 			ret.append(c)
 			c = self.read(1)
 			if not c:
-				raise ValueError("Unterminated string: %r" % (ret))
+				raise ValueError("Unterminated string: %r" % ret)
 		return b"".join(ret).decode('utf8', 'replace')
 	
-	def ReadAlignedString(self):
-		length = self.ReadInt32()
-		if (length > 0 and length <= self.Length - self.Position):
-			stringData = self.ReadBytes(length)
-			result = stringData.decode('utf8', 'backslashreplace')
-			self.AlignStream(4)
+	def read_aligned_string(self):
+		length = self.read_int()
+		if 0 < length <= self.Length - self.Position:
+			string_data = self.read_bytes(length)
+			result = string_data.decode('utf8', 'backslashreplace')
+			self.align_stream(4)
 			return result
 		return ""
 	
-	def AlignStream(self, alignment = 4):
+	def align_stream(self, alignment = 4):
 		pos = self.Position
 		mod = pos % alignment
 		if mod != 0:
 			self.Position += alignment - mod
 	
-	def ReadQuaternion(self):
-		return Quaternion(self.ReadSingle(), self.ReadSingle(), self.ReadSingle(), self.ReadSingle())
+	def read_quaternion(self):
+		return Quaternion(self.read_float(), self.read_float(), self.read_float(), self.read_float())
 	
-	def ReadVector2(self):
-		return Vector2(self.ReadSingle(), self.ReadSingle())
+	def read_vector2(self):
+		return Vector2(self.read_float(), self.read_float())
 	
-	def ReadVector3(self):
-		return Vector3(self.ReadSingle(), self.ReadSingle(), self.ReadSingle())
+	def read_vector3(self):
+		return Vector3(self.read_float(), self.read_float(), self.read_float())
 	
-	def ReadVector4(self):
-		return Vector4(self.ReadSingle(), self.ReadSingle(), self.ReadSingle(), self.ReadSingle())
+	def read_vector4(self):
+		return Vector4(self.read_float(), self.read_float(), self.read_float(), self.read_float())
 	
-	def ReadRectangleF(self):
-		return (self.ReadSingle(), self.ReadSingle(), self.ReadSingle(), self.ReadSingle())
+	def read_rectangle_f(self):
+		return (self.read_float(), self.read_float(), self.read_float(), self.read_float())
 	
-	def ReadColor4(self):
-		return Color(self.ReadSingle(), self.ReadSingle(), self.ReadSingle(), self.ReadSingle())
+	def read_color4(self):
+		return Color(self.read_float(), self.read_float(), self.read_float(), self.read_float())
 	
-	def ReadMatrix(self):
-		return Matrix4x4(self.ReadSingleArray(16))
+	def read_matrix(self):
+		return Matrix4x4(self.read_float_array(16))
 	
-	def ReadArray(self, command, length: int):
+	def read_array(self, command, length: int):
 		return [command() for i in range(length)]
 	
-	def ReadBooleanArray(self):
-		return self.ReadArray(self.ReadBoolean, self.ReadInt32())
+	def read_boolean_array(self):
+		return self.read_array(self.read_boolean, self.read_int())
 	
-	def ReadUInt16Array(self):
-		return self.ReadArray(self.ReadUInt16, self.ReadInt32())
+	def read_u_short_array(self):
+		return self.read_array(self.read_u_short, self.read_int())
 	
-	def ReadInt32Array(self, length = 0):
-		return self.ReadArray(self.ReadInt32, length if length else self.ReadInt32())
+	def read_int_array(self, length = 0):
+		return self.read_array(self.read_int, length if length else self.read_int())
 	
-	def ReadUInt32Array(self, length = 0):
-		return self.ReadArray(self.ReadUInt32, length if length else self.ReadInt32())
+	def read_u_int_array(self, length = 0):
+		return self.read_array(self.read_u_int, length if length else self.read_int())
 	
-	def ReadSingleArray(self, length = 0):
-		return self.ReadArray(self.ReadSingle, length if length else self.ReadInt32())
+	def read_float_array(self, length = 0):
+		return self.read_array(self.read_float, length if length else self.read_int())
 	
-	def ReadStringArray(self):
-		return self.ReadArray(self.ReadAlignedString, self.ReadInt32())
+	def read_string_array(self):
+		return self.read_array(self.read_aligned_string, self.read_int())
 	
-	def ReadVector2Array(self):
-		return self.ReadArray(self.ReadVector2, self.ReadInt32())
+	def read_vector2_array(self):
+		return self.read_array(self.read_vector2, self.read_int())
 	
-	def ReadVector4Array(self):
-		return self.ReadArray(self.ReadVector4, self.ReadInt32())
+	def read_vector4_array(self):
+		return self.read_array(self.read_vector4, self.read_int())
 	
-	def ReadMatrixArray(self):
-		return self.ReadArray(self.ReadMatrix, self.ReadInt32())
-
-# def write(self, *args):
-# 	pass
-# 	#self.stream.write(*args)
-
-# def Write(self, value):
-# 	if type(value) == int:
-# 		self.WriteInt(value)
-# 	self.write(value)
-
-# def WriteByte(self, value):
-# 	self.write(struct.pack(self.endian + "b", value))
-
-# def WriteSByte(self, value):
-# 	self.write(struct.pack(self.endian + "B", value))
-
-# def WriteShort(self, value):
-# 	self.write(struct.pack(self.endian + "h", value))
-# 	#self.write(int.to_bytes(value, 2, 'little' if self.endian == '<' else 'big', signed = True))
-
-# def WriteUShort(self, value):
-# 	self.write(struct.pack(self.endian + "H", value))
-# 	#self.write(int.to_bytes(value, 2, 'little' if self.endian == '<' else 'big', signed = False))
-
-# def WriteInt(self, value):
-# 	self.write(struct.pack(self.endian + "i", value))
-# 	#self.write(int.to_bytes(value, 4, 'little' if self.endian == '<' else 'big', signed = True))
-
-# def WriteUInt(self, value):
-# 	self.write(struct.pack(self.endian + "I", value))
-# 	#self.write(int.to_bytes(value, 4, 'little' if self.endian == '<' else 'big', signed = False))
-
-# def WriteLong(self, value):
-# 	self.write(struct.pack(self.endian + "q", value))
-# 	#self.write(int.to_bytes(value, 8, 'little' if self.endian == '<' else 'big', signed = True))
-
-# def WriteULong(self, value):
-# 	self.write(struct.pack(self.endian + "Q", value))
-# 	#self.write(int.to_bytes(value, 8, 'little' if self.endian == '<' else 'big', signed = False))
-
-# def WriteFloat(self, value):
-# 	self.write(struct.pack(self.endian + "f", value))
-
-# def WriteDouble(self, value):
-# 	self.write(struct.pack(self.endian + "d", value))
-
-# def WriteBool(self, value):
-# 	self.write(struct.pack(self.endian + "?", value))
-
-# def WriteAlignedString(self, value):
-# 	byts = value.encode('utf8')
-# 	self.write(len(byts))
-# 	self.write(byts)
-# 	self.AlignStream(4)
+	def read_matrix_array(self):
+		return self.read_array(self.read_matrix, self.read_int())
+	
+	def write(self, *args):
+		pass
+	
+	def write_byte(self, value):
+		self.write(struct.pack(self.endian + "b", value))
+	
+	def write_s_byte(self, value):
+		self.write(struct.pack(self.endian + "B", value))
+	
+	def write_short(self, value):
+		self.write(struct.pack(self.endian + "h", value))
+	
+	def write_u_short(self, value):
+		self.write(struct.pack(self.endian + "H", value))
+	
+	def write_int(self, value):
+		self.write(struct.pack(self.endian + "i", value))
+	
+	def write_u_int(self, value):
+		self.write(struct.pack(self.endian + "I", value))
+	
+	def write_long(self, value):
+		self.write(struct.pack(self.endian + "q", value))
+	
+	def write_u_long(self, value):
+		self.write(struct.pack(self.endian + "Q", value))
+	
+	def write_float(self, value):
+		self.write(struct.pack(self.endian + "f", value))
+	
+	def write_double(self, value):
+		self.write(struct.pack(self.endian + "d", value))
+	
+	def write_bool(self, value):
+		self.write(struct.pack(self.endian + "?", value))
+	
+	def write_aligned_string(self, value):
+		byts = value.encode('utf8')
+		self.write(len(byts))
+		self.write(byts)
+		self.align_stream(4)

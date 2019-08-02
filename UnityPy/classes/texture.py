@@ -161,7 +161,7 @@ class Texture2D(Texture):
 		from decrunch import File as CrunchFile
 		
 		if self.format not in IMPLEMENTED_FORMATS:
-			raise NotImplementedError("Unimplemented format %r" % (self.format))
+			raise NotImplementedError("Unimplemented _format %r" % (self.format))
 		
 		if self.format in (TextureFormat.DXT1, TextureFormat.DXT1Crunched):
 			codec = "bcn"

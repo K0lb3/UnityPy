@@ -78,7 +78,7 @@ def processUnimplementedTexture2D(data):
 		raise e
 	
 	if process.returncode != 0:
-		print("\nError running command: \n", output)
+		print("\nerror running command: \n", output)
 		return
 	
 	img = ImageOps.flip(img)
@@ -107,7 +107,7 @@ def writeWithDDSHeader(imgFile, texture2d, format):
 	elif format == 36:
 		imgFile.write(bytes("ATCI", "ascii"))  # dwFourCC
 	else:
-		print("writeWithDDSHeader called with invalid format", format)
+		print("writeWithDDSHeader called with invalid _format", format)
 		sys.exit()
 	
 	imgFile.write(struct.pack("I", 0))  # dwRGBBitCount
@@ -147,7 +147,7 @@ def writeWithKTXHeader(imgFile, texture2d, format):
 		block_width = 4
 		block_height = 4
 	else:
-		print("writeWithKTXHeader called with invalid format", format)
+		print("writeWithKTXHeader called with invalid _format", format)
 		sys.exit()
 	
 	imgFile.write(struct.pack("I", texture2d.width))  # pixelWidth
@@ -200,10 +200,10 @@ def getPKMHeader(width, height, tformat):
 
 
 '''
-		if data.format in [34, 47]:  # ETC_RGB4, ETC2_RGBA8
+		if data._format in [34, 47]:  # ETC_RGB4, ETC2_RGBA8
 			tmpFile = tempfile.NamedTemporaryFile(suffix=".ktx", delete=False)
 			
-			writeWithKTXHeader(tmpFile, data, data.format)
+			writeWithKTXHeader(tmpFile, data, data._format)
 
 			process = subprocess.Popen([
 				texgenPath,
@@ -227,8 +227,8 @@ def ConvertToKTX(self, imgFile):
 	imgFile.write(struct.pack("I", KTXHeader.glTypeSize))
 	imgFile.write(struct.pack("I", KTXHeader.glFormat))
 
-	imgFile.write(struct.pack("I", self.format.glInternalFormat))  # glInternalFormat
-	imgFile.write(struct.pack("I", self.format.glBaseInternalFormat))  # glInternalFormat
+	imgFile.write(struct.pack("I", self._format.glInternalFormat))  # glInternalFormat
+	imgFile.write(struct.pack("I", self._format.glBaseInternalFormat))  # glInternalFormat
 
 	imgFile.write(struct.pack("I", self.width))  # pixelWidth
 	imgFile.write(struct.pack("I", self.height))  # pixelHeight
@@ -258,7 +258,7 @@ def PVRToBitmap(pvrdata):
 	var len = Math.Abs(bmd.Stride) * bmd.Height
 	if (!DecompressPVR(pvrdata, bmd.Scan0, len))
 		bitmap.UnlockBits(bmd)
-		bitmap.Dispose()
+		bitmap.dispose()
 		return null
 	bitmap.UnlockBits(bmd)
 	return bitmap
@@ -271,28 +271,28 @@ def TextureConverter(self):
 	var fixAlpha = glBaseInternalFormat == KTXHeader.GL_RED || glBaseInternalFormat == KTXHeader.GL_RG
 	if (!Ponvert(image_data, bmd.Scan0, m_Width, m_Height, image_data_size, (int)q_format, len, fixAlpha))
 		bitmap.UnlockBits(bmd)
-		bitmap.Dispose()
+		bitmap.dispose()
 		return null
 	bitmap.UnlockBits(bmd)
 	return bitmap
 
 def DecompressCRN(self)
 	IntPtr uncompressedData
-	int uncompressedSize
+	int uncompressed_size
 	bool result
 	if (version[0] > 2017 || (version[0] == 2017 && version[1] >= 3) //2017.3 and up
 		|| m_TextureFormat == TextureFormat.ETC_RGB4Crunched
 		|| m_TextureFormat == TextureFormat.ETC2_RGBA8Crunched)
-		result = DecompressUnityCRN(image_data, image_data_size, out uncompressedData, out uncompressedSize)
+		result = DecompressUnityCRN(image_data, image_data_size, out uncompressedData, out uncompressed_size)
 	else
-		result = DecompressCRN(image_data, image_data_size, out uncompressedData, out uncompressedSize)
+		result = DecompressCRN(image_data, image_data_size, out uncompressedData, out uncompressed_size)
 
 	if (result)
-		var uncompressedBytes = new byte[uncompressedSize]
-		Marshal.Copy(uncompressedData, uncompressedBytes, 0, uncompressedSize)
+		var uncompressedBytes = new byte[uncompressed_size]
+		Marshal.Copy(uncompressedData, uncompressedBytes, 0, uncompressed_size)
 		Marshal.FreeHGlobal(uncompressedData)
 		image_data = uncompressedBytes
-		image_data_size = uncompressedSize
+		image_data_size = uncompressed_size
 
 
 def Texgenpack(self):

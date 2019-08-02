@@ -320,7 +320,7 @@ class QFORMAT(IntEnum):
 	Q_FORMAT_RGBA_F = 23
 	Q_FORMAT_RGBA_HF = 24
 	
-	Q_FORMAT_RGB9_E5 = 25  # Last five bits are exponent bits (Read following section in GLES3 spec: "3.8.17 Shared Exponent Texture Color Conversion")
+	Q_FORMAT_RGB9_E5 = 25  # Last five bits are exponent bits (read following section in GLES3 spec: "3.8.17 Shared Exponent Texture Color Conversion")
 	Q_FORMAT_RGB_8UI = 26
 	Q_FORMAT_RGB_8I = 27
 	Q_FORMAT_RGB_565 = 28

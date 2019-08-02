@@ -1,80 +1,80 @@
-﻿from ..enums import FileType
-from .CompressionHelper import gzipMagic, brotliMagic
+﻿import os
+
+from .CompressionHelper import BROTLI_MAGIC, GZIP_MAGIC
 from ..EndianBinaryReader import EndianBinaryReader
-import os
+from ..enums import FileType
 
 
-def FileNameWithoutExtension(fileName: str):
-	return os.path.splitext(os.path.basename(fileName))[0]
+def file_name_without_extension(file_name: str):
+	return os.path.splitext(os.path.basename(file_name))[0]
 
 
-def ListAllFiles(directory: str):
+def list_all_files(directory: str):
 	return [
 			val for sublist in [
 					[
-							os.path.join(dirpath, filename)
+							os.path.join(dir_path, filename)
 							for filename in filenames
 					]
-					for (dirpath, dirnames, filenames) in os.walk(directory)
-					if '.git' not in dirpath
+					for (dir_path, dirn_ames, filenames) in os.walk(directory)
+					if '.git' not in dir_path
 			]
 			for val in sublist
 	]
 
 
-def MergeSplitAssets(path: str, allDirectories = False):
-	if allDirectories:
-		splitFiles = [fp for fp in ListAllFiles(path) if fp[-7:] == ".split0"]
+def merge_split_assets(path: str, all_directories = False):
+	if all_directories:
+		split_files = [fp for fp in list_all_files(path) if fp[-7:] == ".split0"]
 	else:
-		splitFiles = [os.path.join(path, fp)
-		              for fp in os.listdir(path) if fp[-7:] == ".split0"]
+		split_files = [os.path.join(path, fp) for fp in os.listdir(path) if fp[-7:] == ".split0"]
 	
-	for splitFile in splitFiles:
-		destFile = FileNameWithoutExtension(splitFile)
-		destPath = os.path.dirname(splitFile)
-		destFull = os.path.join(destFile, destPath)
+	for split_file in split_files:
+		dest_file = file_name_without_extension(split_file)
+		dest_path = os.path.dirname(split_file)
+		dest_full = os.path.join(dest_file, dest_path)
 		
-		if not os.path.exists(destFull):
-			with open(destFull, 'wb') as f:
+		if not os.path.exists(dest_full):
+			with open(dest_full, 'wb') as f:
 				i = 0
 				while True:
-					splitPart = ''.join([destFull, '.split', str(i)])
-					if not os.path.isfile(splitPart):
+					split_part = ''.join([dest_full, '.split', str(i)])
+					if not os.path.isfile(split_part):
 						break
-					f.write(open(splitPart, 'rb').read())
+					f.write(open(split_part, 'rb').read())
 
 
-def ProcessingSplitFiles(selectFile: list) -> list:
-	splitFiles = [fp for fp in selectFile if '.split' in fp]
-	selectFile = [f for f in selectFile if f not in splitFiles]
+def processing_split_files(select_file: list) -> list:
+	split_files = [fp for fp in select_file if '.split' in fp]
+	select_file = [f for f in select_file if f not in split_files]
 	
-	splitFiles = set([FileNameWithoutExtension(fp) for fp in splitFiles])
-	for splitFile in splitFiles:
+	split_files = set([file_name_without_extension(fp) for fp in split_files])
+	for splitFile in split_files:
 		if os.path.isfile:
-			selectFile.append(splitFile)
-	return selectFile
+			select_file.append(splitFile)
+	return select_file
 
 
-def CheckFileType(input):
-	if type(input) == str and os.path.isfile(input):
-		reader = EndianBinaryReader(open(input, 'rb'))
+def check_file_type(input_):
+	if type(input_) == str and os.path.isfile(input_):
+		reader = EndianBinaryReader(open(input_, 'rb'))
 	else:
-		reader = EndianBinaryReader(input)
+		reader = EndianBinaryReader(input_)
 	
-	signature = reader.ReadStringToNull(20)
+	signature = reader.read_string_to_null(20)
 	reader.Position = 0
 	if signature in ["UnityWeb", "UnityRaw", "\xFA\xFA\xFA\xFA\xFA\xFA\xFA\xFA", "UnityFS"]:
-		return (FileType.BundleFile, reader)
+		return FileType.BundleFile, reader
 	elif signature == "UnityWebData1.0":
-		return (FileType.WebFile, reader)
+		return FileType.WebFile, reader
 	else:
-		magic = reader.ReadBytes(2)
+		magic = reader.read_bytes(2)
 		reader.Position = 0
-		if gzipMagic == magic:
-			return (FileType.WebFile, reader)
+		if GZIP_MAGIC == magic:
+			return FileType.WebFile, reader
 		reader.Position = 0x20
-		magic = reader.ReadBytes(6)
+		magic = reader.read_bytes(6)
 		reader.Position = 0
-		if brotliMagic == magic:
-			return (FileType.WebFile, reader)
-		return (FileType.AssetsFile, reader)
+		if BROTLI_MAGIC == magic:
+			return FileType.WebFile, reader
+		return FileType.AssetsFile, reader

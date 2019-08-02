@@ -1,147 +1,184 @@
-﻿from ..helpers import CompressionHelper
+﻿import io
+import os
+
 from ..EndianBinaryReader import EndianBinaryReader
-import os, io
+from ..helpers import CompressionHelper
 
 
-class StreamFile():
-	fileName: str
+class File:
+	flag: int
+	name: str
 	stream: io.BytesIO
 
 
-class BlockInfo():
-	compressedSize: int
-	uncompressedSize: int
+class StreamFile:
+	name: str
+	stream: io.BytesIO
+
+
+class BlockInfo:
+	compressed_size: int
+	uncompressed_size: int
 	flag: int
-	
-	def __init__(self, compressedSize, uncompressedSize, flag):
-		self.compressedSize = compressedSize
-		self.uncompressedSize = uncompressedSize
-		self.flag = flag
 
 
-class BundleFile():
-	# private string path;
-	# public string versionPlayer;
-	# public string versionEngine;
-	# public List<StreamFile> fileList = new List<StreamFile>();
+class BundleFile:
+	files: list = []
+	path: str
 	
-	def __init__(self, bundleReader, path):
-		self.fileList = []
+	def __init__(self, bundle_reader, path):
 		self.path = path
-		signature = bundleReader.ReadStringToNull()
-		format = bundleReader.ReadInt32()
-		self.versionPlayer = bundleReader.ReadStringToNull()
-		self.versionEngine = bundleReader.ReadStringToNull()
+		self._signature = bundle_reader.read_string_to_null()
+		self._format = bundle_reader.read_int()
+		self.version_player = bundle_reader.read_string_to_null()
+		self.version_engine = bundle_reader.read_string_to_null()
 		
-		if signature in ["UnityWeb", "UnityRaw", "\xFA\xFA\xFA\xFA\xFA\xFA\xFA\xFA"]:
-			if format < 6:
-				bundleSize = bundleReader.ReadInt32()
-			elif format == 6:
-				self.ReadFormat6(bundleReader, True)
+		if self._signature in ["UnityWeb", "UnityRaw", "\xFA\xFA\xFA\xFA\xFA\xFA\xFA\xFA"]:
+			if self._format < 6:
+				bundleSize = bundle_reader.read_int()
+			elif self._format == 6:
+				self.read_format_6(bundle_reader, True)
 				return
 			
-			dummy2 = bundleReader.ReadInt16()
-			offset = bundleReader.ReadInt16()
-			dummy3 = bundleReader.ReadInt32()
-			lzmaChunks = bundleReader.ReadInt32()
+			dummy2 = bundle_reader.read_short()
+			offset = bundle_reader.read_short()
 			
-			lzmaSize = 0
-			streamSize = 0
-			
-			for i in range(lzmaChunks):
-				lzmaSize = bundleReader.ReadInt32()
-				streamSize = bundleReader.ReadInt32()
-			
-			bundleReader.Position = offset
-			if signature in ["UnityWeb", "\xFA\xFA\xFA\xFA\xFA\xFA\xFA\xFA"]:
-				lzmaBuffer = bundleReader.ReadBytes(lzmaSize)
-				self.dataReader = EndianBinaryReader(CompressionHelper.DecompressLZMA(lzmaBuffer))
-				self.GetAssetsFiles(self.dataReader, 0)
-			elif signature == "UnityRaw":
-				self.dataReader = bundleReader
-				self.GetAssetsFiles(self.dataReader, offset)
+			if self._signature in ["UnityWeb", "\xFA\xFA\xFA\xFA\xFA\xFA\xFA\xFA"]:
+				dummy3 = bundle_reader.read_int()
+				lzma_chunks = bundle_reader.read_int()
+				bundle_reader.Position = bundle_reader.Position + (lzma_chunks - 1) * 8
+				lzma_size = bundle_reader.read_int()
+				stream_size = bundle_reader.read_int()
+				
+				bundle_reader.Position = offset
+				lzma_buffer = bundle_reader.read_bytes(lzma_size)
+				data_reader = EndianBinaryReader(CompressionHelper.decompress_lzma(lzma_buffer))
+				self.get_assets_files(data_reader, 0)
+			elif self._signature == "UnityRaw":
+				bundle_reader.Position = offset
+				self.get_assets_files(bundle_reader, offset)
 		
-		elif signature == "UnityFS":
-			if format == 6:
-				self.ReadFormat6(bundleReader)
+		elif self._signature == "UnityFS":
+			if self._format == 6:
+				self.read_format_6(bundle_reader)
 	
-	def GetAssetsFiles(self, reader: EndianBinaryReader, offset):
-		fileCount = reader.ReadInt32()
-		for i in range(fileCount):
-			f = object()
-			f.name = os.path.basename(reader.ReadStringToNull())
-			f.fileOffset = reader.ReadInt32() + offset
-			f.fileSize = reader.ReadInt32()
-			nextFile = reader.Position
+	def get_assets_files(self, reader: EndianBinaryReader, offset):
+		file_count = reader.read_int()
+		for i in range(file_count):
+			f = StreamFile()
+			f.name = os.path.basename(reader.read_string_to_null())
+			offset = reader.read_int() + offset
+			size = reader.read_int()
 			
-			reader.Position = f.fileOffset
-			f.stream = io.BytesIO(reader.read(f.fileSize))
-			self.fileList.append(f)
-			reader.Position = nextFile
+			next_file_pos = reader.Position
+			
+			reader.Position = offset
+			f.stream = io.BytesIO(reader.read(size))
+			self.files.append(f)
+			
+			reader.Position = next_file_pos
 	
-	def ReadFormat6(self, bundleReader: EndianBinaryReader, padding = False):
-		bundleSize = bundleReader.ReadInt64()
-		compressedSize = bundleReader.ReadInt32()
-		uncompressedSize = bundleReader.ReadInt32()
-		flag = bundleReader.ReadInt32()
+	def read_format_6(self, bundle_reader: EndianBinaryReader, padding = False):
+		bundle_size = bundle_reader.read_long()
+		compressed_size = bundle_reader.read_int()
+		uncompressed_size = bundle_reader.read_int()
+		flag = bundle_reader.read_int()
 		if padding:
-			bundleReader.ReadByte()
-		blockInfoBytes: bytes
+			bundle_reader.read_byte()
+		
 		if (flag & 0x80) != 0:  # at end of file
-			position = bundleReader.Position
-			bundleReader.Position = bundleReader.Length - compressedSize
-			blockInfoBytes = bundleReader.ReadBytes(compressedSize)
-			bundleReader.Position = position
+			position = bundle_reader.Position
+			bundle_reader.Position = bundle_reader.Length - compressed_size
+			block_info_bytes = bundle_reader.read_bytes(compressed_size)
+			bundle_reader.Position = position
 		else:
-			blockInfoBytes = bundleReader.ReadBytes(compressedSize)
+			block_info_bytes = bundle_reader.read_bytes(compressed_size)
 		
 		switch = flag & 0x3F
 		if switch == 1:  # LZMA
-			blocksInfoData = CompressionHelper.DecompressLZMA(blockInfoBytes)
+			blocks_info_data = CompressionHelper.decompress_lzma(block_info_bytes)
 		elif switch in [2, 3]:  # LZ4, LZ4HC
-			blocksInfoData = CompressionHelper.DecompressLZ4(blockInfoBytes, uncompressedSize)
+			blocks_info_data = CompressionHelper.decompress_lz4(block_info_bytes, uncompressed_size)
 		# elif switch == 4: #LZHAM:
 		else:  # no compression
-			blocksInfoData = blockInfoBytes
+			blocks_info_data = block_info_bytes
 		
-		blocksInfoReader = EndianBinaryReader(blocksInfoData)
-		blocksInfoReader.Position = 0x10
-		blockcount = blocksInfoReader.ReadInt32()
-		blockInfos = [
-				BlockInfo(
-						uncompressedSize = blocksInfoReader.ReadUInt32(),
-						compressedSize = blocksInfoReader.ReadUInt32(),
-						flag = blocksInfoReader.ReadInt16()
-				)
-				for i in range(blockcount)
-		]
+		blocks_info_reader = EndianBinaryReader(blocks_info_data)
+		blocks_info_reader.Position = 0x10
+		block_count = blocks_info_reader.read_int()
+		block_infos = []
+		for i in range(block_count):
+			block_info = BlockInfo()
+			block_info.uncompressed_size = blocks_info_reader.read_u_int()
+			block_info.compressed_size = blocks_info_reader.read_u_int()
+			block_info.flag = blocks_info_reader.read_short()
+			block_infos.append(block_info)
 		
-		data = b''
-		for blockInfo in blockInfos:
+		data = []
+		for blockInfo in block_infos:
 			switch = blockInfo.flag & 0x3F
 			
 			if switch == 1:  # LZMA
-				data += CompressionHelper.DecompressLZMA(bundleReader.read(blockInfo.compressedSize))
+				data.append(CompressionHelper.decompress_lzma(bundle_reader.read(blockInfo.compressed_size)))
 			elif switch in [2, 3]:  # LZ4, LZ4HC
-				data += CompressionHelper.DecompressLZ4(bundleReader.read(blockInfo.compressedSize), blockInfo.uncompressedSize)
+				data.append(CompressionHelper.decompress_lz4(bundle_reader.read(blockInfo.compressed_size), blockInfo.uncompressed_size))
 			# elif switch == 4: #LZHAM:
 			else:  # no compression
-				data += bundleReader.read(blockInfo.compressedSize)
+				data.append(bundle_reader.read(blockInfo.compressed_size))
 		
-		dataStream = EndianBinaryReader(data)
-		entryinfo_count = blocksInfoReader.ReadInt32()
-		for i in range(entryinfo_count):
+		data_stream = EndianBinaryReader(b''.join(data))
+		entry_info_count = blocks_info_reader.read_int()
+		for i in range(entry_info_count):
 			f = File()
-			entryinfo_offset = blocksInfoReader.ReadInt64()
-			entryinfo_size = blocksInfoReader.ReadInt64()
-			f.flag = blocksInfoReader.ReadInt32()
-			f.fileName = os.path.basename(blocksInfoReader.ReadStringToNull())
-			dataStream.Position = entryinfo_offset
-			f.stream = dataStream.read(entryinfo_size)
-			self.fileList.append(f)
+			offset = blocks_info_reader.read_long()
+			size = blocks_info_reader.read_long()
+			f.flag = blocks_info_reader.read_int()
+			f.file_name = os.path.basename(blocks_info_reader.read_string_to_null())
+			data_stream.Position = offset
+			f.stream = data_stream.read(size)
+			self.files.append(f)
+	
+	def create_bundle_file(self) -> io.BytesIO:
+		"""Converts the bundle file data back into a file like object."""
+		writer = EndianBinaryReader(io.BytesIO())
+		writer.WriteStringToNull(self._signature)
+		writer.write_int(self._format)
+		writer.WriteStringToNull(self.version_player)
+		writer.WriteStringToNull(self.version_engine)
+		
+		'''
+		if self._signature in ["UnityWeb", "UnityRaw", "\xFA\xFA\xFA\xFA\xFA\xFA\xFA\xFA"]:
+			if self._format < 6:
+				#has to be calculated afterwards
+				writer.write_int(bundle_size)
+			elif format == 6:
+				self.write_format_6(writer, True)
+				return
+			
+			writer.write_short(dummy2)
+			writer.write_short(offset)
+			writer.write_int(dummy3)
 
-
-class File():
-	flag: int
-	fileName: str
-	stream: io.BytesIO
+			#compress via lzma
+			#calculate following
+			
+			writer.write_int(len(lzma_chunks))
+			
+			for chunk in lzma_chunks:
+				bundle_reader.read_int()
+				stream_size = bundle_reader.read_int()
+			
+			bundle_reader.Position = offset
+			if self._signature in ["UnityWeb", "\xFA\xFA\xFA\xFA\xFA\xFA\xFA\xFA"]:
+				lzma_buffer = bundle_reader.read_bytes(lzma_size)
+				data_reader = EndianBinaryReader(CompressionHelper.decompress_lzma(lzma_buffer))
+				self.get_assets_files(data_reader, 0)
+			elif self._signature == "UnityRaw":
+				self.get_assets_files(bundle_reader, offset)
+		
+		elif self._signature == "UnityFS":
+			if self._format == 6:
+				self.read_format_6(bundle_reader)
+		'''
+		writer.Position = 0
+		return writer.stream

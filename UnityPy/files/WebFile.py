@@ -1,61 +1,71 @@
-﻿from ..helpers import CompressionHelper
+﻿import io
 import os
+
 from ..EndianBinaryReader import EndianBinaryReader
-import io
+from ..helpers import CompressionHelper
 
 
-class WebData():
-	dataOffset: 'int'
-	dataLength: 'int'
+class WebData:
+	offset: int
+	length: int
 	path: str
 
 
-class WebFile():
+class File:
+	name: str
+	stream: io.BytesIO
+
+
+class WebFile:
+	files = []
+	
+	"""A package which can hold other WebFiles, Bundles and SerialiedFiles.
+	It may be compressed via gzip or brotli.
+
+	files -- list of all files in the WebFile
+	"""
+	
 	def __init__(self, reader):
-		self.fileList = []
-		
-		magic = reader.ReadBytes(2)
+		magic = reader.read_bytes(2)
 		reader.Position = 0
 		
-		if magic == CompressionHelper.gzipMagic:
-			data = CompressionHelper.DecompressGZIP(reader.bytes)
-			binaryReader = EndianBinaryReader(data, endian = '<')
-			self.ReadWebData(binaryReader)
+		if magic == CompressionHelper.GZIP_MAGIC:
+			self._compression = 'gzip'
+			data = CompressionHelper.decompress_gzip(reader.bytes)
+			binary_reader = EndianBinaryReader(data, endian = '<')
+			self.reader_web_data(binary_reader)
 		else:
 			reader.Position = 0x20
-			magic = reader.ReadBytes(6)
+			magic = reader.read_bytes(6)
 			reader.Position = 0
-			if CompressionHelper.brotliMagic == magic:
-				data = CompressionHelper.DecompressBrotli(reader.bytes)
-				binaryReader = EndianBinaryReader(data, endian = '<')
-				self.ReadWebData(binaryReader)
+			if CompressionHelper.BROTLI_MAGIC == magic:
+				self._compression = 'brotli'
+				data = CompressionHelper.decompress_brotli(reader.bytes)
+				binary_reader = EndianBinaryReader(data, endian = '<')
+				self.reader_web_data(binary_reader)
 			else:
-				reader.endian = '<'  # little endian
-				self.ReadWebData(reader)
+				self._compression = None
+				reader.endian = '<'
+				self.reader_web_data(reader)
 	
-	def ReadWebData(self, reader):
-		signature = reader.ReadStringToNull()
+	def reader_web_data(self, reader):
+		"""Extracts the files saved in the WebFile."""
+		signature = reader.read_string_to_null()
 		if signature != "UnityWebData1.0":
 			return
-		headLength = reader.ReadInt32()
-		self.dataList = []
-		while reader.Position < headLength:
+		head_length = reader.read_int()
+		data_list = []
+		while reader.Position < head_length:
 			data = WebData()
-			data.dataOffset = reader.ReadInt32()
-			data.dataLength = reader.ReadInt32()
-			
-			pathLength = reader.ReadInt32()
-			data.path = reader.ReadBytes(pathLength).decode('utf8')
-			self.dataList.append(data)
+			data.offset = reader.read_int()
+			data.length = reader.read_int()
+			path_length = reader.read_int()
+			data.path = reader.read_bytes(path_length).decode('utf8')
+			data_list.append(data)
 		
-		for data in self.dataList:
+		for data in data_list:
+			reader.Position = data.offset
 			f = File()
-			f.fileName = os.path.basename(data.path)
-			reader.Position = data.dataOffset
-			f.stream = io.BytesIO(reader.read(data.dataLength))
-			self.fileList.append(f)
-
-
-class File:
-	fileName: str
-	stream: io.BytesIO
+			f.name = os.path.basename(data.path)
+			f.stream = io.BytesIO(reader.read(data.length))
+			self.files.append(f)

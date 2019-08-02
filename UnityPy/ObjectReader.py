@@ -1,51 +1,43 @@
-﻿from .EndianBinaryReader import EndianBinaryReader
-from .files.SerializedFile import SerializedType
-from . import classes
+﻿from . import classes
 
 
-class ObjectInfo():
-	byteStart: int
-	byteSize: int
-	typeID: int
-	classID: int
-	
-	m_PathID: int
-	serializedType: SerializedType
-
-
-class ObjectReader(EndianBinaryReader):
-	# assetsFile : SerializedFile
-	# m_PathID : long
-	# byteStart : uint
-	# byteSize : uint
+class ObjectReader:
+	# assets_file : SerializedFile
+	# path_id : long
+	# byte_start : uint
+	# byte_size : uint
 	# type : ClassIDType
-	# serializedType : SerializedType
+	# serialized_type : SerializedType
 	# platform : BuildTarget
-	# m_Version : uint
+	# version : uint
 	
-	# version => assetsFile.version : int[]
-	# buildType => assetsFile.buildType : BuildType
+	# version => assets_file.version : int[]
+	# build_type => assets_file.build_type : BuildType
 	
-	def __init__(self, reader, assetsFile, objectInfo):
-		self.assetsFile = assetsFile
-		self.m_PathID = objectInfo.m_PathID
-		self.byteStart = objectInfo.byteStart
-		self.byteSize = objectInfo.byteSize
-		self.serializedType = objectInfo.serializedType
-		self.platform = assetsFile.m_TargetPlatform
-		self.m_Version = assetsFile.header.m_Version
-		self.type = getattr(classes, str(objectInfo.classID), classes.Object)
-		
-		self.version = assetsFile.version
-		self.buildType = assetsFile.buildType
-		
-		# self.reader = reader
-		self.endian = reader.endian
-		self.stream = reader.stream  # [self.byteStart:self.byteStart+self.byteSize]
-		self.Length = reader.Length
+	def __init__(self, reader, assets_file, object_info):
+		self.assets_file = assets_file
+		self.path_id = object_info.path_id
+		self.byte_start = object_info.byte_start
+		self.byte_size = object_info.byte_size
+		self.serialized_type = object_info.serialized_type
+		self.platform = assets_file._target_platform
+		self._version = assets_file.header.version
+		self.type = object_info.class_id
+		self.version = assets_file.version
+		self.build_type = assets_file.build_type
+		self.reader = reader
 	
-	def Reset(self):
-		self.Position = self.byteStart
+	def reset(self):
+		self.reader.Position = self.byte_start
 	
-	def Read(self):
-		return self.type(self)
+	def read(self):
+		return getattr(classes, self.type.name, classes.Object)(self)
+	
+	def __getattr__(self, item):
+		if hasattr(self.reader, item):
+			return getattr(self.reader, item)
+	
+	def __repr__(self):
+		return "<%s %s>" % (
+				self.__class__.__name__, self.type.name
+		)

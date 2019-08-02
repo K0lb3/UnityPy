@@ -48,8 +48,15 @@ class TextMesh(Component):
 
 
 class TextAsset(Object):
-	path = field("m_PathName")
-	script = field("m_Script")
+	def __init__(self, reader):
+		super().__init__(reader=reader)
+		if self.type_tree:
+			self.script = self.type_tree['m_Script']
+			self.path = self.type_tree['m_PathName']
+		else:
+			self.reader.Position = self.reader.byteStart
+			self.reader.read_aligned_string()
+			self.script = self.reader.read_bytes(self.reader.read_int())
 	
 	@property
 	def bytes(self):

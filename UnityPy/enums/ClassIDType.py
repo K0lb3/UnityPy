@@ -285,3 +285,13 @@ class ClassIDType(IntEnum):
 	
 	def __str__(self):
 		return self.name
+	
+	def __eq__(self, value):
+		if isinstance(value, str):
+			return self.name == value
+		else:
+			return self.value == value
+	
+	@classmethod
+	def _missing_(cls, value):
+		return ClassIDType.UnknownType

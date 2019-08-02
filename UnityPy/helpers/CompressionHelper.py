@@ -1,19 +1,19 @@
-import lz4.block
+import gzip
 import lzma
 import struct
-import gzip
+
 import brotli
+import lz4.block
 
-gzipMagic = b'\x1f\x8b'
-brotliMagic = b'brotli'
+GZIP_MAGIC = b'\x1f\x8b'
+BROTLI_MAGIC = b'brotli'
 
 
-def DecompressLZMA(data):
-	# taken from unitypack
+def decompress_lzma(data):
 	props, dict_size = struct.unpack("<BI", data[:5])
 	lc = props % 9
-	props = int(props / 9)
-	pb = int(props / 5)
+	props = props // 9
+	pb = props // 5
 	lp = props % 5
 	dec = lzma.LZMADecompressor(format = lzma.FORMAT_RAW, filters = [{
 			"id"       : lzma.FILTER_LZMA1,
@@ -25,13 +25,13 @@ def DecompressLZMA(data):
 	return dec.decompress(data[5:])
 
 
-def DecompressLZ4(data, uncompressedSize):  # LZ4M LZ4HC
-	return lz4.block.decompress(data, uncompressedSize)
+def decompress_lz4(data, uncompressed_size):  # LZ4M LZ4HC
+	return lz4.block.decompress(data, uncompressed_size)
 
 
-def DecompressBrotli(data):
+def decompress_brotli(data):
 	return brotli.decompress(data)
 
 
-def DecompressGZIP(data):
+def decompress_gzip(data):
 	return gzip.decompress(data)

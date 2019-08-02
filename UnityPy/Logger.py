@@ -1,8 +1,18 @@
-﻿from enum import Enum
+﻿import time
+from enum import Enum
+
 from colorama import init
 from termcolor import colored
 
 init()
+
+COLOR = {
+		'Verbose': 'white',
+		'Debug'  : 'green',
+		'Info'   : 'yellow',
+		'Warning': 'magenta',
+		'Error'  : 'red'
+}
 
 
 class LoggerEvent(Enum):
@@ -13,34 +23,27 @@ class LoggerEvent(Enum):
 	Error = 4
 	
 	def print(self, string):
-		COLOR = {
-				'Verbose': 'white',
-				'Debug'  : 'green',
-				'Info'   : 'yellow',
-				'Warning': 'magenta',
-				'Error'  : 'red'
-		}
 		print(colored(f"{self.name}: {string}", COLOR[self.name]))
 
 
-class Logger():
+class Logger:
 	log = []
 	
-	def Log(self, event: LoggerEvent, message: str):
+	def _log(self, event: LoggerEvent, message: str):
 		event.print(message)
 		self.log.append((event, message))
 	
-	def Verbose(self, message: str):
-		self.Log(LoggerEvent.Verbose, message)
+	def verbose(self, message: str):
+		self._log(LoggerEvent.Verbose, message)
 	
-	def Debug(self, message: str):
-		self.Log(LoggerEvent.Debug, message)
+	def debug(self, message: str):
+		self._log(LoggerEvent.Debug, f"{time.thread_time_ns()} - {message}")
 	
-	def Info(self, message: str):
-		self.Log(LoggerEvent.Info, message)
+	def info(self, message: str):
+		self._log(LoggerEvent.Info, message)
 	
-	def Warning(self, message: str):
-		self.Log(LoggerEvent.Warning, message)
+	def warning(self, message: str):
+		self._log(LoggerEvent.Warning, message)
 	
-	def Error(self, message: str):
-		self.Log(LoggerEvent.Error, message)
+	def error(self, message: str, error: Exception):
+		self._log(LoggerEvent.Error, '\n'.join([message, str(error)]))

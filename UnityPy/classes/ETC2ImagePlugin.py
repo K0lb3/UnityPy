@@ -187,7 +187,7 @@ def setupAlphaTable():
 	alphaTableInitialized = True
 
 
-# The format stores the bits for the three extra modes in a roundabout way to be able to
+# The _format stores the bits for the three extra modes in a roundabout way to be able to
 # fit them without increasing the bit rate. This function converts them into something
 # that is easier to work with.
 def unstuff57bits(planar_word1, planar_word2):
@@ -255,7 +255,7 @@ def unstuff57bits(planar_word1, planar_word2):
 	return (planar57_word1, planar57_word2)
 
 
-# The format stores the bits for the three extra modes in a roundabout way to be able to
+# The _format stores the bits for the three extra modes in a roundabout way to be able to
 # fit them without increasing the bit rate. This function converts them into something
 # that is easier to work with.
 def unstuff58bits(thumbH_word1, thumbH_word2):
@@ -286,7 +286,7 @@ def unstuff58bits(thumbH_word1, thumbH_word2):
 	return (thumbH58_word1, thumbH58_word2)
 
 
-# The format stores the bits for the three extra modes in a roundabout way to be able to
+# The _format stores the bits for the three extra modes in a roundabout way to be able to
 # fit them without increasing the bit rate. This function converts them into something
 # that is easier to work with.
 def unstuff59bits(thumbT_word1, thumbT_word2):
@@ -911,7 +911,7 @@ class ETC2Decoder(ImageFile.PyDecoder):
 	width = 0
 	height = 0
 	
-	# Unpack an ETC1_RGB8_OES format compressed textur
+	# Unpack an ETC1_RGB8_OES _format compressed textur
 	def _ktxUnpackETC(self, srcETC, srcFormat, activeWidth, activeHeight):
 		self.srcETC = BytesIO(srcETC)
 		self.width = activeWidth

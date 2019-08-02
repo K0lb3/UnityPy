@@ -1,219 +1,148 @@
 ﻿import os
-from .helpers import ImportHelper
+
 from .EndianBinaryReader import EndianBinaryReader
-from .Progress import Progress
 from .Logger import Logger
+from .Progress import Progress
 from .files import BundleFile, SerializedFile, WebFile
-from .ObjectReader import ObjectReader
-from .Object import Object
-from . import classes
+from .helpers import ImportHelper
 
 FileType = ImportHelper.FileType
 
 
-class AssetsManager():
-	assetsFileList = []
-	assetsFileIndexCache = {}
-	resourceFileReaders = {}
+class AssetsManager:
+	assets :dict = {}
+	resource_file_readers = {}
 	
-	importFiles = []
-	importFilesHash = []
-	assetsFileListHash = []
+	import_files : dict = {}
 	Progress = Progress()
 	Logger = Logger()
 	
-	def LoadFiles(self, files):
+	def load_files(self, files):
+		"""Loads all files (list) into the AssetsManager and merges .split files for common usage."""
 		path = os.path.dirname(files[0])
-		ImportHelper.MergeSplitAssets(path)
-		toReadFile = ImportHelper.ProcessingSplitFiles(files)
-		self.Load(toReadFile)
+		ImportHelper.merge_split_assets(path)
+		to_read_file = ImportHelper.processing_split_files(files)
+		self.load(to_read_file)
 	
-	def LoadFolder(self, path):
-		ImportHelper.MergeSplitAssets(path, True)
-		files = ImportHelper.ListAllFiles(path)
-		toReadFile = ImportHelper.ProcessingSplitFiles(files)
-		self.Load(toReadFile)
+	def load_folder(self, path):
+		"""Loads all files in the given path and its subdirs into the AssetsManager."""
+		ImportHelper.merge_split_assets(path, True)
+		files = ImportHelper.list_all_files(path)
+		to_read_file = ImportHelper.processing_split_files(files)
+		self.load(to_read_file)
 	
-	def Load(self, files):
+	def load(self, files):
+		"""Loads all files into the AssetsManager."""
 		for f in files:
-			self.importFiles.append(f)
-			self.importFilesHash.append(os.path.basename(f).upper())
+			self.import_files[os.path.basename(f)] = f
 		
-		self.Progress.Reset()
+		self.Progress.reset()
 		# use a for loop because list size can change
-		for i, f in enumerate(self.importFiles):
-			self.LoadFile(f)
-			self.Progress.Report(i + 1, len(self.importFiles))
-		
-		self.importFiles = []
-		self.importFilesHash = []
-		self.assetsFileListHash = []
-		
-		self.ReadAssets()
+		for i, f in enumerate(self.import_files.values()):
+			self.load_file(f)
+			self.Progress.report(i + 1, len(self.import_files))
 	
-	# self.ProcessGameObject()
-	
-	def LoadFile(self, fullName):
-		typ, reader = ImportHelper.CheckFileType(fullName)
+	def load_file(self, full_name):
+		typ, reader = ImportHelper.check_file_type(full_name)
+		if type(full_name) != str:
+			full_name = str(full_name)
 		if typ == FileType.AssetsFile:
-			self.LoadAssetsFile(fullName, reader)
+			self.load_assets_file(full_name, reader)
 		elif typ == FileType.BundleFile:
-			self.LoadBundleFile(fullName, reader)
+			self.load_bundle_file(full_name, reader)
 		elif FileType.WebFile:
-			self.LoadWebFile(fullName, reader)
+			self.load_web_file(full_name, reader)
 	
-	def LoadAssetsFile(self, fullName, reader):
-		fileName = os.path.basename(fullName)
-		if fileName.upper() not in self.assetsFileListHash:
-			self.Logger.Info(f"Loading {fullName}")
+	def load_assets_file(self, full_name, reader):
+		file_name = os.path.basename(full_name)
+		if file_name not in self.assets:
+			self.Logger.info(f"Loading {full_name}")
 			try:
-				assetsFile = SerializedFile(self, fullName, reader)
-				self.assetsFileList.append(assetsFile)
-				self.assetsFileListHash.append(assetsFile.upperFileName)
+				assets_file = SerializedFile(self, full_name, reader)
+				self.assets[assets_file.name] = assets_file
 				
-				for sharedFile in assetsFile.m_Externals:
-					sharedFilePath = os.path.join(os.path.dirname(fullName), sharedFile.fileName)
-					sharedFileName = sharedFile.fileName
+				for sharedFile in assets_file._externals:
+					shared_file_path = os.path.join(os.path.dirname(full_name), sharedFile.file_name)
+					shared_file_name = sharedFile.file_name
 					
-					if sharedFileName.upper() not in self.importFilesHash:
-						if not os.path.exists(sharedFilePath):
-							findFiles = [f for f in ImportHelper.ListAllFiles(os.path.dirname(fullName)) if sharedFileName in f]
-							if findFiles:
-								sharedFilePath = findFiles[0]
+					if shared_file_name not in self.import_files:
+						if not os.path.exists(shared_file_path):
+							find_files = [f for f in ImportHelper.list_all_files(os.path.dirname(full_name)) if shared_file_name in f]
+							if find_files:
+								shared_file_path = find_files[0]
 						
-						if os.path.exists(sharedFilePath):
-							self.importFiles.append(sharedFilePath)
-							self.importFilesHash.append(sharedFileName.upper())
+						if os.path.exists(shared_file_path):
+							self.import_files[shared_file_name] = shared_file_path
 			
-			except:
-				reader.Dispose()
-				self.Logger.Error(f"Unable to load assets file {fileName}")
+			except Exception as e:
+				reader.dispose()
+				self.Logger.error(f"Unable to load assets file {file_name}", e)
 		else:
-			reader.Dispose()
-		return assetsFile
+			reader.dispose()
+		return assets_file
 	
-	def LoadAssetsFromMemory(self, fullName, reader, originalPath, unityVersion = None):
-		upperFileName = os.path.basename(fullName).upper()
-		if upperFileName not in self.assetsFileListHash:
+	def load_assets_from_memory(self, full_name, reader, original_path, unity_version = None):
+		file_name = os.path.basename(full_name)
+		if file_name not in self.assets:
 			try:
-				assetsFile = SerializedFile(self, fullName, reader)
-				assetsFile.originalPath = originalPath
-				if assetsFile.header.m_Version < 7:
-					assetsFile.SetVersion(unityVersion)
-				self.assetsFileList.append(assetsFile)
-				self.assetsFileListHash.append(upperFileName)
-			except:
-				if '.RESS' != upperFileName[-5:]:
-					self.Logger.Error(f"Unable to load assets file {upperFileName} from {originalPath}")
+				assets_file = SerializedFile(self, full_name, reader)
+				assets_file.original_path = original_path
+				if assets_file.header.version < 7:
+					assets_file.set_version(unity_version)
+				self.assets[file_name] = assets_file
+			except Exception as e:
+				self.Logger.error(f"Unable to load assets file {file_name} from {original_path}", e)
 			finally:
-				self.resourceFileReaders[upperFileName] = reader
+				self.resource_file_readers[file_name] = reader
 	
-	def LoadBundleFile(self, fullName, reader, parentPath = None):
-		fileName = os.path.basename(fullName)
-		self.Logger.Info(f"Loading {fullName}")
+	def load_bundle_file(self, full_name, reader, parent_path = None):
+		file_name = os.path.basename(full_name)
+		self.Logger.info(f"Loading {full_name}")
+		bundle_file = None
 		try:
-			bundleFile = BundleFile(reader, fullName)
-			for f in bundleFile.fileList:
-				dummyPath = os.path.join(os.path.dirname(fullName), f.fileName)
-				self.LoadAssetsFromMemory(dummyPath, EndianBinaryReader(f.stream), fullName if parentPath else bundleFile.versionEngine)
-		except:
-			string = f"Unable to load bundle file {fileName}"
-			if parentPath:
-				string += f" from {os.path.basename(parentPath)}"
-			self.Logger.Error(string)
+			bundle_file = BundleFile(reader, full_name)
+			for f in bundle_file.files:
+				dummy_path = os.path.join(os.path.dirname(full_name), f.file_name)
+				self.load_assets_from_memory(dummy_path, EndianBinaryReader(f.stream), full_name if parent_path else bundle_file.version_engine)
+		except Exception as e:
+			string = f"Unable to load bundle file {file_name}"
+			if parent_path:
+				string += f" from {os.path.basename(parent_path)}"
+			string += '\n' + str(e)
+			self.Logger.error(string, e)
 		finally:
-			reader.Dispose()
-		return bundleFile
+			reader.dispose()
+		return bundle_file
 	
-	def LoadWebFile(self, fullName, reader):
-		fileName = os.path.basename(fullName)
-		self.Logger.Info(f"Loading {fullName}")
+	def load_web_file(self, full_name, reader):
+		file_name = os.path.basename(full_name)
+		self.Logger.info(f"Loading {full_name}")
 		try:
-			webFile = WebFile(reader)
-			for f in webFile.fileList:
-				dummyPath = os.path.join(os.path.dirname(fullName), f.fileName)
-				typ, reader = ImportHelper.CheckFileType(f.stream)
+			web_file = WebFile(reader)
+			for f in web_file.files:
+				dummy_path = os.path.join(os.path.dirname(full_name), f.name)
+				typ, reader = ImportHelper.check_file_type(f.stream)
 				if typ == FileType.AssetsFile:
-					self.LoadAssetsFromMemory(dummyPath, reader, fullName)
+					self.load_assets_from_memory(dummy_path, reader, full_name)
 				elif typ == FileType.BundleFile:
-					self.LoadBundleFile(dummyPath, reader, fullName)
+					self.load_bundle_file(dummy_path, reader, full_name)
 				elif typ == FileType.WebFile:
-					self.LoadWebFile(dummyPath, reader)
+					self.load_web_file(dummy_path, reader)
 		
-		except:
-			self.Logger.Error(f"Unable to load web file {fileName}")
+		except Exception as e:
+			self.Logger.error(f"Unable to load web file {file_name}", e)
 		finally:
-			reader.Dispose()
-		return webFile
+			reader.dispose()
+		return web_file
 	
-	def Clear(self):
-		for assetsFile in self.assetsFileList:
+	def clear(self):
+		for assetsFile in self.assets:
 			assetsFile.Objects = []
 			assetsFile.reader.Close()
-		self.assetsFileList = []
+		self.assets = []
 		
-		for resourceFileReader in self.resourceFileReaders:
+		for resourceFileReader in self.resource_file_readers:
 			resourceFileReader.Value.Close()
 		
-		self.resourceFileReaders = {}
-		self.assetsFileIndexCache = []
-	
-	def ReadAssets(self):
-		self.Logger.Info("Read assets...")
-		progressCount = sum([len(af.m_Objects) for af in self.assetsFileList])
-		i = 0
-		self.Progress.Reset()
-		for assetsFile in self.assetsFileList:
-			assetsFile.Objects = {}
-			for objectInfo in assetsFile.m_Objects:
-				objectReader = ObjectReader(assetsFile.reader, assetsFile, objectInfo)
-				assetsFile.Objects[objectInfo.m_PathID] = objectReader.Read()
-				self.Progress.Report(i, progressCount)
-
-
-
-'''
-	private void ProcessGameObject()
-	{
-		Logger.Info("Process GameObject...");
-
-		foreach (var assetsFile in assetsFileList)
-		{
-			foreach (var obj in assetsFile.Objects.Values)
-			{
-				if (obj is GameObject m_GameObject)
-				{
-					foreach (var pptr in m_GameObject.m_Components)
-					{
-						if (pptr.TryGet(out var m_Component))
-						{
-							switch (m_Component)
-							{
-								case Transform m_Transform:
-									m_GameObject.m_Transform = m_Transform;
-									break;
-								case MeshRenderer m_MeshRenderer:
-									m_GameObject.m_MeshRenderer = m_MeshRenderer;
-									break;
-								case MeshFilter m_MeshFilter:
-									m_GameObject.m_MeshFilter = m_MeshFilter;
-									break;
-								case SkinnedMeshRenderer m_SkinnedMeshRenderer:
-									m_GameObject.m_SkinnedMeshRenderer = m_SkinnedMeshRenderer;
-									break;
-								case Animator m_Animator:
-									m_GameObject.m_Animator = m_Animator;
-									break;
-								case Animation m_Animation:
-									m_GameObject.m_Animation = m_Animation;
-									break;
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-}
-}
-'''
+		self.resource_file_readers = {}
+		self.assets_index_cache = []
