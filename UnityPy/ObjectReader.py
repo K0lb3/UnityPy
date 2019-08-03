@@ -2,18 +2,6 @@
 
 
 class ObjectReader:
-	# assets_file : SerializedFile
-	# path_id : long
-	# byte_start : uint
-	# byte_size : uint
-	# type : ClassIDType
-	# serialized_type : SerializedType
-	# platform : BuildTarget
-	# version : uint
-	
-	# version => assets_file.version : int[]
-	# build_type => assets_file.build_type : BuildType
-	
 	def __init__(self, reader, assets_file, object_info):
 		self.assets_file = assets_file
 		self.path_id = object_info.path_id

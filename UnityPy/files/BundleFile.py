@@ -23,10 +23,8 @@ class BlockInfo:
 
 
 class BundleFile:
-	files: list = []
-	path: str
-	
-	def __init__(self, bundle_reader, path):
+	def __init__(self, bundle_reader: EndianBinaryReader, path: str):
+		self.files: list = []
 		self.path = path
 		self._signature = bundle_reader.read_string_to_null()
 		self._format = bundle_reader.read_int()

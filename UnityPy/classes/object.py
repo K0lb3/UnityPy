@@ -1,6 +1,7 @@
 from ..enums.BuildTarget import BuildTarget
 from ..helpers import TypeTreeHelper
 
+
 def field(f, cast = None, **kwargs):
 	def _inner(self):
 		try:
@@ -13,21 +14,11 @@ def field(f, cast = None, **kwargs):
 			return ret
 		except:
 			return None
-		
+	
 	return property(_inner)
 
 
 class Object:
-	# assets_file : SerializedFile
-	# reader : ObjectReader
-	# path_id : int
-	# version : list
-	# build_type #BuildType
-	# platform #BuildTarget
-	# type #ClassIDType
-	# serialized_type #SerializedType
-	# byte_size : int
-	
 	def __init__(self, reader):
 		# reader : ObjectReader
 		self.reader = reader
@@ -74,6 +65,7 @@ class Object:
 		return "<%s %s>" % (
 				self.__class__.__name__, self.name
 		)
+
 
 class GameObject(Object):
 	active = field("m_IsActive")

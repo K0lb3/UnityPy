@@ -72,22 +72,22 @@ class ObjectInfo:
 
 
 class SerializedFile:
-	version = [0, 0, 0, 0]
-	objects = {}
-	unity_version = "2.5.0f5"
-	build_type = ""
-	_target_platform = BuildTarget.UnknownPlatform
-	_enable_type_tree = True
-	_types = []
-	_objects = []
-	_script_types = []
-	_externals = []
-	
 	def __init__(self, assets_manager, full_name: str, reader):
 		self.assets_manager = assets_manager
 		self.reader = reader
 		self.full_name = full_name
 		self.file_name = os.path.basename(full_name)
+		
+		self.objects = {}
+		self.unity_version = "2.5.0f5"
+		self.version = [0, 0, 0, 0]
+		self.build_type = ""
+		self._target_platform = BuildTarget.UnknownPlatform
+		self._enable_type_tree = True
+		self._types = []
+		self._objects = []
+		self._script_types = []
+		self._externals = []
 		
 		# ReadHeader
 		header = SerializedFileHeader()

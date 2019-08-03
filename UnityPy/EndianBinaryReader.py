@@ -11,8 +11,6 @@ Color = object
 
 
 class EndianBinaryReader:
-	endian = '>'
-	
 	def __init__(self, input_, endian = '>'):
 		if type(input_) == bytes:
 			self.stream = io.BytesIO(input_)
