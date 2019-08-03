@@ -81,6 +81,12 @@ class TypeTreeHelper:
 				"double"            : self.reader.read_double,
 				"bool"              : self.reader.read_boolean,
 		}
+		
+		self.READ2 = {
+				"string"      : self.read_string,
+				"map"         : self.read_map,
+				"TypelessData": self.read_typeless_data,
+		}
 	
 	def read_u_type(self, members: list) -> dict:
 		i = RefInt(0)
@@ -90,6 +96,33 @@ class TypeTreeHelper:
 			obj[member.name] = self.read_value(members, i)
 			i.v += 1
 		return obj
+	
+	def read_string(self, i, align, *args):
+		value = self.reader.read_aligned_string()
+		i.v += 3
+		return value, align
+	
+	def read_map(self, i, align, members, level):
+		if (members[i + 1].meta_flag & 0x4000) != 0:
+			align = True
+		size = self.reader.read_int()
+		map_ = get_members(members, level, i)[4:]
+		i.v += len(map_) + 3
+		first = get_members(map_, map_[0].level, 0)
+		second = map_[len(first):]
+		value = {}
+		for j in range(size):
+			tmp1 = RefInt(0)
+			tmp2 = RefInt(0)
+			v1 = self.read_value(first, tmp1)  # python reads the value first and then the key, so it has to be this way
+			value[v1] = self.read_value(second, tmp2)
+		return value, align
+	
+	def read_typeless_data(self, i, align, *args):
+		size = self.reader.read_int()
+		value = self.reader.read_bytes(size)
+		i.v += 2
+		return value, align
 	
 	def read_value(self, members: list, i) -> object:
 		if type(i) != RefInt:
@@ -102,48 +135,29 @@ class TypeTreeHelper:
 		value = self.READ.get(var_type_str)
 		if value:
 			value = value()
-		elif var_type_str == "string":
-			value = self.reader.read_aligned_string()
-			i.v += 3
-		elif var_type_str == "map":
-			if (members[i + 1].meta_flag & 0x4000) != 0:
-				align = True
-			size = self.reader.read_int()
-			map_ = get_members(members, level, i)[4:]
-			i.v += len(map_) + 3
-			first = get_members(map_, map_[0].level, 0)
-			second = map_[len(first):]
-			
-			value = {}
-			for j in range(size):
-				tmp1 = RefInt(0)
-				tmp2 = RefInt(0)
-				v1 = self.read_value(first, tmp1)  # python reads the value first and then the key, so it has to be this way
-				value[v1] = self.read_value(second, tmp2)
-		
-		elif var_type_str == "TypelessData":
-			size = self.reader.read_int()
-			value = self.reader.read_bytes(size)
-			i.v += 2
 		else:
-			if i != len(members) and members[i.v + 1].type == "Array":
-				if (members[i.v + 1].meta_flag & 0x4000) != 0:
-					align = True
-				size = self.reader.read_int()
-				vector = get_members(members, level, i)[3:]
-				i.v += len(vector) + 2
-				value = [self.read_value(vector, 0) for j in range(size)]
+			value = self.READ2.get(var_type_str)
+			if value:
+				value, align = value(i, align, members, level)
 			else:
-				eclass = get_members(members, level, i)
-				eclass.pop(0)
-				i.v += len(eclass)
-				j = RefInt(0)
-				value = {}
-				while j < len(eclass):
-					classmember = eclass[j.v]
-					name = classmember.name
-					value[name] = self.read_value(eclass, j)
-					j.v += 1
+				if i != len(members) and members[i.v + 1].type == "Array":
+					if (members[i.v + 1].meta_flag & 0x4000) != 0:
+						align = True
+					size = self.reader.read_int()
+					vector = get_members(members, level, i)[3:]
+					i.v += len(vector) + 2
+					value = [self.read_value(vector, 0) for j in range(size)]
+				else:
+					eclass = get_members(members, level, i)
+					eclass.pop(0)
+					i.v += len(eclass)
+					j = RefInt(0)
+					value = {}
+					while j < len(eclass):
+						classmember = eclass[j.v]
+						name = classmember.name
+						value[name] = self.read_value(eclass, j)
+						j.v += 1
 		if align:
 			self.reader.align_stream()
 		return value
