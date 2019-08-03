@@ -10,12 +10,13 @@ FileType = ImportHelper.FileType
 
 
 class AssetsManager:
-	assets :dict = {}
-	resource_file_readers = {}
-	
-	import_files : dict = {}
-	Progress = Progress()
-	Logger = Logger()
+	def __init__(self, log = False):
+		self.assets = {}
+		self.resource_file_readers = {}
+		self.import_files = {}
+		
+		self.Progress = Progress()
+		self.Logger = Logger(log)
 	
 	def load_files(self, files):
 		"""Loads all files (list) into the AssetsManager and merges .split files for common usage."""
@@ -73,7 +74,7 @@ class AssetsManager:
 						
 						if os.path.exists(shared_file_path):
 							self.import_files[shared_file_name] = shared_file_path
-
+				
 				return assets_file
 			
 			except Exception as e:

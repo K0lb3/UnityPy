@@ -29,8 +29,12 @@ class LoggerEvent(Enum):
 class Logger:
 	log = []
 	
+	def __init__(self, print = False):
+		self.print = print
+	
 	def _log(self, event: LoggerEvent, message: str):
-		event.print(message)
+		if self.print:
+			event.print(message)
 		self.log.append((event, message))
 	
 	def verbose(self, message: str):
