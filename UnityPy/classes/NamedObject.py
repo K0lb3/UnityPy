@@ -1,8 +1,8 @@
 from .EditorExtension import EditorExtension
-from .PPtr import PPtr
 
 
-class Component(EditorExtension):
+class NamedObject(EditorExtension):
 	def __init__(self, reader):
 		super().__init__(reader = reader)
-		self.GameObject = PPtr(reader)  # GameObject
+		self.reader.reset()
+		self.name = self.reader.read_aligned_string()

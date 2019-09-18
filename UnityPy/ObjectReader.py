@@ -9,11 +9,15 @@ class ObjectReader:
 		self.byte_size = object_info.byte_size
 		self.serialized_type = object_info.serialized_type
 		self.platform = assets_file._target_platform
-		self._version = assets_file.header.version
+		self.version2 = assets_file.header.version
 		self.type = object_info.class_id
 		self.version = assets_file.version
 		self.build_type = assets_file.build_type
 		self.reader = reader
+		
+	@property
+	def container(self):
+		return self.assets_file._container[self.path_id] if self.path_id in self.assets_file._container else None
 	
 	def reset(self):
 		self.reader.Position = self.byte_start

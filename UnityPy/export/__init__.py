@@ -1,1 +1,1 @@
-from Texture2DConverter import Texture2DConverter
+from .Texture2DConverter import Texture2DConverter

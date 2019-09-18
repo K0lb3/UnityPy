@@ -78,7 +78,6 @@ class SerializedFile:
 		self.full_name = full_name
 		self.file_name = os.path.basename(full_name)
 		
-		self.objects = {}
 		self.unity_version = "2.5.0f5"
 		self.version = [0, 0, 0, 0]
 		self.build_type = ""
@@ -88,6 +87,10 @@ class SerializedFile:
 		self._objects = []
 		self._script_types = []
 		self._externals = []
+		self._container = {}
+		
+		self.objects = {}
+		self.container = {}
 		
 		# ReadHeader
 		header = SerializedFileHeader()
@@ -133,6 +136,7 @@ class SerializedFile:
 		
 		# ReadObjects
 		object_count = reader.read_int()
+		asset_bundles = []
 		for i in range(object_count):
 			object_info = ObjectInfo()
 			if header.version < 14:
@@ -160,7 +164,12 @@ class SerializedFile:
 				stripped = reader.read_byte()
 			
 			self._objects.append(object_info)
-			self.objects[object_info.path_id] = ObjectReader(reader, self, object_info)
+			# user object
+			object_reader = ObjectReader(reader, self, object_info)
+			self.objects[object_info.path_id] = object_reader
+			
+			if object_info.class_id == ClassIDType.AssetBundle:
+				asset_bundles.append(object_reader)
 		
 		if header.version >= 11:
 			script_count = reader.read_int()
@@ -186,8 +195,19 @@ class SerializedFile:
 			m_external.file_name = os.path.basename(m_external.path_name)
 			self._externals.append(m_external)
 	
-	# var userInformation = reader.read_string_to_null();
+		# var userInformation = reader.read_string_to_null();
 	
+		#read the asset_bundles to get the containers
+		if asset_bundles:
+			old_pos = reader.Position
+			for object_reader in asset_bundles:
+				data = object_reader.read()
+				for container, asset_info in data.container.items():
+					asset = asset_info.asset
+					self.container[container] = asset
+					self._container[asset.path_id] = container
+			reader.Position = old_pos
+
 	def set_version(self, string_version):
 		self.unity_version = string_version
 		self.build_type = BuildType(re.findall(r'([^\d.])', string_version)[0])

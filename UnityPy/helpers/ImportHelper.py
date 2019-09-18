@@ -23,6 +23,21 @@ def list_all_files(directory: str):
 	]
 
 
+def find_all_files(directory : str, search_str : str):
+	return [
+			val for sublist in [
+					[
+							os.path.join(dir_path, filename)
+							for filename in filenames
+							if search_str in filename
+					]
+					for (dir_path, dirn_ames, filenames) in os.walk(directory)
+					if '.git' not in dir_path
+			]
+			for val in sublist
+	]
+
+
 def merge_split_assets(path: str, all_directories = False):
 	if all_directories:
 		split_files = [fp for fp in list_all_files(path) if fp[-7:] == ".split0"]

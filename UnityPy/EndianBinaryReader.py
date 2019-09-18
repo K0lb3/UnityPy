@@ -1,13 +1,7 @@
 import io
 import struct
 
-# dummies for now
-Quaternion = object
-Vector2 = object
-Vector3 = object
-Vector4 = object
-Matrix4x4 = object
-Color = object
+from .math import Color, Matrix4x4, Quaternion, Vector2, Vector3, Vector4
 
 
 class EndianBinaryReader:

@@ -26,7 +26,6 @@ setuptools.setup(
 		"Topic :: Multimedia :: Graphics",
     ],
 	install_requires=[
-		"decrunch",
 		"fsb5",
 		"lz4",
 		"brotli",

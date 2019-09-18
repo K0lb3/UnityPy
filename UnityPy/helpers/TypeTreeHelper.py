@@ -161,17 +161,113 @@ class TypeTreeHelper:
 		if align:
 			self.reader.align_stream()
 		return value
+	
+	def read_type_string(self, sb: list, members: list):
+		i = RefInt(0)
+		while i < len(members):
+			self.read_string_value(sb, members, i)
+			i.v += 1
+		return sb
+	
+	def read_string_value(self, sb: list, members, i: RefInt):
+		if type(i) != RefInt:
+			i = RefInt(i)
+		member = members[i.v]
+		level = member.level
+		var_type_str = member.type
+		var_name_str = member.name
+		append = True
+		align = (member.meta_flag & 0x4000) != 0
+		value = self.READ.get(var_type_str)
+		if value:
+			value = value()
+			
+		elif var_type_str == "string":
+			append = False
+			string = self.reader.read_aligned_string()
+			sb.append("{0}{1} {2} = \"{3}\"\r\n".format('\t' * level, var_type_str, var_name_str, string))
+			i.v += 3
+			
+		elif var_type_str == "vector":
+			if (members[i + 1].meta_flag & 0x4000) != 0:
+				align = True
+			append = False
+			sb.append("{0}{1} {2}\r\n".format('\t' * level, var_type_str, var_name_str))
+			sb.append("{0}{1} {2}\r\n".format('\t' * (level + 1), "Array", "Array"))
+			size = self.reader.read_int()
+			sb.append("{0}{1} {2} = {3}\r\n".format('\t' * (level + 1), "int", "size", size))
+			vector = get_members(members, level, i.v)[3:]
+			i.v += len(vector) + 2
+			for j in range(size):
+				sb.append("{0}[{1}]\r\n".format('\t' * (level + 2), j))
+				tmp = RefInt(0)
+				self.read_string_value(sb, vector, tmp)
+		
+		elif var_type_str == "map":
+			if (members[i + 1].meta_flag & 0x4000) != 0:
+				align = True
+			append = False
+			sb.append("{0}{1} {2}\r\n".format('\t' * level, var_type_str, var_name_str))
+			sb.append("{0}{1} {2}\r\n".format('\t' * (level + 1), "Array", "Array"))
+			size = self.reader.read_int()
+			sb.append("{0}{1} {2} = {3}\r\n".format('\t' * (level + 1), "int", "size", size))
+			map_ = get_members(members, level, i.v)[4:]
+			i.v += len(map_) + 3
+			first = get_members(map_, map_[0].level, 0)
+			second = map_[len(first):]
+			for j in range(size):
+				sb.append("{0}[{1}]\r\n".format('\t' * (level + 2), j))
+				sb.append("{0}{1} {2}\r\n".format('\t' * (level + 2), "pair", "data"))
+				tmp1 = RefInt(0)
+				tmp2 = RefInt(0)
+				self.read_string_value(sb, first, tmp1)
+				self.read_string_value(sb, second, tmp2)
+		
+		elif var_type_str == "TypelessData":
+			append = False
+			size = self.reader.read_int()
+			value = self.reader.read_bytes(size)
+			i.v += 2
+			sb.append("{0}{1} {2}\r\n".format('\t' * level, var_type_str, var_name_str))
+			sb.append("{0}{1} {2} = {3}\r\n".format('\t' * level, "int", "size", size))
+			
+		else:
+			if i != len(members) and members[i + 1].type == "Array":
+				if (members[i + 1].meta_flag & 0x4000) != 0:
+					align = True
+				append = False
+				sb.append("{0}{1} {2}\r\n".format('\t' * level, var_type_str, var_name_str))
+				sb.append("{0}{1} {2}\r\n".format('\t' * (level + 1), "Array", "Array"))
+				size = self.reader.read_int()
+				sb.append("{0}{1} {2} = {3}\r\n".format('\t' * (level + 1), "int", "size", size))
+				vector = get_members(members, level, i.v)
+				i.v += len(vector) - 1
+				vector = vector[3:]  # vector.RemoveRange(0, 3)
+				for j in range(size):
+					sb.append("{0}[{1}]\r\n".format('\t' * (level + 2), j))
+					tmp = RefInt(0)
+					self.read_string_value(sb, vector, tmp)
+			else:
+				append = False
+				sb.append("{0}{1} {2}\r\n".format('\t' * level, var_type_str, var_name_str))
+				eclass = get_members(members, level, i.v)
+				eclass.pop(0)  # .RemoveAt(0)
+				i.v += len(eclass)
+				j = RefInt(0)
+				while j < len(eclass):
+					self.read_string_value(sb, eclass, j)
+					j.v += 1
+		
+		if append:
+			sb.append("{0}{1} {2} = {3}\r\n".format('\t' * level, var_type_str, var_name_str, value))
+		if align:
+			self.reader.align_stream()
+		
+		return sb
 
 
 """
-	def read_type_string(sb: list, members: list, reader: EndianBinaryReader):
-		i = RefInt(0)
-		while i < len(members):
-			read_string_value(sb, members, reader, i)
-			i.v += 1
-		return sb
-
-	def write_u_type(self,obj: dict, members: list) -> bytes:
+	def write_u_type(self, obj: dict, members: list) -> bytes:
 		stream = io.BytesIO()
 		write = EndianBinaryReader(stream)
 		for i, member in enumerate(members):
@@ -182,124 +278,7 @@ class TypeTreeHelper:
 		ret = stream.read()
 		stream.seek(pos)
 		return ret
-
-	def read_string_value(sb: list, members, reader: EndianBinaryReader, i: RefInt):
-		if type(i) != RefInt:
-			i = RefInt(i)
-		member = members[i.v]
-		level = member.level
-		var_type_str = member.type
-		var_name_str = member.name
-		value = None
-		append = True
-		align = (member.meta_flag & 0x4000) != 0
-		if var_type_str == "SInt8":
-			value = reader.read_s_byte()
-		elif var_type_str == "UInt8":
-			value = reader.read_byte()
-		elif var_type_str in ["short", "SInt16"]:
-			value = reader.read_short()
-		elif var_type_str in ["UInt16", "unsigned short"]:
-			value = reader.read_u_short()
-		elif var_type_str in ["int", "SInt32"]:
-			value = reader.read_int()
-		elif var_type_str in ["UInt32", "unsigned int", "Type*"]:
-			value = reader.read_u_int()
-		elif var_type_str in ["long long", "SInt64"]:
-			value = reader.read_long()
-		elif var_type_str in ["UInt64", "unsigned long long"]:
-			value = reader.read_s_long()
-		elif var_type_str == "float":
-			value = reader.read_float()
-		elif var_type_str == "double":
-			value = reader.read_double()
-		elif var_type_str == "bool":
-			value = reader.read_boolean()
-		elif var_type_str == "string":
-			append = False
-			string = reader.read_aligned_string()
-			sb.append("{0}{1} {2} = \"{3}\"\r\n".format('\t' * level, var_type_str, var_name_str, string))
-			i.v += 3
-		elif var_type_str == "vector":
-			if (members[i + 1].meta_flag & 0x4000) != 0:
-				align = True
-			append = False
-			sb.append("{0}{1} {2}\r\n".format('\t' * level, var_type_str, var_name_str))
-			sb.append("{0}{1} {2}\r\n".format('\t' * (level + 1), "Array", "Array"))
-			size = reader.read_int()
-			sb.append("{0}{1} {2} = {3}\r\n".format('\t' * (level + 1), "int", "size", size))
-			vector = get_members(members, level, i.v)
-			i.v += len(vector) - 1
-			vector = vector[3:]
-			for j in range(size):
-				sb.append("{0}[{1}]\r\n".format('\t' * (level + 2), j))
-				tmp = RefInt(0)
-				read_string_value(sb, vector, reader, tmp)
-		
-		elif var_type_str == "map":
-			if (members[i + 1].meta_flag & 0x4000) != 0:
-				align = True
-			append = False
-			sb.append("{0}{1} {2}\r\n".format('\t' * level, var_type_str, var_name_str))
-			sb.append("{0}{1} {2}\r\n".format('\t' * (level + 1), "Array", "Array"))
-			size = reader.read_int()
-			sb.append("{0}{1} {2} = {3}\r\n".format('\t' * (level + 1), "int", "size", size))
-			map_ = get_members(members, level, i.v)
-			i.v += len(map_) - 1
-			map_ = map_[4:]  # map.RemoveRange(0, 4)
-			first = get_members(map_, map_[0].level, 0)
-			map_ = map_[len(first):]  # .RemoveRange(0, len(first))
-			second = map_
-			for j in range(size):
-				sb.append("{0}[{1}]\r\n".format('\t' * (level + 2), j))
-				sb.append("{0}{1} {2}\r\n".format('\t' * (level + 2), "pair", "data"))
-				tmp1 = RefInt(0)
-				tmp2 = RefInt(0)
-				read_string_value(sb, first, reader, tmp1)
-				read_string_value(sb, second, reader, tmp2)
-		
-		elif var_type_str == "TypelessData":
-			append = False
-			size = reader.read_int()
-			reader.read_bytes(size)
-			i.v += 2
-			sb.append("{0}{1} {2}\r\n".format('\t' * level, var_type_str, var_name_str))
-			sb.append("{0}{1} {2} = {3}\r\n".format('\t' * level, "int", "size", size))
-		else:
-			if i != len(members) and members[i + 1].type == "Array":
-				if (members[i + 1].meta_flag & 0x4000) != 0:
-					align = True
-				append = False
-				sb.append("{0}{1} {2}\r\n".format('\t' * level, var_type_str, var_name_str))
-				sb.append("{0}{1} {2}\r\n".format('\t' * (level + 1), "Array", "Array"))
-				size = reader.read_int()
-				sb.append("{0}{1} {2} = {3}\r\n".format('\t' * (level + 1), "int", "size", size))
-				vector = get_members(members, level, i.v)
-				i.v += len(vector) - 1
-				vector = vector[3:]  # vector.RemoveRange(0, 3)
-				for j in range(size):
-					sb.append("{0}[{1}]\r\n".format('\t' * (level + 2), j))
-					tmp = RefInt(0)
-					read_string_value(sb, vector, reader, tmp)
-			else:
-				append = False
-				sb.append("{0}{1} {2}\r\n".format('\t' * level, var_type_str, var_name_str))
-				eclass = get_members(members, level, i.v)
-				eclass.pop(0)  # .RemoveAt(0)
-				i.v += len(eclass)
-				j = RefInt(0)
-				while j < len(eclass):
-					read_string_value(sb, eclass, reader, j)
-					j.v += 1
-		
-		if append:
-			sb.append("{0}{1} {2} = {3}\r\n".format('\t' * level, var_type_str, var_name_str, value))
-		if align:
-			reader.align_stream()
-		
-		return sb
-
-
+	
 	def write_value(value: dict, members: list, write: EndianBinaryReader, i):
 		member = members[i.v]
 		level = member.level
@@ -378,4 +357,6 @@ class TypeTreeHelper:
 					write_value(obj[name], eclass, write, j)
 		if align:
 			write.align_stream(4)
+
+
 """

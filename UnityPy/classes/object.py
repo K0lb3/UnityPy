@@ -1,30 +1,10 @@
-from ..enums.BuildTarget import BuildTarget
+from ..enums import BuildTarget
 from ..helpers import TypeTreeHelper
-
-
-def field(f, cast = None, **kwargs):
-	def _inner(self):
-		try:
-			if "default" in kwargs:
-				ret = self.type_tree.get(f, kwargs["default"])
-			else:
-				ret = self.type_tree[f]
-			if cast:
-				ret = cast(ret)
-			return ret
-		except:
-			return None
-	
-	return property(_inner)
 
 
 class Object:
 	def __init__(self, reader):
-		# reader : ObjectReader
 		self.reader = reader
-		reader.reset()
-		self.name = reader.read_aligned_string()
-		reader.reset()
 		self.assets_file = reader.assets_file
 		self.type = reader.type
 		self.path_id = reader.path_id
@@ -33,23 +13,30 @@ class Object:
 		self.platform = reader.platform
 		self.serialized_type = reader.serialized_type
 		self.byte_size = reader.byte_size
+		self.assets_manager = reader.assets_file.assets_manager
 		
 		if self.platform == BuildTarget.NoTarget:
 			self._object_hide_flags = reader.read_u_int()
-		self.read()
+		
+		self.container = self.assets_file._container[self.path_id] if self.path_id in self.assets_file._container else None
+		
+		self.reader.reset()
+		if type(self) == Object:
+			self.__dict__.update(self.read_typetree())
+		
 	
 	def has_struct_member(self, name: str) -> bool:
 		return self.serialized_type.m_Nodes and any([x.name == name for x in self.serialized_type.m_Nodes])
 	
-	# def dump(self) -> str:
-	# 	self.reader.reset()
-	# 	if getattr(self.serialized_type, 'nodes', None):
-	# 		sb = []
-	# 		TypeTreeHelper.read_type_string(sb, self.serialized_type.m_Nodes, self.reader)
-	# 		return ''.join(sb)
-	# 	return ''
+	def dump(self) -> str:
+		self.reader.reset()
+		if getattr(self.serialized_type, 'nodes', None):
+			sb = []
+			TypeTreeHelper(self.reader).read_type_string(sb, self.serialized_type.nodes)
+			return ''.join(sb)
+		return ''
 	
-	def read(self) -> dict:
+	def read_typetree(self) -> dict:
 		self.reader.reset()
 		if self.serialized_type.nodes:
 			self.type_tree = TypeTreeHelper(self.reader).read_value(self.serialized_type.nodes, 0)
@@ -65,10 +52,3 @@ class Object:
 		return "<%s %s>" % (
 				self.__class__.__name__, self.name
 		)
-
-
-class GameObject(Object):
-	active = field("m_IsActive")
-	component = field("m_Component")
-	layer = field("m_Layer")
-	tag = field("m_Tag")
