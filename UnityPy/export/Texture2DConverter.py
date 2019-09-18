@@ -129,17 +129,17 @@ class Texture2DConverter:
 				TextureFormat.ETC_RGB4  # test pass
 		]:
 			self.pil_args = (0,)
-			self.pil_codec = 'etc'
+			self.pil_codec = 'etc2'
 			self.pil_mode = 'RGB'
 
 		elif self.m_TextureFormat == TextureFormat.ETC2_RGB:  # test pass
 			self.pil_args = (1,)
-			self.pil_codec = 'etc'
+			self.pil_codec = 'etc2'
 			self.pil_mode = 'RGB'
 
 		elif self.m_TextureFormat == TextureFormat.ETC2_RGBA1:  # test pass
 			self.pil_args = (4,)
-			self.pil_codec = 'etc'
+			self.pil_codec = 'etc2'
 
 		elif self.m_TextureFormat in [
 				TextureFormat.ETC2_RGBA8Crunched,  # test pass
@@ -147,7 +147,7 @@ class Texture2DConverter:
 				TextureFormat.ETC2_RGBA8  # test pass
 		]:
 			self.pil_args = (3,)
-			self.pil_codec = 'etc'
+			self.pil_codec = 'etc2'
 
 		elif self.m_TextureFormat == TextureFormat.RG16:  # test pass
 			RGBA32 = bytearray(self.image_data_size * 2)
