@@ -31,15 +31,15 @@ class Texture2DConverter:
 		return img
 
 	def DecompressCRN(self):
-		if (self.version[0] > 2017 or (self.version[0] == 2017 and self.version[1] >= 3) #2017.3 and up
-				or self.m_TextureFormat == TextureFormat.ETC_RGB4Crunched
-				or self.m_TextureFormat == TextureFormat.ETC2_RGBA8Crunched):
-			# Unity Crunch
-			self.image_data = bytes(CrunchFile_U(self.image_data).decode_level(0))
-			self.image_data_size = len(self.image_data)
-		else: #normal crunch
-			self.image_data = bytes(CrunchFile(self.image_data).decode_level(0))
-			self.image_data_size = len(self.image_data)
+		#if (self.version[0] > 2017 or (self.version[0] == 2017 and self.version[1] >= 3) #2017.3 and up
+		#		or self.m_TextureFormat == TextureFormat.ETC_RGB4Crunched
+		#		or self.m_TextureFormat == TextureFormat.ETC2_RGBA8Crunched):
+		#	# Unity Crunch
+		#	self.image_data = bytes(CrunchFile_U(self.image_data).decode_level(0))
+		#	self.image_data_size = len(self.image_data)
+		#else: #normal crunch
+		self.image_data = bytes(CrunchFile(self.image_data).decode_level(0))
+		self.image_data_size = len(self.image_data)
 
 
 	def __init__(self, m_Texture2D):

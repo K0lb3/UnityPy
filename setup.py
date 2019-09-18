@@ -6,7 +6,7 @@ with open("README.md", "r") as fh:
 setuptools.setup(
     name="UnityPy",
 	packages = setuptools.find_packages(),
-    version="1.2.1.0",
+    version="1.2.1.1",
     author="K0lb3",
     description="A pythonic port of AssetStudio by Perfare",
     long_description=long_description,
