@@ -34,11 +34,8 @@ setuptools.setup(
 		"termcolor",
   		"Pillow",
     ],
-<<<<<<< Updated upstream
-=======
 	extras_require = {
         'Decrunch Support':  ["decrunch","decrunch_unity"],
         "ETC Texture Support": ["etcpack"],
     }
->>>>>>> Stashed changes
 )
