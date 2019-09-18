@@ -10,9 +10,9 @@ pip install UnityPy
 
 ## Usage
 ```python
-from UnityPy import AssetManager
+from UnityPy import AssetsManager
 
-am = AssetManager()
+am = AssetsManager()
 
 # Load file via file path
 am.load_file(fp)
