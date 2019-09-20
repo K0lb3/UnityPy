@@ -3,7 +3,7 @@ from enum import IntEnum
 from PIL import Image, ImageOps
 import math
 from decrunch import File as CrunchFile
-from decrunch_unity import File as CrunchFile_U
+#from decrunch_unity import File as CrunchFile_U
 import etcpack
 from ..enums import BuildTarget
 from ..math import Half
@@ -128,17 +128,17 @@ class Texture2DConverter:
 				TextureFormat.ETC_RGB4_3DS,  # test pass
 				TextureFormat.ETC_RGB4  # test pass
 		]:
-			self.pil_args = (0,)
+			self.pil_args = (0)
 			self.pil_codec = 'etc2'
 			self.pil_mode = 'RGB'
 
 		elif self.m_TextureFormat == TextureFormat.ETC2_RGB:  # test pass
-			self.pil_args = (1,)
+			self.pil_args = (1)
 			self.pil_codec = 'etc2'
 			self.pil_mode = 'RGB'
 
 		elif self.m_TextureFormat == TextureFormat.ETC2_RGBA1:  # test pass
-			self.pil_args = (4,)
+			self.pil_args = (4)
 			self.pil_codec = 'etc2'
 
 		elif self.m_TextureFormat in [
@@ -146,7 +146,7 @@ class Texture2DConverter:
 				TextureFormat.ETC_RGBA8_3DS,  # test pass
 				TextureFormat.ETC2_RGBA8  # test pass
 		]:
-			self.pil_args = (3,)
+			self.pil_args = (3)
 			self.pil_codec = 'etc2'
 
 		elif self.m_TextureFormat == TextureFormat.RG16:  # test pass
