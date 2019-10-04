@@ -6,7 +6,7 @@ with open("README.md", "r") as fh:
 setuptools.setup(
 	name="UnityPy",
 	packages=setuptools.find_packages(),
-	version="1.2.2.0",
+	version="1.2.2.1",
 	author="K0lb3",
 	description="A pythonic port of AssetStudio by Perfare",
 	long_description=long_description,
@@ -33,11 +33,10 @@ setuptools.setup(
 		"termcolor",
 		"Pillow",
 	],
-	extras_require={
+	extras_requires={
 		'Decrunch Support': ["decrunch", "decrunch_unity"],
 		"ETC Texture Support": ["etcpack"],
 		"PVRTC Texture Support": ["pvrtc_decoder"],
-		"ASTC Texture Support": ["astc_codec"],
-
+		"ASTC Texture Support": ["astc_decomp"],
 	}
 )

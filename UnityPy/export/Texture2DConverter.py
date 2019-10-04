@@ -16,9 +16,9 @@ try:
 except ImportError:
 	print('Couldn\'t import pvrtc_decoder. pvrt_decoder is required to decompress ETC1/2 textures.')
 try:
-	import astc_codec
+	import astc_decomp
 except ImportError:
-	print('Couldn\'t import astc_codec. astc_codec is required to decompress ASTC textures.')
+	print('Couldn\'t import astc_decomp. astc_decomp is required to decompress ASTC textures.')
 from ..enums import BuildTarget
 from ..math import Half
 
