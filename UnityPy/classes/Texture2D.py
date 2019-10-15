@@ -1,14 +1,13 @@
 from ..enums import TextureFormat
 from .Texture import Texture
 from ..ResourceReader import ResourceReader
-from ..export.Texture2DConverter import Texture2DConverter
+from ..export import Texture2DConverter
 
 class Texture2D(Texture):
 	
 	@property
 	def image(self):
-		tc = Texture2DConverter(self)
-		return tc.ConvertToImage(True)
+		return Texture2DConverter.get_image_from_texture2d(self)
 		
 	
 	def __init__(self, reader):

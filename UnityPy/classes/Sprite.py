@@ -3,15 +3,14 @@ from PIL import ImageOps
 from .Mesh import BoneWeights4, SubMesh, VertexData
 from .NamedObject import NamedObject
 from .PPtr import PPtr
+from ..export import SpriteHelper
 
 
 class Sprite(NamedObject):
 	
 	@property
 	def image(self):
-		src_img = self.m_RD.texture.read().image
-		box = (self.m_Rect[0], self.m_Rect[1], self.m_Rect[0]+self.m_Rect[2], self.m_Rect[1]+self.m_Rect[3])
-		return ImageOps.flip(ImageOps.flip(src_img).crop(box))
+		return SpriteHelper.get_image_from_sprite(self)
 	
 	def __init__(self, reader):
 		super().__init__(reader = reader)

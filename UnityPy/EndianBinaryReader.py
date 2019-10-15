@@ -1,7 +1,7 @@
 import io
 import struct
 
-from .math import Color, Matrix4x4, Quaternion, Vector2, Vector3, Vector4
+from .math import Color, Matrix4x4, Quaternion, Vector2, Vector3, Vector4, Rectangle
 
 
 class EndianBinaryReader:
@@ -122,7 +122,7 @@ class EndianBinaryReader:
 		return Vector4(self.read_float(), self.read_float(), self.read_float(), self.read_float())
 	
 	def read_rectangle_f(self):
-		return (self.read_float(), self.read_float(), self.read_float(), self.read_float())
+		return Rectangle(self.read_float(), self.read_float(), self.read_float(), self.read_float())
 	
 	def read_color4(self):
 		return Color(self.read_float(), self.read_float(), self.read_float(), self.read_float())
