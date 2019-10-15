@@ -167,7 +167,7 @@ class Texture2DConverter:
 		elif self.m_TextureFormat == TextureFormat.BC4:  
 			self.pil_args = (4,)
 			self.pil_codec = 'bcn'
-			self.pil_mode = ('L',)
+			self.pil_mode = 'L'
    
 		elif self.m_TextureFormat == TextureFormat.BC5:  
 			self.pil_args = (5,)
@@ -180,7 +180,6 @@ class Texture2DConverter:
 		elif self.m_TextureFormat == TextureFormat.BC7:  
 			self.pil_args = (7,)
 			self.pil_codec = 'bcn'
-			self.pil_mode = ('RGBAF',)
 
 
 		# ETC
