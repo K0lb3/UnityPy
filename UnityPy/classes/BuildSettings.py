@@ -3,7 +3,7 @@ from .Object import Object
 
 class BuildSettings(Object):
 	def __init__(self, reader):
-		super().__init__(reader = reader)
+		super().__init__(reader=reader)
 		self.levels = reader.read_string_array()
 		self.has_render_texture = reader.read_boolean()
 		self.has_pro_version = reader.read_boolean()

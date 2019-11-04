@@ -5,13 +5,13 @@ from .Sprite import SpriteSettings
 
 class SpriteAtlas(NamedObject):
 	def __init__(self, reader):
-		super().__init__(reader = reader)
+		super().__init__(reader=reader)
 		packed_sprites_size = reader.read_int()
 		self.PackSprites = [
-				PPtr(reader)
-				for _ in range(packed_sprites_size)
+			PPtr(reader)
+			for _ in range(packed_sprites_size)
 		]
-		
+
 		self.packed_sprite_names_to_index = reader.read_string_array()
 		m_render_data_map_size = reader.read_int()
 		self.render_data_map = {}
@@ -20,10 +20,6 @@ class SpriteAtlas(NamedObject):
 			second = reader.read_long()
 			value = SpriteAtlasData(reader)
 			self.render_data_map[(first, second)] = value
-
-
-# string m_Tag
-# bool m_IsVariant
 
 
 class SpriteAtlasData:

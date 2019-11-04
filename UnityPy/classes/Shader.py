@@ -5,7 +5,7 @@ from .NamedObject import NamedObject
 
 class Shader(NamedObject):
 	def __init__(self, reader):
-		super().__init__(reader = reader)
+		super().__init__(reader=reader)
 		version = reader.version
 		if version[0] == 5 and version[1] >= 5 or version[0] > 5:  # 5.5 and up
 			self.m_ParsedForm = SerializedShader(reader)
@@ -29,17 +29,17 @@ class StructParameter:
 		self.m_Index = reader.read_int()
 		self.m_ArraySize = reader.read_int()
 		self.m_StructSize = reader.read_int()
-		
+
 		numVectorParams = reader.read_int()
 		self.m_VectorParams = [
-				VectorParameter(reader)
-				for _ in range(numVectorParams)
+			VectorParameter(reader)
+			for _ in range(numVectorParams)
 		]
-		
+
 		numMatrixParams = reader.read_int()
 		self.m_MatrixParams = [
-				MatrixParameter(reader)
-				for _ in range(numMatrixParams)
+			MatrixParameter(reader)
+			for _ in range(numMatrixParams)
 		]
 
 
@@ -90,8 +90,8 @@ class SerializedProperties:
 	def __init__(self, reader):
 		numProps = reader.read_int()
 		self.m_Props = [
-				SerializedProperty(reader)
-				for _ in range(numProps)
+			SerializedProperty(reader)
+			for _ in range(numProps)
 		]
 
 
@@ -140,11 +140,11 @@ class FogMode(IntEnum):
 class SerializedShaderState:
 	def __init__(self, reader):
 		version = reader.version
-		
+
 		self.m_Name = reader.read_aligned_string()
 		self.rtBlend = [
-				SerializedShaderRTBlendState(reader)
-				for _ in range(8)
+			SerializedShaderRTBlendState(reader)
+			for _ in range(8)
 		]
 		self.rtSeparateBlend = reader.read_boolean()
 		reader.align_stream()
@@ -184,8 +184,8 @@ class ParserBindChannels:
 	def __init__(self, reader):
 		numChannels = reader.read_int()
 		self.m_Channels = [
-				ShaderBindChannel(reader)
-				for _ in range(numChannels)
+			ShaderBindChannel(reader)
+			for _ in range(numChannels)
 		]
 		reader.align_stream()
 		self.m_SourceMap = reader.read_u_int()
@@ -232,25 +232,25 @@ class BufferBinding:
 class ConstantBuffer:
 	def __init__(self, reader):
 		version = reader.version
-		
+
 		self.m_NameIndex = reader.read_int()
-		
+
 		numMatrixParams = reader.read_int()
 		self.m_MatrixParams = [
-				MatrixParameter(reader)
-				for _ in range(numMatrixParams)
+			MatrixParameter(reader)
+			for _ in range(numMatrixParams)
 		]
-		
+
 		numVectorParams = reader.read_int()
 		self.m_VectorParams = [
-				VectorParameter(reader)
-				for _ in range(numVectorParams)
+			VectorParameter(reader)
+			for _ in range(numVectorParams)
 		]
 		if version[0] > 2017 or (version[0] == 2017 and version[1] >= 3):  # 2017.3 and up
 			numStructParams = reader.read_int()
 			self.m_StructParams = [
-					StructParameter(reader)
-					for _ in range(numStructParams)
+				StructParameter(reader)
+				for _ in range(numStructParams)
 			]
 		self.m_Size = reader.read_int()
 
@@ -295,10 +295,10 @@ class ShaderGpuProgramType(IntEnum):
 class SerializedSubProgram:
 	def __init__(self, reader):
 		version = reader.version
-		
+
 		self.m_BlobIndex = reader.read_u_int()
 		self.m_Channels = ParserBindChannels(reader)
-		
+
 		if version[0] >= 2019:  # 2019 and up
 			self.m_GlobalKeywordIndices = reader.read_u_short_array()
 			reader.align_stream()
@@ -308,58 +308,58 @@ class SerializedSubProgram:
 			self.m_KeywordIndices = reader.read_u_short_array()
 			if version[0] >= 2017:  # 2017 and up
 				reader.align_stream()
-		
+
 		self.m_ShaderHardwareTier = reader.read_byte()
 		self.m_GpuProgramType = ShaderGpuProgramType(reader.read_byte())
 		reader.align_stream()
-		
+
 		numVectorParams = reader.read_int()
 		self.m_VectorParams = [
-				VectorParameter(reader)
-				for _ in range(numVectorParams)
+			VectorParameter(reader)
+			for _ in range(numVectorParams)
 		]
-		
+
 		numMatrixParams = reader.read_int()
 		self.m_MatrixParams = [
-				MatrixParameter(reader)
-				for _ in range(numMatrixParams)
+			MatrixParameter(reader)
+			for _ in range(numMatrixParams)
 		]
-		
+
 		numTextureParams = reader.read_int()
 		self.m_TextureParams = [
-				TextureParameter(reader)
-				for _ in range(numTextureParams)
+			TextureParameter(reader)
+			for _ in range(numTextureParams)
 		]
-		
+
 		numBufferParams = reader.read_int()
 		self.m_BufferParams = [
-				BufferBinding(reader)
-				for _ in range(numBufferParams)
+			BufferBinding(reader)
+			for _ in range(numBufferParams)
 		]
-		
+
 		numConstantBuffers = reader.read_int()
 		self.m_ConstantBuffers = [
-				ConstantBuffer(reader)
-				for _ in range(numConstantBuffers)
+			ConstantBuffer(reader)
+			for _ in range(numConstantBuffers)
 		]
-		
+
 		numConstantBufferBindings = reader.read_int()
 		self.m_ConstantBufferBindings = [
-				BufferBinding(reader)
-				for _ in range(numConstantBufferBindings)
+			BufferBinding(reader)
+			for _ in range(numConstantBufferBindings)
 		]
-		
+
 		numUAVParams = reader.read_int()
 		self.m_UAVParams = [
-				UAVParameter(reader)
-				for _ in range(numUAVParams)
+			UAVParameter(reader)
+			for _ in range(numUAVParams)
 		]
-		
+
 		if version[0] >= 2017:  # 2017 and up
 			numSamplers = reader.read_int()
 			self.m_Samplers = [
-					SamplerParameter(reader)
-					for _ in range(numSamplers)
+				SamplerParameter(reader)
+				for _ in range(numSamplers)
 			]
 		if version[0] > 2017 or (version[0] == 2017 and version[1] >= 2):  # 2017.2 and up
 			self.m_ShaderRequirements = reader.read_int()
@@ -369,8 +369,8 @@ class SerializedProgram:
 	def __init__(self, reader):
 		numSubPrograms = reader.read_int()
 		self.m_SubPrograms = [
-				SerializedSubProgram(reader)
-				for _ in range(numSubPrograms)
+			SerializedSubProgram(reader)
+			for _ in range(numSubPrograms)
 		]
 
 
@@ -419,8 +419,8 @@ class SerializedSubShader:
 	def __init__(self, reader):
 		numPasses = reader.read_int()
 		self.m_Passes = [
-				SerializedPass(reader)
-				for _ in range(numPasses)
+			SerializedPass(reader)
+			for _ in range(numPasses)
 		]
 		self.m_Tags = SerializedTagMap(reader)
 		self.m_LOD = reader.read_int()
@@ -437,16 +437,16 @@ class SerializedShader:
 		self.m_PropInfo = SerializedProperties(reader)
 		numSubShaders = reader.read_int()
 		self.m_SubShaders = [
-				SerializedSubShader(reader)
-				for _ in range(numSubShaders)
+			SerializedSubShader(reader)
+			for _ in range(numSubShaders)
 		]
 		self.m_Name = reader.read_aligned_string()
 		self.m_CustomEditorName = reader.read_aligned_string()
 		self.m_FallbackName = reader.read_aligned_string()
 		numDependencies = reader.read_int()
 		self.m_Dependencies = [
-				SerializedShaderDependency(reader)
-				for _ in range(numDependencies)
+			SerializedShaderDependency(reader)
+			for _ in range(numDependencies)
 		]
 		self.m_DisableNoSubshadersMessage = reader.read_boolean()
 		reader.align_stream()

@@ -11,11 +11,11 @@ class AssetInfo:
 
 class AssetBundle(NamedObject):
 	def __init__(self, reader):
-		super().__init__(reader = reader)
+		super().__init__(reader=reader)
 		preload_table_size = reader.read_int()
 		self.preload_table = [
-				PPtr(reader)
-				for _ in range(preload_table_size)
+			PPtr(reader)
+			for _ in range(preload_table_size)
 		]
 		container_size = reader.read_int()
 		self.container = {}

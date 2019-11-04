@@ -4,7 +4,7 @@ from ..ResourceReader import ResourceReader
 
 class VideoClip(NamedObject):
 	def __init__(self, reader):
-		super().__init__(reader = reader)
+		super().__init__(reader=reader)
 		self.original_path = reader.read_aligned_string()
 		self.proxy_width = reader.read_u_int()
 		self.proxy_height = reader.read_u_int()

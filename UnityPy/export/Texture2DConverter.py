@@ -1,15 +1,11 @@
-﻿import math
-from PIL import Image, ImageOps
-from enum import IntEnum
+﻿from PIL import Image
 
 from ..enums import TextureFormat, BuildTarget
-from ..math import Half
 
 try:
 	from decrunch import File as CrunchFile
-# from decrunch_unity import File as CrunchFile_U
 except ImportError:
-	print('Couldn\'t import decrunch.\Decrunch is required to process crunched textures.')
+	print('Couldn\'t import decrunch.Decrunch is required to process crunched textures.')
 try:
 	import etcpack
 except ImportError:
@@ -17,34 +13,33 @@ except ImportError:
 try:
 	import pvrtc_decoder
 except ImportError:
-	print('Couldn\'t import pvrtc_decoder. pvrt_decoder is required to decompress ETC1/2 textures.')
+	print('Coudn\'t import pvrtc_decoder. pvrt_decoder is required to decompress ETC1/2 textures.')
 try:
 	import astc_decomp
 except ImportError:
 	print('Couldn\'t import astc_decomp. astc_decomp is required to decompress ASTC textures.')
 
 
-def get_image_from_texture2d(m_Texture2D, flip=True) -> Image:
+def get_image_from_texture2d(texture_2d, flip=True) -> Image:
 	# init variables
 	mode = "RGBA"
 	codec = "raw"
 	args = ("RGBA",)
 	swap = []  # for 4444 types to fix their channels
 
-	image_data = m_Texture2D.image_data
-	m_TextureFormat = m_Texture2D.m_TextureFormat
-	version = m_Texture2D.version
-	platform = m_Texture2D.platform
+	image_data = texture_2d.image_data
+	texture_format = texture_2d.m_TextureFormat
+	platform = texture_2d.platform
 
 	# INT8
-	if m_TextureFormat == TextureFormat.Alpha8:
+	if texture_format == TextureFormat.Alpha8:
 		args = ('A',)
 
-	elif m_TextureFormat == TextureFormat.R8:
+	elif texture_format == TextureFormat.R8:
 		mode = 'RGB'
 		args = ('R',)
 
-	elif m_TextureFormat == TextureFormat.RG16:
+	elif texture_format == TextureFormat.RG16:
 		image_data_size = len(image_data)
 		rgba32 = bytearray(image_data_size * 2)
 		for i in range(0, image_data_size, 2):
@@ -53,29 +48,29 @@ def get_image_from_texture2d(m_Texture2D, flip=True) -> Image:
 			rgba32[i * 2 + 3] = 255  # A
 		image_data = bytes(rgba32)
 
-	if m_TextureFormat == TextureFormat.ARGB4444:
+	if texture_format == TextureFormat.ARGB4444:
 		args = ('RGBA;4B',)
 		swap = [2, 1, 0, 3]
 
-	elif m_TextureFormat == TextureFormat.RGB24:
+	elif texture_format == TextureFormat.RGB24:
 		mode = 'RGB'
 		args = ('RGB',)
 
-	elif m_TextureFormat == TextureFormat.RGBA32:
+	elif texture_format == TextureFormat.RGBA32:
 		args = ('RGBA',)
 
-	elif m_TextureFormat == TextureFormat.ARGB32:
+	elif texture_format == TextureFormat.ARGB32:
 		args = ('ARGB',)
 
-	elif m_TextureFormat == TextureFormat.RGBA4444:
+	elif texture_format == TextureFormat.RGBA4444:
 		args = ('RGBA;4B',)
 		swap = [3, 2, 1, 0]
 
-	elif m_TextureFormat == TextureFormat.BGRA32:
+	elif texture_format == TextureFormat.BGRA32:
 		args = ('BGRA',)
 
 	# INT16
-	elif m_TextureFormat == TextureFormat.R16:
+	elif texture_format == TextureFormat.R16:
 		mode = 'RGB'
 		args = ('R;16',)
 	# rgba32 = bytearray(image_data_size * 2)
@@ -85,23 +80,22 @@ def get_image_from_texture2d(m_Texture2D, flip=True) -> Image:
 	# 	rgba32[i * 2 + 3] = 255  # A
 	# image_data = bytes(rgba32)
 
-	elif m_TextureFormat == TextureFormat.RGB565:  # test passed
+	elif texture_format == TextureFormat.RGB565:  # test passed
 		mode = 'RGB'
 		args = ('BGR;16',)
 		image_data = swap_bytes_for_xbox(image_data, platform)
 
 	# FLOAT
-	elif m_TextureFormat == TextureFormat.RFloat:
+	elif texture_format == TextureFormat.RFloat:
 		mode = 'RGB'
 		args = ('RF',)
 
-
-	elif m_TextureFormat == TextureFormat.RGBAFloat:
+	elif texture_format == TextureFormat.RGBAFloat:
 		mode = 'RGBA'
 		args = ('RGBAF',)
 
 	# BCN
-	elif m_TextureFormat in [  # test passed
+	elif texture_format in [  # test passed
 		TextureFormat.DXT1,
 		TextureFormat.DXT1Crunched
 	]:
@@ -109,7 +103,7 @@ def get_image_from_texture2d(m_Texture2D, flip=True) -> Image:
 		codec = 'bcn'
 		image_data = swap_bytes_for_xbox(image_data, platform)
 
-	elif m_TextureFormat in [  # test passed
+	elif texture_format in [  # test passed
 		TextureFormat.DXT5,
 		TextureFormat.DXT5Crunched
 	]:
@@ -117,27 +111,25 @@ def get_image_from_texture2d(m_Texture2D, flip=True) -> Image:
 		codec = 'bcn'
 		image_data = swap_bytes_for_xbox(image_data, platform)
 
-
-	elif m_TextureFormat == TextureFormat.BC4:
+	elif texture_format == TextureFormat.BC4:
 		args = (4,)
 		codec = 'bcn'
 		mode = 'L'
 
-	elif m_TextureFormat == TextureFormat.BC5:
+	elif texture_format == TextureFormat.BC5:
 		args = (5,)
 		codec = 'bcn'
 
-	elif m_TextureFormat == TextureFormat.BC6H:
+	elif texture_format == TextureFormat.BC6H:
 		args = (6,)
 		codec = 'bcn'
 
-	elif m_TextureFormat == TextureFormat.BC7:
+	elif texture_format == TextureFormat.BC7:
 		args = (7,)
 		codec = 'bcn'
 
-
 	# ETC
-	elif m_TextureFormat in [  # test passed
+	elif texture_format in [  # test passed
 		TextureFormat.ETC_RGB4Crunched,
 		TextureFormat.ETC_RGB4_3DS,
 		TextureFormat.ETC_RGB4
@@ -146,16 +138,16 @@ def get_image_from_texture2d(m_Texture2D, flip=True) -> Image:
 		codec = 'etc2'
 		mode = 'RGB'
 
-	elif m_TextureFormat == TextureFormat.ETC2_RGB:  # test passed
+	elif texture_format == TextureFormat.ETC2_RGB:  # test passed
 		args = (1,)
 		codec = 'etc2'
 		mode = 'RGB'
 
-	elif m_TextureFormat == TextureFormat.ETC2_RGBA1:
+	elif texture_format == TextureFormat.ETC2_RGBA1:
 		args = (4,)
 		codec = 'etc2'
 
-	elif m_TextureFormat in [  # test passed
+	elif texture_format in [  # test passed
 		TextureFormat.ETC2_RGBA8Crunched,
 		TextureFormat.ETC_RGBA8_3DS,
 		TextureFormat.ETC2_RGBA8
@@ -164,63 +156,63 @@ def get_image_from_texture2d(m_Texture2D, flip=True) -> Image:
 		codec = 'etc2'
 
 	# PVRTC
-	elif m_TextureFormat == TextureFormat.PVRTC_RGB2:
+	elif texture_format == TextureFormat.PVRTC_RGB2:
 		args = (0,)
 		codec = 'pvrtc'
 		mode = 'RGBA'
 
-	elif m_TextureFormat == TextureFormat.PVRTC_RGBA2:
+	elif texture_format == TextureFormat.PVRTC_RGBA2:
 		args = (0,)
 		codec = 'pvrtc'
 		mode = 'RGBA'
 
-	elif m_TextureFormat == TextureFormat.PVRTC_RGB4:  # test passed
+	elif texture_format == TextureFormat.PVRTC_RGB4:  # test passed
 		args = (0,)
 		codec = 'pvrtc'
 		mode = 'RGBA'
 
-	elif m_TextureFormat == TextureFormat.PVRTC_RGBA4:
+	elif texture_format == TextureFormat.PVRTC_RGBA4:
 		args = (0,)
 		codec = 'pvrtc'
 		mode = 'RGBA'
 
 	# ASTC
-	elif m_TextureFormat in [
+	elif texture_format in [
 		TextureFormat.ASTC_RGB_4x4,  # test pass
 		TextureFormat.ASTC_RGBA_4x4,  # test pass
 	]:
 		codec = 'astc'
 		args = (4, 4)
 
-	elif m_TextureFormat in [
+	elif texture_format in [
 		TextureFormat.ASTC_RGB_5x5,  # test pass
 		TextureFormat.ASTC_RGBA_5x5,  # test pass
 	]:
 		codec = 'astc'
 		args = (5, 5)
 
-	elif m_TextureFormat in [
+	elif texture_format in [
 		TextureFormat.ASTC_RGB_6x6,  # test pass
 		TextureFormat.ASTC_RGBA_6x6,  # test pass
 	]:
 		codec = 'astc'
 		args = (6, 6)
 
-	elif m_TextureFormat in [
+	elif texture_format in [
 		TextureFormat.ASTC_RGB_8x8,  # test pass
 		TextureFormat.ASTC_RGBA_8x8,  # test pass
 	]:
 		codec = 'astc'
 		args = (8, 8)
 
-	elif m_TextureFormat in [
+	elif texture_format in [
 		TextureFormat.ASTC_RGB_10x10,  # test pass
 		TextureFormat.ASTC_RGBA_10x10,  # test pass
 	]:
 		codec = 'astc'
 		args = (10, 10)
 
-	elif m_TextureFormat in [
+	elif texture_format in [
 		TextureFormat.ASTC_RGB_12x12,  # test pass
 		TextureFormat.ASTC_RGBA_12x12,  # test pass
 	]:
@@ -231,7 +223,7 @@ def get_image_from_texture2d(m_Texture2D, flip=True) -> Image:
 		raise EOFError("No Image Data")
 	# return Image.new('RGBA')
 
-	if 'Crunched' in m_TextureFormat.name:
+	if 'Crunched' in texture_format.name:
 		# if (version[0] > 2017 or (version[0] == 2017 and version[1] >= 3) #2017.3 and up
 		#		or m_TextureFormat == TextureFormat.ETC_RGB4Crunched
 		#		or m_TextureFormat == TextureFormat.ETC2_RGBA8Crunched):
@@ -242,7 +234,7 @@ def get_image_from_texture2d(m_Texture2D, flip=True) -> Image:
 		# decrunch is using a modified crunch which uses the original crunch and only uses the Unity Version for etc1/2
 		image_data = bytes(CrunchFile(image_data).decode_level(0))
 
-	img = Image.frombytes(mode, (m_Texture2D.m_Width, m_Texture2D.m_Height), image_data, codec, args)
+	img = Image.frombytes(mode, (texture_2d.m_Width, texture_2d.m_Height), image_data, codec, args)
 	if swap:
 		channels = img.split()
 		img = Image.merge(mode, [channels[x] for x in swap])

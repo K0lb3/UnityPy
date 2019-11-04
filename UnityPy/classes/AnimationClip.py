@@ -25,10 +25,10 @@ class AnimationCurve:
 		version = reader.version
 		numCurves = reader.read_int()
 		self.m_Curve = [
-				Keyframe(reader, readerFunc)
-				for _ in range(numCurves)
+			Keyframe(reader, readerFunc)
+			for _ in range(numCurves)
 		]
-		
+
 		self.m_PreInfinity = reader.read_int()
 		self.m_PostInfinity = reader.read_int()
 		if version[0] > 5 or (version[0] == 5 and version[1] >= 3):  # 5.3 and up
@@ -51,13 +51,13 @@ class PackedFloatVector:
 		reader.align_stream()
 		self.m_BitSize = reader.read_byte()
 		reader.align_stream()
-		
-		def UnpackFloats(self, itemCountInChunk, chunkStride, start = 0, numChunks = -1):
+
+		def UnpackFloats(self, itemCountInChunk, chunkStride, start=0, numChunks=-1):
 			m_BitSize = self.m_BitSize
 			bitPos = m_BitSize * start
 			indexPos = bitPos  # 8
 			bitPos %= 8
-			
+
 			scale = 1.0  # self.m_Range
 			if numChunks == -1:
 				numChunks = self.m_NumItems  # itemCountInChunk
@@ -75,10 +75,10 @@ class PackedFloatVector:
 						if bitPos == 8:  #
 							indexPos += 1
 							bitPos = 0
-					
+
 					x &= (1 << m_BitSize) - 1  # (uint)(1 << m_BitSize) - 1u
 					data.append(x / (scale * ((1 << m_BitSize) - 1)) + self.m_Start)
-			
+
 			return data
 
 
@@ -88,16 +88,16 @@ class PackedIntVector:
 		numData = reader.read_int()
 		self.m_Data = reader.read_bytes(numData)
 		reader.align_stream()
-		
+
 		self.m_BitSize = reader.read_byte()
 		reader.align_stream()
-		
+
 		def UnpackInts(self):
 			data = []
 			indexPos = 0
 			bitPos = 0
 			m_BitSize = self.m_BitSize
-			
+
 			for i in range(self.m_NumItems):
 				bits = 0
 				entry = 0
@@ -119,13 +119,13 @@ class PackedQuatVector:
 		numData = reader.read_int()
 		self.m_Data = reader.read_bytes(numData)
 		reader.align_stream()
-		
+
 		def UnpackQuats(self):
 			m_Data = self.m_Data
 			data = []
 			indexPos = 0
 			bitPos = 0
-			
+
 			for i in range(self.m_NumItems):
 				flags = 0
 				bits = 0
@@ -138,14 +138,14 @@ class PackedQuatVector:
 						indexPos += 1
 						bitPos = 0
 				flags &= 7
-				
+
 				q = Quaternion()
 				sum = 0
 				for j in range(4):
 					if (flags & 3) != j:  #
 						bitSize = 9 if ((flags & 3) + 1) % 4 == j else 10
 						x = 0
-						
+
 						bits = 0
 						while bits < bitSize:
 							x |= (m_Data[indexPos] >> bitPos) << bits  # uint
@@ -158,13 +158,13 @@ class PackedQuatVector:
 						x &= (1 << bitSize) - 1  # unit
 						q[j] = x / (0.5 * ((1 << bitSize) - 1)) - 1
 						sum += q[j] * q[j]
-				
+
 				lastComponent = flags & 3  # int
 				q[lastComponent] = math.sqrt(1 - sum)  # float
 				if (flags & 4) != 0:  # 0u
 					q[lastComponent] = -q[lastComponent]
 				data.append(q)
-			
+
 			return data
 
 
@@ -203,10 +203,10 @@ class PPtrCurve:
 	def __init__(self, reader):
 		numCurves = reader.read_int()
 		self.curve = [
-				PPtrKeyframe(reader)
-				for _ in range(numCurves)
+			PPtrKeyframe(reader)
+			for _ in range(numCurves)
 		]
-		
+
 		self.attribute = reader.read_aligned_string()
 		self.path = reader.read_aligned_string()
 		self.classID = reader.read_int()
@@ -222,9 +222,11 @@ class AABB:
 class xform:
 	def __init__(self, reader):
 		version = reader.version
-		self.t = reader.read_vector3() if version[0] > 5 or (version[0] == 5 and version[1] >= 4) else Vector3(reader.read_vector4())  # 5.4 and up
+		self.t = reader.read_vector3() if version[0] > 5 or (version[0] == 5 and version[1] >= 4) else Vector3(
+			reader.read_vector4())  # 5.4 and up
 		self.q = reader.read_quaternion()
-		self.s = reader.read_vector3() if version[0] > 5 or (version[0] == 5 and version[1] >= 4) else Vector3(reader.read_vector4())  # 5.4 and up
+		self.s = reader.read_vector3() if version[0] > 5 or (version[0] == 5 and version[1] >= 4) else Vector3(
+			reader.read_vector4())  # 5.4 and up
 
 
 class HandPose:
@@ -244,7 +246,8 @@ class HumanGoal:
 		self.m_WeightT = reader.read_float()
 		self.m_WeightR = reader.read_float()
 		if version[0] >= 5:  # 5.0 and up
-			self.m_HintT = reader.read_vector3() if version[0] > 5 or (version[0] == 5 and version[1] >= 4) else Vector3(reader.read_vector4())  # 5.4 and up
+			self.m_HintT = reader.read_vector3() if version[0] > 5 or (
+					version[0] == 5 and version[1] >= 4) else Vector3(reader.read_vector4())  # 5.4 and up
 			self.m_HintWeightT = reader.read_float()
 
 
@@ -252,25 +255,27 @@ class HumanPose:
 	def __init__(self, reader):
 		version = reader.version
 		self.m_RootX = xform(reader)
-		self.m_LookAtPosition = reader.read_vector3() if version[0] > 5 or (version[0] == 5 and version[1] >= 4) else Vector3(reader.read_vector4())  # 5.4 and up
+		self.m_LookAtPosition = reader.read_vector3() if version[0] > 5 or (
+				version[0] == 5 and version[1] >= 4) else Vector3(reader.read_vector4())  # 5.4 and up
 		self.m_LookAtWeight = reader.read_vector4()
-		
+
 		numGoals = reader.read_int()
 		self.m_GoalArray = [
-				HumanGoal(reader)
-				for _ in range(numGoals)
+			HumanGoal(reader)
+			for _ in range(numGoals)
 		]
-		
+
 		self.m_LeftHandPose = HandPose(reader)
 		self.m_RightHandPose = HandPose(reader)
-		
+
 		self.m_DoFArray = reader.read_float_array()
-		
+
 		if version[0] > 5 or (version[0] == 5 and version[1] >= 2):  # 5.2 and up
 			numTDof = reader.read_int()
 			self.m_TDoFArray = [
-					reader.read_vector3() if version[0] > 5 or (version[0] == 5 and version[1] >= 4) else Vector3(reader.read_vector4())  # 5.4 and up
-					for _ in range(numTDof)
+				reader.read_vector3() if version[0] > 5 or (version[0] == 5 and version[1] >= 4) else Vector3(
+					reader.read_vector4())  # 5.4 and up
+				for _ in range(numTDof)
 			]
 
 
@@ -278,10 +283,10 @@ class StreamedCurveKey:
 	def __init__(self, reader):
 		self.index = reader.read_int()
 		self.coeff = reader.read_float_array(4)
-		
+
 		self.outSlope = self.coeff[2]
 		self.value = self.coeff[3]
-	
+
 	def CalculateNextInSlope(self, dx: float, rhs):
 		"""
 		:param dx: float
@@ -291,7 +296,7 @@ class StreamedCurveKey:
 		# Stepped
 		if self.coeff[0] == 0 and self.coeff[1] == 0 and self.coeff[2] == 0:
 			return float.PositiveInfinity
-		
+
 		dx = max(dx, 0.0001)
 		dy = rhs.value - self.value
 		length = 1.0 / (dx * dx)
@@ -305,8 +310,8 @@ class StreamedFrame:
 		self.time = reader.read_float()
 		numKeys = reader.read_int()
 		self.keyList = [
-				StreamedCurveKey(reader)
-				for _ in range(numKeys)
+			StreamedCurveKey(reader)
+			for _ in range(numKeys)
 		]
 
 
@@ -314,14 +319,14 @@ class StreamedClip:
 	def __init__(self, reader):
 		self.data = reader.read_u_int_array()
 		self.curveCount = reader.read_u_int()
-	
+
 	def ReadData(self):
 		frameList = []
 		buffer = self.data[0:len(self.data) * 4]
 		reader = EndianBinaryReader(buffer)
 		while reader.Position < reader.Length:
 			frameList.append(StreamedFrame(reader))
-		
+
 		for frameIndex in range(2, len(frameList) - 1):
 			frame = frameList[frameIndex]
 			for curveKey in frame.keyList:
@@ -366,8 +371,8 @@ class ValueArrayConstant:
 	def __init__(self, reader):
 		numVals = reader.read_int()
 		self.m_ValueArray = [
-				ValueConstant(reader)
-				for _ in range(numVals)
+			ValueConstant(reader)
+			for _ in range(numVals)
 		]
 
 
@@ -400,7 +405,8 @@ class ClipMuscleConstant:
 		if version[0] < 5:  # 5.0 down
 			self.m_MotionStartX = xform(reader)
 			self.m_MotionStopX = xform(reader)
-		self.m_AverageSpeed = reader.read_vector3() if version[0] > 5 or (version[0] == 5 and version[1] >= 4) else Vector3(reader.read_vector4())  # 5.4 and up
+		self.m_AverageSpeed = reader.read_vector3() if version[0] > 5 or (
+				version[0] == 5 and version[1] >= 4) else Vector3(reader.read_vector4())  # 5.4 and up
 		self.m_Clip = Clip(reader)
 		self.m_StartTime = reader.read_float()
 		self.m_StopTime = reader.read_float()
@@ -408,18 +414,18 @@ class ClipMuscleConstant:
 		self.m_Level = reader.read_float()
 		self.m_CycleOffset = reader.read_float()
 		self.m_AverageAngularSpeed = reader.read_float()
-		
+
 		self.m_IndexArray = reader.read_int_array()
 		if version[0] < 4 or (version[0] == 4 and version[1] < 3):  # 4.3 down
 			self.m_AdditionalCurveIndexArray = reader.read_int_array()
 		numDeltas = reader.read_int()
 		self.m_ValueArrayDelta = [
-				ValueDelta(reader)
-				for _ in range(numDeltas)
+			ValueDelta(reader)
+			for _ in range(numDeltas)
 		]
 		if version[0] > 5 or (version[0] == 5 and version[1] >= 3):  # 5.3 and up
 			self.m_ValueArrayReferencePose = reader.read_float_array()
-		
+
 		self.m_Mirror = reader.read_boolean()
 		if version[0] > 4 or (version[0] == 4 and version[1] >= 3):  # 4.3 and up
 			self.m_LoopTime = reader.read_boolean()
@@ -455,22 +461,22 @@ class AnimationClipBindingConstant:
 	def __init__(self, reader):
 		numBindings = reader.read_int()
 		self.genericBindings = [
-				GenericBinding(reader)
-				for _ in range(numBindings)
+			GenericBinding(reader)
+			for _ in range(numBindings)
 		]
-		
+
 		numMappings = reader.read_int()
 		self.pptrCurveMapping = [
-				PPtr(reader)  # Object
-				for _ in range(numMappings)
+			PPtr(reader)  # Object
+			for _ in range(numMappings)
 		]
-		
+
 		def FindBinding(self, index):
 			curves = 0
 			for b in self.genericBindings:
 				if b.typeID == ClassIDType.Transform:  #
 					switch = b.attribute
-					
+
 					if switch in [1, 3, 4]:
 						# case 1: #kBindTransformPosition
 						# case 3: #kBindTransformScale
@@ -495,7 +501,7 @@ class AnimationType(IntEnum):
 
 class AnimationClip(NamedObject):
 	def __init__(self, reader):
-		super().__init__(reader = reader)
+		super().__init__(reader=reader)
 		version = reader.version
 		if version[0] >= 5:  # 5.0 and up
 			self.m_Legacy = reader.read_boolean()
@@ -505,54 +511,54 @@ class AnimationClip(NamedObject):
 				self.m_Legacy = True
 		else:
 			self.m_Legacy = True
-		
+
 		self.m_Compressed = reader.read_boolean()
 		if version[0] > 4 or (version[0] == 4 and version[1] >= 3):  # 4.3 and up
 			self.m_UseHighQualityCurve = reader.read_boolean()
 		reader.align_stream()
 		numRCurves = reader.read_int()
 		self.m_RotationCurves = [
-				QuaternionCurve(reader)
-				for _ in range(numRCurves)
+			QuaternionCurve(reader)
+			for _ in range(numRCurves)
 		]
-		
+
 		numCRCurves = reader.read_int()
 		self.m_CompressedRotationCurves = [
-				CompressedAnimationCurve(reader)
-				for _ in range(numCRCurves)
+			CompressedAnimationCurve(reader)
+			for _ in range(numCRCurves)
 		]
-		
+
 		if version[0] > 5 or (version[0] == 5 and version[1] >= 3):  # 5.3 and up
 			numEulerCurves = reader.read_int()
 			self.m_EulerCurves = [
-					Vector3Curve(reader)
-					for _ in range(numEulerCurves)
+				Vector3Curve(reader)
+				for _ in range(numEulerCurves)
 			]
-		
+
 		numPCurves = reader.read_int()
 		self.m_PositionCurves = [
-				Vector3Curve(reader)
-				for _ in range(numPCurves)
+			Vector3Curve(reader)
+			for _ in range(numPCurves)
 		]
-		
+
 		numSCurves = reader.read_int()
 		self.m_ScaleCurves = [
-				Vector3Curve(reader)
-				for _ in range(numSCurves)
+			Vector3Curve(reader)
+			for _ in range(numSCurves)
 		]
-		
+
 		numFCurves = reader.read_int()
 		self.m_FloatCurves = [
-				FloatCurve(reader)
-				for _ in range(numFCurves)
+			FloatCurve(reader)
+			for _ in range(numFCurves)
 		]
 		if version[0] > 4 or (version[0] == 4 and version[1] >= 3):  # 4.3 and up
 			numPtrCurves = reader.read_int()
 			self.m_PPtrCurves = [
-					PPtrCurve(reader)
-					for _ in range(numPtrCurves)
+				PPtrCurve(reader)
+				for _ in range(numPtrCurves)
 			]
-		
+
 		self.m_SampleRate = reader.read_float()
 		self.m_WrapMode = reader.read_int()
 		if version[0] > 3 or (version[0] == 3 and version[1] >= 4):  # 3.4 and up

@@ -4,7 +4,7 @@ from .PPtr import PPtr
 
 class Font(NamedObject):
 	def __init__(self, reader):
-		super().__init__(reader = reader)
+		super().__init__(reader=reader)
 		if (self.version[0] == 5 and self.version[1] >= 5) or self.version[0] > 5:  # 5.5 and up:
 			self.LineSpacing = reader.read_float()
 			self.DefaultMaterial = PPtr(reader)
@@ -27,14 +27,14 @@ class Font(NamedObject):
 				self.FontData = reader.read_bytes(FontData_size)
 		else:
 			self.AsciiStartOffset = reader.read_int()
-			
+
 			if self.version[0] <= 3:
 				self.FontCountX = reader.read_int()
 				self.FontCountY = reader.read_int()
-			
+
 			self.Kerning = reader.read_float()
 			self.LineSpacing = reader.read_float()
-			
+
 			if self.version[0] <= 3:
 				PerCharacterKerning_size = reader.read_int()
 				for i in range(PerCharacterKerning_size):
@@ -43,10 +43,10 @@ class Font(NamedObject):
 			else:
 				self.CharacterSpacing = reader.read_int()
 				self.CharacterPadding = reader.read_int()
-			
+
 			self.ConvertCase = reader.read_int()
 			self.DefaultMaterial = PPtr(reader)
-			
+
 			CharacterRects_size = reader.read_int()
 			for i in range(CharacterRects_size):
 				index = reader.read_int()
@@ -61,19 +61,19 @@ class Font(NamedObject):
 				vertwidth = reader.read_float()
 				vertheight = reader.read_float()
 				width = reader.read_float()
-				
+
 				if self.version[0] >= 4:
 					flipped = reader.read_boolean()
 					reader.align_stream()
-			
+
 			self.Texture = PPtr(reader)
-			
+
 			KerningValues_size = reader.read_int()
 			for i in range(KerningValues_size):
 				pairfirst = reader.read_short()
 				pairsecond = reader.read_short()
 				second = reader.read_float()
-			
+
 			if self.version[0] <= 3:
 				self.GridFont = reader.read_boolean()
 				reader.align_stream()

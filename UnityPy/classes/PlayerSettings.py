@@ -3,10 +3,10 @@ from .Object import Object
 
 class PlayerSettings(Object):
 	def __init__(self, reader):
-		super().__init__(reader = reader)
+		super().__init__(reader=reader)
 		if self.version[0] > 5 or (self.version[0] == 5 and self.version[1] >= 4):  # 5.4.0 nad up
 			self.productGUID = reader.read_bytes(16)
-		
+
 		self.AndroidProfiler = reader.read_boolean()
 		# bool AndroidFilterTouchesWhenObscured 2017.2 and up
 		# bool AndroidEnableSustainedPerformanceMode 2018 and up

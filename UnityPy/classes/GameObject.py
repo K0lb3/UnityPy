@@ -13,9 +13,9 @@ class GameObject(EditorExtension):
 	public Animator m_Animator;
 	public Animation m_Animation;
 	"""
-	
+
 	def __init__(self, reader):
-		super().__init__(reader = reader)
+		super().__init__(reader=reader)
 		component_size = reader.read_int()
 		self.components = []
 		for i in range(component_size):

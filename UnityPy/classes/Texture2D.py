@@ -1,17 +1,17 @@
-from ..enums import TextureFormat
 from .Texture import Texture
 from ..ResourceReader import ResourceReader
+from ..enums import TextureFormat
 from ..export import Texture2DConverter
 
+
 class Texture2D(Texture):
-	
+
 	@property
 	def image(self):
 		return Texture2DConverter.get_image_from_texture2d(self)
-		
-	
+
 	def __init__(self, reader):
-		super().__init__(reader = reader)
+		super().__init__(reader=reader)
 		version = self.version
 		self.m_Width = reader.read_int()
 		self.m_Height = reader.read_int()
@@ -37,9 +37,10 @@ class Texture2D(Texture):
 		image_data_size = reader.read_int()
 		if image_data_size == 0 and ((version[0] == 5 and version[1] >= 3) or version[0] > 5):  # 5.3.0 and up
 			m_StreamData = StreamingInfo(reader)
-		
+
 		if 'm_StreamData' in locals() and m_StreamData.path:
-			resource_reader = ResourceReader(m_StreamData.path, self.assets_file, m_StreamData.offset, m_StreamData.size)
+			resource_reader = ResourceReader(m_StreamData.path, self.assets_file, m_StreamData.offset,
+											 m_StreamData.size)
 		else:
 			resource_reader = ResourceReader(reader, reader.Position, image_data_size)
 		self.image_data = resource_reader.get_data()
@@ -55,7 +56,7 @@ class StreamingInfo:
 class GLTextureSettings:
 	def __init__(self, reader):
 		version = reader.version
-		
+
 		self.m_FilterMode = reader.read_int()
 		self.m_Aniso = reader.read_int()
 		self.m_MipBias = reader.read_float()
