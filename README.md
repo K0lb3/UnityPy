@@ -1,11 +1,47 @@
 # UnityPy
-A unity asset extractor based on [unitypack](https://github.com/HearthSim/UnityPack) and [AssetStudio](https://github.com/Perfare/AssetStudio).
-
-The basic structure is from AssetStudio and the object handling is from unitypack.
+A Unity asset extractor based on [AssetStudio](https://github.com/Perfare/AssetStudio).
 
 ## Installation
+
+## UnityPy
+
+### main module
 ```cmd
 pip install UnityPy
+```
+
+or download/clone the git and use
+```cmd
+python setup.py install
+```
+
+### optional modules
+It's highly recommended to install following modules to enjoy the full power of UnityPy.
+
+All texture modules use [Cython](https://cython.org/),  so they won't work on some systems.
+
+Windows users have to install [Microsoft Visual C++ 14.0 Build Tools Only](http://go.microsoft.com/fwlink/?LinkId=691126&fixForIE=.exe) to be able to use Cython.
+
+* [python-fsb5](https://github.com/HearthSim/python-fsb5) - FSB Audio Sample Support
+```cmd
+pip install fsb5
+```
+
+* [decrunch](https://github.com/HearthSim/decrunch) - crunch texture support
+```cmd
+pip install decrunch
+```
+* [etcpack](https://github.com/K0lb3/etcpack) - ETC texture support
+```cmd
+pip install etcpack
+```
+* [pvrtc_decoder](https://github.com/K0lb3/pvrtc_decoder) - PVRTC Texture Support
+```cmd
+pip install pvrtc_decoder
+```
+* [astc_decomp](https://github.com/K0lb3/astc_decomp) - ASTC Texture Support
+```cmd
+pip install astc_decomp
 ```
 
 ## Usage
