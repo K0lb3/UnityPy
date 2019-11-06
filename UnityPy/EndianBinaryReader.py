@@ -11,10 +11,12 @@ class EndianBinaryReader:
 	stream: io.BufferedReader
 
 	def __init__(self, input_, endian='>'):
-		if type(input_) == bytes:
+		if isinstance(input_, (bytes, bytearray)):
 			self.stream = io.BytesIO(input_)
-		else:
+		elif isinstance(input_, (io.BytesIO, io.BufferedReader)):
 			self.stream = input_
+		else:
+			raise ValueError("Invalid input type - %s."%type(input_))
 
 		self.endian = endian
 		self.Length = self.stream.seek(0, 2)
@@ -164,45 +166,3 @@ class EndianBinaryReader:
 
 	def read_matrix_array(self):
 		return self.read_array(self.read_matrix, self.read_int())
-
-	def write(self, *args):
-		pass
-
-	def write_byte(self, value):
-		self.write(struct.pack(self.endian + "b", value))
-
-	def write_s_byte(self, value):
-		self.write(struct.pack(self.endian + "B", value))
-
-	def write_short(self, value):
-		self.write(struct.pack(self.endian + "h", value))
-
-	def write_u_short(self, value):
-		self.write(struct.pack(self.endian + "H", value))
-
-	def write_int(self, value):
-		self.write(struct.pack(self.endian + "i", value))
-
-	def write_u_int(self, value):
-		self.write(struct.pack(self.endian + "I", value))
-
-	def write_long(self, value):
-		self.write(struct.pack(self.endian + "q", value))
-
-	def write_u_long(self, value):
-		self.write(struct.pack(self.endian + "Q", value))
-
-	def write_float(self, value):
-		self.write(struct.pack(self.endian + "f", value))
-
-	def write_double(self, value):
-		self.write(struct.pack(self.endian + "d", value))
-
-	def write_bool(self, value):
-		self.write(struct.pack(self.endian + "?", value))
-
-	def write_aligned_string(self, value):
-		byts = value.encode('utf8')
-		self.write(len(byts))
-		self.write(byts)
-		self.align_stream(4)
