@@ -35,7 +35,7 @@ class Sprite(NamedObject):
 		if version[0] >= 2017:  # 2017 and up
 			first = reader.read_bytes(16)  # GUID
 			second = reader.read_long()
-			self.m_RenderDataKey = {first: second}
+			self.m_RenderDataKey = (first, second)
 			self.m_AtlasTags = reader.read_string_array()
 			self.m_SpriteAtlas = PPtr(reader)  # SpriteAtlas
 		

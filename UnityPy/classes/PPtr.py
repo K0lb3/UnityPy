@@ -15,6 +15,14 @@ class PPtr:
 	def __getattr__(self, item):
 		return None
 
+	def __repr__(self):
+		return "<%s %s>" % (
+			self.__class__.__name__
+		)
+	
+	def __bool__(self):
+		return False
+
 
 """
 	def TryGetAssetsFile(self):

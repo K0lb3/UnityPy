@@ -31,19 +31,16 @@ def get_image(sprite, texture, alpha_texture) -> PIL.Image:
 
 
 def get_image_from_sprite(m_Sprite) -> PIL.Image:
-	sprite_atlas_data = m_Sprite.m_SpriteAtlas.m_RenderDataKey
-	if sprite_atlas_data:
-		m_Texture2D = sprite_atlas_data.m_Texture2D
-		alpha_texture = None
-		texture_rect = sprite_atlas_data.textureRect
-		texture_rect_offset = sprite_atlas_data.textureRectOffset
-		settings_raw = sprite_atlas_data.settingsRaw
+	if m_Sprite.m_SpriteAtlas:
+		sprite_atlas_data = m_Sprite.m_SpriteAtlas.read().render_data_map[m_Sprite.m_RenderDataKey]
 	else:
-		m_Texture2D = m_Sprite.m_RD.texture
-		alpha_texture = m_Sprite.m_RD.alphaTexture
-		texture_rect = m_Sprite.m_RD.textureRect
-		texture_rect_offset = m_Sprite.m_RD.textureRectOffset
-		settings_raw = m_Sprite.m_RD.settingsRaw
+		sprite_atlas_data = m_Sprite.m_RD
+
+	m_Texture2D = sprite_atlas_data.texture
+	alpha_texture = sprite_atlas_data.alphaTexture
+	texture_rect = sprite_atlas_data.textureRect
+	texture_rect_offset = sprite_atlas_data.textureRectOffset
+	settings_raw = sprite_atlas_data.settingsRaw
 
 	original_image = get_image(m_Sprite, m_Texture2D, alpha_texture)
 
