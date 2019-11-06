@@ -1,9 +1,10 @@
 class Quaternion:
-	def __init__(self, x : float, y : float, z : float, w : float):
+	def __init__(self, x: float, y: float, z: float, w: float):
 		self.X = x
 		self.Y = y
 		self.Z = z
 		self.W = w
+
 
 """
 using System;
