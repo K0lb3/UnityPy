@@ -323,26 +323,6 @@ class SerializedFile:
 
 		self.reader.Position += string_buffer_size
 
-	def export(self, dst: str, types: list = [], respect_container=True):
-		"""
-		Exports all assets into dst.
-		:param dst: destination of the extracted assets
-		:param types: object types to extract
-		:param respect_container: use the original asset path
-		"""
-		if respect_container and self.container:
-			if len(self.container) == 1:
-				path, obj = list(self.container.items())[0]
-				if obj.type in ['Sprite', 'Texture2D']:
-					save_obj(obj, path)
-				else:
-					path = os.path.dirname(path)
-					for obj in self.objects.values():
-						save_obj(obj, path, True)
-			else:
-				for path, obj in self.container.items():
-					save_obj(obj, path)
-
 
 def read_string(string_buffer_reader, value) -> str:
 	is_offset = (value & 0x80000000) == 0
