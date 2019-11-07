@@ -25,7 +25,7 @@ class Object:
 
 		self.reader.reset()
 		if type(self) == Object:
-			self.__dict__.update(self.read_typetree())
+			self.__dict__.update(self.read_type_tree())
 
 	def has_struct_member(self, name: str) -> bool:
 		return self.serialized_type.m_Nodes and any([x.name == name for x in self.serialized_type.m_Nodes])
