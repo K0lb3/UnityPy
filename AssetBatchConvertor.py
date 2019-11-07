@@ -12,6 +12,13 @@ ROOT = os.path.dirname(os.path.realpath(__file__))
 ASSETS=os.path.join(ROOT,'assetbundle')
 # destination folder
 DST = os.path.join(ROOT, 'extracted')
+# number of dirs to ignore
+# e.g. IGNOR_DIR_COUNT = 2 will reduce
+# 'assets/assetbundles/images/story_picture/small/15.png'
+# to
+# 'images/story_picture/small/15.png'
+
+IGNOR_DIR_COUNT = 2
 
 os.makedirs(DST, exist_ok=True)
 
@@ -19,6 +26,8 @@ debug = True
 
 def main():
     for root, dirs, files in os.walk(ASSETS, topdown=False):
+        if '.git' in root:
+            continue
         for f in files:
             print(f)
             # load file
@@ -31,35 +40,36 @@ def main():
                 # assets without container / internal path will be ignored for now
                 if not asset.container:
                     continue
-                extracted = []
-                local_path = []
+                
                 # check which mode we will have to use
                 num_cont = sum(1 for obj in asset.container.values() if obj.type in TYPES)
                 num_objs = sum(1 for obj in asset.objects.values() if obj.type in TYPES)
 
-                # first we extract the assets in the container
-                for asset_path, obj in asset.container.items():
-                    fp = os.path.join(DST, *asset_path.split('/'))
-                    export_obj(obj, fp)
+                # check if container contains all important assets, if yes, just ignore the container
+                if num_objs <= num_cont * 2:
+                    for asset_path, obj in asset.container.items():
+                        fp = os.path.join(DST, *asset_path.split('/')[IGNOR_DIR_COUNT:])
+                        export_obj(obj, fp)
 
-                    local_path.append(
-                        os.path.splitext(asset_path)[0]
-                        if asset_path.endswith(".prefab")
-                        else
-                        os.path.dirname(asset_path)
+                # otherwise use the container to generate a path for the normal objects
+                else:
+                    local_path = []
+                    extracted = []
+
+                    for asset_path in asset.container.keys():
+                        local_path.append(
+                            os.path.splitext(asset_path)[0]
                         )
-                
-                # way more assets without path then with path,
-                # therefore we get the general path from the container
-                # and then extract all assets depending on that
-                if num_objs > num_cont * 2:
+
                     if len(local_path) > 1:
                         if len(set(local_path)) == 1:
                             local_path = local_path[0]
                         else:
                             local_path = mode(local_path)
                     else:
-                        local_path = os.path.join(DST, *local_path[0].split('/'))
+                        local_path = local_path[0]
+                    local_path = os.path.join(DST, *local_path.split('/')[IGNOR_DIR_COUNT:])
+
 
                     for obj in asset.objects.values():
                         if obj.path_id not in extracted:
@@ -75,30 +85,29 @@ def export_obj(obj, fp : str, append_name : bool = False) -> list:
     
     fp, extension = os.path.splitext(fp)
     os.makedirs(os.path.dirname(fp), exist_ok=True)
-    try:
-        if obj.type == 'TextAsset':
-            if not extension:
-                extension = '.txt'
-            with open(f"{fp}{extension}", 'wb') as f:
-                f.write(data.script)
 
-        elif obj.type == "Sprite":
-            extension = ".png"
-            data.image.save(f"{fp}{extension}")
+    if obj.type == 'TextAsset':
+        if not extension:
+            extension = '.txt'
+        with open(f"{fp}{extension}", 'wb') as f:
+            f.write(data.script)
 
-            return [obj.path_id, data.m_RD.texture.path_id, getattr(data.m_RD.alphaTexture,'path_id', None)]
+    elif obj.type == "Sprite":
+        extension = ".png"
+        data.image.save(f"{fp}{extension}")
 
-        elif obj.type == "Texture2D":
-            extension = ".png"
-            fp = f"{fp}{extension}"
-            if not os.path.exists(fp):
+        return [obj.path_id, data.m_RD.texture.path_id, getattr(data.m_RD.alphaTexture,'path_id', None)]
+
+    elif obj.type == "Texture2D":
+        extension = ".png"
+        fp = f"{fp}{extension}"
+        if not os.path.exists(fp):
+            try:
                 data.image.save(fp)
-        
-        return [obj.path_id]
+            except EOFError:
+                pass
     
-    except Exception as e:
-        print(fp, e)
-        return([])
+    return [obj.path_id]
 
 
 if __name__ == '__main__':
