@@ -1,6 +1,5 @@
 import io
 import struct
-
 from .math import Color, Matrix4x4, Quaternion, Vector2, Vector3, Vector4, Rectangle
 
 
@@ -16,7 +15,15 @@ class EndianBinaryReader:
 		elif isinstance(input_, (io.BytesIO, io.BufferedReader)):
 			self.stream = input_
 		else:
-			raise ValueError("Invalid input type - %s."%type(input_))
+			# test if input is a streamable object
+			try:
+				p = input_.tell()
+				input_.read(1)
+				input_.seek(p)
+				assert (p == input_.tell())
+				self.stream = input_
+			except:
+				raise ValueError("Invalid input type - %s." % type(input_))
 
 		self.endian = endian
 		self.Length = self.stream.seek(0, 2)

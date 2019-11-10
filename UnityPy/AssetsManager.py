@@ -31,6 +31,8 @@ class AssetsManager:
 						self.load_file(arg)
 					elif os.path.isdir(arg):
 						self.load_folder(arg)
+				else:
+					self.load_file(arg)
 
 	def load_files(self, files: list):
 		"""Loads all files (list) into the AssetsManager and merges .split files for common usage."""
@@ -101,7 +103,7 @@ class AssetsManager:
 	def load_assets_from_memory(self, full_name: str, reader: EndianBinaryReader, original_path: str,
 								unity_version=None):
 		file_name = os.path.basename(full_name)
-		if  file_name.endswith(".resS"):
+		if file_name.endswith((".resS", ".resource")):
 			self.resource_file_readers[file_name] = reader
 		elif file_name not in self.assets:
 			try:
@@ -112,7 +114,6 @@ class AssetsManager:
 				self.assets[file_name] = assets_file
 			except Exception as e:
 				self.Logger.error(f"Unable to load assets file {file_name} from {original_path}", e)
-			finally:
 				self.resource_file_readers[file_name] = reader
 
 	def load_bundle_file(self, full_name: str, reader: EndianBinaryReader, parent_path=None):
