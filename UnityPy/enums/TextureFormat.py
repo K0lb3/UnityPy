@@ -57,4 +57,10 @@ class TextureFormat(IntEnum):
 	RG16 = 62,
 	R8 = 63,
 	ETC_RGB4Crunched = 64,
-	ETC2_RGBA8Crunched = 65
+	ETC2_RGBA8Crunched = 65,
+	ASTC_HDR_4x4 = 66,
+	ASTC_HDR_5x5 = 67,
+	ASTC_HDR_6x6 = 68,
+	ASTC_HDR_8x8 = 69,
+	ASTC_HDR_10x10 = 70,
+	ASTC_HDR_12x12 = 71

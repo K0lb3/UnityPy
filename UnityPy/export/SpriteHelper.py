@@ -17,11 +17,11 @@ class SpritePackingRotation(IntEnum):
 def get_image(sprite, texture, alpha_texture) -> PIL.Image:
 	if alpha_texture and getattr(alpha_texture, 'type', '') == "Texture2D":
 		cache_id = (texture.path_id, alpha_texture.path_id)
-		if cache_id not in sprite.asset_file._cache:
+		if cache_id not in sprite.assets_file._cache:
 			original_image = get_image_from_texture2d(texture.read(), False)
 			alpha_image = get_image_from_texture2d(alpha_texture.read(), False)
 			original_image = PIL.Image.merge('RGBA', (*original_image.split()[:3], alpha_image.split()[0]))
-			sprite.asset_file._cache[cache_id] = original_image
+			sprite.assets_file._cache[cache_id] = original_image
 	else:
 		cache_id = texture.path_id
 		if cache_id not in sprite.assets_file._cache:
