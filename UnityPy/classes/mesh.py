@@ -270,6 +270,8 @@ class SubMesh:
 
 
 class Mesh(NamedObject):
+	m_StreamData : None
+
 	def __init__(self, reader):
 		super().__init__(reader=reader)
 		version = reader.version
@@ -420,7 +422,7 @@ class Mesh(NamedObject):
 		self.ProcessData()
 
 	def ProcessData(self):
-		if hasattr(self, 'm_StreamData') and self.m_StreamData.get('path'):
+		if self.m_StreamData and self.m_StreamData.path:
 			if self.m_VertexData.m_VertexCount > 0:  #
 				resourceReader = ResourceReader(self.m_StreamData.path, self.assets_file, self.m_StreamData.offset,
 												self.m_StreamData.size)
