@@ -1,7 +1,7 @@
-﻿import os
+﻿import logging
+import os
 
 from .EndianBinaryReader import EndianBinaryReader
-from .Logger import Logger
 from .Progress import Progress
 from .files import BundleFile, SerializedFile, WebFile
 from .helpers import ImportHelper
@@ -14,7 +14,7 @@ class AssetsManager:
 	resource_file_readers: dict
 	import_files: dict
 	Progress: Progress
-	Logger: Logger
+	Logger: logging.Logger
 
 	def __init__(self, *args, log=False):
 		self.assets = {}
@@ -22,7 +22,7 @@ class AssetsManager:
 		self.import_files = {}
 
 		self.Progress = Progress()
-		self.Logger = Logger(log)
+		self.Logger = logging.getLogger(__name__)
 
 		if args:
 			for arg in args:
@@ -96,7 +96,7 @@ class AssetsManager:
 
 			except Exception as e:
 				reader.dispose()
-				self.Logger.error(f"Unable to load assets file {file_name}", e)
+				self.Logger.exception(f"Unable to load assets file {file_name}: {e}")
 		else:
 			reader.dispose()
 
@@ -113,7 +113,7 @@ class AssetsManager:
 					assets_file.set_version(unity_version)
 				self.assets[file_name] = assets_file
 			except Exception as e:
-				self.Logger.error(f"Unable to load assets file {file_name} from {original_path}", e)
+				self.Logger.exception(f"Unable to load assets file {file_name} from {original_path}: {e}")
 				self.resource_file_readers[file_name] = reader
 
 	def load_bundle_file(self, full_name: str, reader: EndianBinaryReader, parent_path=None):
@@ -131,7 +131,7 @@ class AssetsManager:
 			if parent_path:
 				string += f" from {os.path.basename(parent_path)}"
 			string += '\n' + str(e)
-			self.Logger.error(string, e)
+			self.Logger.exception(string)
 		finally:
 			reader.dispose()
 		return bundle_file
@@ -152,7 +152,7 @@ class AssetsManager:
 					self.load_web_file(dummy_path, reader)
 
 		except Exception as e:
-			self.Logger.error(f"Unable to load web file {file_name}", e)
+			self.Logger.exception(f"Unable to load web file {file_name}: {e}")
 		finally:
 			reader.dispose()
 		return web_file

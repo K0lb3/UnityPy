@@ -1,55 +1,35 @@
-﻿import time
-from enum import Enum
+﻿import logging
+import sys
 
-from colorama import init
 from termcolor import colored
 
-init()
 
-COLOR = {
-	'Verbose': 'white',
-	'Debug': 'green',
-	'Info': 'yellow',
-	'Warning': 'magenta',
-	'Error': 'red'
+if sys.platform == 'win32':
+	from colorama import init
+	init()
+
+
+COLORS = {
+	'DEBUG': 'green',
+	'INFO': 'yellow',
+	'WARNING': 'magenta',
+	'ERROR': 'red',
 }
 
 
-class LoggerEvent(Enum):
-	Verbose = 0,
-	Debug = 1,
-	Info = 2,
-	Warning = 3,
-	Error = 4
+class ListHandler(logging.Handler):
+	def __init__(self):
+		super().__init__()
+		self.logs = []
 
-	def print(self, string):
-		print(colored(f"{self.name}: {string}", COLOR[self.name]))
+	def emit(self, record):
+		self.logs.append(record)
 
 
-class Logger:
-	log: list
-	print: bool
-
-	def __init__(self, print: bool = False):
-		self.print = print
-		self.log = []
-
-	def _log(self, event: LoggerEvent, message: str):
-		if self.print:
-			event.print(message)
-		self.log.append((event, message))
-
-	def verbose(self, message: str):
-		self._log(LoggerEvent.Verbose, message)
-
-	def debug(self, message: str):
-		self._log(LoggerEvent.Debug, f"{time.thread_time_ns()} - {message}")
-
-	def info(self, message: str):
-		self._log(LoggerEvent.Info, message)
-
-	def warning(self, message: str):
-		self._log(LoggerEvent.Warning, message)
-
-	def error(self, message: str, error: Exception):
-		self._log(LoggerEvent.Error, '\n'.join([message, str(error)]))
+class ColoredFormatter(logging.Formatter):
+	def format(self, record):
+		msg = super().format(record)
+		levelname = record.levelname
+		if levelname in COLORS:
+			msg = colored(msg, COLORS[levelname])
+		return msg
