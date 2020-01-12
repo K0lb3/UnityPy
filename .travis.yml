@@ -6,6 +6,10 @@ python:
 branches:
   only:
     - master
+os:
+  - windows
+  - linux
+  - osx
 install:
   - pip install --upgrade pip
 script:
