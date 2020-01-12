@@ -49,7 +49,7 @@ class Texture2D(Texture):
 class StreamingInfo:
 	offset : int = 0
 	size :int = 0
-	path : string = ""
+	path : str = ""
 	
 	def __init__(self, reader):
 		self.offset = reader.read_u_int()
