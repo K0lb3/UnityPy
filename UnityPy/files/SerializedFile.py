@@ -174,8 +174,11 @@ class SerializedFile:
 			if header.version < 16:
 				object_info.class_id = ClassIDType(reader.read_u_short())
 				# _types.Find(x => x.class_id == object_info.type_id)
-				object_info.serialized_type = [
-					x for x in self._types if x.class_id == object_info.type_id][0]
+				if self._types:
+					object_info.serialized_type = [
+						x for x in self._types if x.class_id == object_info.type_id][0]
+				else:
+					object_info.serialized_type = SerializedType()
 				is_destroyed = reader.read_u_short()
 			else:
 				typ = self._types[object_info.type_id]
