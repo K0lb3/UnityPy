@@ -30,7 +30,7 @@ or download/clone the git and use
 python setup.py install
 ```
 
-### optional modules
+### optional packages
 
 * [python-fsb5](https://github.com/HearthSim/python-fsb5) - required to extract samples from AudioClips
 ```cmd
