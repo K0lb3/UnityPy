@@ -9,4 +9,4 @@ class BuildSettings(Object):
 		self.has_pro_version = reader.read_boolean()
 		self.has_publishing_rights = reader.read_boolean()
 		self.has_shadows = reader.read_boolean()
-		self.version = reader.read_alligned_string()
+		self.version = reader.read_aligned_string()

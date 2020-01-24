@@ -1,5 +1,6 @@
 import io
 import struct
+
 from .math import Color, Matrix4x4, Quaternion, Vector2, Vector3, Vector4, Rectangle
 
 

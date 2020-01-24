@@ -4,6 +4,7 @@ from ..ResourceReader import ResourceReader
 from ..enums import AudioType, AudioCompressionFormat, AUDIO_TYPE_EXTEMSION
 from ..export import AudioClipConverter
 
+
 class AudioClip(NamedObject):
 	def __init__(self, reader):
 		super().__init__(reader=reader)
@@ -53,5 +54,5 @@ class AudioClip(NamedObject):
 		self.m_AudioData = resourceReader.get_data()
 
 	@property
-	def samples(self)-> dict:
+	def samples(self) -> dict:
 		return AudioClipConverter.extract_audioclip_samples(self)

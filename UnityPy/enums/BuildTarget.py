@@ -38,7 +38,7 @@ class BuildTarget(IntEnum):
 	tvOS = 37,
 	Switch = 38,
 	NoTarget = -2
-	
+
 	@classmethod
 	def _missing_(cls, value):
 		return BuildTarget.UnknownPlatform

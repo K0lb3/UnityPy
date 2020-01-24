@@ -6,7 +6,7 @@ with open("README.md", "r") as fh:
 setuptools.setup(
 	name="UnityPy",
 	packages=setuptools.find_packages(),
-	version="1.2.6.0",
+	version="1.2.6.2",
 	author="K0lb3",
 	description="A pythonic port of AssetStudio by Perfare",
 	long_description=long_description,
@@ -28,8 +28,6 @@ setuptools.setup(
 	install_requires=[
 		"lz4",
 		"brotli",
-		"colorama",
-		"termcolor",
 		"Pillow",
 	],
 	extras_require={

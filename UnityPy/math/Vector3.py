@@ -10,6 +10,7 @@ class Vector3:
 			# dirty patch for Vector4
 			self.__dict__ = args[0].__dict__
 
+
 """
 using System;
 using System.Runtime.InteropServices;

@@ -1,5 +1,6 @@
 from enum import IntEnum
 
+
 class AudioType(IntEnum):
 	UNKNOWN = 0,
 	ACC = 1,

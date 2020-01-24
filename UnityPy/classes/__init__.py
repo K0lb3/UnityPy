@@ -21,8 +21,8 @@ from .MonoScript import MonoScript
 from .MovieTexture import MovieTexture
 from .NamedObject import NamedObject
 from .Object import Object
-from .PlayerSettings import PlayerSettings
 from .PPtr import PPtr
+from .PlayerSettings import PlayerSettings
 from .RectTransform import RectTransform
 from .Renderer import Renderer
 from .RuntimeAnimatorController import RuntimeAnimatorController

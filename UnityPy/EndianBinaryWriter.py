@@ -10,26 +10,37 @@ class EndianBinaryWriter:
 	Position: int
 	stream: io.BufferedReader
 
-	def __init__(self, input_, endian='>'):
+	def __init__(self, input_=b"", endian='>'):
 		if isinstance(input_, (bytes, bytearray)):
 			self.stream = io.BytesIO(input_)
-		elif isinstance(input_, (io.BytesIO, io.BufferedReader)):
 			self.stream = input_
 		else:
-			raise ValueError("Invalid input type - %s."%type(input_))
+			raise ValueError("Invalid input type - %s." % type(input_))
 		self.endian = endian
+		self.Position = self.stream.tell()
 
 	@property
 	def bytes(self):
 		self.stream.seek(0)
 		return self.stream.read()
 
+	@property
+	def Length(self) -> int:
+		pos = self.stream.tell()
+		self.stream.seek(0, 2)
+		l = self.stream.tell()
+		self.stream.seek(pos)
+		return l
+
 	def dispose(self):
 		self.stream.close()
 		pass
 
 	def write(self, *args):
+		if self.Position != self.stream.tell():
+			self.stream.seek(self.Position)
 		self.stream.write(*args)
+		self.Position = self.stream.tell()
 
 	def write_byte(self, value: int):
 		self.write(struct.pack(self.endian + "b", value))

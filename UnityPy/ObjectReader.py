@@ -8,7 +8,7 @@ class ObjectReader:
 		self.byte_start = object_info.byte_start
 		self.byte_size = object_info.byte_size
 		self.serialized_type = object_info.serialized_type
-		self.platform = assets_file._target_platform
+		self.platform = assets_file.target_platform
 		self.version2 = assets_file.header.version
 		self.type = object_info.class_id
 		self.version = assets_file.version
@@ -25,7 +25,7 @@ class ObjectReader:
 	def read(self):
 		return getattr(classes, self.type.name, classes.Object)(self)
 
-	def __getattr__(self, item):
+	def __getattr__(self, item : str):
 		if hasattr(self.reader, item):
 			return getattr(self.reader, item)
 

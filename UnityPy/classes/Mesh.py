@@ -270,7 +270,7 @@ class SubMesh:
 
 
 class Mesh(NamedObject):
-	m_StreamData : None
+	m_StreamData: None
 
 	def __init__(self, reader):
 		super().__init__(reader=reader)

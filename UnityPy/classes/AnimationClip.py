@@ -247,7 +247,7 @@ class HumanGoal:
 		self.m_WeightR = reader.read_float()
 		if version[0] >= 5:  # 5.0 and up
 			self.m_HintT = reader.read_vector3() if version[0] > 5 or (
-					version[0] == 5 and version[1] >= 4) else Vector3(reader.read_vector4())  # 5.4 and up
+				version[0] == 5 and version[1] >= 4) else Vector3(reader.read_vector4())  # 5.4 and up
 			self.m_HintWeightT = reader.read_float()
 
 
@@ -256,7 +256,7 @@ class HumanPose:
 		version = reader.version
 		self.m_RootX = xform(reader)
 		self.m_LookAtPosition = reader.read_vector3() if version[0] > 5 or (
-				version[0] == 5 and version[1] >= 4) else Vector3(reader.read_vector4())  # 5.4 and up
+			version[0] == 5 and version[1] >= 4) else Vector3(reader.read_vector4())  # 5.4 and up
 		self.m_LookAtWeight = reader.read_vector4()
 
 		numGoals = reader.read_int()
@@ -406,7 +406,7 @@ class ClipMuscleConstant:
 			self.m_MotionStartX = xform(reader)
 			self.m_MotionStopX = xform(reader)
 		self.m_AverageSpeed = reader.read_vector3() if version[0] > 5 or (
-				version[0] == 5 and version[1] >= 4) else Vector3(reader.read_vector4())  # 5.4 and up
+			version[0] == 5 and version[1] >= 4) else Vector3(reader.read_vector4())  # 5.4 and up
 		self.m_Clip = Clip(reader)
 		self.m_StartTime = reader.read_float()
 		self.m_StopTime = reader.read_float()

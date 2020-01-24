@@ -1,4 +1,9 @@
 class Vector4:
+	X: float
+	Y: float
+	Z: float
+	W: float
+
 	def __init__(self, *args):
 		if len(args) == 4:  # float x, float y, float z, float w
 			self.X = args[0]
@@ -10,7 +15,7 @@ class Vector4:
 			self.Y = args[0].Y
 			self.Z = args[0].Z
 			self.W = args[1]
-	
+
 	"""
         public float this[int index]
         {
@@ -38,7 +43,7 @@ class Vector4:
                 }
             }
         }
-        
+
 
         public override int GetHashCode()
         {

@@ -6,6 +6,18 @@ try:
 	from decrunch import File as CrunchFile
 except ImportError:
 	print('Couldn\'t import decrunch.Decrunch is required to process crunched textures.')
+
+
+	class CrunchFile:
+		"""
+		decoy class to prevent python from throwing an error because CrunchFile is missing
+		"""
+		def __init__(self, *args):
+			pass
+
+		def decode_level(self, *args) -> bytes:
+			return b""
+
 try:
 	import etcpack
 except ImportError:
@@ -21,6 +33,15 @@ except ImportError:
 
 
 def get_image_from_texture2d(texture_2d, flip=True) -> Image:
+	"""converts the given texture into PIL.Image
+
+	:param texture_2d: texture to be converterd
+	:type texture_2d: Texture2D
+	:param flip: flips the image back to the original (all Unity textures are flipped by default)
+	:type flip: bool
+	:return: PIL.Image object
+	:rtype: Image
+	"""
 	# init variables
 	mode = "RGBA"
 	codec = "raw"
@@ -225,11 +246,11 @@ def get_image_from_texture2d(texture_2d, flip=True) -> Image:
 
 	if 'Crunched' in texture_format.name:
 		# if (version[0] > 2017 or (version[0] == 2017 and version[1] >= 3) #2017.3 and up
-		#		or m_TextureFormat == TextureFormat.ETC_RGB4Crunched
-		#		or m_TextureFormat == TextureFormat.ETC2_RGBA8Crunched):
-		#	# Unity Crunch
-		#	image_data = bytes(CrunchFile_U(image_data).decode_level(0))
-		#	image_data_size = len(image_data)
+		# 		or m_TextureFormat == TextureFormat.ETC_RGB4Crunched
+		# 		or m_TextureFormat == TextureFormat.ETC2_RGBA8Crunched):
+		# 	# Unity Crunch
+		# 	image_data = bytes(CrunchFile_U(image_data).decode_level(0))
+		# 	image_data_size = len(image_data)
 		# else: #normal crunch
 		# decrunch is using a modified crunch which uses the original crunch and only uses the Unity Version for etc1/2
 		image_data = bytes(CrunchFile(image_data).decode_level(0))
@@ -244,7 +265,17 @@ def get_image_from_texture2d(texture_2d, flip=True) -> Image:
 	return img
 
 
-def swap_bytes_for_xbox(image_data, platform: BuildTarget):
+def swap_bytes_for_xbox(image_data: bytes, platform: BuildTarget) -> bytes:
+	"""swaps the texture bytes
+	This is required for textures deployed on XBOX360.
+
+	:param image_data: texture data
+	:type image_data: bytes
+	:param platform: platform of the asset
+	:type platform: BuildTarget
+	:return: swapped data if platform = XBOX360 else data
+	:rtype: bytes
+	"""
 	if platform == BuildTarget.XBOX360:  # swap bytes for Xbox confirmed, PS3 not encountered
 		for i in range(0, len(image_data), 2):
 			image_data[i:i + 2] = image_data[i:i + 2][::-1]

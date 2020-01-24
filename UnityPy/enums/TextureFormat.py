@@ -1,5 +1,6 @@
 from enum import IntEnum
 
+
 class TextureFormat(IntEnum):
 	Alpha8 = 1,
 	ARGB4444 = 2,
