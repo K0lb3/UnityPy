@@ -54,7 +54,7 @@ Windows users have to install [Microsoft Visual C++ 14.0 Build Tools Only](http:
 
 ```cmd
 pip install decrunch
-pip install etcpac
+pip install etcpack
 pip install pvrtc_decoder
 pip install astc_decomp
 ```
