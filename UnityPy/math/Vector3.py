@@ -1,3 +1,6 @@
+from math import sqrt
+
+
 class Vector3:
 	X: float
 	Y: float
@@ -9,6 +12,17 @@ class Vector3:
 		elif len(args) == 1:
 			# dirty patch for Vector4
 			self.__dict__ = args[0].__dict__
+
+	def length(self) -> float:
+		return sqrt(self.X ** 2 + self.Y ** 2 + self.Z ** 2)
+
+	def normalize(self):
+		length = self.length()
+
+		invNorm = 1.0 / length
+		self.X *= invNorm
+		self.Y *= invNorm
+		self.Z *= invNorm
 
 
 """

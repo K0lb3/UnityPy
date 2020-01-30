@@ -27,7 +27,7 @@ class Node:
 
 
 class Limit:
-	def __int__(self, reader):
+	def __init__(self, reader):
 		version = reader.version
 		if version[0] > 5 or (version[0] == 5 and version[1] >= 4):  # 5.4 and up
 			self.m_Min = reader.read_vector3()

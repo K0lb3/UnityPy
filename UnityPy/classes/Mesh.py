@@ -275,6 +275,7 @@ class Mesh(NamedObject):
 	def __init__(self, reader):
 		super().__init__(reader=reader)
 		version = reader.version
+
 		self.m_Use16BitIndices = True
 		self.m_Indices = []
 
@@ -419,7 +420,10 @@ class Mesh(NamedObject):
 			reader.align_stream()
 			self.m_StreamData = StreamingInfo(reader)
 
-		self.ProcessData()
+		try:
+			self.ProcessData()
+		except:
+			pass
 
 	def ProcessData(self):
 		if self.m_StreamData and self.m_StreamData.path:
@@ -557,7 +561,7 @@ class Mesh(NamedObject):
 			normalData = m_CompressedMesh.m_Normals.UnpackFloats(2, 4 * 2)
 			signs = m_CompressedMesh.m_NormalSigns.UnpackInts()
 			self.m_Normals = []  # float[m_CompressedMesh.m_Normals.m_NumItems / 2 * 3]
-			for i in range(0, m_CompressedMesh.m_Normals.m_NumItems, 2):
+			for i in range(0, math.ceil(m_CompressedMesh.m_Normals.m_NumItems / 2)):
 				x = normalData[i + 0]
 				y = normalData[i + 1]
 				zsqr = 1 - x * x - y * y
@@ -566,7 +570,7 @@ class Mesh(NamedObject):
 				else:
 					z = 0
 					normal = Vector3(x, y, z)
-					normal.Normalize()
+					normal.normalize()
 					x = normal.X
 					y = normal.Y
 					z = normal.Z
@@ -578,7 +582,7 @@ class Mesh(NamedObject):
 			tangentData = m_CompressedMesh.m_Tangents.UnpackFloats(2, 4 * 2)
 			signs = m_CompressedMesh.m_TangentSigns.UnpackInts()
 			self.m_Tangents = []  # float[m_CompressedMesh.m_Tangents.m_NumItems / 2 * 4]
-			for i in range(0, m_CompressedMesh.m_Tangents.m_NumItems, 2):
+			for i in range(0, math.ceil(m_CompressedMesh.m_Tangents.m_NumItems / 2)):
 				x = tangentData[i * 2 + 0]
 				y = tangentData[i * 2 + 1]
 				zsqr = 1 - x * x - y * y

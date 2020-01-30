@@ -8,6 +8,12 @@ from ..enums import ClassIDType
 from ..math import Quaternion, Vector3
 
 
+def uint(num):
+	if num < 0 or num > 4294967295:
+		return num % 4294967296
+	return num
+
+
 class Keyframe:
 	def __init__(self, reader, readerFunc):
 		self.time = reader.read_float()
@@ -52,34 +58,33 @@ class PackedFloatVector:
 		self.m_BitSize = reader.read_byte()
 		reader.align_stream()
 
-		def UnpackFloats(self, itemCountInChunk, chunkStride, start=0, numChunks=-1):
-			m_BitSize = self.m_BitSize
-			bitPos = m_BitSize * start
-			indexPos = bitPos  # 8
-			bitPos %= 8
+	def UnpackFloats(self, itemCountInChunk: int, chunkStride: int, start: int = 0, numChunks: int = -1):
+		bitPos: int = self.m_BitSize * start
+		indexPos: int = bitPos // 8
+		bitPos %= 8
 
-			scale = 1.0  # self.m_Range
-			if numChunks == -1:
-				numChunks = self.m_NumItems  # itemCountInChunk
-			end = chunkStride * numChunks  # 4
-			data = []
-			for index in (0, end, chunkStride // 4):  # 4
-				for i in range(itemCountInChunk):
-					x = 0
-					bits = 0
-					while bits < m_BitSize:
-						x |= (self.m_Data[indexPos] >> bitPos) << bits  # (uint)((m_Data[indexPos] >> bitPos) << bits)
-						num = min(m_BitSize - bits, 8 - bitPos)
-						bitPos += num
-						bits += num
-						if bitPos == 8:  #
-							indexPos += 1
-							bitPos = 0
+		scale: float = 1.0 / self.m_Range
+		if numChunks == -1:
+			numChunks = self.m_NumItems // itemCountInChunk
+		end = chunkStride * numChunks / 4
+		data = []
+		for index in (0, end, chunkStride // 4):
+			for i in range(itemCountInChunk):
+				x = 0  # uint
+				bits = 0
+				while bits < self.m_BitSize:
+					x |= uint((self.m_Data[indexPos] >> bitPos) << bits)  # (uint)((m_Data[indexPos] >> bitPos) << bits)
+					num = min(self.m_BitSize - bits, 8 - bitPos)
+					bitPos += num
+					bits += num
+					if bitPos == 8:  #
+						indexPos += 1
+						bitPos = 0
 
-					x &= (1 << m_BitSize) - 1  # (uint)(1 << m_BitSize) - 1u
-					data.append(x / (scale * ((1 << m_BitSize) - 1)) + self.m_Start)
+				x &= uint((1 << self.m_BitSize) - 1)  # (uint)(1 << m_BitSize) - 1u
+				data.append(x / (scale * ((1 << self.m_BitSize) - 1)) + self.m_Start)
 
-			return data
+		return data
 
 
 class PackedIntVector:
@@ -92,25 +97,25 @@ class PackedIntVector:
 		self.m_BitSize = reader.read_byte()
 		reader.align_stream()
 
-		def UnpackInts(self):
-			data = []
-			indexPos = 0
-			bitPos = 0
-			m_BitSize = self.m_BitSize
+	def UnpackInts(self):
+		data = []
+		indexPos = 0
+		bitPos = 0
+		m_BitSize = self.m_BitSize
 
-			for i in range(self.m_NumItems):
-				bits = 0
-				entry = 0
-				while bits << m_BitSize:
-					entry |= (self.m_Data[indexPos] >> bitPos) << bits
-					num = min(m_BitSize - bits, 8 - bitPos)
-					bitPos += num
-					bits += num
-					if bitPos == 8:  #
-						indexPos += 1
-						bitPos = 0
-				data.append(entry & (1 << m_BitSize) - 1)
-			return data
+		for i in range(self.m_NumItems):
+			bits = 0
+			entry = 0
+			while bits << m_BitSize:
+				entry |= (self.m_Data[indexPos] >> bitPos) << bits
+				num = min(m_BitSize - bits, 8 - bitPos)
+				bitPos += num
+				bits += num
+				if bitPos == 8:  #
+					indexPos += 1
+					bitPos = 0
+			data.append(entry & (1 << m_BitSize) - 1)
+		return data
 
 
 class PackedQuatVector:
@@ -120,52 +125,52 @@ class PackedQuatVector:
 		self.m_Data = reader.read_bytes(numData)
 		reader.align_stream()
 
-		def UnpackQuats(self):
-			m_Data = self.m_Data
-			data = []
-			indexPos = 0
-			bitPos = 0
+	def UnpackQuats(self):
+		m_Data = self.m_Data
+		data = []
+		indexPos = 0
+		bitPos = 0
 
-			for i in range(self.m_NumItems):
-				flags = 0
-				bits = 0
-				while bits < 3:
-					flags |= (m_Data[indexPos] >> bitPos) << bits  # unit
-					num = min(3 - bits, 8 - bitPos)
-					bitPos += num
-					bits += num
-					if bitPos == 8:  #
-						indexPos += 1
-						bitPos = 0
-				flags &= 7
+		for i in range(self.m_NumItems):
+			flags = 0
+			bits = 0
+			while bits < 3:
+				flags |= (m_Data[indexPos] >> bitPos) << bits  # unit
+				num = min(3 - bits, 8 - bitPos)
+				bitPos += num
+				bits += num
+				if bitPos == 8:  #
+					indexPos += 1
+					bitPos = 0
+			flags &= 7
 
-				q = Quaternion()
-				sum = 0
-				for j in range(4):
-					if (flags & 3) != j:  #
-						bitSize = 9 if ((flags & 3) + 1) % 4 == j else 10
-						x = 0
+			q = Quaternion()
+			sum = 0
+			for j in range(4):
+				if (flags & 3) != j:  #
+					bitSize = 9 if ((flags & 3) + 1) % 4 == j else 10
+					x = 0
 
-						bits = 0
-						while bits < bitSize:
-							x |= (m_Data[indexPos] >> bitPos) << bits  # uint
-							num = min(bitSize - bits, 8 - bitPos)
-							bitPos += num
-							bits += num
-							if bitPos == 8:  #
-								indexPos += 1
-								bitPos = 0
-						x &= (1 << bitSize) - 1  # unit
-						q[j] = x / (0.5 * ((1 << bitSize) - 1)) - 1
-						sum += q[j] * q[j]
+					bits = 0
+					while bits < bitSize:
+						x |= (m_Data[indexPos] >> bitPos) << bits  # uint
+						num = min(bitSize - bits, 8 - bitPos)
+						bitPos += num
+						bits += num
+						if bitPos == 8:  #
+							indexPos += 1
+							bitPos = 0
+					x &= (1 << bitSize) - 1  # unit
+					q[j] = x / (0.5 * ((1 << bitSize) - 1)) - 1
+					sum += q[j] * q[j]
 
-				lastComponent = flags & 3  # int
-				q[lastComponent] = math.sqrt(1 - sum)  # float
-				if (flags & 4) != 0:  # 0u
-					q[lastComponent] = -q[lastComponent]
-				data.append(q)
+			lastComponent = flags & 3  # int
+			q[lastComponent] = math.sqrt(1 - sum)  # float
+			if (flags & 4) != 0:  # 0u
+				q[lastComponent] = -q[lastComponent]
+			data.append(q)
 
-			return data
+		return data
 
 
 class CompressedAnimationCurve:
