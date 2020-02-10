@@ -24,13 +24,13 @@ def extract_audioclip_samples(audio) -> dict:
 	af = FSB5(audio.m_AudioData)
 	for i, sample in enumerate(af.samples):
 		if i > 0:
-			filename = "%s-%i.%s" % (d.name, i, af.get_sample_extension())
+			filename = "%s-%i.%s" % (audio.name, i, af.get_sample_extension())
 		else:
-			filename = "%s.%s" % (d.name, af.get_sample_extension())
+			filename = "%s.%s" % (audio.name, af.get_sample_extension())
 		try:
 			sample = af.rebuild_sample(sample)
 		except ValueError as e:
-			print("WARNING: Could not extract %r (%s)" % (d, e))
+			print("WARNING: Could not extract %r (%s)" % (audio, e))
 			continue
 		ret[filename] = sample
 
