@@ -6,7 +6,7 @@ with open("README.md", "r") as fh:
 setuptools.setup(
 	name="UnityPy",
 	packages=setuptools.find_packages(),
-	version="1.2.6.3",
+	version="1.2.6.5",
 	author="K0lb3",
 	description="A pythonic port of AssetStudio by Perfare",
 	long_description=long_description,
@@ -29,12 +29,7 @@ setuptools.setup(
 		"lz4",
 		"brotli",
 		"Pillow",
-	],
-	extras_require={
-		'FSB Audio Sample Support': ["fsb5"],
-		'Decrunch Support': ["decrunch", "decrunch_unity"],
-		"ETC Texture Support": ["etcpack"],
-		"PVRTC Texture Support": ["pvrtc_decoder"],
-		"ASTC Texture Support": ["astc_decomp"],
-	}
+		"fsb5",
+		"tex2img"
+	]
 )

@@ -18,45 +18,14 @@ A Unity asset extractor for Python based on [AssetStudio](https://github.com/Per
 
 **Python 3.6.0 or higher is required**
 
-## UnityPy
-
-### core package
 ```cmd
 pip install UnityPy
 ```
 
 or download/clone the git and use
+
 ```cmd
 python setup.py install
-```
-
-### optional packages
-
-* [python-fsb5](https://github.com/HearthSim/python-fsb5) - required to extract samples from AudioClips
-```cmd
-pip install fsb5
-```
-
-**Cython required**
-
-All of the following packages decompress specific texture formats and require [Cython](https://cython.org/).
-
-It's highly recommended to install the following modules to enjoy the full power of UnityPy.
-
-Windows users have to install [Microsoft Visual C++ 14.0 Build Tools Only](http://go.microsoft.com/fwlink/?LinkId=691126&fixForIE=.exe) to be able to use Cython.
-
-
-
-* [decrunch](https://github.com/HearthSim/decrunch) - crunch texture support
-* [etcpack](https://github.com/K0lb3/etcpack) - ETC texture support
-* [pvrtc_decoder](https://github.com/K0lb3/pvrtc_decoder) - PVRTC Texture Support
-* [astc_decomp](https://github.com/K0lb3/astc_decomp) - ASTC Texture Support
-
-```cmd
-pip install decrunch
-pip install etcpack
-pip install pvrtc_decoder
-pip install astc_decomp
 ```
 
 ## Example
@@ -108,6 +77,7 @@ People who have slightly advanced python skills should take a look at [AssetBatc
 
 AssetsManager loads and parses the files that are given to it.
 It can be initialized via:
+
 * a file path - apk files can be loaded as well
 * a folder path - loads all files in that folder (bad idea for folders with a lot of files)
 * a stream - e.g. io.BytesIO, filestream,...
@@ -186,20 +156,24 @@ e.g. via msgpack, protobuf
 ## Goals
 
 ### WIP
+
 * a documentation
 * the ability to edit assets (like in UABE)
 
 ### planned
+
 * support for more object types
 * code optimization
 * speed-ups via C-extensions
 * multiprocessing
 
 ## Motivation
+
 I'm an active data-miner and noticed that unitypack has problems with new unity assets.
 The problem in unitypack isn't that easy to fix and the undocumented code is a bit hard to understand.
 That's why I tried other tools like UABE and AssetStudio. Sadly none of these tools can be used like unitypack.
 That's why I started this project.
 
 ## Community
+
 [Discord](https://discord.gg/C6txv7M)
