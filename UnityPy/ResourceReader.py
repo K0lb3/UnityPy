@@ -1,6 +1,6 @@
 import os
 
-from .helpers.ImportHelper import find_all_files
+from .helpers import ImportHelper
 
 
 class ResourceReader:
@@ -45,7 +45,7 @@ class ResourceReader:
 			current_directory = os.path.dirname(self.assets_file.full_name)
 			resource_file_path = os.path.join(current_directory, resource_file_name)
 			if not os.path.isfile(resource_file_path):
-				find_files = find_all_files(current_directory, resource_file_name)
+				find_files = ImportHelper.find_all_files(current_directory, resource_file_name)
 				if find_files:
 					resource_file_path = find_files[0]
 

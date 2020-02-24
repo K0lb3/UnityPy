@@ -3,7 +3,7 @@ from enum import IntEnum
 from PIL import Image, ImageDraw
 
 from .Texture2DConverter import get_image_from_texture2d
-from ..streams import EndianBinaryReader
+from ..EndianBinaryReader import EndianBinaryReader
 
 
 # should be imported from Sprite, but too lazy to fix the import issues caused by that

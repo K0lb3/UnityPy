@@ -6,10 +6,24 @@ def test_import():
     import UnityPy
 
 def test_read():
-    pass
-
+    import UnityPy
+    for f in os.listdir(SAMPLES):
+        am = UnityPy.AssetsManager(os.path.join(SAMPLES, f))
+        for obj in am.objects.values():
+            obj.read()
+    
 def test_texture2d():
-    pass
+    import UnityPy
+    for f in os.listdir(SAMPLES):
+        am = UnityPy.AssetsManager(os.path.join(SAMPLES, f))
+        for obj in am.objects.values():
+            if obj.type == "Texture2D":
+                obj.read().image
 
 def test_sprite():
-    pass
+    import UnityPy
+    for f in os.listdir(SAMPLES):
+        am = UnityPy.AssetsManager(os.path.join(SAMPLES, f))
+        for obj in am.objects.values():
+            if obj.type == "Sprite":
+                obj.read().image
