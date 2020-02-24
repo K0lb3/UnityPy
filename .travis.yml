@@ -22,4 +22,4 @@ install:
 # 'python3' is a 'command not found' error on Windows but 'py' works on Windows only
 script: 
   - python3 setup.py install || python setup.py install
-#  - pytest -v
+  - pytest -v
