@@ -1,6 +1,5 @@
 from ..enums import BuildTarget
-from ..helpers import TypeTreeHelper
-
+from ..helpers.TypeTreeHelper import TypeTreeHelper
 
 class Object:
 	type_tree: dict
