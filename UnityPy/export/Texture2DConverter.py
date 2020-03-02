@@ -81,25 +81,11 @@ def pvrtc(image_data: bytes, width: int, height: int, fmt: int):
         image_data = tex2img.decompress_pvrtc(image_data, width, height, False)
     else:
         image_data = tex2img.basisu_decompress(image_data, width, height, fmt)
-
     return Image.frombytes("RGBA", (width, height), image_data, "raw", "RGBA")
 
 
-ETCPACK_TO_BASISU = {
-    0: 0,
-    1: 2,
-    3: 3
-}
-
-
 def etc(image_data: bytes, width: int, height: int, fmt: int):
-    # we're going to use basisu for this instead of ETCPACK to avoid the memory leak issue
-    if fmt == 4:
-        # basisu has no explicit support for this mode
-        image_data = tex2img.decompress_etc(image_data, width, height, fmt)
-    else:
-        image_data = tex2img.basisu_decompress(image_data, width, height, ETCPACK_TO_BASISU[fmt])
-
+    image_data = tex2img.decompress_etc(image_data, width, height, fmt)
     return Image.frombytes("RGBA", (width, height), image_data, "raw", "RGBA")
 
 
