@@ -86,7 +86,8 @@ def pvrtc(image_data: bytes, width: int, height: int, fmt: int):
 
 def etc(image_data: bytes, width: int, height: int, fmt: int):
     image_data = tex2img.decompress_etc(image_data, width, height, fmt)
-    return Image.frombytes("RGBA", (width, height), image_data, "raw", "RGBA")
+    mode = "RGBA" if fmt > 1 else "RGB"
+    return Image.frombytes(mode, (width, height), image_data, "raw", mode)
 
 
 
