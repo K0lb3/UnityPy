@@ -20,7 +20,7 @@ def test_texture2d():
         for asset in am.assets.values():
             for obj in asset.objects.values():
                 if obj.type == "Texture2D":
-                    obj.read().image
+                    obj.read().image.save("test.png")
 
 def test_sprite():
     import UnityPy
@@ -29,4 +29,4 @@ def test_sprite():
         for asset in am.assets.values():
             for obj in asset.objects.values():
                 if obj.type == "Sprite":
-                    obj.read().image
+                    obj.read().image.save("test.png")

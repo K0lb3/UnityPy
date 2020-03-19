@@ -39,7 +39,7 @@ def get_image(sprite, texture, alpha_texture) -> Image:
 def get_image_from_sprite(m_Sprite) -> Image:
     atlas = None
     if m_Sprite.m_SpriteAtlas:
-        atlas = m_Sprite.m_SpriteAtlas
+        atlas = m_Sprite.m_SpriteAtlas.read()
     elif m_Sprite.m_AtlasTags:
         # looks like the direct pointer is empty, let's try to find the Atlas via its name
         for obj in m_Sprite.assets_file.objects.values():
@@ -84,44 +84,37 @@ def get_image_from_sprite(m_Sprite) -> Image:
         # Tight
 
         # create mask to keep only the polygon
-        points = get_points(m_Sprite.m_RD)
-        points = normalize_points(points, m_Sprite.m_PixelsToUnits)
         mask = Image.new("1", sprite_image.size, color=0)
         draw = ImageDraw.ImageDraw(mask)
-        draw.polygon(points, fill=1)
+        for triangle in get_triangles(m_Sprite):
+            draw.polygon(triangle, fill=1)
 
         # apply the mask
-        empty_img = Image.new(sprite_image.mode, sprite_image.size, color=0)
-        sprite_image = Image.composite(sprite_image, empty_img, mask)
+        sprite_image.putalpha(mask)
 
     return sprite_image.transpose(Image.FLIP_TOP_BOTTOM)
 
 
-def normalize_points(points, mod):
-    min_x = min(p.X for p in points)
-    min_y = min(p.Y for p in points)
-    return [
-        ((p.X - min_x) * mod, (p.Y - min_y) * mod)
-        for p in points
-    ]
-
-
-def get_points(m_RD):
+def get_triangles(m_Sprite):
     """
-    returns the vertices of the sprite
+    returns the triangles of the sprite polygon
     """
+    m_RD = m_Sprite.m_RD
+    
+    # read the raw points
+    points = []
     if hasattr(m_RD, "vertices"):  # 5.6 down
         vertices = [v.pos for v in m_RD.vertices]
-    # points = [
-    #    vertices[index]
-    #    for index in range(m_RD.indices)
-    # ]
+        points = [
+            vertices[index]
+            for index in range(m_RD.indices)
+        ]
     else:  # 5.6 and up
         m_Channel = m_RD.m_VertexData.m_Channels[0]  # kShaderChannelVertex
         m_Stream = m_RD.m_VertexData.m_Streams[m_Channel.stream]
 
         vertexReader = EndianBinaryReader(m_RD.m_VertexData.m_DataSize, endian='<')
-        # indexReader = EndianBinaryReader(m_RD.m_IndexBuffer, endian='<')
+        indexReader = EndianBinaryReader(m_RD.m_IndexBuffer, endian='<')
 
         for subMesh in m_RD.m_SubMeshes:
             vertexReader.Position = m_Stream.offset + subMesh.firstVertex * m_Stream.stride + m_Channel.offset
@@ -131,9 +124,24 @@ def get_points(m_RD):
                 vertices.append(vertexReader.read_vector3())
                 vertexReader.Position = vertexReader.Position + m_Stream.stride - 12
 
-            # indexReader.Position = subMesh.firstByte
+            indexReader.Position = subMesh.firstByte
 
-            # for _ in range(subMesh.indexCount):
-            #    points.append(vertices[indexReader.read_u_short() - subMesh.firstVertex])
+            for _ in range(subMesh.indexCount):
+               points.append(vertices[indexReader.read_u_short() - subMesh.firstVertex])
 
-    return vertices
+    # normalize the points
+    #  shift the whole point matrix into the positive space
+    #  multiply them with a factor to scale them to the image
+    min_x = min(p.X for p in points)
+    min_y = min(p.Y for p in points)
+    factor = m_Sprite.m_PixelsToUnits
+    points = [
+        ((p.X - min_x) * factor, (p.Y - min_y) * factor)
+        for p in points
+    ]
+
+    # generate triangles from the given points
+    return [
+        points[i:i+3]
+        for i in range(0, len(points), 3)
+    ]
