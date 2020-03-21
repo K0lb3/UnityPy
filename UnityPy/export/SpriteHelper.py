@@ -90,7 +90,8 @@ def get_image_from_sprite(m_Sprite) -> Image:
             draw.polygon(triangle, fill=1)
 
         # apply the mask
-        sprite_image.putalpha(mask)
+        empty_img = Image.new(sprite_image.mode, sprite_image.size, color=0)
+        sprite_image = Image.composite(sprite_image, empty_img, mask)
 
     return sprite_image.transpose(Image.FLIP_TOP_BOTTOM)
 
