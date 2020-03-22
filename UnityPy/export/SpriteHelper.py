@@ -90,8 +90,14 @@ def get_image_from_sprite(m_Sprite) -> Image:
             draw.polygon(triangle, fill=1)
 
         # apply the mask
-        empty_img = Image.new(sprite_image.mode, sprite_image.size, color=0)
-        sprite_image = Image.composite(sprite_image, empty_img, mask)
+        if sprite_image.mode == "RGBA":
+            # the image already has an alpha channel,
+            # so we have to use composite to keep it 
+            empty_img = Image.new(sprite_image.mode, sprite_image.size, color=0)
+            sprite_image = Image.composite(sprite_image, empty_img, mask)
+        else:
+            # add mask as alpha-channel to keep the polygon clean
+            sprite_image.putalpha(mask)
 
     return sprite_image.transpose(Image.FLIP_TOP_BOTTOM)
 
