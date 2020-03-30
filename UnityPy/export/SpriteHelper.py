@@ -3,30 +3,32 @@ from enum import IntEnum
 from PIL import Image, ImageDraw
 
 from .Texture2DConverter import get_image_from_texture2d
-from ..EndianBinaryReader import EndianBinaryReader
+from ..streams import EndianBinaryReader
 
 
 # should be imported from Sprite, but too lazy to fix the import issues caused by that
 class SpritePackingRotation(IntEnum):
-    kSPRNone = 0,
-    kSPRFlipHorizontal = 1,
-    kSPRFlipVertical = 2,
-    kSPRRotate180 = 3,
+    kSPRNone = (0,)
+    kSPRFlipHorizontal = (1,)
+    kSPRFlipVertical = (2,)
+    kSPRRotate180 = (3,)
     kSPRRotate90 = 4
 
 
 class SpritePackingMode(IntEnum):
-    kSPMTight = 0,
+    kSPMTight = (0,)
     kSPMRectangle = 1
 
 
 def get_image(sprite, texture, alpha_texture) -> Image:
-    if alpha_texture and getattr(alpha_texture, 'type', '') == "Texture2D":
+    if alpha_texture and getattr(alpha_texture, "type", "") == "Texture2D":
         cache_id = (texture.path_id, alpha_texture.path_id)
         if cache_id not in sprite.assets_file._cache:
             original_image = get_image_from_texture2d(texture.read(), False)
             alpha_image = get_image_from_texture2d(alpha_texture.read(), False)
-            original_image = Image.merge('RGBA', (*original_image.split()[:3], alpha_image.split()[0]))
+            original_image = Image.merge(
+                "RGBA", (*original_image.split()[:3], alpha_image.split()[0])
+            )
             sprite.assets_file._cache[cache_id] = original_image
     else:
         cache_id = texture.path_id
@@ -46,9 +48,9 @@ def get_image_from_sprite(m_Sprite) -> Image:
             if obj.type == "SpriteAtlas":
                 atlas = obj.read()
                 if atlas.name == m_Sprite.m_AtlasTags[0]:
-                    break 
+                    break
                 atlas = None
-    
+
     if atlas:
         sprite_atlas_data = atlas.render_data_map[m_Sprite.m_RenderDataKey]
     else:
@@ -62,8 +64,9 @@ def get_image_from_sprite(m_Sprite) -> Image:
 
     original_image = get_image(m_Sprite, m_Texture2D, alpha_texture)
 
-    sprite_image = original_image.crop((texture_rect.left, texture_rect.top, texture_rect.right,
-                                        texture_rect.bottom))
+    sprite_image = original_image.crop(
+        (texture_rect.left, texture_rect.top, texture_rect.right, texture_rect.bottom)
+    )
 
     if settings_raw.packed == 1:
         rotation = settings_raw.packingRotation
@@ -92,7 +95,7 @@ def get_image_from_sprite(m_Sprite) -> Image:
         # apply the mask
         if sprite_image.mode == "RGBA":
             # the image already has an alpha channel,
-            # so we have to use composite to keep it 
+            # so we have to use composite to keep it
             empty_img = Image.new(sprite_image.mode, sprite_image.size, color=0)
             sprite_image = Image.composite(sprite_image, empty_img, mask)
         else:
@@ -107,24 +110,25 @@ def get_triangles(m_Sprite):
     returns the triangles of the sprite polygon
     """
     m_RD = m_Sprite.m_RD
-    
+
     # read the raw points
     points = []
     if hasattr(m_RD, "vertices"):  # 5.6 down
         vertices = [v.pos for v in m_RD.vertices]
-        points = [
-            vertices[index]
-            for index in range(m_RD.indices)
-        ]
+        points = [vertices[index] for index in range(m_RD.indices)]
     else:  # 5.6 and up
         m_Channel = m_RD.m_VertexData.m_Channels[0]  # kShaderChannelVertex
         m_Stream = m_RD.m_VertexData.m_Streams[m_Channel.stream]
 
-        vertexReader = EndianBinaryReader(m_RD.m_VertexData.m_DataSize, endian='<')
-        indexReader = EndianBinaryReader(m_RD.m_IndexBuffer, endian='<')
+        vertexReader = EndianBinaryReader(m_RD.m_VertexData.m_DataSize, endian="<")
+        indexReader = EndianBinaryReader(m_RD.m_IndexBuffer, endian="<")
 
         for subMesh in m_RD.m_SubMeshes:
-            vertexReader.Position = m_Stream.offset + subMesh.firstVertex * m_Stream.stride + m_Channel.offset
+            vertexReader.Position = (
+                m_Stream.offset
+                + subMesh.firstVertex * m_Stream.stride
+                + m_Channel.offset
+            )
 
             vertices = []
             for _ in range(subMesh.vertexCount):
@@ -134,7 +138,9 @@ def get_triangles(m_Sprite):
             indexReader.Position = subMesh.firstByte
 
             for _ in range(subMesh.indexCount):
-               points.append(vertices[indexReader.read_u_short() - subMesh.firstVertex])
+                points.append(
+                    vertices[indexReader.read_u_short() - subMesh.firstVertex]
+                )
 
     # normalize the points
     #  shift the whole point matrix into the positive space
@@ -142,13 +148,7 @@ def get_triangles(m_Sprite):
     min_x = min(p.X for p in points)
     min_y = min(p.Y for p in points)
     factor = m_Sprite.m_PixelsToUnits
-    points = [
-        ((p.X - min_x) * factor, (p.Y - min_y) * factor)
-        for p in points
-    ]
+    points = [((p.X - min_x) * factor, (p.Y - min_y) * factor) for p in points]
 
     # generate triangles from the given points
-    return [
-        points[i:i+3]
-        for i in range(0, len(points), 3)
-    ]
+    return [points[i : i + 3] for i in range(0, len(points), 3)]

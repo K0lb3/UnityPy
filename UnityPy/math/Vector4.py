@@ -1,22 +1,22 @@
 class Vector4:
-	X: float
-	Y: float
-	Z: float
-	W: float
+    X: float
+    Y: float
+    Z: float
+    W: float
 
-	def __init__(self, *args):
-		if len(args) == 4:  # float x, float y, float z, float w
-			self.X = args[0]
-			self.Y = args[1]
-			self.Z = args[2]
-			self.W = args[3]
-		elif len(args) == 2:  # Vector3 value, float w
-			self.X = args[0].X
-			self.Y = args[0].Y
-			self.Z = args[0].Z
-			self.W = args[1]
+    def __init__(self, *args):
+        if len(args) == 4:  # float x, float y, float z, float w
+            self.X = args[0]
+            self.Y = args[1]
+            self.Z = args[2]
+            self.W = args[3]
+        elif len(args) == 2:  # Vector3 value, float w
+            self.X = args[0].X
+            self.Y = args[0].Y
+            self.Z = args[0].Z
+            self.W = args[1]
 
-	"""
+    """
         public float this[int index]
         {
             get

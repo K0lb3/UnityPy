@@ -2,27 +2,27 @@ from math import sqrt
 
 
 class Vector3:
-	X: float
-	Y: float
-	Z: float
+    X: float
+    Y: float
+    Z: float
 
-	def __init__(self, *args):
-		if len(args) == 3 or len(args) == 1 and isinstance(args[0], (tuple, list)):
-			self.X, self.Y, self.Z = args
-		elif len(args) == 1:
-			# dirty patch for Vector4
-			self.__dict__ = args[0].__dict__
+    def __init__(self, *args):
+        if len(args) == 3 or len(args) == 1 and isinstance(args[0], (tuple, list)):
+            self.X, self.Y, self.Z = args
+        elif len(args) == 1:
+            # dirty patch for Vector4
+            self.__dict__ = args[0].__dict__
 
-	def length(self) -> float:
-		return sqrt(self.X ** 2 + self.Y ** 2 + self.Z ** 2)
+    def length(self) -> float:
+        return sqrt(self.X ** 2 + self.Y ** 2 + self.Z ** 2)
 
-	def normalize(self):
-		length = self.length()
+    def normalize(self):
+        length = self.length()
 
-		invNorm = 1.0 / length
-		self.X *= invNorm
-		self.Y *= invNorm
-		self.Z *= invNorm
+        invNorm = 1.0 / length
+        self.X *= invNorm
+        self.Y *= invNorm
+        self.Z *= invNorm
 
 
 """

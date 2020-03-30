@@ -1,7 +1,7 @@
 import io
 import struct
 
-from .math import Color, Matrix4x4, Quaternion, Vector2, Vector3, Vector4, Rectangle
+from ..math import Color, Matrix4x4, Quaternion, Vector2, Vector3, Vector4, Rectangle
 
 
 class EndianBinaryWriter:
@@ -13,7 +13,7 @@ class EndianBinaryWriter:
     def __init__(self, input_=b"", endian=">"):
         if isinstance(input_, (bytes, bytearray)):
             self.stream = io.BytesIO(input_)
-            self.stream = input_
+            self.stream.seek(0, 2)
         else:
             raise ValueError("Invalid input type - %s." % type(input_))
         self.endian = endian
@@ -39,8 +39,9 @@ class EndianBinaryWriter:
     def write(self, *args):
         if self.Position != self.stream.tell():
             self.stream.seek(self.Position)
-        self.stream.write(*args)
+        ret = self.stream.write(*args)
         self.Position = self.stream.tell()
+        return ret
 
     def write_byte(self, value: int):
         self.write(struct.pack(self.endian + "b", value))

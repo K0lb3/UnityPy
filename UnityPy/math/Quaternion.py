@@ -1,14 +1,14 @@
 class Quaternion:
-	X: float
-	Y: float
-	Z: float
-	W: float
+    X: float
+    Y: float
+    Z: float
+    W: float
 
-	def __init__(self, x: float, y: float, z: float, w: float):
-		self.X = x
-		self.Y = y
-		self.Z = z
-		self.W = w
+    def __init__(self, x: float, y: float, z: float, w: float):
+        self.X = x
+        self.Y = y
+        self.Z = z
+        self.W = w
 
 
 """

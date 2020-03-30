@@ -1,7 +1,7 @@
 import io
 import struct
 
-from .math import Color, Matrix4x4, Quaternion, Vector2, Vector3, Vector4, Rectangle
+from ..math import Color, Matrix4x4, Quaternion, Vector2, Vector3, Vector4, Rectangle
 
 
 class EndianBinaryReader:
@@ -45,6 +45,16 @@ class EndianBinaryReader:
         ret = self.read()
         self.Position = last_pos
         return ret
+
+    def __add__(self, value):
+        if isinstance(value, (bytes, bytearray)):
+            old_pos = self.Position
+            self.Position = self.Length
+            self.stream.write(value)
+            self.Length += len(value)
+            self.Position = old_pos
+        else:
+            raise ValueError("Invalid Input")
 
     def dispose(self):
         self.stream.close()
@@ -182,3 +192,6 @@ class EndianBinaryReader:
 
     def read_matrix_array(self):
         return self.read_array(self.read_matrix, self.read_int())
+
+    def read_u_int_array_array(self):
+        return self.read_array(self.read_u_int_array, self.read_int())

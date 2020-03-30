@@ -1,13 +1,12 @@
 class Matrix4x4:
-	M: list
+    M: list
 
-	def __init__(self, values):
-		if len(values) != 16:
-			raise ValueError("There must be sixteen and only sixteen input values for Matrix.")
-		self.M = [
-			values[i * 4:i * 4 + 4]
-			for i in range(0, 4)
-		]
+    def __init__(self, values):
+        if len(values) != 16:
+            raise ValueError(
+                "There must be sixteen and only sixteen input values for Matrix."
+            )
+        self.M = [values[i * 4 : i * 4 + 4] for i in range(0, 4)]
 
 
 """

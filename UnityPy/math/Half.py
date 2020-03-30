@@ -1,6 +1,6 @@
 import struct
 
-import math
+from UnityPy import math
 
 # import binascii
 
@@ -11,7 +11,7 @@ MinValue = -65504.0
 
 
 def ToHalf(*args) -> float:
-	"""
+    """
 	Converts the input into a half-float.
 	Inputs:
 		unsigned integer
@@ -19,21 +19,22 @@ def ToHalf(*args) -> float:
 		buffer (bytes, buffer)
 		offset
 	"""
-	# int input -> pack as UInt16
-	if len(args) == 1:
-		data = struct.pack('H', args[0])
-		val = struct.unpack('e', data)[0]
-	# buffer input
-	elif len(args) == 2:
-		val = struct.unpack_from('e', args[0], args[1])[0]
+    # int input -> pack as UInt16
+    if len(args) == 1:
+        data = struct.pack("H", args[0])
+        val = struct.unpack("e", data)[0]
+    # buffer input
+    elif len(args) == 2:
+        val = struct.unpack_from("e", args[0], args[1])[0]
 
-	if math.isnan(val):
-		# print('Nan')
-		return 0
-	elif math.isinf(val):
-		return MaxValue
+    if math.isnan(val):
+        # print('Nan')
+        return 0
+    elif math.isinf(val):
+        return MaxValue
 
-	return val
+    return val
+
 
 # #CONSTANTS
 # Epsilon = ToHalf(0x0001)
