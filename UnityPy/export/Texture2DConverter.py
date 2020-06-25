@@ -1,6 +1,6 @@
 ﻿from sys import platform
 
-import tex2img
+import texture2ddecoder
 from PIL import Image
 
 from ..enums import TextureFormat, BuildTarget
@@ -33,7 +33,13 @@ def get_image_from_texture2d(texture_2d, flip=True) -> Image:
         image_data = swap_bytes_for_xbox(image_data, texture_2d.platform)
 
     if "Crunched" in texture_format.name:
-        image_data = tex2img.crunch_unpack_level(image_data, 0)
+        version = texture_2d.version
+        if (version[0] > 2017 or (version[0] == 2017 and version[1] >= 3) #2017.3 and up
+            or texture_format == TextureFormat.ETC_RGB4Crunched
+            or texture_format == TextureFormat.ETC2_RGBA8Crunched):
+            image_data = texture2ddecoder.unpack_unity_crunch(image_data)
+        else:
+            image_data = texture2ddecoder.unpack_crunch(image_data)
 
     img = selection[0](
         image_data, texture_2d.m_Width, texture_2d.m_Height, *selection[1:]
@@ -78,29 +84,48 @@ def pillow(
 
 
 def atc(image_data: bytes, width: int, height: int, alpha: bool) -> Image:
-    image_data = tex2img.decompress_atc(image_data, width, height, alpha)
-    mode = "RGBA" if alpha else "RGB"
-    return Image.frombytes(mode, (width, height), image_data, "raw", mode)
+    if alpha:
+        image_data = texture2ddecoder.decode_atc_rgba8(image_data, width, height, alpha)
+    else:
+        image_data = texture2ddecoder.decode_atc_rgb4(image_data, width, height)
+
+    return Image.frombytes("RGBA", (width, height), image_data, "raw", "BGRA")
 
 
 def astc(image_data: bytes, width: int, height: int, block_size: tuple) -> Image:
-    image_data = tex2img.decompress_astc(image_data, width, height, *block_size, False)
-    return Image.frombytes("RGBA", (width, height), image_data, "raw", "RGBA")
+    image_data = texture2ddecoder.decode_astc(image_data, width, height, *block_size)
+    return Image.frombytes("RGBA", (width, height), image_data, "raw", "BGRA")
 
 
-def pvrtc(image_data: bytes, width: int, height: int, fmt: int):
-    if platform == "darwin" or PREFER_BASISU:
-        image_data = tex2img.decompress_pvrtc(image_data, width, height, False)
+def pvrtc(image_data: bytes, width: int, height: int, fmt: bool):
+    image_data = texture2ddecoder.decode_pvrtc(image_data, width, height, fmt)
+    return Image.frombytes("RGBA", (width, height), image_data, "raw", "BGRA")
+
+
+def etc(image_data: bytes, width: int, height: int, fmt: list):
+    if fmt[0] == 1:
+        image_data = texture2ddecoder.decode_etc1(image_data, width, height)
+    elif fmt[0] == 2:
+        if fmt[1] == "RGB":
+            image_data = texture2ddecoder.decode_etc2(image_data, width, height)
+        elif fmt[1] == "A1":
+            image_data = texture2ddecoder.decode_etc2a1(image_data, width, height)
+        elif fmt[1] == "A8":
+            image_data = texture2ddecoder.decode_etc2a8(image_data, width, height)
     else:
-        image_data = tex2img.basisu_decompress(image_data, width, height, fmt)
+        raise NotImplementedError("unknown etc mode")
+    return Image.frombytes("RGBA", (width, height), image_data, "raw", "BGRA")
 
-    return Image.frombytes("RGBA", (width, height), image_data, "raw", "RGBA")
-
-
-def etc(image_data: bytes, width: int, height: int, fmt: int):
-    image_data = tex2img.decompress_etc(image_data, width, height, fmt)
-    mode = "RGBA" if fmt > 1 else "RGB"
-    return Image.frombytes(mode, (width, height), image_data, "raw", mode)
+def eac(image_data: bytes, width: int, height: int, fmt: list):
+    if fmt == "EAC_R":
+        image_data = texture2ddecoder.decode_eacr(image_data, width, height)
+    elif fmt == "EAC_R_SIGNED":
+        image_data = texture2ddecoder.decode_eacr_signed(image_data, width, height)
+    elif fmt == "EAC_RG":
+        image_data = texture2ddecoder.decode_eacrg(image_data, width, height)
+    elif fmt == "EAC_RG_SIGNED":
+        image_data = texture2ddecoder.decode_eacrg_signed(image_data, width, height)
+    return Image.frombytes("RGBA", (width, height), image_data, "raw", "BGRA")
 
 
 
@@ -132,20 +157,20 @@ CONV_TABLE = {
 (  TF.BC7,                 pillow,  "RGBA",  "bcn",       7                                     ),
 (  TF.DXT1Crunched,        pillow,  "RGBA",  "bcn",       1                                     ),
 (  TF.DXT5Crunched,        pillow,  "RGBA",  "bcn",       3                                     ),
-(  TF.PVRTC_RGB2,          pvrtc,   11                                                          ),
-(  TF.PVRTC_RGBA2,         pvrtc,   12                                                          ),
-(  TF.PVRTC_RGB4,          pvrtc,   11                                                          ),
-(  TF.PVRTC_RGBA4,         pvrtc,   12                                                          ),
+(  TF.PVRTC_RGB2,          pvrtc,   False                                                       ),
+(  TF.PVRTC_RGBA2,         pvrtc,   True                                                        ),
+(  TF.PVRTC_RGB4,          pvrtc,   False                                                       ),
+(  TF.PVRTC_RGBA4,         pvrtc,   True                                                        ),
 (  TF.ETC_RGB4,            etc,     0                                                           ),
 (  TF.ATC_RGB4,            atc,     False                                                       ),
 (  TF.ATC_RGBA8,           atc,     True                                                        ),
-(  TF.EAC_R,                                                                                    ),
-(  TF.EAC_R_SIGNED,                                                                             ),
-(  TF.EAC_RG,                                                                                   ),
-(  TF.EAC_RG_SIGNED,                                                                            ),
-(  TF.ETC2_RGB,            etc,     1                                                           ),
-(  TF.ETC2_RGBA1,          etc,     4                                                           ),
-(  TF.ETC2_RGBA8,          etc,     3                                                           ),
+(  TF.EAC_R,               eac,     "EAC_R"                                                     ),
+(  TF.EAC_R_SIGNED,        eac,     "EAC_R:SIGNED"                                              ),
+(  TF.EAC_RG,              eac,     "EAC_RG"                                                    ),
+(  TF.EAC_RG_SIGNED,       eac,     "EAC_RG_SIGNED"                                             ),
+(  TF.ETC2_RGB,            etc,     (2,"RGB")                                                   ),
+(  TF.ETC2_RGBA1,          etc,     (2, "A1")                                                   ),
+(  TF.ETC2_RGBA8,          etc,     (2, "A8")                                                   ),
 (  TF.ASTC_RGB_4x4,        astc,    (4,4)                                                       ),
 (  TF.ASTC_RGB_5x5,        astc,    (5,5)                                                       ),
 (  TF.ASTC_RGB_6x6,        astc,    (6,6)                                                       ),
@@ -158,12 +183,12 @@ CONV_TABLE = {
 (  TF.ASTC_RGBA_8x8,       astc,    (8,8)                                                       ),
 (  TF.ASTC_RGBA_10x10,     astc,    (10,10)                                                     ),
 (  TF.ASTC_RGBA_12x12,     astc,    (12,12)                                                     ),
-(  TF.ETC_RGB4_3DS,        etc,     0                                                           ),
-(  TF.ETC_RGBA8_3DS,       etc,     3                                                           ),
+(  TF.ETC_RGB4_3DS,        etc,     (1)                                                         ),
+(  TF.ETC_RGBA8_3DS,       etc,     (1)                                                         ),
 (  TF.RG16,                                                                                     ),
 (  TF.R8,                  pillow,  "RGB",   "raw",       "R"                                   ),
-(  TF.ETC_RGB4Crunched,    etc,     0                                                           ),
-(  TF.ETC2_RGBA8Crunched,  etc,     3                                                           ),
+(  TF.ETC_RGB4Crunched,    etc,     (1)                                                         ),
+(  TF.ETC2_RGBA8Crunched,  etc,     (2, "A8")                                                   ),
 (  TF.ASTC_HDR_4x4,        astc,    (4,4)                                                       ),
 (  TF.ASTC_HDR_5x5,        astc,    (5,5)                                                       ),
 (  TF.ASTC_HDR_6x6,        astc,    (6,6)                                                       ),

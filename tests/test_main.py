@@ -30,3 +30,9 @@ def test_sprite():
             for obj in asset.objects.values():
                 if obj.type == "Sprite":
                     obj.read().image.save("test.png")
+
+if __name__ == "__main__":
+    for x in list(locals()):
+        if str(x)[:4] == "test":
+            locals()[x]()
+    input("All Tests Passed")

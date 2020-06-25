@@ -100,7 +100,7 @@ class Environment:
     def objects(self):
         def search(item):
             ret = []
-            print(type(item))
+            #print(type(item))
             if not isinstance(item, Environment) and getattr(item, "objects", None):
                 # serialized file
                 return [val for val in item.objects.values()]
