@@ -54,7 +54,7 @@ class AudioClip(NamedObject):
                 self.m_Source, self.assets_file, m_Offset, m_Size
             )
         else:
-            self.m_AudioData = reader.read(m_Size)
+            self.m_AudioData = reader.read_bytes(m_Size)
 
     @property
     def samples(self) -> dict:
