@@ -2,6 +2,7 @@
 
 import texture2ddecoder
 from PIL import Image
+from copy import copy
 
 from ..enums import TextureFormat, BuildTarget
 
@@ -19,7 +20,7 @@ def get_image_from_texture2d(texture_2d, flip=True) -> Image:
     :return: PIL.Image object
     :rtype: Image
     """
-    image_data = texture_2d.image_data
+    image_data = copy(texture_2d.image_data)
     texture_format = texture_2d.m_TextureFormat
 
     selection = CONV_TABLE[texture_format]

@@ -10,9 +10,7 @@ class VideoClip(NamedObject):
         self.proxy_height = reader.read_u_int()
         self.width = reader.read_u_int()
         self.height = reader.read_u_int()
-        if self.version[0] > 2017 or (
-            self.version[0] == 2017 and self.version[1] >= 2
-        ):  # 2017.2 and up
+        if self.version >= (2017, 2):  # 2017.2 and up
             self.pixel_aspec_ratio_num = reader.read_u_int()
             self.pixel_aspec_ratio_den = reader.read_u_int()
         self.frame_rate = reader.read_double()

@@ -18,19 +18,19 @@ class CompressedMesh:
         version = reader.version
         self.m_Vertices = PackedFloatVector(reader)
         self.m_UV = PackedFloatVector(reader)
-        if version[0] < 5:
+        if version < (5,): # 5 down
             self.m_BindPoses = PackedFloatVector(reader)
         self.m_Normals = PackedFloatVector(reader)
         self.m_Tangents = PackedFloatVector(reader)
         self.m_Weights = PackedIntVector(reader)
         self.m_NormalSigns = PackedIntVector(reader)
         self.m_TangentSigns = PackedIntVector(reader)
-        if version[0] >= 5:
+        if version >= (5,):  # 5 and up
             self.m_FloatColors = PackedFloatVector(reader)
         self.m_BoneIndices = PackedIntVector(reader)
         self.m_Triangles = PackedIntVector(reader)
-        if version[0] > 3 or (version[0] == 3 and version[1] >= 5):  # 3.5 and up
-            if version[0] < 5:
+        if version >= (3, 5):  # 3.5 and up
+            if version < (5,): # 5 down
                 self.m_Colors = PackedIntVector(reader)
             else:
                 self.m_UVInfo = reader.read_u_int()
@@ -44,7 +44,7 @@ class StreamInfo:
             self.channelMask = reader.read_u_int()
             self.offset = reader.read_u_int()
 
-            if version[0] < 4:  # 4.0 down
+            if version < (4,):  # 4.0 down
                 self.stride = reader.read_u_int()
                 self.align = reader.read_u_int()
             else:
@@ -68,24 +68,24 @@ class VertexData:
         self.reader = reader
         version = reader.version
 
-        if version[0] < 2018:  # 2018 down
+        if version < (2018,):  # 2018 down
             self.m_CurrentChannels = reader.read_u_int()
 
         self.m_VertexCount = reader.read_u_int()
 
-        if version[0] >= 4:  # 4.0 and up
+        if version >= (4,):  # 4.0 and up
             m_ChannelsSize = reader.read_int()
             self.m_Channels = [ChannelInfo(reader) for _ in range(m_ChannelsSize)]
 
-        if version[0] < 5:  # 5.0 down
-            if version[0] < 4:  #
+        if version < (5,):  # 5.0 down
+            if version < (4,):  # 4.0 down
                 m_StreamsSize = 4
             else:
                 m_StreamsSize = reader.read_int()
 
             self.m_Streams = [StreamInfo(reader=reader) for _ in range(m_StreamsSize)]
 
-            if version[0] < 4:  # 4.0 down
+            if version < (4,):  # 4.0 down
                 self.GetChannels()
         else:  # 5.0 and up
             self.GetStreams()
@@ -205,16 +205,16 @@ class MeshBlendShape:
     def __init__(self, reader):
         version = reader.version
 
-        if version[0] == 4 and version[1] < 3:  # 4.3 down
+        if version < (4, 3):  # 4.3 down
             self.name = reader.read_aligned_string()
         self.firstVertex = reader.read_u_int()
         self.vertexCount = reader.read_u_int()
-        if version[0] == 4 and version[1] < 3:  # 4.3 down
+        if version < (4, 3):  # 4.3 down
             self.aabbMinDelta = reader.read_vector3()
             self.aabbMaxDelta = reader.read_vector3()
         self.hasNormals = reader.read_boolean()
         self.hasTangents = reader.read_boolean()
-        if version[0] > 4 or (version[0] == 4 and version[1] >= 3):  # 4.3 and up
+        if version >= (4, 3):  # 4.3 and up
             reader.align_stream()
 
 
@@ -230,7 +230,7 @@ class BlendShapeData:
     def __init__(self, reader):
         version = reader.version
 
-        if version[0] > 4 or (version[0] == 4 and version[1] >= 3):  # 4.3 and up
+        if version >= (4, 3):  # 4.3 and up
             numVerts = reader.read_int()
             self.vertices = [BlendShapeVertex(reader) for _ in range(numVerts)]
 
@@ -258,15 +258,13 @@ class SubMesh:
         self.indexCount = reader.read_u_int()
         self.topology = reader.read_int()
 
-        if version[0] < 4:  # 4.0 down
+        if version < (4,):  # 4.0 down
             self.triangleCount = reader.read_u_int()
 
-        if version[0] > 2017 or (
-            version[0] == 2017 and version[1] >= 3
-        ):  # 2017.3 and up
+        if version >= (2017, 3):  # 2017.3 and up
             self.baseVertex = reader.read_u_int()
 
-        if version[0] >= 3:  # 3.0 and up
+        if version >= (3,):  # 3.0 and up
             self.firstVertex = reader.read_u_int()
             self.vertexCount = reader.read_u_int()
             self.localAABB = AABB(reader)
@@ -282,10 +280,10 @@ class Mesh(NamedObject):
         self.m_Use16BitIndices = True
         self.m_Indices = []
 
-        if version[0] < 3 or (version[0] == 3 and version[1] < 5):  # 3.5 down
+        if version < (3, 5):  # 3.5 down
             self.m_Use16BitIndices = reader.read_int() > 0
 
-        if version[0] == 2 and version[1] <= 5:  # 2.5 and down
+        if version[:2] <= (2, 5):  # 2.5 and down
             m_IndexBuffer_size = reader.read_int()
 
             if self.m_Use16BitIndices:  #
@@ -300,23 +298,23 @@ class Mesh(NamedObject):
         m_SubMeshesSize = reader.read_int()
         self.m_SubMeshes = [SubMesh(reader) for _ in range(m_SubMeshesSize)]
 
-        if version[0] > 4 or (version[0] == 4 and version[1] >= 1):  # 4.1 and up
+        if version >= (4, 1):  # 4.1 and up
             self.m_Shapes = BlendShapeData(reader)
 
-        if version[0] > 4 or (version[0] == 4 and version[1] >= 3):  # 4.3 and up
+        if version >= (4, 3):  # 4.3 and up
             self.m_BindPose = reader.read_matrix_array()
             self.m_BoneNameHashes = reader.read_u_int_array()
             self.m_RootBoneNameHash = reader.read_u_int()
 
-        if version[0] > 2 or (version[0] == 2 and version[1] >= 6):  # 2.6.0 and up
-            if version[0] >= 2019:  # 2019 and up
+        if version >= (2, 6):  # 2.6.0 and up
+            if version >= (2019,):  # 2019 and up
                 m_BonesAABBSize = reader.read_int()
                 self.m_BonesAABB = [MinMaxAABB(reader) for _ in range(m_BonesAABBSize)]
                 self.m_VariableBoneCountWeights = reader.read_u_int_array()
 
             self.m_MeshCompression = reader.read_byte()
-            if version[0] >= 4:  #
-                if version[0] < 5:  #
+            if version >= (4,):  #
+                if version < (5,):  #
                     self.m_StreamCompression = reader.read_byte()
                 self.m_IsReadable = reader.read_boolean()
                 self.m_KeepVertices = reader.read_boolean()
@@ -325,18 +323,10 @@ class Mesh(NamedObject):
 
             # Unity fixed it in 2017.3.1p1 and later versions
             if (
-                (
-                    version[0] > 2017 or (version[0] == 2017 and version[1] >= 4)
-                )  # 2017.4
-                or (
-                    (version[0] == 2017 and version[1] == 3 and version[2] == 1)
-                    and self.build_type.IsPatch
-                )  # fixed after 2017.3.1px
-                or (
-                    (version[0] == 2017 and version[1] == 3)
-                    and self.m_MeshCompression == 0
-                )
-            ):  # 2017.3.xfx with no compression
+                version >= (2017, 4)  # 2017.4
+                or version[:3] == (2017, 3, 1) and self.build_type.IsPatch # fixed after 2017.3.1px
+                or version[:2] == (2017, 3) and self.m_MeshCompression == 0 # 2017.3.xfx with no compression
+            ):
                 self.m_IndexFormat = reader.read_int()
 
             m_IndexBuffer_size = reader.read_int()
@@ -348,7 +338,7 @@ class Mesh(NamedObject):
             else:
                 self.m_IndexBuffer = reader.read_u_int_array(m_IndexBuffer_size // 4)
 
-        if version[0] < 3 or (version[0] == 3 and version[1] < 5):  # 3.4.2 and earlier
+        if version < (3, 5):  # 3.4.2 and earlier
             m_VertexCount = reader.read_int()
             self.m_Vertices = reader.read_float_array(m_VertexCount * 3)  # Vector3
 
@@ -359,7 +349,7 @@ class Mesh(NamedObject):
             self.m_UV0 = reader.read_float_array(reader.read_int() * 2)  # Vector2
             self.m_UV1 = reader.read_float_array(reader.read_int() * 2)  # Vector2
 
-            if version[0] == 2 and version[1] <= 5:  # 2.5 and down
+            if version[:2] <= (2, 5):  # 2.5 and down
                 m_TangentSpace_size = reader.read_int()
                 self.m_Normals = [0] * (m_TangentSpace_size * 3)
                 self.m_Tangets = [0] * (m_TangentSpace_size * 4)
@@ -379,23 +369,21 @@ class Mesh(NamedObject):
                     reader.read_int() * 3
                 )  # Vector3
         else:
-            if version[0] < 2018 or (
-                version[0] == 2018 and version[1] < 2
-            ):  # 2018.2 down
+            if version < (2018, 2):  # 2018.2 down
                 m_SkinSize = reader.read_int()
                 self.m_Skin = [BoneWeights4(reader) for _ in range(m_SkinSize)]
 
-            if version[0] == 3 or (version[0] == 4 and version[1] <= 2):  # 4.2 and down
+            if version[:2] <= (4, 2):  # 4.2 and down
                 self.m_BindPose = reader.read_matrix_array()
 
             self.m_VertexData = VertexData(reader)
 
-        if version[0] > 2 or (version[0] == 2 and version[1] >= 6):  # 2.6.0 and later
+        if version >= (2, 6):  # 2.6.0 and later
             self.m_CompressedMesh = CompressedMesh(reader)
 
         self.m_LocalAABB = AABB(reader)
 
-        if version[0] < 3 or (version[0] == 3 and version[1] <= 4):  # 3.4.2 and earlier
+        if version[:2] <= (3, 4):  # 3.4.2 and earlier
             m_Colors_size = reader.read_int()
             self.mColors = [
                 reader.read_byte()  # (float)reader.read_byte() / 0xFF
@@ -408,20 +396,16 @@ class Mesh(NamedObject):
 
         self.m_MeshUsageFlags = reader.read_int()
 
-        if version[0] >= 5:  # 5.0 and up
+        if version >= (5,):  # 5.0 and up
             self.m_BakedConvexCollisionMesh = reader.read_bytes(reader.read_int())
             reader.align_stream()
             self.m_BakedTriangleCollisionMesh = reader.read_bytes(reader.read_int())
             reader.align_stream()
 
-        if version[0] > 2018 or (
-            version[0] == 2018 and version[1] >= 2
-        ):  # 2018.2 and up
+        if version >= (2018, 2):  # 2018.2 and up
             self.m_MeshMetrics = [reader.read_float(), reader.read_float()]
 
-        if version[0] > 2018 or (
-            version[0] == 2018 and version[1] >= 3
-        ):  # 2018.3 and up
+        if version >= (2018, 3):  # 2018.3 and up
             reader.align_stream()
             self.m_StreamData = StreamingInfo(reader)
 
@@ -441,12 +425,12 @@ class Mesh(NamedObject):
                 )
         # Fix channel after 2018.3
         version = self.version
-        if version[0] > 2018 or (version[0] == 2018 and version[1] >= 3):  #
+        if version >= (2018, 3):  #
             self.m_VertexData.FixChannel()
-        if version[0] > 3 or (version[0] == 3 and version[1] >= 5):  # 3.5 and up
+        if version >= (3, 5):  # 3.5 and up
             self.ReadVertexData()
 
-        if version[0] > 2 or (version[0] == 2 and version[1] >= 6):  # 2.6.0 and later
+        if version >= (2, 6):  # 2.6.0 and later
             self.DecompressCompressedMesh()
 
         self.BuildFaces()
@@ -459,7 +443,7 @@ class Mesh(NamedObject):
                 m_Stream = self.m_VertexData.m_Streams[m_Channel.stream]
                 channelMask = bytearray(m_Stream.channelMask)
                 if channelMask[chn]:
-                    if version[0] < 2018 and chn == 2 and m_Channel.format == 2:  #
+                    if version < (2018,) and chn == 2 and m_Channel.format == 2: # 2018.0 down
                         m_Channel.dimension = 4
 
                     componentByteSize = MeshHelper.GetChannelFormatSize(
@@ -500,7 +484,7 @@ class Mesh(NamedObject):
                             componentBytes, componentByteSize
                         )
 
-                    if version[0] >= 2018:  #
+                    if version >= (2018,): # 2018.0 and up
                         if chn == 0:  # kShaderChannelVertex
                             self.m_Vertices = componentsFloatArray
                         elif chn == 1:  # kShaderChannelNormal
@@ -551,7 +535,7 @@ class Mesh(NamedObject):
                         elif chn == 4:  # kShaderChannelTexCoord1
                             self.m_UV1 = componentsFloatArray
                         elif chn == 5:
-                            if version[0] >= 5:  # kShaderChannelTexCoord2
+                            if version >= (5,):  # kShaderChannelTexCoord2
                                 self.m_UV2 = componentsFloatArray
                             else:  # kShaderChannelTangent
                                 self.m_Tangents = componentsFloatArray
@@ -583,7 +567,7 @@ class Mesh(NamedObject):
                     2, 4, m_VertexCount * 6, m_VertexCount
                 )
         # BindPose
-        if version[0] < 5:  #
+        if version < (5,): # 5.0 down
             if m_CompressedMesh.m_BindPoses.m_NumItems > 0:  #
                 m_BindPoses_Unpacked = m_CompressedMesh.m_BindPoses.UnpackFloats(
                     16, 4 * 16
@@ -640,7 +624,7 @@ class Mesh(NamedObject):
                 self.m_Tangents.extend([x, y, z, w])
 
         # FloatColor
-        if version[0] >= 5:  #
+        if version >= (5,): # 5.0 and up
             if m_CompressedMesh.m_FloatColors.m_NumItems > 0:  #
                 self.m_Colors = m_CompressedMesh.m_FloatColors.UnpackFloats(1, 4)
         # Skin
@@ -725,6 +709,7 @@ class Mesh(NamedObject):
 
 
 class MeshHelper:
+    @staticmethod
     def GetChannelFormatSize(format):
         if format == 0:  # kChannelFormatFloat
             return 4
@@ -743,6 +728,7 @@ class MeshHelper:
         else:
             return 0
 
+    @staticmethod
     def BytesToFloatArray(inputBytes, size):
         result = []
         for i in range(math.ceil(len(inputBytes) / size)):
@@ -760,6 +746,7 @@ class MeshHelper:
             result[i] = value
         return result
 
+    @staticmethod
     def BytesToIntArray(inputBytes):
         return [
             int.from_bytes(inputBytes[i : i + 4], byteorder="big", signed=True)

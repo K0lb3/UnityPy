@@ -211,7 +211,7 @@ class SerializedFile(File):
 
         self.userInformation = reader.read_string_to_null()
         if header.version >= 21:
-            self.unknown = reader.ReadInt32()
+            self.unknown = reader.read_int()
 
         # read the asset_bundles to get the containers
         old_pos = reader.Position
@@ -234,7 +234,7 @@ class SerializedFile(File):
         self.unity_version = string_version
         self.build_type = BuildType(re.findall(r"([^\d.])", string_version)[0])
         version_split = re.split(r"\D", string_version)
-        self.version = [int(x) for x in version_split]
+        self.version = tuple(int(x) for x in version_split)
 
     def read_serialized_type(self):
         type_ = SerializedType()

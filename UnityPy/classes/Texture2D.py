@@ -30,7 +30,7 @@ class Texture2D(Texture):
         self.m_Height = reader.read_int()
         self.m_CompleteImageSize = reader.read_int()
         self.m_TextureFormat = TextureFormat(reader.read_int())
-        if version[0] < 5 or (version[0] == 5 and version[1] < 2):  # 5.2 down
+        if version[:2] <= (5, 2):  # 5.2 down
             self.m_MipMap = reader.read_boolean()
         else:
             self.m_MipCount = reader.read_int()
@@ -38,30 +38,25 @@ class Texture2D(Texture):
         self.m_ReadAllowed = reader.read_boolean()  # 3.0.0 - 5.4
         # bool m_StreamingMipmaps 2018.2 and up
         reader.align_stream()
-        if version[0] > 2018 or (
-            version[0] == 2018 and version[1] >= 2
-        ):  # 2018.2 and up
+        if version >= (2018, 2):  # 2018.2 and up
             self.m_StreamingMipmapsPriority = reader.read_int()
         self.m_ImageCount = reader.read_int()
         self.m_TextureDimension = reader.read_int()
         self.m_TextureSettings = GLTextureSettings(reader)
-        if version[0] >= 3:  # 3.0 and up
+        if version >= (3, ):  # 3.0 and up
             self.m_LightmapFormat = reader.read_int()
-        if version[0] > 3 or (version[0] == 3 and version[1] >= 5):  # 3.5.0 and up
+        if version >= (3, 5):  # 3.5.0 and up
             self.m_ColorSpace = reader.read_int()
 
         image_data_size = reader.read_int()
         self.image_data = b""
-        if image_data_size == 0 and (
-            (version[0] == 5 and version[1] >= 3) or version[0] > 5
-        ):  # 5.3.0 and up
-            m_StreamData = StreamingInfo(reader)
-
+        if image_data_size == 0 and version >= (5, 3):  # 5.3.0 and up
+            self.m_StreamData = StreamingInfo(reader)
             self.image_data = get_resource_data(
-                m_StreamData.path,
+                self.m_StreamData.path,
                 self.assets_file,
-                m_StreamData.offset,
-                m_StreamData.size,
+                self.m_StreamData.offset,
+                self.m_StreamData.size,
             )
         else:
             self.image_data = reader.read_bytes(image_data_size)
@@ -75,7 +70,7 @@ class Texture2D(Texture):
         writer.write_int(self.m_Height)
         writer.write_int(self.m_CompleteImageSize)
         writer.write_int(int(self.m_TextureFormat))
-        if version[0] < 5 or (version[0] == 5 and version[1] < 2):  # 5.2 down
+        if version < (5, 2):  # 5.2 down
             writer.write_boolean(self.m_MipMap)
         else:
             writer.write_int(self.m_MipCount)
@@ -83,16 +78,14 @@ class Texture2D(Texture):
         writer.write_boolean(self.m_ReadAllowed)  # 3.0.0 - 5.4
         # bool m_StreamingMipmaps 2018.2 and up
         writer.align_stream()
-        if version[0] > 2018 or (
-            version[0] == 2018 and version[1] >= 2
-        ):  # 2018.2 and up
+        if version >= (2018, 2):  # 2018.2 and up
             writer.write_int(self.m_StreamingMipmapsPriority)
         writer.write_int(self.m_ImageCount)
         writer.write_int(self.m_TextureDimension)
         self.m_TextureSettings.save(writer, version)
-        if version[0] >= 3:  # 3.0 and up
+        if version >= (3,):  # 3.0 and up
             writer.write_int(self.m_LightmapFormat)
-        if version[0] > 3 or (version[0] == 3 and version[1] >= 5):  # 3.5.0 and up
+        if version >= (3, 5):  # 3.5.0 and up
             writer.write_int(self.m_ColorSpace)
 
         writer.write_int(len(self.image_data))
@@ -117,7 +110,7 @@ class GLTextureSettings:
         self.m_FilterMode = reader.read_int()
         self.m_Aniso = reader.read_int()
         self.m_MipBias = reader.read_float()
-        if version[0] >= 2017:  # 2017.x and up
+        if version >= (2017,):  # 2017.x and up
             self.m_WrapMode = reader.read_int()  # m_WrapU
             self.m_WrapV = reader.read_int()
             self.m_WrapW = reader.read_int()
@@ -128,7 +121,7 @@ class GLTextureSettings:
         writer.write_int(self.self.m_FilterMode)
         writer.write_int(self.self.m_Aniso)
         writer.write_float(self.self.m_MipBias)
-        if version[0] >= 2017:  # 2017.x and up
+        if version >= (2017,):  # 2017.x and up
             writer.write_int(self.self.m_WrapMode)  # m_WrapU
             writer.write_int(self.self.m_WrapV)
             writer.write_int(self.self.m_WrapW)

@@ -19,7 +19,7 @@ class GameObject(EditorExtension):
         component_size = reader.read_int()
         self.components = []
         for i in range(component_size):
-            if self.version[0] < 5 or (self.version[0] == 5 and self.version[1] < 5):
+            if self.version < (5, 5):
                 first = reader.read_int()
             self.components.append(PPtr(reader))
         self.layer = reader.read_int()

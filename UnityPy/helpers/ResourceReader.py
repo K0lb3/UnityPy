@@ -34,6 +34,11 @@ def get_resource_data(*args):
             reader = assets_file.environment.resources.get(
                 os.path.basename(resource_file_name)
             )
+        if not reader:
+            reader = assets_file.environment.resources.get(
+                os.path.basename(resource_file_name.replace('.assets.resS', '.resource'))
+            )
+
         if reader:
             reader.Position = offset
             return reader.read_bytes(size)

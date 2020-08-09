@@ -26,9 +26,7 @@ class SpriteAtlasData:
         self.alphaTexture = PPtr(reader)  # Texture2D
         self.textureRect = reader.read_rectangle_f()
         self.textureRectOffset = reader.read_vector2()
-        if self.version[0] > 2017 or (
-            self.version[0] == 2017 and self.version[1] >= 2
-        ):  # 2017.2 and up
+        if self.version >= (2017, 2):  # 2017.2 and up
             self.atlasRectOffset = reader.read_vector2()
         self.uvTransform = reader.read_vector4()
         self.downscaleMultiplier = reader.read_float()

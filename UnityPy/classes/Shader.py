@@ -7,14 +7,13 @@ class Shader(NamedObject):
     def __init__(self, reader):
         super().__init__(reader=reader)
         version = reader.version
-        if version[0] == 5 and version[1] >= 5 or version[0] > 5:  # 5.5 and up
+        if version >= (5, 5):  # 5.5 and up
             self.m_ParsedForm = SerializedShader(reader)
             self.platforms = [
                 ShaderCompilerPlatform(x) for x in reader.read_u_int_array()
             ]
 
-            # 2019.3 and up
-            if version[0] > 2019 or (version[0] == 2019 and version[0] >= 3):
+            if version >= (2019, 3):  # 2019.3 and up
                 offsets = reader.read_u_int_array_array()[0]
                 compressedLengths = reader.read_u_int_array_array()[0]
                 decompressedLengths = reader.read_u_int_array_array()[0]
@@ -27,7 +26,7 @@ class Shader(NamedObject):
             self.m_Script = reader.read_bytes(reader.read_int())
             reader.align_stream()
             self.m_PathName = reader.read_aligned_string()
-            if version[0] == 5 and version[1] >= 3:  # 5.3 - 5.4
+            if version >= (5, 3):  # 5.3 - 5.4
                 self.decompressedSize = reader.read_u_int()
                 self.m_SubProgramBlob = reader.read_bytes(reader.read_int())
 
@@ -145,9 +144,7 @@ class SerializedShaderState:
         self.rtBlend = [SerializedShaderRTBlendState(reader) for _ in range(8)]
         self.rtSeparateBlend = reader.read_boolean()
         reader.align_stream()
-        if version[0] > 2017 or (
-            version[0] == 2017 and version[1] >= 2
-        ):  # 2017.2 and up
+        if version >= (2017, 2):  # 2017.2 and up
             self.zClip = SerializedShaderFloatValue(reader)
         self.zTest = SerializedShaderFloatValue(reader)
         self.zWrite = SerializedShaderFloatValue(reader)
@@ -213,9 +210,7 @@ class TextureParameter:
         self.m_NameIndex = reader.read_int()
         self.m_Index = reader.read_int()
         self.m_SamplerIndex = reader.read_int()
-        if version[0] > 2017 or (
-            version[0] == 2017 and version[1] >= 3
-        ):  # 2017.3 and up
+        if version >= (2017, 3):  # 2017.3 and up
             self.m_MultiSampled = reader.read_boolean()
         self.m_Dim = reader.read_byte()
         reader.align_stream()
@@ -238,9 +233,7 @@ class ConstantBuffer:
 
         numVectorParams = reader.read_int()
         self.m_VectorParams = [VectorParameter(reader) for _ in range(numVectorParams)]
-        if version[0] > 2017 or (
-            version[0] == 2017 and version[1] >= 3
-        ):  # 2017.3 and up
+        if version >= (2017, 3):  # 2017.3 and up
             numStructParams = reader.read_int()
             self.m_StructParams = [
                 StructParameter(reader) for _ in range(numStructParams)
@@ -292,14 +285,14 @@ class SerializedSubProgram:
         self.m_BlobIndex = reader.read_u_int()
         self.m_Channels = ParserBindChannels(reader)
 
-        if version[0] >= 2019:  # 2019 and up
+        if version >= (2019,):  # 2019 and up
             self.m_GlobalKeywordIndices = reader.read_u_short_array()
             reader.align_stream()
             self.m_LocalKeywordIndices = reader.read_u_short_array()
             reader.align_stream()
         else:
             self.m_KeywordIndices = reader.read_u_short_array()
-            if version[0] >= 2017:  # 2017 and up
+            if version >= (2017,):  # 2017 and up
                 reader.align_stream()
 
         self.m_ShaderHardwareTier = reader.read_byte()
@@ -333,12 +326,10 @@ class SerializedSubProgram:
         numUAVParams = reader.read_int()
         self.m_UAVParams = [UAVParameter(reader) for _ in range(numUAVParams)]
 
-        if version[0] >= 2017:  # 2017 and up
+        if version >= (2017,):  # 2017 and up
             numSamplers = reader.read_int()
             self.m_Samplers = [SamplerParameter(reader) for _ in range(numSamplers)]
-        if version[0] > 2017 or (
-            version[0] == 2017 and version[1] >= 2
-        ):  # 2017.2 and up
+        if version >= (2017, 2):  # 2017.2 and up
             self.m_ShaderRequirements = reader.read_int()
 
 
@@ -372,12 +363,10 @@ class SerializedPass:
         self.progGeometry = SerializedProgram(reader)
         self.progHull = SerializedProgram(reader)
         self.progDomain = SerializedProgram(reader)
-        if version[0] > 2019 or (
-            version[0] == 2019 and version[0] >= 3
-        ):  # 2019.3 and up
+        if version >= (2019, 3):  # 2019.3 and up
             self.progRayTracing = SerializedProgram(reader)
         self.m_HasInstancingVariant = reader.read_boolean()
-        if version[0] >= 2018:  # 2018 and up
+        if version >= (2018,):  # 2018 and up
             self.m_HasProceduralInstancingVariant = reader.read_boolean()
         reader.align_stream()
         self.m_UseName = reader.read_aligned_string()

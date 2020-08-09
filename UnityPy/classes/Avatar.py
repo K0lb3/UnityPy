@@ -29,7 +29,7 @@ class Node:
 class Limit:
     def __init__(self, reader):
         version = reader.version
-        if version[0] > 5 or (version[0] == 5 and version[1] >= 4):  # 5.4 and up
+        if version >= (5, 4):  # 5.4 and up
             self.m_Min = reader.read_vector3()
             self.m_Max = reader.read_vector3()
         else:
@@ -42,7 +42,7 @@ class Axes:
         version = reader.version
         self.m_PreQ = reader.read_vector4()
         self.m_PostQ = reader.read_vector4()
-        if version[0] > 5 or (version[0] == 5 and version[1] >= 4):  # 5.4 and up
+        if version >= (5, 4):  # 5.4 and up
             self.m_Sgn = reader.read_vector3()
         else:
             self.m_Sgn = reader.read_vector4()
@@ -102,7 +102,7 @@ class Human:
         self.m_LeftHand = Hand(reader)
         self.m_RightHand = Hand(reader)
 
-        if version[0] < 2018 or (version[0] == 2018 and version[1] < 2):  # 2018.2 down
+        if version < (2018, 2):  # 2018.2 down
             numHandles = reader.read_int()
             self.m_Handles = [Handle(reader) for _ in range(numHandles)]
             numColliders = reader.read_int()
@@ -110,7 +110,7 @@ class Human:
         self.m_HumanBoneIndex = reader.read_int_array()
         self.m_HumanBoneMass = reader.read_float_array()
 
-        if version[0] < 2018 or (version[0] == 2018 and version[1] < 2):  # 2018.2 down
+        if version < (2018, 2):  # 2018.2 down
             self.m_ColliderIndex = reader.read_int_array()
 
         self.m_Scale = reader.read_float()
@@ -123,7 +123,7 @@ class Human:
         self.m_FeetSpacing = reader.read_float()
         self.m_HasLeftHand = reader.read_boolean()
         self.m_HasRightHand = reader.read_boolean()
-        if version[0] > 5 or (version[0] == 5 and version[1] >= 2):  # 5.2 and up
+        if version >= (5, 2):  # 5.2 and up
             self.m_HasTDoF = reader.read_boolean()
         reader.align_stream()
 
@@ -134,7 +134,7 @@ class AvatarConstant:
         self.m_AvatarSkeleton = Skeleton(reader)
         self.m_AvatarSkeletonPose = SkeletonPose(reader)
 
-        if version[0] > 4 or (version[0] == 4 and version[1] >= 3):  # 4.3 and up
+        if version >= (4, 3):  # 4.3 and up
             self.m_DefaultPose = SkeletonPose(reader)
             self.m_SkeletonNameIDArray = reader.read_u_int_array()
 
@@ -142,13 +142,13 @@ class AvatarConstant:
 
         self.m_HumanSkeletonIndexArray = reader.read_int_array()
 
-        if version[0] > 4 or (version[0] == 4 and version[1] >= 3):  # 4.3 and up
+        if version >= (4, 3):  # 4.3 and up
             self.m_HumanSkeletonReverseIndexArray = reader.read_int_array()
 
         self.m_RootMotionBoneIndex = reader.read_int()
         self.m_RootMotionBoneX = xform(reader)
 
-        if version[0] > 4 or (version[0] == 4 and version[1] >= 3):  # 4.3 and up
+        if version >= (4, 3):  # 4.3 and up
             self.m_RootMotionSkeleton = Skeleton(reader)
             self.m_RootMotionSkeletonPose = SkeletonPose(reader)
 
