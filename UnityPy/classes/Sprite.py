@@ -16,30 +16,20 @@ class Sprite(NamedObject):
         version = self.version
         self.m_Rect = reader.read_rectangle_f()
         self.m_Offset = reader.read_vector2()
-        if version[0] > 4 or (version[0] == 4 and version[1] >= 5):  # 4.5 and up
+        if version >= (4, 5):  # 4.5 and up
             self.m_Border = reader.read_vector4()
 
         self.m_PixelsToUnits = reader.read_float()
-        if (
-            version[0] > 5
-            or (version[0] == 5 and version[1] > 4)
-            or (version[0] == 5 and version[1] == 4 and version[2] >= 2)
-            or (
-                version[0] == 5
-                and version[1] == 4
-                and version[2] == 1
-                and self.build_type.IsPatch
-                and version[3] >= 3
-            )
-        ):  # 5.4.1p3 and up
+        if version >= (5, 4, 2) or (
+            version >= (5, 4, 1, 3) and self.build_type.IsPatch):  # 5.4.1p3 and up
             self.m_Pivot = reader.read_vector2()
 
         self.m_Extrude = reader.read_u_int()
-        if version[0] > 5 or (version[0] == 5 and version[1] >= 3):  # 5.3 and up
+        if version >= (5, 3):  # 5.3 and up
             self.m_IsPolygon = reader.read_boolean()
             reader.align_stream()
 
-        if version[0] >= 2017:  # 2017 and up
+        if version >= (2017,):  # 2017 and up
             first = reader.read_bytes(16)  # GUID
             second = reader.read_long()
             self.m_RenderDataKey = (first, second)
@@ -48,14 +38,18 @@ class Sprite(NamedObject):
 
         self.m_RD = SpriteRenderData(reader)
 
-        if version[0] >= 2017:  # 2017 and up
+        if version >= (2017,):  # 2017 and up
             m_PhysicsShapeSize = reader.read_int()
             self.m_PhysicsShape = [
                 reader.read_vector2_array() for _ in range(m_PhysicsShapeSize)
             ]
-
-
-# vector m_Bones 2018 and up
+        """
+		if version >= (2018,):  # 2018 and up
+            m_BonesSize = reader.read_int()
+            self.m_Bones = [
+                reader.read_vector2_array() for _ in range(m_BonesSize)
+            ]
+		"""
 
 
 class SecondarySpriteTexture:
@@ -93,7 +87,7 @@ class SpriteVertex:
     def __init__(self, reader):
         version = reader.version
         self.pos = reader.read_vector3()
-        if version[0] < 4 or (version[0] == 4 and version[1] <= 3):  # 4.3 and down
+        if version[:2] <= (4, 3):  # 4.3 and down
             self.uv = reader.read_vector2()
 
 
@@ -102,16 +96,16 @@ class SpriteRenderData:
         version = reader.version
 
         self.texture = PPtr(reader)  # Texture2D
-        if version[0] > 5 or (version[0] == 5 and version[1] >= 2):  # 5.2 and up
+        if version >= (5, 2):  # 5.2 and up
             self.alphaTexture = PPtr(reader)  # Texture2D
 
-        if version[0] >= 2019:  # 2019 and up
+        if version >= (2019,):  # 2019 and up
             secondaryTexturesSize = reader.read_int()
             self.secondaryTextures = [
                 SecondarySpriteTexture(reader) for _ in range(secondaryTexturesSize)
             ]
 
-        if version[0] > 5 or (version[0] == 5 and version[1] >= 6):  # 5.6 and up
+        if version >= (5, 6):  # 5.6 and up
             m_SubMeshesSize = reader.read_int()
             self.m_SubMeshes = [SubMesh(reader) for _ in range(m_SubMeshesSize)]
             self.m_IndexBuffer = reader.read_bytes(reader.read_int())
@@ -123,20 +117,20 @@ class SpriteRenderData:
             self.indices = reader.read_u_short_array()
             reader.align_stream()
 
-        if version[0] >= 2018:  # 2018 and up
+        if version >= (2018,):  # 2018 and up
             self.m_Bindpose = reader.read_matrix_array()
-            if version[0] == 2018 and version[1] < 2:  # 2018.2 down
+            if version < (2018, 2):  # 2018.2 down
                 m_SourceSkinSize = reader.read_int()
                 self.m_SourceSkin = [BoneWeights4(reader)]
 
         self.textureRect = reader.read_rectangle_f()
         self.textureRectOffset = reader.read_vector2()
-        if version[0] > 5 or (version[0] == 5 and version[1] >= 6):  # 5.6 and up
+        if version >= (5, 6):  # 5.6 and up
             self.atlasRectOffset = reader.read_vector2()
 
         self.settingsRaw = SpriteSettings(reader)
-        if version[0] > 4 or (version[0] == 4 and version[1] >= 5):  # 4.5 and up
+        if version >= (4, 5):  # 4.5 and up
             self.uvTransform = reader.read_vector4()
 
-        if version[0] >= 2017:  # 2017 and up
+        if version >= (2017,):  # 2017 and up
             self.downscaleMultiplier = reader.read_float()

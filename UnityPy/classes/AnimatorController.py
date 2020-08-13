@@ -24,7 +24,7 @@ class HumanPoseMask:
         version = reader.version
         self.word0 = reader.read_u_int()
         self.word1 = reader.read_u_int()
-        if version[0] > 5 or (version[0] == 5 and version[1] >= 2):  # 5.2 and up
+        if version >= (5, 2):  # 5.2 and up
             self.word2 = reader.read_u_int()
 
 
@@ -49,10 +49,10 @@ class LayerConstant:
         self.m_SkeletonMask = SkeletonMask(reader)
         self.m_Binding = reader.read_u_int()
         self.m_LayerBlendingMode = reader.read_int()
-        if version[0] > 4 or (version[0] == 4 and version[1] >= 2):  # 4.2 and up
+        if version >= (4, 2):  # 4.2 and up
             self.m_DefaultWeight = reader.read_float()
         self.m_IKPass = reader.read_boolean()
-        if version[0] > 4 or (version[0] == 4 and version[1] >= 2):  # 4.2 and up
+        if version >= (4, 2):  # 4.2 and up
             self.m_SyncedLayerAffectsTiming = reader.read_boolean()
         reader.align_stream()
 
@@ -75,14 +75,14 @@ class TransitionConstant:
         ]
 
         self.m_DestinationState = reader.read_u_int()
-        if version[0] >= 5:  # 5.0 and up
+        if version >= (5,):  # 5.0 and up
             self.m_FullPathID = reader.read_u_int()
 
         self.m_ID = reader.read_u_int()
         self.m_UserID = reader.read_u_int()
         self.m_TransitionDuration = reader.read_float()
         self.m_TransitionOffset = reader.read_float()
-        if version[0] >= 5:  # 5.0 and up
+        if version >= (5,):  # 5.0 and up
             self.m_ExitTime = reader.read_float()
             self.m_HasExitTime = reader.read_boolean()
             self.m_HasFixedDuration = reader.read_boolean()
@@ -92,7 +92,7 @@ class TransitionConstant:
         else:
             self.m_Atomic = reader.read_boolean()
 
-        if version[0] > 4 or (version[0] == 4 and version[1] >= 5):  # 4.5 and up
+        if version >= (4, 5):  # 4.5 and up
             self.m_CanTransitionToSelf = reader.read_boolean()
 
         reader.align_stream()
@@ -138,33 +138,29 @@ class BlendTreeNodeConstant:
     def __init__(self, reader):
         version = reader.version
 
-        if version[0] > 4 or (version[0] == 4 and version[1] >= 1):  # 4.1 and up
+        if version >= (4, 1):  # 4.1 and up
             self.m_BlendType = reader.read_u_int()
         self.m_BlendEventID = reader.read_u_int()
-        if version[0] > 4 or (version[0] == 4 and version[1] >= 1):  # 4.1 and up
+        if version >= (4, 1):  # 4.1 and up
             self.m_BlendEventYID = reader.read_u_int()
         self.m_ChildIndices = reader.read_u_int_array()
-        if version[0] < 4 or (version[0] == 4 and version[1] < 1):  # 4.1 down
+        if version < (4, 1):  # 4.1 down
             self.m_ChildThresholdArray = reader.read_float_array()
 
-        if version[0] > 4 or (version[0] == 4 and version[1] >= 1):  # 4.1 and up
+        if version >= (4, 1):  # 4.1 and up
             self.m_Blend1dData = Blend1dDataConstant(reader)
             self.m_Blend2dData = Blend2dDataConstant(reader)
 
-        if version[0] >= 5:  # 5.0 and up
+        if version >= (5,):  # 5.0 and up
             self.m_BlendDirectData = BlendDirectDataConstant(reader)
 
         self.m_ClipID = reader.read_u_int()
-        if version[0] == 4 and version[1] >= 5:  # 4.5 - 5.0
+        if version >= (4, 5):  # 4.5 - 5.0
             self.m_ClipIndex = reader.read_u_int()
 
         self.m_Duration = reader.read_float()
 
-        if (
-            version[0] > 4
-            or (version[0] == 4 and version[1] > 1)
-            or (version[0] == 4 and version[1] == 1 and version[2] >= 3)
-        ):  # 4.1.3 and up
+        if version >= (4, 1, 3):  # 4.1.3 and up
             self.m_CycleOffset = reader.read_float()
             self.m_Mirror = reader.read_boolean()
             reader.align_stream()
@@ -177,7 +173,7 @@ class BlendTreeConstant:
         numNodes = reader.read_int()
         self.m_NodeArray = [BlendTreeNodeConstant(reader) for _ in range(numNodes)]
 
-        if version[0] < 4 or (version[0] == 4 and version[1] < 5):  # 4.5 down
+        if version < (4, 5):  # 4.5 down
             self.m_BlendEventArrayConstant = ValueArrayConstant(reader)
 
 
@@ -192,7 +188,7 @@ class StateConstant:
 
         self.m_BlendTreeConstantIndexArray = reader.read_int_array()
 
-        if version[0] < 5 or (version[0] == 5 and version[1] < 2):  # 5.2 down
+        if version < (5, 2):  # 5.2 down
             numInfos = reader.read_int()
             self.m_LeafInfoArray = [LeafInfoConstant(reader) for _ in range(numInfos)]
 
@@ -202,31 +198,29 @@ class StateConstant:
         ]
 
         self.m_NameID = reader.read_u_int()
-        if version[0] > 4 or (version[0] == 4 and version[1] >= 3):  # 4.3 and up
+        if version >= (4, 3):  # 4.3 and up
             self.m_PathID = reader.read_u_int()
-        if version[0] >= 5:  # 5.0 and up
+        if version >= (5,):  # 5.0 and up
             self.m_FullPathID = reader.read_u_int()
 
         self.m_TagID = reader.read_u_int()
-        if version[0] > 5 or (version[0] == 5 and version[1] >= 1):  # 5.1 and up
+        if version >= (5, 1):  # 5.1 and up
             self.m_SpeedParamID = reader.read_u_int()
             self.m_MirrorParamID = reader.read_u_int()
             self.m_CycleOffsetParamID = reader.read_u_int()
 
-        if version[0] > 2017 or (
-            version[0] == 2017 and version[1] >= 2
-        ):  # 2017.2 and up
+        if version >= (2017, 2):  # 2017.2 and up
             self.m_TimeParamID = reader.read_u_int()
 
         self.m_Speed = reader.read_float()
-        if version[0] > 4 or (version[0] == 4 and version[1] >= 1):  # 4.1 and up
+        if version >= (4, 1):  # 4.1 and up
             self.m_CycleOffset = reader.read_float()
         self.m_IKOnFeet = reader.read_boolean()
-        if version[0] >= 5:  # 5.0 and up
+        if version >= (5,):  # 5.0 and up
             self.m_WriteDefaultValues = reader.read_boolean()
 
         self.m_Loop = reader.read_boolean()
-        if version[0] > 4 or (version[0] == 4 and version[1] >= 1):  # 4.1 and up
+        if version >= (4, 1):  # 4.1 and up
             self.m_Mirror = reader.read_boolean()
 
         reader.align_stream()
@@ -265,7 +259,7 @@ class StateMachineConstant:
             TransitionConstant(reader) for _ in range(numAnyStates)
         ]
 
-        if version[0] >= 5:  # 5.0 and up
+        if version >= (5,):  # 5.0 and up
             numSelectors = reader.read_int()
             self.m_SelectorStateConstantArray = [
                 SelectorStateConstant(reader) for _ in range(numSelectors)
@@ -279,19 +273,19 @@ class ValueArray:
     def __init__(self, reader):
         version = reader.version
 
-        if version[0] < 5 or (version[0] == 5 and version[1] < 5):  # 5.5 down
+        if version < (5, 5):  # 5.5 down
             self.m_BoolValues = reader.read_boolean_array()
             reader.align_stream()
             self.m_IntValues = reader.read_int_array()
             self.m_FloatValues = reader.read_float_array()
 
-        if version[0] < 4 or (version[0] == 4 and version[1] < 3):  # 4.3 down
+        if version < (4, 3):  # 4.3 down
             self.m_VectorValues = reader.read_vector4_array()
         else:
             numPosValues = reader.read_int()
             self.m_PositionValues = [
                 reader.read_vector3()
-                if (version[0] > 5 or (version[0] == 5 and version[1] >= 4))
+                if version >= (5, 4)
                 else Vector3(reader.read_vector4())  # 5.4 and up
                 for _ in range(numPosValues)
             ]
@@ -301,12 +295,12 @@ class ValueArray:
             numScaleValues = reader.read_int()
             self.m_ScaleValues = [
                 reader.read_vector3()
-                if (version[0] > 5 or (version[0] == 5 and version[1] >= 4))
+                if version >= (5, 4)
                 else Vector3(reader.read_vector4())  # 5.4 and up
                 for _ in range(numScaleValues)
             ]
 
-            if version[0] > 5 or (version[0] == 5 and version[1] >= 5):  # 5.5 and up
+            if version >= (5, 5):  # 5.5 and up
                 self.m_FloatValues = reader.read_float_array()
                 self.m_IntValues = reader.read_int_array()
                 self.m_BoolValues = reader.read_boolean_array()

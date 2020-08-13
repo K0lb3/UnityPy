@@ -20,7 +20,7 @@ class Keyframe:
         self.value = readerFunc()
         self.inSlope = readerFunc()
         self.outSlope = readerFunc()
-        if reader.version[0] >= 2018:  # 2018 and up
+        if reader.version >= (2018,):  # 2018 and up
             self.weightedMode = reader.read_int()
             self.inWeight = readerFunc()
             self.outWeight = readerFunc()
@@ -34,7 +34,7 @@ class AnimationCurve:
 
         self.m_PreInfinity = reader.read_int()
         self.m_PostInfinity = reader.read_int()
-        if version[0] > 5 or (version[0] == 5 and version[1] >= 3):  # 5.3 and up
+        if version >= (5, 3):  # 5.3 and up
             self.m_RotationOrder = reader.read_int()
 
 
@@ -231,13 +231,13 @@ class xform:
         version = reader.version
         self.t = (
             reader.read_vector3()
-            if version[0] > 5 or (version[0] == 5 and version[1] >= 4)
+            if version >= (5, 4)
             else Vector3(reader.read_vector4())
         )  # 5.4 and up
         self.q = reader.read_quaternion()
         self.s = (
             reader.read_vector3()
-            if version[0] > 5 or (version[0] == 5 and version[1] >= 4)
+            if version >= (5, 4)
             else Vector3(reader.read_vector4())
         )  # 5.4 and up
 
@@ -258,10 +258,10 @@ class HumanGoal:
         self.m_X = xform(reader)
         self.m_WeightT = reader.read_float()
         self.m_WeightR = reader.read_float()
-        if version[0] >= 5:  # 5.0 and up
+        if version >= (5,):  # 5.0 and up
             self.m_HintT = (
                 reader.read_vector3()
-                if version[0] > 5 or (version[0] == 5 and version[1] >= 4)
+                if version >= (5, 4)
                 else Vector3(reader.read_vector4())
             )  # 5.4 and up
             self.m_HintWeightT = reader.read_float()
@@ -273,7 +273,7 @@ class HumanPose:
         self.m_RootX = xform(reader)
         self.m_LookAtPosition = (
             reader.read_vector3()
-            if version[0] > 5 or (version[0] == 5 and version[1] >= 4)
+            if version >= (5, 4)
             else Vector3(reader.read_vector4())
         )  # 5.4 and up
         self.m_LookAtWeight = reader.read_vector4()
@@ -286,11 +286,11 @@ class HumanPose:
 
         self.m_DoFArray = reader.read_float_array()
 
-        if version[0] > 5 or (version[0] == 5 and version[1] >= 2):  # 5.2 and up
+        if version >= (5, 2):  # 5.2 and up
             numTDof = reader.read_int()
             self.m_TDoFArray = [
                 reader.read_vector3()
-                if version[0] > 5 or (version[0] == 5 and version[1] >= 4)
+                if version >= (5, 4)
                 else Vector3(reader.read_vector4())  # 5.4 and up
                 for _ in range(numTDof)
             ]
@@ -379,7 +379,7 @@ class ValueConstant:
     def __init__(self, reader):
         version = reader.version
         self.m_ID = reader.read_u_int()
-        if version[0] < 5 or (version[0] == 5 and version[1] < 5):  # 5.5 down
+        if version < (5, 5):  # 5.5 down
             self.m_TypeID = reader.read_u_int()
         self.m_Type = reader.read_u_int()
         self.m_Index = reader.read_u_int()
@@ -396,9 +396,9 @@ class Clip:
         version = reader.version
         self.m_StreamedClip = StreamedClip(reader)
         self.m_DenseClip = DenseClip(reader)
-        if version[0] > 4 or (version[0] == 4 and version[1] >= 3):  # 4.3 and up
+        if version >= (4, 3):  # 4.3 and up
             self.m_ConstantClip = ConstantClip(reader)
-        if version[0] < 2018 or (version[0] == 2018 and version[1] < 3):  # 2018.3 down
+        if version < (2018, 3):  # 2018.3 down
             self.m_Binding = ValueArrayConstant(reader)
 
 
@@ -413,16 +413,16 @@ class ClipMuscleConstant:
         version = reader.version
         self.m_DeltaPose = HumanPose(reader)
         self.m_StartX = xform(reader)
-        if version[0] > 5 or (version[0] == 5 and version[1] >= 5):  # 5.5 and up
+        if version >= (5, 5):  # 5.5 and up
             self.m_StopX = xform(reader)
         self.m_LeftFootStartX = xform(reader)
         self.m_RightFootStartX = xform(reader)
-        if version[0] < 5:  # 5.0 down
+        if version < (5,):  # 5.0 down
             self.m_MotionStartX = xform(reader)
             self.m_MotionStopX = xform(reader)
         self.m_AverageSpeed = (
             reader.read_vector3()
-            if version[0] > 5 or (version[0] == 5 and version[1] >= 4)
+            if version >= (5, 4)
             else Vector3(reader.read_vector4())
         )  # 5.4 and up
         self.m_Clip = Clip(reader)
@@ -434,21 +434,21 @@ class ClipMuscleConstant:
         self.m_AverageAngularSpeed = reader.read_float()
 
         self.m_IndexArray = reader.read_int_array()
-        if version[0] < 4 or (version[0] == 4 and version[1] < 3):  # 4.3 down
+        if version < (4, 3):  # 4.3 down
             self.m_AdditionalCurveIndexArray = reader.read_int_array()
         numDeltas = reader.read_int()
         self.m_ValueArrayDelta = [ValueDelta(reader) for _ in range(numDeltas)]
-        if version[0] > 5 or (version[0] == 5 and version[1] >= 3):  # 5.3 and up
+        if version >= (5, 3):  # 5.3 and up
             self.m_ValueArrayReferencePose = reader.read_float_array()
 
         self.m_Mirror = reader.read_boolean()
-        if version[0] > 4 or (version[0] == 4 and version[1] >= 3):  # 4.3 and up
+        if version >= (4, 3):  # 4.3 and up
             self.m_LoopTime = reader.read_boolean()
         self.m_LoopBlend = reader.read_boolean()
         self.m_LoopBlendOrientation = reader.read_boolean()
         self.m_LoopBlendPositionY = reader.read_boolean()
         self.m_LoopBlendPositionXZ = reader.read_boolean()
-        if version[0] > 5 or (version[0] == 5 and version[1] >= 5):  # 5.5 and up
+        if version >= (5, 5):  # 5.5 and up
             self.m_StartAtOrigin = reader.read_boolean()
         self.m_KeepOriginalOrientation = reader.read_boolean()
         self.m_KeepOriginalPositionY = reader.read_boolean()
@@ -463,7 +463,7 @@ class GenericBinding:
         self.path = reader.read_u_int()
         self.attribute = reader.read_u_int()
         self.script = PPtr(reader)  # Object
-        if version[0] > 5 or (version[0] == 5 and version[1] >= 6):  # 5.6 and up
+        if version >= (5, 6):  # 5.6 and up
             self.typeID = ClassIDType(reader.read_int())
         else:
             self.typeID = ClassIDType(reader.read_u_short())
@@ -512,9 +512,9 @@ class AnimationClip(NamedObject):
     def __init__(self, reader):
         super().__init__(reader=reader)
         version = reader.version
-        if version[0] >= 5:  # 5.0 and up
+        if version >= (5,):  # 5.0 and up
             self.m_Legacy = reader.read_boolean()
-        elif version[0] >= 4:  # 4.0 and up
+        elif version >= (4,):  # 4.0 and up
             self.m_AnimationType = AnimationType(reader.read_int())
             if self.m_AnimationType == AnimationType.kLegacy:  #
                 self.m_Legacy = True
@@ -522,7 +522,7 @@ class AnimationClip(NamedObject):
             self.m_Legacy = True
 
         self.m_Compressed = reader.read_boolean()
-        if version[0] > 4 or (version[0] == 4 and version[1] >= 3):  # 4.3 and up
+        if version >= (4, 3):  # 4.3 and up
             self.m_UseHighQualityCurve = reader.read_boolean()
         reader.align_stream()
         numRCurves = reader.read_int()
@@ -533,7 +533,7 @@ class AnimationClip(NamedObject):
             CompressedAnimationCurve(reader) for _ in range(numCRCurves)
         ]
 
-        if version[0] > 5 or (version[0] == 5 and version[1] >= 3):  # 5.3 and up
+        if version >= (5, 3):  # 5.3 and up
             numEulerCurves = reader.read_int()
             self.m_EulerCurves = [Vector3Curve(reader) for _ in range(numEulerCurves)]
 
@@ -545,18 +545,18 @@ class AnimationClip(NamedObject):
 
         numFCurves = reader.read_int()
         self.m_FloatCurves = [FloatCurve(reader) for _ in range(numFCurves)]
-        if version[0] > 4 or (version[0] == 4 and version[1] >= 3):  # 4.3 and up
+        if version >= (4, 3):  # 4.3 and up
             numPtrCurves = reader.read_int()
             self.m_PPtrCurves = [PPtrCurve(reader) for _ in range(numPtrCurves)]
 
         self.m_SampleRate = reader.read_float()
         self.m_WrapMode = reader.read_int()
-        if version[0] > 3 or (version[0] == 3 and version[1] >= 4):  # 3.4 and up
+        if version >= (3, 4):  # 3.4 and up
             self.m_Bounds = AABB(reader)
-        if version[0] >= 4:  # 4.0 and up
+        if version >= (4,):  # 4.0 and up
             self.m_MuscleClipSize = reader.read_u_int()
             self.m_MuscleClip = ClipMuscleConstant(reader)
-        if version[0] > 4 or (version[0] == 4 and version[1] >= 3):  # 4.3 and up
+        if version >= (4, 3):  # 4.3 and up
             self.m_ClipBindingConstant = AnimationClipBindingConstant(reader)
 
 

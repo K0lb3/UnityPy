@@ -11,7 +11,7 @@ class SkinnedMeshRenderer(Renderer):
         self.m_SkinNormals = reader.read_boolean()  # 3.1.0 and below
         reader.align_stream()
 
-        if version[0] == 2 and version[1] < 6:  # 2.6 down
+        if version < (2, 6):  # 2.6 down
             self.m_DisableAnimationWhenOffscreen = PPtr(reader)  # Animation
 
         self.m_Mesh = PPtr(reader)  # Mesh
@@ -19,5 +19,5 @@ class SkinnedMeshRenderer(Renderer):
         m_BonesSize = reader.read_int()
         self.m_Bones = [PPtr(reader) for _ in range(m_BonesSize)]
 
-        if version[0] > 4 or (version[0] == 4 and version[1] >= 3):  # 4.3 and up
+        if version >= (4, 3):  # 4.3 and up
             self.m_BlendShapeWeights = reader.read_float_array()

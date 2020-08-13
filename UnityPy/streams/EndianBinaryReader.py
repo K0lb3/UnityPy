@@ -24,7 +24,8 @@ class EndianBinaryReader:
                 assert p == input_.tell()
                 self.stream = input_
             except:
-                raise ValueError("Invalid input type - %s." % type(input_))
+                raise ValueError("Invalid __init__ parametrs for EndianBinaryReader: %s." % 
+                                  type(input_))
 
         self.endian = endian
         self.Length = self.stream.seek(0, 2)
@@ -54,14 +55,19 @@ class EndianBinaryReader:
             self.Length += len(value)
             self.Position = old_pos
         else:
-            raise ValueError("Invalid Input")
+            raise ValueError("Invalid __add__ parameters for EndianBinaryReader: %s" %
+                              value.__class__.__name__)
 
     def dispose(self):
         self.stream.close()
         pass
 
     def read(self, *args):
-        return self.stream.read(*args)
+        _data = self.stream.read(*args)
+        if len(args) > 0 and len(_data) != args[0]:
+            raise EOFError("got only %d bytes out of %d requested" % 
+                            (len(_data), args[0]))
+        return _data
 
     def read_byte(self) -> int:
         return struct.unpack(self.endian + "b", self.read(1))[0]
@@ -100,7 +106,7 @@ class EndianBinaryReader:
         return bool(struct.unpack(self.endian + "?", self.read(1))[0])
 
     def read_string(self, size=None, encoding="utf-8") -> str:
-        if size is None:
+        if size is None or size == 0:
             ret = self.read_string_to_null()
         else:
             ret = struct.unpack(f"{self.endian}{size}is", self.read(size))[0]
@@ -112,11 +118,13 @@ class EndianBinaryReader:
     def read_string_to_null(self, max_length=32767) -> str:
         ret = []
         c = b""
+        pos = self.Position
         while c != b"\0" and len(ret) < max_length and self.Position != self.Length:
             ret.append(c)
             c = self.read(1)
             if not c:
-                raise ValueError("Unterminated string: %r" % ret)
+                raise EOFError("Unterminated string of length %d @ %d" % 
+                                (len(ret), pos))
         return b"".join(ret).decode("utf8", "replace")
 
     def read_aligned_string(self):

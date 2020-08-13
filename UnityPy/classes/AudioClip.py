@@ -9,14 +9,14 @@ class AudioClip(NamedObject):
         super().__init__(reader=reader)
         self.m_Source = ""
         version = self.version
-        if version[0] < 5:  #
+        if version < (5,):  # 5.0 down
             self.m_Format = reader.read_int()
             self.m_Type = AudioType(reader.read_int())
             self.m_3D = reader.read_boolean()
             self.m_UseHardware = reader.read_boolean()
             reader.align_stream()
 
-            if version[0] >= 4 or (version[0] == 3 and version[1] >= 2):  # 3.2.0 to 5
+            if version >= (3, 2):  # and version <= (5,): # 3.2.0 to 5
                 self.m_Stream = reader.read_int()
                 m_Size = reader.read_int()
                 tsize = m_Size + 4 - m_Size % 4 if (m_Size % 4 != 0) else m_Size

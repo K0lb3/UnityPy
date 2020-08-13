@@ -5,9 +5,8 @@ from .PPtr import PPtr
 class Font(NamedObject):
     def __init__(self, reader):
         super().__init__(reader=reader)
-        if (self.version[0] == 5 and self.version[1] >= 5) or self.version[
-            0
-        ] > 5:  # 5.5 and up:
+        version = self.version
+        if version >= (5, 5):  # 5.5 and up:
             self.LineSpacing = reader.read_float()
             self.DefaultMaterial = PPtr(reader)
             self.FontSize = reader.read_float()
@@ -30,14 +29,14 @@ class Font(NamedObject):
         else:
             self.AsciiStartOffset = reader.read_int()
 
-            if self.version[0] <= 3:
+            if version[:1] <= (3,):
                 self.FontCountX = reader.read_int()
                 self.FontCountY = reader.read_int()
 
             self.Kerning = reader.read_float()
             self.LineSpacing = reader.read_float()
 
-            if self.version[0] <= 3:
+            if version[:1] <= (3,):
                 PerCharacterKerning_size = reader.read_int()
                 for i in range(PerCharacterKerning_size):
                     first = reader.read_int()
@@ -64,7 +63,7 @@ class Font(NamedObject):
                 vertheight = reader.read_float()
                 width = reader.read_float()
 
-                if self.version[0] >= 4:
+                if version >= (4,):
                     flipped = reader.read_boolean()
                     reader.align_stream()
 
@@ -76,7 +75,7 @@ class Font(NamedObject):
                 pairsecond = reader.read_short()
                 second = reader.read_float()
 
-            if self.version[0] <= 3:
+            if version[:1] <= (3,):
                 self.GridFont = reader.read_boolean()
                 reader.align_stream()
             else:
