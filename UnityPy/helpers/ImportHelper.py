@@ -78,8 +78,11 @@ def check_file_type(input_) -> (FileType, EndianBinaryReader):
     elif isinstance(input_, EndianBinaryReader):
         reader = input_
     else:
-        reader = EndianBinaryReader(input_)
-
+        try:
+            reader = EndianBinaryReader(input_)
+        except:
+            return None, None
+    
     if reader.Length < 20:
         return FileType.ResourceFile, reader
 
@@ -116,7 +119,7 @@ def check_file_type(input_) -> (FileType, EndianBinaryReader):
         file_size = reader.read_u_int()
         version = reader.read_u_int()
         data_offset = reader.read_u_int()
-
+        
         if (
             version < 0
             or version > 100
@@ -126,6 +129,7 @@ def check_file_type(input_) -> (FileType, EndianBinaryReader):
                     for x in [metadata_size, version, data_offset]
                 ]
             )
+            or file_size < metadata_size
         ):
             return FileType.ResourceFile, reader
 

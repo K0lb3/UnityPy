@@ -1,4 +1,5 @@
 import setuptools
+from UnityPy import __version__ as version
 
 with open("README.md", "r") as fh:
 	long_description = fh.read()
@@ -6,7 +7,7 @@ with open("README.md", "r") as fh:
 setuptools.setup(
 	name="UnityPy",
 	packages=setuptools.find_packages(),
-	version="1.4.2",
+	version=version,
 	author="K0lb3",
 	description="A pythonic port of AssetStudio by Perfare",
 	long_description=long_description,

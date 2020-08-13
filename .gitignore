@@ -4,7 +4,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 test.py
-
+AssetStudio/
 # C extensions
 *.so
 

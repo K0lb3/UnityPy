@@ -86,7 +86,7 @@ def pillow(
 
 def atc(image_data: bytes, width: int, height: int, alpha: bool) -> Image:
     if alpha:
-        image_data = texture2ddecoder.decode_atc_rgba8(image_data, width, height, alpha)
+        image_data = texture2ddecoder.decode_atc_rgba8(image_data, width, height)
     else:
         image_data = texture2ddecoder.decode_atc_rgb4(image_data, width, height)
 

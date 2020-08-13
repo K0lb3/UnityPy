@@ -94,7 +94,9 @@ class Environment:
         z = ZipFile(buffer)
 
         for path in z.namelist():
-            self.load_file(path, z.open(path).read())
+            data = z.open(path).read()
+            if data:
+                self.load_file(path, data)
 
     @property
     def objects(self):
