@@ -100,6 +100,9 @@ def check_file_type(input_) -> (FileType, EndianBinaryReader):
     elif signature == "PK\x03\x04\x14":
         return FileType.ZIP, reader
     else:
+        if reader.Length < 128:
+            return FileType.ResourceFile, reader
+
         magic = reader.read_bytes(2)
         reader.Position = 0
         if GZIP_MAGIC == magic:
@@ -144,7 +147,7 @@ def check_file_type(input_) -> (FileType, EndianBinaryReader):
 
         if version >= 7:
             unity_version = reader.read_string_to_null()
-            if len([x for x in re.split(r"\D", unity_version) if x != ""]) != 4:
+            if len([x for x in re.split(r"\D", unity_version) if x != ""]) < 2:
                 assets_file = False
 
         # check end

@@ -29,7 +29,7 @@ class Object:
 
         self.reader.reset()
         if type(self) == Object:
-            self.__dict__.update(self.read_type_tree())
+            self.__dict__.update(self.read_type_tree().__dict__)
 
     def has_struct_member(self, name: str) -> bool:
         return self.serialized_type.m_Nodes and any(
@@ -52,7 +52,7 @@ class Object:
             )
         else:
             self.type_tree = {}
-        return self.type_tree
+        return NodeHelper(self.type_tree, self.assets_file)
 
     def get_raw_data(self) -> bytes:
         self.reader.reset()
@@ -78,3 +78,30 @@ class Object:
 
     def __repr__(self):
         return "<%s %s>" % (self.__class__.__name__, self.name)
+
+from .PPtr import PPtr
+class NodeHelper(object):
+    def __init__(self, data, assets_file):
+        if "m_PathID" in data and "m_FileID" in data:
+            # used to make pointers directly useable
+            self.path_id = data["m_PathID"]
+            self.file_id = data["m_FileID"]
+            self.index = data.get("m_Index", -2)
+            self.assets_file = assets_file
+            self.__class__ = PPtr
+        else:
+            self.__dict__ = {key:NodeHelper(val, assets_file) for key, val in data.items()}
+
+         
+    def __new__(cls, data, assets_file):
+        if isinstance(data, dict):
+            return super(NodeHelper, cls).__new__(cls)
+        elif isinstance(data, list):
+            return [NodeHelper(x, assets_file) for x in data]
+        return data
+    
+    def to_dict(self):
+        return {
+            key:(val.dump() if isinstance(val, NodeHelper) else val)
+            for key,val in self.__dict__.items()
+        }

@@ -3,7 +3,8 @@
 import texture2ddecoder
 from PIL import Image
 from copy import copy
-
+from io import BytesIO
+import struct
 from ..enums import TextureFormat, BuildTarget
 
 TF = TextureFormat
@@ -21,7 +22,9 @@ def get_image_from_texture2d(texture_2d, flip=True) -> Image:
     :rtype: Image
     """
     image_data = copy(texture_2d.image_data)
-    texture_format = texture_2d.m_TextureFormat
+    if not image_data:
+        return Image.new("RGB", (0,0))
+    texture_format = texture_2d.m_TextureFormat if isinstance(texture_2d, TextureFormat) else TextureFormat(texture_2d.m_TextureFormat)
 
     selection = CONV_TABLE[texture_format]
 
@@ -128,7 +131,24 @@ def eac(image_data: bytes, width: int, height: int, fmt: list):
         image_data = texture2ddecoder.decode_eacrg_signed(image_data, width, height)
     return Image.frombytes("RGBA", (width, height), image_data, "raw", "BGRA")
 
-
+def half(
+    image_data: bytes, width: int, height: int, mode: str, codec: str, args, swap=False
+) -> Image:
+    # convert half-float to int8
+    stream = BytesIO(image_data)
+    image_data = bytes(
+        int(struct.unpackb("e", stream.read(2))*256) 
+        for i in range(width*height*len(codec))
+    )
+    img = (
+        Image.frombytes(mode, (width, height), image_data, codec, args)
+        if width
+        else Image.new(mode, (width, height))
+    )
+    if swap:
+        channels = img.split()
+        img = Image.merge(mode, [channels[x] for x in swap])
+    return img
 
 CONV_TABLE = {
 #  FORMAT                  FUNC     #ARGS.....
@@ -139,14 +159,16 @@ CONV_TABLE = {
 (  TF.RGBA32,              pillow,  "RGBA",  "raw",       "RGBA"                                ),
 (  TF.ARGB32,              pillow,  "RGBA",  "raw",       "ARGB"                                ),
 (  TF.RGB565,              pillow,  "RGB",   "raw",       "BGR;16"                              ),
+(  TF.R8,                  pillow,  "RGB",   "raw",       "R"                                   ),
 (  TF.R16,                 pillow,  "RGB",   "raw",       "R;16"                                ),
+(  TF.RG16,                                                                                     ),
 (  TF.DXT1,                pillow,  "RGBA",  "bcn",       1                                     ),
 (  TF.DXT5,                pillow,  "RGBA",  "bcn",       3                                     ),
 (  TF.RGBA4444,            pillow,  "RGBA",  "raw",       'RGBA;4B',          (3,2,1,0)         ),
 (  TF.BGRA32,              pillow,  "RGBA",  "raw",       "BGRA"                                ),
-(  TF.RHalf,                                                                                    ),
+(  TF.RHalf,               half,    "R",     "raw",       "R"                                   ),
 (  TF.RGHalf,                                                                                   ),
-(  TF.RGBAHalf,                                                                                 ),
+(  TF.RGBAHalf,            half,    "RGB",   "raw",       "RGB"                                 ),
 (  TF.RFloat,              pillow,  "RGB",   "raw",       "RF"                                  ),
 (  TF.RGFloat,                                                                                  ),
 (  TF.RGBAFloat,           pillow,  "RGBA",  "raw",       "RGBAF"                               ),
@@ -186,8 +208,6 @@ CONV_TABLE = {
 (  TF.ASTC_RGBA_12x12,     astc,    (12,12)                                                     ),
 (  TF.ETC_RGB4_3DS,        etc,     (1,)                                                        ),
 (  TF.ETC_RGBA8_3DS,       etc,     (1,)                                                        ),
-(  TF.RG16,                                                                                     ),
-(  TF.R8,                  pillow,  "RGB",   "raw",       "R"                                   ),
 (  TF.ETC_RGB4Crunched,    etc,     (1,)                                                        ),
 (  TF.ETC2_RGBA8Crunched,  etc,     (2, "A8")                                                   ),
 (  TF.ASTC_HDR_4x4,        astc,    (4,4)                                                       ),

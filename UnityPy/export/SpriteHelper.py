@@ -65,7 +65,7 @@ def get_image_from_sprite(m_Sprite) -> Image:
     original_image = get_image(m_Sprite, m_Texture2D, alpha_texture)
 
     sprite_image = original_image.crop(
-        (texture_rect.left, texture_rect.top, texture_rect.right, texture_rect.bottom)
+        (texture_rect.x, texture_rect.y, texture_rect.x + texture_rect.width, texture_rect.y + texture_rect.height)
     )
 
     if settings_raw.packed == 1:

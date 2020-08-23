@@ -8,8 +8,15 @@ from ..streams import EndianBinaryWriter
 class Texture2D(Texture):
     @property
     def image(self):
+        if self.image_data == b"":
+            self.image_data = get_resource_data(
+                self.m_StreamData.path,
+                self.assets_file,
+                self.m_StreamData.offset,
+                self.m_StreamData.size,
+            )
         return Texture2DConverter.get_image_from_texture2d(self)
-
+        
     @image.setter
     def image(self, img):
         # img is PIL.Image
