@@ -8,15 +8,8 @@ from ..streams import EndianBinaryWriter
 class Texture2D(Texture):
     @property
     def image(self):
-        if self.image_data == b"":
-            self.image_data = get_resource_data(
-                self.m_StreamData.path,
-                self.assets_file,
-                self.m_StreamData.offset,
-                self.m_StreamData.size,
-            )
         return Texture2DConverter.get_image_from_texture2d(self)
-        
+
     @image.setter
     def image(self, img):
         # img is PIL.Image
@@ -36,21 +29,32 @@ class Texture2D(Texture):
         self.m_Width = reader.read_int()
         self.m_Height = reader.read_int()
         self.m_CompleteImageSize = reader.read_int()
+        if version >= (2020,):  # 2020.1 and up
+            self.mips_stripped = reader.read_int()
         self.m_TextureFormat = TextureFormat(reader.read_int())
         if version[:2] <= (5, 2):  # 5.2 down
             self.m_MipMap = reader.read_boolean()
         else:
             self.m_MipCount = reader.read_int()
-        self.m_IsReadable = reader.read_boolean()  # 2.6.0 and up
-        self.m_ReadAllowed = reader.read_boolean()  # 3.0.0 - 5.4
-        # bool m_StreamingMipmaps 2018.2 and up
+
+        if version >= (2, 6):  # 2.6.0 and up
+            self.m_IsReadable = reader.read_boolean()  # 2.6.0 and up
+        if version >= (2020,):  # 2020.1 and up
+            self.is_pre_processed = reader.read_boolean()
+        if version >= (2019, 3):  # 2019.3 and up
+            self.ignore_master_texture_limit = reader.read_boolean()
+        if (3,) <= version <= (5, 4):  # 3.0.0 - 5.4
+            self.m_ReadAllowed = reader.read_boolean()
+        if version >= (2018, 2):  # 2018.2 and up
+            self.m_streaming_mipmaps = reader.read_boolean()
+
         reader.align_stream()
         if version >= (2018, 2):  # 2018.2 and up
             self.m_StreamingMipmapsPriority = reader.read_int()
         self.m_ImageCount = reader.read_int()
         self.m_TextureDimension = reader.read_int()
         self.m_TextureSettings = GLTextureSettings(reader)
-        if version >= (3, ):  # 3.0 and up
+        if version >= (3,):  # 3.0 and up
             self.m_LightmapFormat = reader.read_int()
         if version >= (3, 5):  # 3.5.0 and up
             self.m_ColorSpace = reader.read_int()
@@ -105,7 +109,10 @@ class StreamingInfo:
     path: str = ""
 
     def __init__(self, reader):
-        self.offset = reader.read_u_int()
+        if reader.version >= (2020,):  # 2020.1 and up
+            self.offset = reader.read_u_long()
+        else:
+            self.offset = reader.read_u_int()
         self.size = reader.read_u_int()
         self.path = reader.read_aligned_string()
 

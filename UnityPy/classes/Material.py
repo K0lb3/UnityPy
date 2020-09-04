@@ -7,12 +7,13 @@ class Material(NamedObject):
         super().__init__(reader=reader)
         version = self.version
         self.m_Shader = PPtr(reader)  # Shader
-        if version >= (4, 1):  # 4.x
-            self.m_ShaderKeywords = reader.read_string_array()
 
         if version >= (5,):  # 5.0 and up
             self.m_ShaderKeywords = reader.read_aligned_string()
             self.m_LightmapFlags = reader.read_u_int()
+
+        elif version >= (4, 1):  # 4.x
+            self.m_ShaderKeywords = reader.read_string_array()
 
         if version >= (5, 6):  # 5.6 and up
             self.m_EnableInstancingVariants = reader.read_boolean()

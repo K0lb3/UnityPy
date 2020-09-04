@@ -22,14 +22,15 @@ class Renderer(Component):
                 self.m_Enabled = reader.read_boolean()
                 self.m_CastShadows = reader.read_byte()
                 self.m_ReceiveShadows = reader.read_byte()
-                # 2017.2 and up
-                if version[:2] > (2017, 2):
+                if version[:2] > (2017, 2):  # 2017.2 and up
                     self.m_DynamicOccludee = reader.read_byte()
                 self.m_MotionVectors = reader.read_byte()
                 self.m_LightProbeUsage = reader.read_byte()
                 self.m_ReflectionProbeUsage = reader.read_byte()
-                if version >= (2019, 3): # 2019.3 and up
+                if version >= (2019, 3):  # 2019.3 and up
                     self.m_RayTracingMode = reader.ReadByte()
+                if version >= (2020,):  # 2020.1 and up
+                    self.m_RayTraceProcedural = reader.read_byte()
                 reader.align_stream()
             else:
                 self.m_Enabled = reader.read_boolean()

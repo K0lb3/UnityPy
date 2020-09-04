@@ -164,9 +164,14 @@ class SerializedFile(File):
             reader.Position = header.file_size - header.metadata_size
             header.endian = ">" if reader.read_boolean() else "<"
 
+        if header.version >= 22:
+            header.metadata_size = reader.read_u_int()
+            header.file_size = reader.read_long()
+            header.data_offset = reader.read_long()
+            reader.read_long()  # unknown
+
         reader.endian = header.endian
 
-        p1 = reader.Position
         if header.version >= 7:
             unity_version = reader.read_string_to_null()
             self.set_version(unity_version)
@@ -185,6 +190,7 @@ class SerializedFile(File):
         type_count = reader.read_int()
         self.types = [self.read_serialized_type() for _ in range(type_count)]
 
+        self.big_id_enabled = 0
         if 7 <= header.version < 14:
             self.big_id_enabled = reader.read_int()
 
@@ -209,15 +215,16 @@ class SerializedFile(File):
             FileIdentifier(header, reader) for _ in range(externals_count)
         ]
 
-        self.userInformation = reader.read_string_to_null()
-        if header.version >= 21:
-            self.unknown = reader.read_int()
+        if header.version >= 20:
+            ref_type_count = reader.read_int()
+            self.ref_types = [
+                self.read_serialized_type() for _ in range(ref_type_count)
+            ]
+
+        if header.version >= 5:
+            self.userInformation = reader.read_string_to_null()
 
         # read the asset_bundles to get the containers
-        old_pos = reader.Position
-        reader.Position = p1
-        self.metadata = reader.read(old_pos - p1)
-        reader.Position = old_pos
         for obj in self.objects.values():
             if obj.type == ClassIDType.AssetBundle:
                 data = obj.read()
@@ -228,11 +235,10 @@ class SerializedFile(File):
                         self._container[asset.path_id] = container
         environment.container = {**environment.container, **self.container}
 
-        reader.Position = old_pos
-
     def set_version(self, string_version):
         self.unity_version = string_version
-        self.build_type = BuildType(re.findall(r"([^\d.])", string_version)[0])
+        build_type = re.findall(r"([^\d.])", string_version)
+        self.build_type = BuildType(build_type[0] if build_type else "")
         version_split = re.split(r"\D", string_version)
         self.version = tuple(int(x) for x in version_split)
 
@@ -259,6 +265,9 @@ class SerializedFile(File):
                 type_.string_data = self.read_type_tree5(type_tree)
             else:
                 self.read_type_tree(type_tree)
+
+            if self.header.version >= 21:
+                type_.type_dependencies = reader.read_int_array()
 
             type_.nodes = type_tree
 
@@ -294,7 +303,7 @@ class SerializedFile(File):
         string_buffer_size = self.reader.read_int()
 
         node_size = 24
-        if self.header.version > 17:
+        if self.header.version > 19:
             node_size = 32
 
         self.reader.Position += number_of_nodes * node_size
@@ -313,8 +322,8 @@ class SerializedFile(File):
             type_tree_node.index = self.reader.read_int()
             type_tree_node.meta_flag = self.reader.read_int()
 
-            if self.header.version > 17:
-                type_tree_node.extra = self.reader.read(8)
+            if self.header.version > 19:
+                type_tree_node.ref_type_hash = self.reader.read_u_long()
 
             type_tree_node.type = read_string(
                 string_buffer_reader, type_tree_node.type_str_offset
@@ -598,13 +607,19 @@ class ObjectReader:
         header = assets_file.header
         types = assets_file.types
 
-        if header.version < 14:
+        if assets_file.big_id_enabled:
+            self.path_id = reader.read_long()
+        elif header.version < 14:
             self.path_id = reader.read_int()
         else:
             reader.align_stream()
             self.path_id = reader.read_long()
 
-        self.byte_start = reader.read_u_int()
+        if header.version >= 22:
+            self.byte_start = reader.read_long()
+        else:
+            self.byte_start = reader.read_u_int()
+
         self.byte_start += header.data_offset
         self.byte_size = reader.read_u_int()
         self.type_id = reader.read_int()
@@ -616,13 +631,20 @@ class ObjectReader:
                 ]
             else:
                 self.serialized_type = SerializedType()
-            self.is_destroyed = reader.read_u_short()
         else:
             typ = types[self.type_id]
             self.serialized_type = typ
             self.class_id = typ.class_id
 
         self.type = ClassIDType(self.class_id)
+
+        if header.version < 11:
+            self.is_destroyed = reader.read_u_short()
+
+        if 11 <= header.version < 17:
+            script_type_index = reader.read_short()
+            if self.serialized_type:
+                self.serialized_type.script_type_index = script_type_index
 
         if header.version == 15 or header.version == 16:
             self.stripped = reader.read_byte()
@@ -667,7 +689,18 @@ class ObjectReader:
         self.reader.Position = self.byte_start
 
     def read(self):
-        return getattr(classes, self.type.name, classes.Object)(self)
+        try:
+            return getattr(classes, self.type.name, classes.Object)(self)
+        except:
+            # hacky solution in case the parsing via the class fails
+            # this solution uses the type tree to set the variables and then changes the class
+            obj = classes.Object(self)
+            obj.__class__ = getattr(classes, self.type.name, classes.Object)
+            for key, val in obj.__dict__.items():
+                if " " in key:
+                    obj.__dict__[key.replace(" ", "_")] = val
+                    delattr(obj, key)
+            return obj
 
     def __getattr__(self, item: str):
         if hasattr(self.reader, item):

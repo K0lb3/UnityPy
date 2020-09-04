@@ -8,66 +8,16 @@ class EndianBinaryReader:
     endian: str
     Length: int
     Position: int
-    stream: io.BufferedReader
 
-    def __init__(self, input_, endian=">"):
-        if isinstance(input_, (bytes, bytearray)):
-            self.stream = io.BytesIO(input_)
-        elif isinstance(input_, (io.BytesIO, io.BufferedReader)):
-            self.stream = input_
+    def __new__(cls, item, endian=">"):
+        if isinstance(item, (bytes, bytearray, memoryview)):
+            obj = super(EndianBinaryReader, cls).__new__(EndianBinaryReader_Memoryview)
         else:
-            # test if input is a streamable object
-            try:
-                p = input_.tell()
-                input_.read(1)
-                input_.seek(p)
-                assert p == input_.tell()
-                self.stream = input_
-            except:
-                raise ValueError("Invalid __init__ parametrs for EndianBinaryReader: %s." % 
-                                  type(input_))
-
-        self.endian = endian
-        self.Length = self.stream.seek(0, 2)
-        self.Position = 0
-
-    def get_position(self):
-        return self.stream.tell()
-
-    def set_position(self, value):
-        self.stream.seek(value)
-
-    Position = property(get_position, set_position)
-
-    @property
-    def bytes(self):
-        last_pos = self.Position
-        self.Position = 0
-        ret = self.read()
-        self.Position = last_pos
-        return ret
-
-    def __add__(self, value):
-        if isinstance(value, (bytes, bytearray)):
-            old_pos = self.Position
-            self.Position = self.Length
-            self.stream.write(value)
-            self.Length += len(value)
-            self.Position = old_pos
-        else:
-            raise ValueError("Invalid __add__ parameters for EndianBinaryReader: %s" %
-                              value.__class__.__name__)
-
-    def dispose(self):
-        self.stream.close()
-        pass
-
-    def read(self, *args):
-        _data = self.stream.read(*args)
-        if len(args) > 0 and len(_data) != args[0]:
-            raise EOFError("got only %d bytes out of %d requested" % 
-                            (len(_data), args[0]))
-        return _data
+            obj = obj = super(EndianBinaryReader, cls).__new__(
+                EndianBinaryReader_Streamable
+            )
+        obj.__init__(item, endian)
+        return obj
 
     def read_byte(self) -> int:
         return struct.unpack(self.endian + "b", self.read(1))[0]
@@ -106,7 +56,7 @@ class EndianBinaryReader:
         return bool(struct.unpack(self.endian + "?", self.read(1))[0])
 
     def read_string(self, size=None, encoding="utf-8") -> str:
-        if size is None or size == 0:
+        if size is None:
             ret = self.read_string_to_null()
         else:
             ret = struct.unpack(f"{self.endian}{size}is", self.read(size))[0]
@@ -118,13 +68,11 @@ class EndianBinaryReader:
     def read_string_to_null(self, max_length=32767) -> str:
         ret = []
         c = b""
-        pos = self.Position
         while c != b"\0" and len(ret) < max_length and self.Position != self.Length:
             ret.append(c)
             c = self.read(1)
             if not c:
-                raise EOFError("Unterminated string of length %d @ %d" % 
-                                (len(ret), pos))
+                raise ValueError("Unterminated string: %r" % ret)
         return b"".join(ret).decode("utf8", "replace")
 
     def read_aligned_string(self):
@@ -186,6 +134,11 @@ class EndianBinaryReader:
     def read_u_int_array(self, length=0):
         return self.read_array(self.read_u_int, length if length else self.read_int())
 
+    def read_u_int_array_array(self, length=0):
+        return self.read_array(
+            self.read_u_int_array, length if length else self.read_int()
+        )
+
     def read_float_array(self, length=0):
         return self.read_array(self.read_float, length if length else self.read_int())
 
@@ -201,5 +154,66 @@ class EndianBinaryReader:
     def read_matrix_array(self):
         return self.read_array(self.read_matrix, self.read_int())
 
-    def read_u_int_array_array(self):
-        return self.read_array(self.read_u_int_array, self.read_int())
+
+class EndianBinaryReader_Memoryview(EndianBinaryReader):
+    view: memoryview
+
+    def __init__(self, view, endian=">"):
+        self.view = memoryview(view)
+        self.endian = endian
+        self.Length = len(view)
+        self.Position = 0
+
+    @property
+    def bytes(self):
+        return self.view
+
+    def dispose(self):
+        self.view.release()
+
+    def read(self, length: int):
+        ret = self.view[self.Position : self.Position + length]
+        self.Position += length
+        return ret
+
+    def read_aligned_string(self):
+        length = self.read_int()
+        if 0 < length <= self.Length - self.Position:
+            string_data = self.read_bytes(length)
+            result = string_data.tobytes().decode("utf8", "backslashreplace")
+            self.align_stream(4)
+            return result
+        return ""
+
+
+class EndianBinaryReader_Streamable(EndianBinaryReader):
+    stream: io.BufferedReader
+
+    def __init__(self, stream, endian=">"):
+        self.stream = stream
+        self.endian = endian
+        self.Length = self.stream.seek(0, 2)
+        self.Position = 0
+
+    def get_position(self):
+        return self.stream.tell()
+
+    def set_position(self, value):
+        self.stream.seek(value)
+
+    Position = property(get_position, set_position)
+
+    @property
+    def bytes(self):
+        last_pos = self.Position
+        self.Position = 0
+        ret = self.read()
+        self.Position = last_pos
+        return ret
+
+    def dispose(self):
+        self.stream.close()
+        pass
+
+    def read(self, *args):
+        return self.stream.read(*args)

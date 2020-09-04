@@ -1,5 +1,6 @@
 from .NamedObject import NamedObject
 from ..helpers.ResourceReader import get_resource_data
+from .PPtr import PPtr
 
 
 class VideoClip(NamedObject):
@@ -21,10 +22,20 @@ class VideoClip(NamedObject):
         self.audio_sample_rate = reader.read_u_int_array()
         self.audio_language = reader.read_string_array()
         # StreamedResource m_ExternalResources
+        if self.version >= (2020,):  # 2020.1 and up
+            video_shader_size = reader.ReadInt32()
+            self.video_shaders = [PPtr(reader) for _ in range(video_shader_size)]
+
+        # StreamedResource
         source = reader.read_aligned_string()
         offset = reader.read_u_long()
         size = reader.read_u_long()
+
         self.has_split_alpha = reader.read_boolean()
+
+        if self.version >= (2020,):  # 2020.1 and up
+            self.m_sRGB = reader.read_boolean()
+
         if source:
             self.VideoData = get_resource_data(source, self.assets_file, offset, size)
         else:

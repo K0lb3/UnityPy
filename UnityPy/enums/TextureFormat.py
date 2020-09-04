@@ -64,4 +64,4 @@ class TextureFormat(IntEnum):
     ASTC_HDR_6x6 = (68,)
     ASTC_HDR_8x8 = (69,)
     ASTC_HDR_10x10 = (70,)
-    ASTC_HDR_12x12 = 71
+    ASTC_HDR_12x12 = (71,)

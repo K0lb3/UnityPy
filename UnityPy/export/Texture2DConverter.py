@@ -21,7 +21,7 @@ def get_image_from_texture2d(texture_2d, flip=True) -> Image:
     :return: PIL.Image object
     :rtype: Image
     """
-    image_data = copy(texture_2d.image_data)
+    image_data = copy(bytes(texture_2d.image_data))
     if not image_data:
         return Image.new("RGB", (0,0))
     texture_format = texture_2d.m_TextureFormat if isinstance(texture_2d, TextureFormat) else TextureFormat(texture_2d.m_TextureFormat)

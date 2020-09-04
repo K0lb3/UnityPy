@@ -199,7 +199,7 @@ class FloatCurve:
         self.curve = AnimationCurve(reader, reader.read_float)  # Float
         self.attribute = reader.read_aligned_string()
         self.path = reader.read_aligned_string()
-        self.classID = reader.read_int()
+        self.classID = ClassIDType(reader.read_int())
         self.script = PPtr(reader)  # MonoScript
 
 

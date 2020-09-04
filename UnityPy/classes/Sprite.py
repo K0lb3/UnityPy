@@ -4,6 +4,7 @@ from .Mesh import BoneWeights4, SubMesh, VertexData
 from .NamedObject import NamedObject
 from .PPtr import PPtr
 from ..export import SpriteHelper
+from ..enums import SpriteMeshType
 
 
 class Sprite(NamedObject):
@@ -21,7 +22,8 @@ class Sprite(NamedObject):
 
         self.m_PixelsToUnits = reader.read_float()
         if version >= (5, 4, 2) or (
-            version >= (5, 4, 1, 3) and self.build_type.IsPatch):  # 5.4.1p3 and up
+            version >= (5, 4, 1, 3) and self.build_type.IsPatch
+        ):  # 5.4.1p3 and up
             self.m_Pivot = reader.read_vector2()
 
         self.m_Extrude = reader.read_u_int()
@@ -77,10 +79,8 @@ class SpriteSettings:
         self.packed = settingsRaw & 1  # 1
         self.packingMode = SpritePackingMode((settingsRaw >> 1) & 1)  # 1
         self.packingRotation = SpritePackingRotation((settingsRaw >> 2) & 0xF)  # 4
-
-
-# meshType = (settingsRaw >> 6) & 1 #1
-# reserved
+        self.meshType = SpriteMeshType((settingsRaw >> 6) & 1)  # 1
+        # reserved
 
 
 class SpriteVertex:

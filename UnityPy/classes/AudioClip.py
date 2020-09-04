@@ -21,7 +21,7 @@ class AudioClip(NamedObject):
                 m_Size = reader.read_int()
                 tsize = m_Size + 4 - m_Size % 4 if (m_Size % 4 != 0) else m_Size
                 if reader.byte_size + reader.byte_start - reader.Position != tsize:
-                    m_Offset = reader.read_int()
+                    m_Offset = reader.read_u_int()
                     self.m_Source = self.assets_file.full_name + ".resS"
             else:
                 m_Size = reader.read_int()
@@ -41,7 +41,7 @@ class AudioClip(NamedObject):
             self.m_Legacy3D = reader.read_boolean()
             reader.align_stream()
             self.m_Source = reader.read_aligned_string()
-            m_Offset = reader.read_long()
+            m_Offset = reader.read_u_long()
             m_Size = reader.read_long()
             self.m_CompressionFormat = AudioCompressionFormat(reader.read_int())
 

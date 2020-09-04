@@ -106,4 +106,5 @@
     1093: "m_CorrespondingSourceObject",
     1121: "m_PrefabInstance",
     1138: "m_PrefabAsset",
+    1152: "FileSize",
 }

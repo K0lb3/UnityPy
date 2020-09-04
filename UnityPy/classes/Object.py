@@ -79,7 +79,10 @@ class Object:
     def __repr__(self):
         return "<%s %s>" % (self.__class__.__name__, self.name)
 
+
 from .PPtr import PPtr
+
+
 class NodeHelper(object):
     def __init__(self, data, assets_file):
         if "m_PathID" in data and "m_FileID" in data:
@@ -90,18 +93,36 @@ class NodeHelper(object):
             self.assets_file = assets_file
             self.__class__ = PPtr
         else:
-            self.__dict__ = {key:NodeHelper(val, assets_file) for key, val in data.items()}
+            self.__dict__ = {
+                str(key): NodeHelper(val, assets_file) for key, val in data.items()
+            }
 
-         
     def __new__(cls, data, assets_file):
         if isinstance(data, dict):
             return super(NodeHelper, cls).__new__(cls)
         elif isinstance(data, list):
             return [NodeHelper(x, assets_file) for x in data]
         return data
-    
+
+    def __item__(self, key):
+        return self.__dict__[key]
+
     def to_dict(self):
-        return {
-            key:(val.dump() if isinstance(val, NodeHelper) else val)
-            for key,val in self.__dict__.items()
-        }
+        def dump(val):
+            return (
+                val.to_dict()
+                if isinstance(val, NodeHelper)
+                else [dump(item) for item in val]
+                if isinstance(val, list)
+                else {"m_PathID": val.path_id, "m_FileID": val.file_id}
+                if isinstance(val, PPtr)
+                else [x for x in val]
+                if isinstance(val, (bytearray, bytes))
+                else val
+            )
+
+        return {key: dump(val) for key, val in self.__dict__.items()}
+
+    def __repr__(self):
+        return "<NodeHelper - %s>" % self.__dict__.__repr__()
+
