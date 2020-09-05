@@ -155,7 +155,7 @@ class BlendTreeNodeConstant:
             self.m_BlendDirectData = BlendDirectDataConstant(reader)
 
         self.m_ClipID = reader.read_u_int()
-        if (4, 5) <= version <= (5, 0):  # 4.5 - 5.0
+        if (4, 5) <= version[:2] <= (5, 0):  # 4.5 - 5.0
             self.m_ClipIndex = reader.read_u_int()
 
         self.m_Duration = reader.read_float()

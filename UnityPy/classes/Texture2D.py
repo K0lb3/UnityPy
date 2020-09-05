@@ -43,7 +43,7 @@ class Texture2D(Texture):
             self.is_pre_processed = reader.read_boolean()
         if version >= (2019, 3):  # 2019.3 and up
             self.ignore_master_texture_limit = reader.read_boolean()
-        if (3,) <= version <= (5, 4):  # 3.0.0 - 5.4
+        if (3,) <= version[:2] <= (5, 4):  # 3.0.0 - 5.4
             self.m_ReadAllowed = reader.read_boolean()
         if version >= (2018, 2):  # 2018.2 and up
             self.m_streaming_mipmaps = reader.read_boolean()
