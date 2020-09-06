@@ -9,7 +9,7 @@ class TextAsset(NamedObject):
 
     @property
     def text(self):
-        return self.script.decode("utf8")
+        return bytes(self.script).decode("utf8")
 
     @text.setter
     def text(self, val):
