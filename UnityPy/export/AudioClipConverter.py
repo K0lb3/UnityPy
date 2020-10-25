@@ -15,12 +15,21 @@ def extract_audioclip_samples(audio) -> dict:
 	:return: {filename : sample(bytes)}
 	:rtype: dict
 	"""
-    ret = {}
 
     if not audio.m_AudioData:
         # eg. StreamedResource not available
         return {}
 
+    magic = memoryview(audio.m_AudioData)[:4]
+    if magic == b'OggS':
+        return {'%s.ogg' % audio.name: audio.m_AudioData}
+    elif magic == b'RIFF':
+        return {'%s.wav' % audio.name: audio.m_AudioData}
+    return _extract_fsb(audio)
+
+
+def _extract_fsb(audio) -> dict:
+    ret = {}
     af = FSB5(audio.m_AudioData)
     for i, sample in enumerate(af.samples):
         if i > 0:
