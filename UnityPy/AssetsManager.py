@@ -3,7 +3,7 @@ import logging
 import os
 from zipfile import ZipFile
 
-from .EndianBinaryReader import EndianBinaryReader
+from .streams.EndianBinaryReader import EndianBinaryReader
 from .Progress import Progress
 from .files import BundleFile, SerializedFile, WebFile
 from .helpers import ImportHelper

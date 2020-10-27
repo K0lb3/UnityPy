@@ -1,109 +1,90 @@
-import os
+import os, sys
+from glob import glob
 from UnityPy import AssetsManager
 from collections import Counter
 import zipfile
+from tqdm import tqdm
 
-TYPES = ['Sprite', 'Texture2D', 'TextAsset']
+TYPES = ['Sprite', 'Texture2D', 'TextAsset', 'MonoBehaviour']
 
-ROOT = os.path.dirname(os.path.realpath(__file__))
-
-# source folder
-ASSETS = os.path.join(ROOT, 'assets')
-# destination folder
-DST = os.path.join(ROOT, 'extracted')
-# number of dirs to ignore
-# e.g. IGNOR_DIR_COUNT = 2 will reduce
-# 'assets/assetbundles/images/story_picture/small/15.png'
-# to
-# 'images/story_picture/small/15.png'
-
-IGNOR_DIR_COUNT = 2
-
-os.makedirs(DST, exist_ok=True)
-
+ROOT = os.path.abspath(os.getcwd()) # base directory
+DST = os.path.join(ROOT, "output") # destination folder
+ASSETS = os.path.join(ROOT,"input\\*.*") # source folder or file
 
 def main():
-	for root, dirs, files in os.walk(ASSETS, topdown=False):
-		if '.git' in root:
-			continue
-		for f in files:
-			print(f)
-			extension = os.path.splitext(f)[1]
-			src = os.path.realpath(os.path.join(root, f))
+    os.makedirs(DST, exist_ok=True)
+    for file_name in glob(ASSETS):
+        extension = os.path.splitext(file_name)[1]
+        src = os.path.realpath(os.path.join(ROOT, file_name))
 
-			if extension == ".zip":
-				archive = zipfile.ZipFile(src, 'r')
-				for zf in archive.namelist():
-					extract_assets(archive.open(zf))
-			else:
-				extract_assets(src)
+        am = None
+        if extension == ".zip":
+            archive = zipfile.ZipFile(src, 'r')
+            for zf in archive.namelist():
+                am = AssetsManager(archive.open(zf))
+                print("Parsing file:", zf)
+        else:
+            am = AssetsManager(src)
+            print("Parsing file:", src)
+        if am is None:
+            continue
+        #am.out_path = DST
+        am.ignore_dir_lvls = 2
+        am.progress_function = tqdm
+        am.process(export_obj, TYPES)
+        #am.save()
 
+def make_path(*args):
+    fp = os.path.join(*args)
+    os.makedirs(os.path.dirname(fp), exist_ok=True)
+    return fp
 
-def extract_assets(src):
-	# load source
-	am = AssetsManager(src)
+def export_obj(obj, asset: str, local_path: str) -> list:
+    objfmt = str(obj.type)
 
-	# iterate over assets
-	for asset in am.assets.values():
-		# assets without container / internal path will be ignored for now
-		if not asset.container:
-			continue
+    data = obj.read()
+    name = data.name if (data.name is not None and data.name != '') else "unnamed asset"
+    fname, extension = os.path.splitext(name)
+    objname = "%s-%s-%d" % (fname, os.path.basename(asset), obj.path_id)
 
-		# check which mode we will have to use
-		num_cont = sum(1 for obj in asset.container.values() if obj.type in TYPES)
-		num_objs = sum(1 for obj in asset.objects.values() if obj.type in TYPES)
+    if objfmt == "TextAsset":
+        if data.script:
+            fp = f"{make_path(DST, local_path, os.path.split(fname)[0], objname)}.txt"
+            if not os.path.isfile(fp):
+                with open(fp, "wb") as f:
+                    f.write(data.script)
 
-		# check if container contains all important assets, if yes, just ignore the container
-		if num_objs <= num_cont * 2:
-			for asset_path, obj in asset.container.items():
-				fp = os.path.join(DST, *asset_path.split('/')[IGNOR_DIR_COUNT:])
-				export_obj(obj, fp)
+    elif objfmt == "Sprite":
+        fp = f"{make_path(DST, local_path, fname)}.png"
+        if not os.path.isfile(fp):
+            data.image.save(fp)
 
-		# otherwise use the container to generate a path for the normal objects
-		else:
-			extracted = []
-			# find the most common path
-			occurence_count = Counter(os.path.splitext(asset_path)[0] for asset_path in asset.container.keys())
-			local_path = os.path.join(DST, *occurence_count.most_common(1)[0][0].split('/')[IGNOR_DIR_COUNT:])
+    elif objfmt == "MonoBehaviour":
+        # file_offset = data.reader.byte_base_offset + data.reader.byte_start
+        # written_offset = data.reader.byte_start - data.reader.byte_header_offset
+        script = data.script.read()
+        if not script: return []
+        fp = f"{make_path(DST, local_path, script.namespace, script.class_name, objname)}.dat"
+        if not os.path.isfile(fp):
+            with open(fp, "wb") as f:
+                f.write(data.get_raw_data())
 
-			for obj in asset.objects.values():
-				if obj.path_id not in extracted:
-					extracted.extend(export_obj(obj, local_path, append_name=True))
+    elif objfmt == "Texture2D":
+        fp = f"{make_path(DST, local_path, fname)}.png"
+        if not os.path.isfile(fp):
+            try:
+                data.image.save(fp)
+            except Exception as e:
+                if data.m_TextureFormat.name is not None:
+                    objfmt = data.m_TextureFormat.name
+                print(repr(e), "in file:", objname, "object type:", objfmt)
+                return []
+    #else:
+    #     fp = "%s-%s-%d" % (asset, obj.path_id, obj.type)
 
-
-def export_obj(obj, fp: str, append_name: bool = False) -> list:
-	if obj.type not in TYPES:
-		return []
-	data = obj.read()
-	if append_name:
-		fp = os.path.join(fp, data.name)
-
-	fp, extension = os.path.splitext(fp)
-	os.makedirs(os.path.dirname(fp), exist_ok=True)
-
-	if obj.type == 'TextAsset':
-		if not extension:
-			extension = '.txt'
-		with open(f"{fp}{extension}", 'wb') as f:
-			f.write(data.script)
-
-	elif obj.type == "Sprite":
-		extension = ".png"
-		data.image.save(f"{fp}{extension}")
-
-		return [obj.path_id, data.m_RD.texture.path_id, getattr(data.m_RD.alphaTexture, 'path_id', None)]
-
-	elif obj.type == "Texture2D":
-		extension = ".png"
-		fp = f"{fp}{extension}"
-		if not os.path.exists(fp):
-			try:
-				data.image.save(fp)
-			except EOFError:
-				pass
-
-	return [obj.path_id]
+    #print("writing", obj.type, "to", fp, "format", objfmt)
+    return [obj.path_id]
 
 
 if __name__ == '__main__':
-	main()
+    main()

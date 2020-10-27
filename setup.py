@@ -14,7 +14,7 @@ setuptools.setup(
 	long_description_content_type="text/markdown",
 	url="https://github.com/K0lb3/UnityPy",
 	download_url="https://github.com/K0lb3/UnityPy/tarball/master",
-	keywords=['Unity', 'unitypack', 'UnityPy', "unpack"],
+	keywords=["Unity", "unitypack", "UnityPy", "unpack", "game tools"],
 	classifiers=[
 		"License :: OSI Approved :: MIT License",
 		"Operating System :: OS Independent",
@@ -24,6 +24,7 @@ setuptools.setup(
 		"Programming Language :: Python :: 3",
 		"Programming Language :: Python :: 3.6",
 		"Programming Language :: Python :: 3.7",
+		"Programming Language :: Python :: 3.8",
 		"Topic :: Multimedia :: Graphics",
 	],
 	install_requires=[
@@ -31,6 +32,7 @@ setuptools.setup(
 		"brotli",
 		"Pillow",
 		"fsb5",
+		"tqdm",
 		"texture2ddecoder"
 	]
 )
