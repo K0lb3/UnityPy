@@ -2,7 +2,7 @@ class File(object):
     name: str
     files: dict
     signature: str
-    compression: str
+    packer: str
     # parent: File
 
     def keys(self):

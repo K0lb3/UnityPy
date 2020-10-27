@@ -8,8 +8,9 @@ class EndianBinaryReader:
     endian: str
     Length: int
     Position: int
+    BaseOffset: int
 
-    def __new__(cls, item, endian=">"):
+    def __new__(cls, item, endian=">", offset=0):
         if isinstance(item, (bytes, bytearray, memoryview)):
             obj = super(EndianBinaryReader, cls).__new__(EndianBinaryReader_Memoryview)
         else:
@@ -80,7 +81,7 @@ class EndianBinaryReader:
         if 0 < length <= self.Length - self.Position:
             string_data = self.read_bytes(length)
             result = string_data.decode("utf8", "backslashreplace")
-            self.align_stream(4)
+            self.align_stream()
             return result
         return ""
 
@@ -154,15 +155,22 @@ class EndianBinaryReader:
     def read_matrix_array(self):
         return self.read_array(self.read_matrix, self.read_int())
 
+    def real_offset(self):
+        """ Returns offset in the underlying file.
+            (Not working with unpacked streams.)
+        """
+        return self.BaseOffset + self.Position
+
 
 class EndianBinaryReader_Memoryview(EndianBinaryReader):
     view: memoryview
 
-    def __init__(self, view, endian=">"):
+    def __init__(self, view, endian=">", offset=0):
         self.view = memoryview(view)
         self.endian = endian
         self.Length = len(view)
         self.Position = 0
+        self.BaseOffset = offset
 
     @property
     def bytes(self):
@@ -181,7 +189,7 @@ class EndianBinaryReader_Memoryview(EndianBinaryReader):
         if 0 < length <= self.Length - self.Position:
             string_data = self.read_bytes(length)
             result = string_data.tobytes().decode("utf8", "backslashreplace")
-            self.align_stream(4)
+            self.align_stream()
             return result
         return ""
 
@@ -189,11 +197,12 @@ class EndianBinaryReader_Memoryview(EndianBinaryReader):
 class EndianBinaryReader_Streamable(EndianBinaryReader):
     stream: io.BufferedReader
 
-    def __init__(self, stream, endian=">"):
+    def __init__(self, stream, endian=">", offset=0):
         self.stream = stream
         self.endian = endian
         self.Length = self.stream.seek(0, 2)
         self.Position = 0
+        self.BaseOffset = 0
 
     def get_position(self):
         return self.stream.tell()
@@ -216,4 +225,8 @@ class EndianBinaryReader_Streamable(EndianBinaryReader):
         pass
 
     def read(self, *args):
-        return self.stream.read(*args)
+        _data = self.stream.read(*args)
+        if False and len(args) > 0 and len(_data) != args[0]: # TODO: the switch in a debug module
+            raise EOFError("got only %d bytes out of %d requested" %
+                            (len(_data), args[0]))
+        return _data

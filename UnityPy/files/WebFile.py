@@ -23,7 +23,7 @@ class WebFile(File):
         reader.Position = 0
 
         if magic == CompressionHelper.GZIP_MAGIC:
-            self.compression = "gzip"
+            self.packer = "gzip"
             data = CompressionHelper.decompress_gzip(reader.bytes)
             reader = EndianBinaryReader(data, endian="<")
         else:
@@ -31,11 +31,11 @@ class WebFile(File):
             magic = reader.read_bytes(6)
             reader.Position = 0
             if CompressionHelper.BROTLI_MAGIC == magic:
-                self.compression = "brotli"
+                self.packer = "brotli"
                 data = CompressionHelper.decompress_brotli(reader.bytes)
                 reader = EndianBinaryReader(data, endian="<")
             else:
-                self.compression = "None"
+                self.packer = "none"
                 reader.endian = "<"
 
         # signature check
@@ -52,7 +52,10 @@ class WebFile(File):
             offset = reader.read_int()
             length = reader.read_int()
             path_length = reader.read_int()
-            name = reader.read_bytes(path_length).decode("utf8")
+            name = reader.read_bytes(path_length)
+            if isinstance(name, memoryview):
+                name = name.tobytes()
+            name = name.decode("utf-8")
             files.append((name, offset, length))
 
         # read file data and convert it
@@ -84,14 +87,14 @@ class WebFile(File):
     def save(
         self,
         files: dict = None,
-        compression: str = None,
+        packer: str = "none",
         signature: str = "UnityWebData1.0",
     ) -> bytes:
         # solve defaults
         if not files:
             files = self.files
-        if not compression:
-            compression = self.compression
+        if not packer:
+            packer = self.packer
 
         # get raw data
         files = {
@@ -109,7 +112,7 @@ class WebFile(File):
             [
                 writer.Position,  # signature
                 sum(
-                    len(path.encode("utf8")) for path in files.keys()
+                    len(path.encode("utf-8")) for path in files.keys()
                 ),  # path of each file
                 4 * 3 * len(files),  # 3 ints per file
                 4,  # offset int
@@ -127,7 +130,7 @@ class WebFile(File):
             writer.write_int(length)
             offset += length
             # path
-            enc_path = name.encode("utf8")
+            enc_path = name.encode("utf-8")
             writer.write_int(len(enc_path))
             writer.write(enc_path)
 
@@ -135,9 +138,9 @@ class WebFile(File):
         for data in files.values():
             writer.write(data)
 
-        if compression == "gzip":
+        if packer == "gzip":
             return CompressionHelper.compress_gzip(writer.bytes)
-        elif compression == "brotli":
+        elif packer == "brotli":
             return CompressionHelper.compress_brotli(writer.bytes)
         else:
             return writer.bytes
