@@ -58,6 +58,9 @@ class Object:
         self.reader.reset()
         return self.reader.read_bytes(self.byte_size)
 
+    def set_raw_data(self, data):
+        self.reader.data = data
+
     def save(self, writer: EndianBinaryWriter, intern_call=False):
         if intern_call:
             if self.platform == BuildTarget.NoTarget:

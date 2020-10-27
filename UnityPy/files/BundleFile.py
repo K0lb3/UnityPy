@@ -33,9 +33,6 @@ class BundleFile(File):
 
         self.read_files(blocksReader, m_DirectoryInfo)
 
-    def mark_changed(self):
-        self.is_changed = True
-
     def read_files(self, blocksStream: EndianBinaryReader, m_DirectoryInfo):
         for node in m_DirectoryInfo:
             blocksStream.Position = node.offset

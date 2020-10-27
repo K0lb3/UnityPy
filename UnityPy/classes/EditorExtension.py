@@ -14,5 +14,5 @@ class EditorExtension(Object):
     def save(self, writer: EndianBinaryWriter):
         super().save(writer, intern_call=True)
         if self.platform == BuildTarget.NoTarget:
-            save_ptr(self.prefab_parent_object)
-            save_ptr(self.prefab_internal)
+            save_ptr(self.prefab_parent_object, writer, self.reader.version2)
+            save_ptr(self.prefab_internal, writer, self.reader.version2)

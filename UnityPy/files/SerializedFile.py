@@ -599,7 +599,6 @@ def read_string(string_buffer_reader: EndianBinaryReader, value: int) -> str:
 class ObjectReader:
     byte_start: int
     byte_size: int
-    is_modified: bool
     type_id: int
     class_id: ClassIDType
     path_id: int

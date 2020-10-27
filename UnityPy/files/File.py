@@ -1,6 +1,7 @@
 class File(object):
     name: str
     files: dict
+    is_changed: bool
     signature: str
     packer: str
     # parent: File
@@ -19,3 +20,6 @@ class File(object):
 
     def __repr__(self):
         return f"<{self.__class__.__name__}>"
+
+    def mark_changed(self):
+        self.is_changed = True

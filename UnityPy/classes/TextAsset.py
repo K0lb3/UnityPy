@@ -23,4 +23,4 @@ class TextAsset(NamedObject):
         writer.write_bytes(self.script)
         writer.align_stream()
 
-        self.reader.data = writer.bytes
+        self.set_raw_data(writer.bytes)

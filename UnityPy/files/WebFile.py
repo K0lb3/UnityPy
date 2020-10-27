@@ -17,6 +17,7 @@ class WebFile(File):
         """Constructor Method
         """
         self.files = {}
+        self.is_changed = False
 
         # check compression
         magic = reader.read_bytes(2)
