@@ -10,4 +10,4 @@ class NamedObject(EditorExtension):
 
     def save(self, writer: EndianBinaryWriter):
         super().save(writer)
-        writer.write_aligned_string(self.name)
+        writer.write_aligned_string(self.name) # self.name if self.name else '' ?

@@ -25,7 +25,6 @@ class SerializedFileHeader:
         self.version = reader.read_u_int()
         self.data_offset = reader.read_u_int()
 
-
 class LocalSerializedObjectIdentifier:  # script type
     local_serialized_file_index: int
     local_identifier_in_file: int
@@ -113,6 +112,7 @@ class SerializedType:
 
 class SerializedFile(File):
     reader: EndianBinaryReader
+    is_changed: bool
     unity_version: str
     version: list
     build_type: BuildType
@@ -131,12 +131,13 @@ class SerializedFile(File):
         return self.objects
 
     def __init__(self, reader: EndianBinaryReader, environment=None, parent=None):
+        self.is_changed = False
         self.environment = environment
         self.parent = parent
         self.reader = reader
 
         self.unity_version = "2.5.0f5"
-        self.version = [0, 0, 0, 0]
+        self.version = (0, 0, 0, 0)
         self.build_type = BuildType("")
         self.target_platform = BuildTarget.UnknownPlatform
         self._enable_type_tree = True
@@ -152,6 +153,7 @@ class SerializedFile(File):
         # of specific assets cached the extraction can be speed up by a lot.
         # used by: Sprite (Texture2D (with alpha) cached),
         self._cache = {}
+        self.unknown = 0
 
         # ReadHeader
         header = SerializedFileHeader(reader)
@@ -168,7 +170,7 @@ class SerializedFile(File):
             header.metadata_size = reader.read_u_int()
             header.file_size = reader.read_long()
             header.data_offset = reader.read_long()
-            reader.read_long()  # unknown
+            self.unknown = reader.read_long()  # unknown
 
         reader.endian = header.endian
 
@@ -241,6 +243,11 @@ class SerializedFile(File):
         self.build_type = BuildType(build_type[0] if build_type else "")
         version_split = re.split(r"\D", string_version)
         self.version = tuple(int(x) for x in version_split)
+
+    def mark_changed(self):
+        self.is_changed = True
+        if self.parent:
+            self.parent.mark_changed()
 
     def read_serialized_type(self):
         type_ = SerializedType()
@@ -333,11 +340,13 @@ class SerializedFile(File):
             )
 
         self.reader.Position += string_buffer_size
+
         if self.header.version >= 21:
-            self.reader.Position += 4
+            self.unknown_ttr5 = self.reader.read_u_int()
+
         return string_buffer_reader.bytes
 
-    def save(self) -> bytes:
+    def save(self, packer: str="none") -> bytes:
         # Structure:
         #   1. header
         #       file header
@@ -616,19 +625,24 @@ class ObjectReader:
             self.path_id = reader.read_long()
 
         if header.version >= 22:
+            self.byte_start_offset = (self.reader.real_offset(), 8)
             self.byte_start = reader.read_long()
         else:
+            self.byte_start_offset = (self.reader.real_offset(), 4)
             self.byte_start = reader.read_u_int()
 
         self.byte_start += header.data_offset
+        self.byte_header_offset = header.data_offset
+        self.byte_base_offset = self.reader.BaseOffset
+
+        self.byte_size_offset = (self.reader.real_offset(), 4)
         self.byte_size = reader.read_u_int()
+
         self.type_id = reader.read_int()
         if header.version < 16:
             self.class_id = reader.read_u_short()
             if types:
-                self.serialized_type = [x for x in types if x.class_id == self.type_id][
-                    0
-                ]
+                self.serialized_type = [x for x in types if x.class_id == self.type_id][0]
             else:
                 self.serialized_type = SerializedType()
         else:
@@ -662,6 +676,7 @@ class ObjectReader:
         else:
             self.reset()
             data = self.reader.read(self.byte_size)
+
         writer.write_u_int(data_writer.Position)
         writer.write_u_int(len(data))
 
@@ -670,12 +685,16 @@ class ObjectReader:
         writer.write_int(self.type_id)
 
         if header.version < 16:
-            # WARNING - CLASSIDTYPE MIGHT CHANGE THE NUMBER IF IT'S UNNOWN
+            # WARNING - CLASSIDTYPE MIGHT CHANGE THE NUMBER IF IT'S UNKNOWN
             writer.write_u_short(self.class_id)
             writer.write_u_short(self.is_destroyed)
 
         if header.version == 15 or header.version == 16:
             writer.write_byte(self.stripped)
+
+    def set_raw_data(self, data):
+        self.data = data
+        self.assets_file.mark_changed()
 
     @property
     def container(self):
@@ -691,9 +710,12 @@ class ObjectReader:
     def read(self):
         try:
             return getattr(classes, self.type.name, classes.Object)(self)
+        except Exception as e:
+            raise e
+        # TODO: only specific exceptions here?
         except:
-            # hacky solution in case the parsing via the class fails
-            # this solution uses the type tree to set the variables and then changes the class
+            # HACK: in case the parsing via the class fails this solution
+            #       uses the type tree to set the variables and then changes the class
             obj = classes.Object(self)
             obj.__class__ = getattr(classes, self.type.name, classes.Object)
             for key, val in obj.__dict__.items():

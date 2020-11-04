@@ -5,12 +5,16 @@ from .NamedObject import NamedObject
 from .Texture2D import StreamingInfo
 from ..helpers.ResourceReader import get_resource_data
 from ..math import Matrix4x4, Vector3
-
+from ..streams import EndianBinaryWriter
 
 class MinMaxAABB:
     def __init__(self, reader):
         self.m_Min = reader.read_vector3()
         self.m_Max = reader.read_vector3()
+
+    def save(self, writer):
+        writer.write_vector3(self.m_Min)
+        writer.write_vector3(self.m_Max)
 
 
 class CompressedMesh:
@@ -35,6 +39,25 @@ class CompressedMesh:
             else:
                 self.m_UVInfo = reader.read_u_int()
 
+    def save(self, writer, version):
+        self.m_Vertices.save(writer)
+        self.m_UV.save(writer)
+        if version < (5,): # 5 down
+            self.m_BindPoses.save(writer)
+        self.m_Normals.save(writer)
+        self.m_Tangents.save(writer)
+        self.m_Weights.save(writer)
+        self.m_NormalSigns.save(writer)
+        self.m_TangentSigns.save(writer)
+        if version >= (5,):  # 5 and up
+            self.m_FloatColors.save(writer)
+        self.m_BoneIndices.save(writer)
+        self.m_Triangles.save(writer)
+        if version >= (3, 5):  # 3.5 and up
+            if version < (5,): # 5 down
+                self.m_Colors.save(writer)
+            else:
+                writer.write_u_int(m_UVInfo)
 
 class StreamInfo:
     def __init__(self, **kwargs):
@@ -54,6 +77,17 @@ class StreamInfo:
         else:
             self.__dict__ = kwargs
 
+    def save(self, writer, version):
+        writer.write_u_int(self.channelMask)
+        writer.write_u_int(self.offset)
+
+        if version < (4,):  # 4.0 down
+            writer.write_u_int(self.stride)
+            writer.write_u_int(self.align)
+        else:
+            writer.write_byte(self.stride)
+            writer.write_byte(self.dividerOp)
+            writer.write_u_short(self.frequency)
 
 class ChannelInfo:
     def __init__(self, reader):
@@ -62,6 +96,11 @@ class ChannelInfo:
         self.format = reader.read_byte()
         self.dimension = reader.read_byte()
 
+    def save(self, writer):
+        writer.write_byte(self.stream)
+        writer.write_byte(self.offset)
+        writer.write_byte(self.format)
+        writer.write_byte(self.dimension)
 
 class VertexData:
     def __init__(self, reader):
@@ -92,6 +131,35 @@ class VertexData:
 
         self.m_DataSize = reader.read_bytes(reader.read_int())
         reader.align_stream()
+
+    def save(self, writer: EndianBinaryWriter, version):
+        if version < (2018,):  # 2018 down
+            writer.write_u_int(self.m_CurrentChannels)
+
+        writer.write_u_int(self.m_VertexCount)
+
+        if version >= (4,):  # 4.0 and up
+            writer.write_int(len(self.m_Channels))
+            for ch in self.m_Channels:
+                ch.save(writer)
+
+        if (4,) <= version[:2] < (5,):  # 4.0 and up to 5.0
+            writer.write_int(len(m_Streams))
+
+            for stream in self.m_Streams:
+                stream.save(writer=writer, varsion=version)
+
+            if version < (4,):  # 4.0 down
+                raise Exception("Unsupported version")
+        else:  # 5.0 and up
+            #for stream in self.m_Streams:
+            #    stream.save(writer)
+            pass
+
+        writer.write_int(len(self.m_DataSize))
+        writer.write_bytes(self.m_DataSize)
+        writer.align_stream()
+
 
     def GetStreams(self):
         streamCount = 1 + (
@@ -192,6 +260,10 @@ class BoneWeights4:
             self.weight = [0.0] * 4
             self.boneIndex = [0] * 4
 
+    def save(self, writer):
+        writer.write_float_array(self.weight)
+        writer.write_int_array(self.boneIndex)
+
 
 class BlendShapeVertex:
     def __init__(self, reader):
@@ -251,9 +323,7 @@ class BlendShapeData:
 
 
 class SubMesh:
-    def __init__(self, reader):
-        version = reader.version
-
+    def __init__(self, reader, version):
         self.firstByte = reader.read_u_int()
         self.indexCount = reader.read_u_int()
         self.topology = reader.read_int()
@@ -268,6 +338,22 @@ class SubMesh:
             self.firstVertex = reader.read_u_int()
             self.vertexCount = reader.read_u_int()
             self.localAABB = AABB(reader)
+
+    def save(self, writer, version):
+        writer.write_u_int(self.firstByte)
+        writer.write_u_int(self.indexCount)
+        writer.write_int(self.topology)
+
+        if version < (4,):  # 4.0 down
+            writer.write_u_int(self.triangleCount)
+
+        if version >= (2017, 3):  # 2017.3 and up
+            writer.write_u_int(self.baseVertex)
+
+        if version >= (3,):  # 3.0 and up
+            writer.write_u_int(self.firstVertex)
+            writer.write_u_int(self.vertexCount)
+            self.localAABB.save(writer)
 
 
 class Mesh(NamedObject):

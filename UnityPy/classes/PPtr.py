@@ -1,12 +1,25 @@
 from ..streams import EndianBinaryReader, EndianBinaryWriter
 
+def save_ptr(obj, writer: EndianBinaryWriter, version):
+    if isinstance(obj, PPtr):
+        writer.write_int(obj.file_id)
+    else:
+        writer.write_int(0)  # it's usually 0......
+    if version < 14:
+        writer.write_int(obj.path_id)
+    else:
+        writer.write_long(obj.path_id)
 
 class PPtr:
     def __init__(self, reader: EndianBinaryReader):
+        self._version = reader.version2
         self.index = -2
         self.file_id = reader.read_int()
-        self.path_id = reader.read_int() if reader.version2 < 14 else reader.read_long()
+        self.path_id = reader.read_int() if  self._version < 14 else reader.read_long()
         self.assets_file = reader.assets_file
+
+    def save(self, writer: EndianBinaryWriter):
+        save_ptr(self, writer, self._version)
 
     def __getattr__(self, key):
         # get manager
@@ -55,16 +68,6 @@ class PPtr:
 
     def __bool__(self):
         return False
-
-
-def save_ptr(obj, writer: EndianBinaryWriter):
-    if isinstance(obj, PPtr):
-        writer.write_int(obj.file_id)
-        writer.write_int(obj.path_id)
-    else:
-        writer.write_int(0)  # it's usually 0......
-        writer.write_int(obj.path_id)
-
 
 """    
     def TryGetAssetsFile(self):

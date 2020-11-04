@@ -49,11 +49,25 @@ class PackedFloatVector:
         self.m_NumItems = reader.read_u_int()
         self.m_Range = reader.read_float()
         self.m_Start = reader.read_float()
+
         numData = reader.read_int()
         self.m_Data = reader.read_bytes(numData)
         reader.align_stream()
+
         self.m_BitSize = reader.read_byte()
         reader.align_stream()
+
+    def save(self, writer):
+        writer.write_u_int(self.m_NumItems)
+        writer.write_float(self.m_Range)
+        writer.write_float(self.m_Start)
+
+        writer.write_int(len(self.m_Data))
+        writer.write_bytes(self.m_Data)
+        writer.align_stream()
+
+        writer.write_byte(self.m_BitSize)
+        writer.align_stream()
 
     def UnpackFloats(
         self,
@@ -95,12 +109,23 @@ class PackedFloatVector:
 class PackedIntVector:
     def __init__(self, reader):
         self.m_NumItems = reader.read_u_int()
+
         numData = reader.read_int()
         self.m_Data = reader.read_bytes(numData)
         reader.align_stream()
 
         self.m_BitSize = reader.read_byte()
         reader.align_stream()
+
+    def save(self, writer):
+        writer.write_u_int(self.m_NumItems)
+
+        writer.write_int(len(self.m_Data))
+        writer.write_bytes(self.m_Data)
+        writer.align_stream()
+
+        writer.write_byte(self.m_BitSize)
+        writer.align_stream()
 
     def UnpackInts(self):
         data = []
@@ -224,6 +249,10 @@ class AABB:
     def __init__(self, reader):
         self.m_Center = reader.read_vector3()
         self.m_Extent = reader.read_vector3()
+
+    def save(self, writer):
+        writer.write_vector3(self.m_Center)
+        writer.write_vector3(self.m_Extent)
 
 
 class xform:

@@ -7,13 +7,13 @@
 
 A Unity asset extractor for Python based on [AssetStudio](https://github.com/Perfare/AssetStudio).
 
-1. [Installation](https://github.com/K0lb3/UnityPy#installation)
-2. [Example](https://github.com/K0lb3/UnityPy#example)
-3. [Important Classes](https://github.com/K0lb3/UnityPy#important-classes)
-4. [Important Object Types](https://github.com/K0lb3/UnityPy#important-object-types)
-5. [Goals](https://github.com/K0lb3/UnityPy#goals)
-6. [Motivation](https://github.com/K0lb3/UnityPy#motivation)
-7. [Community](https://github.com/K0lb3/UnityPy#community)
+1. [Installation](#installation)
+2. [Example](#example)
+3. [Important Classes](#important-classes)
+4. [Important Object Types](#important-object-types)
+5. [Goals](#goals)
+6. [Motivation](#motivation)
+7. [Community](#community)
 
 ## Installation
 
@@ -66,15 +66,15 @@ def unpack_all_assets(source_folder : str, destination_folder : str):
                         img.save(dest)
 ```
 
-You probably have to read [Important Classes](https://github.com/K0lb3/UnityPy#important-classes)
-and [Important Object Types](https://github.com/K0lb3/UnityPy#important-object-types) to understand how it works.
+You probably have to read [Important Classes](#important-classes)
+and [Important Object Types](#important-object-types) to understand how it works.
 
-People who have slightly advanced python skills should take a look at [AssetBatchConverter.py](https://github.com/K0lb3/UnityPy/blob/master/AssetBatchConverter.py) for a more advanced example.
+People who have slightly advanced python skills should take a look at [AssetBatchConverter.py](AssetBatchConverter.py) for a more advanced example.
 
 
 ## Important Classes
 
-### [AssetsManager](https://github.com/K0lb3/UnityPy/blob/master/UnityPy/AssetsManager.py)
+### [AssetsManager](UnityPy/AssetsManager.py)
 
 AssetsManager loads and parses the files that are given to it.
 It can be initialized via:
@@ -96,7 +96,7 @@ for asset_name, asset in am.assets.items():
     pass
 ```
 
-### [Asset]((https://github.com/K0lb3/UnityPy/blob/master/UnityPy/files/SerializedFile.py))
+### [Asset](UnityPy/files/SerializedFile.py)
 
 Assets are a container that contains multiple objects.
 One of these objects can be an AssetBundle, which contains a file path for some of the objects in the same asset.
@@ -105,24 +105,24 @@ All objects can be found in the ``.objects`` dict - ``{ID : object}``.
 
 The objects which have a file path can be found in the ``.container`` dict - ``{path : object}``.
 
-### [Object]((https://github.com/K0lb3/UnityPy/blob/master/UnityPy/ObjectReader.py))
+### [Object](UnityPy/ObjectReader.py)
 
 Objects contain the *actual* files which, e.g. textures, text files, meshes, settings, ...
 
-To acquire the actual data of an object it has to be read first, this happens via the ``.read()`` function. This isn't done automatically to save time because only a small part of the objects are of interest.
+To acquire the actual data of an object it has to be read first, this happens via the ``.read()`` function. This isn't done automatically to save time because only a small part of the objects are of interest. Serialized objects can be set with raw data using ``.set_raw_data(data)`` or modified with ``.save()`` function if supported.
 
 ## Important Object Types
 
-All object types can be found in [UnityPy/classes](https://github.com/K0lb3/UnityPy/tree/master/UnityPy/classes).
+All object types can be found in [UnityPy/classes](UnityPy/classes/).
 
-### [Texture2D](https://github.com/K0lb3/UnityPy/blob/master/UnityPy/classes/Texture2D.py)
+### [Texture2D](UnityPy/classes/Texture2D.py)
 
 * ``.name``
 * ``.image`` converts the texture into a ``PIL.Image``
 * ``.m_Width`` - texture width (int)
 * ``.m_Height`` - texture height (int)
 
-### [Sprite](https://github.com/K0lb3/UnityPy/blob/master/UnityPy/classes/Sprite.py)
+### [Sprite](UnityPy/classes/Sprite.py)
 
 Sprites are part of a texture and can have a separate alpha-image as well.
 Unlike most other extractors (including AssetStudio) UnityPy merges those two images by itself.
@@ -132,7 +132,7 @@ Unlike most other extractors (including AssetStudio) UnityPy merges those two im
 * ``.m_Width`` - sprite width (int)
 * ``.m_Height`` - sprite height (int)
 
-### [TextAsset](https://github.com/K0lb3/UnityPy/blob/master/UnityPy/classes/TextAsset.py)
+### [TextAsset](UnityPy/classes/TextAsset.py)
 
 TextAssets are usually normal text files.
 
@@ -142,15 +142,15 @@ TextAssets are usually normal text files.
 
 Some games save binary data as TextFile, so it's usually better to use ``.script``.
 
-### [MonoBehaviour](https://github.com/K0lb3/UnityPy/blob/master/UnityPy/classes/MonoBehaviour.py)
+### [MonoBehaviour](UnityPy/classes/MonoBehaviour.py)
 
 MonoBehaviour assets are usually binary data that has to be decoded.
-e.g. via msgpack, protobuf
+(e.g. via msgpack, protobuf, kaitaistruct etc)
 
 * ``.name``
 * ``.script``- binary data (bytes)
 
-### [AudioClip](https://github.com/K0lb3/UnityPy/blob/master/UnityPy/classes/AudioClip.py)
+### [AudioClip](UnityPy/classes/AudioClip.py)
 
 * ``.samples`` - ``{sample-name : sample-data}`` dict
 
@@ -158,15 +158,15 @@ e.g. via msgpack, protobuf
 
 ### WIP
 
-* a documentation
-* the ability to edit assets (like in UABE)
+- [x] A documentation
+- [x] The ability to edit assets (like in UABE)
 
-### planned
+### TODO
 
-* support for more object types
-* code optimization
-* speed-ups via C-extensions
-* multiprocessing
+- [ ] Support for more object types
+- [ ] Code optimization
+- [ ] Speed-ups via C-extensions
+- [ ] Multiprocessing
 
 ## Motivation
 
@@ -177,4 +177,4 @@ That's why I started this project.
 
 ## Community
 
-[Discord](https://discord.gg/C6txv7M)
+### [Discord](https://discord.gg/C6txv7M)

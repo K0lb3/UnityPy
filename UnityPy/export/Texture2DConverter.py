@@ -3,12 +3,25 @@
 import texture2ddecoder
 from PIL import Image
 from copy import copy
-from io import BytesIO
+from io import BytesIO, BufferedIOBase, RawIOBase, IOBase
 import struct
 from ..enums import TextureFormat, BuildTarget
 
 TF = TextureFormat
 PREFER_BASISU = False
+
+def prepare_raw_image(img, flip=True):
+    _image = None
+    if (isinstance(img, str) or isinstance(img, BufferedIOBase) or
+        isinstance(img, RawIOBase) or isinstance(img, IOBase)):
+        _image = Image.open(img)
+    elif isinstance(img, Image.Image):
+        _image = img
+    if _image:
+        if flip:
+            _image = _image.transpose(Image.FLIP_TOP_BOTTOM)
+        return _image.getdata()
+    return None
 
 
 def get_image_from_texture2d(texture_2d, flip=True) -> Image:
@@ -23,9 +36,9 @@ def get_image_from_texture2d(texture_2d, flip=True) -> Image:
     """
     image_data = copy(bytes(texture_2d.image_data))
     if not image_data:
-        return Image.new("RGB", (0,0))
-    texture_format = texture_2d.m_TextureFormat if isinstance(texture_2d, TextureFormat) else TextureFormat(texture_2d.m_TextureFormat)
+        return Image.new("RGB", (0, 0))
 
+    texture_format = texture_2d.m_TextureFormat if isinstance(texture_2d, TextureFormat) else TextureFormat(texture_2d.m_TextureFormat)
     selection = CONV_TABLE[texture_format]
 
     if len(selection) == 0:
@@ -137,7 +150,7 @@ def half(
     # convert half-float to int8
     stream = BytesIO(image_data)
     image_data = bytes(
-        int(struct.unpackb("e", stream.read(2))*256) 
+        int(struct.unpackb("e", stream.read(2))*256)
         for i in range(width*height*len(codec))
     )
     img = (

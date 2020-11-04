@@ -13,11 +13,13 @@ BlockInfo = namedtuple("BlockInfo", "uncompressedSize compressedSize flags")
 
 class BundleFile(File):
     format: int
+    is_changed: bool
     signature: str
     version_engine: str
     version_player: str
 
     def __init__(self, reader: EndianBinaryReader, environment=None):
+        self.is_changed = False
         self.environment = environment
         self.files = {}
         signature = self.signature = reader.read_string_to_null()
@@ -26,15 +28,8 @@ class BundleFile(File):
             raise NotImplemented("BundleFile - UnityArchive")
         elif signature in ["UnityWeb", "UnityRaw"]:
             m_DirectoryInfo, blocksReader = self.read_web_raw(reader)
-            # self.read_header_and_blocks_info(reader)
-            # blocks_stream, directory = self.read_block_and_directory(reader)
-            # self.read_files(blocks_stream, directory)
         elif signature == "UnityFS":
             m_DirectoryInfo, blocksReader = self.read_fs(reader)
-            # self.read_header(reader)
-            # directory = self.read_blocks_info_and_directory(reader)
-            # blocks_stream = self.read_blocks(reader)
-            # self.read_files(blocks_stream, directory)
 
         self.read_files(blocksReader, m_DirectoryInfo)
 
@@ -42,7 +37,7 @@ class BundleFile(File):
         for node in m_DirectoryInfo:
             blocksStream.Position = node.offset
             path = node.path
-            f = EndianBinaryReader(blocksStream.read(node.size))
+            f = EndianBinaryReader(blocksStream.read(node.size), offset=(blocksStream.BaseOffset + node.offset))
             f._flag = getattr(node, "flags", None)  # required for save
             # check for serialized files
             if path.endswith((".resS", ".resource", ".config", ".xml", ".dat")):
@@ -86,12 +81,11 @@ class BundleFile(File):
 
         reader.Position = headerSize
 
-        # def read_blocks_and_directory(self, reader : EndianBinaryReader):
         uncompressedBytes = reader.read_bytes(compressedSize)
         if flags:
             uncompressedBytes = CompressionHelper.decompress_lzma(uncompressedBytes)
 
-        blocksReader = EndianBinaryReader(uncompressedBytes)
+        blocksReader = EndianBinaryReader(uncompressedBytes, offset=headerSize)
         nodesCount = blocksReader.read_int()
         m_DirectoryInfo = [
             DirectoryInfo(
@@ -105,7 +99,6 @@ class BundleFile(File):
         return m_DirectoryInfo, blocksReader
 
     def read_fs(self, reader: EndianBinaryReader):
-        # def read_header(self, reader : EndianBinaryReader):
         self.version = reader.read_u_int()
         self.version_player = reader.read_string_to_null()
         self.version_engine = reader.read_string_to_null()
@@ -116,12 +109,11 @@ class BundleFile(File):
         uncompressedSize = reader.read_u_int()
         flags = reader.read_u_int()
 
-        # def read_blocks_info_and_directory(self, reader : EndianBinaryReader):
+        _position = reader.Position
         if flags & 0x80 != 0:  # kArchiveBlocksInfoAtTheEnd
-            position = reader.Position
             reader.Position = reader.Length - compressedSize
             blocksInfoBytes = reader.read_bytes(compressedSize)
-            reader.Position = position
+            reader.Position = _position
         else:  # 0x40 kArchiveBlocksAndDirectoryInfoCombined
             if self.version >= 7:
                 reader.allign_stream(16)
@@ -137,7 +129,7 @@ class BundleFile(File):
             )
         # elif switch == 4: #LZHAM:
 
-        blocksInfoReader = EndianBinaryReader(blocksInfoBytes)
+        blocksInfoReader = EndianBinaryReader(blocksInfoBytes, offset=_position)
 
         uncompressedDataHash = blocksInfoReader.read_bytes(16)
         blocksInfoCount = blocksInfoReader.read_int()
@@ -179,12 +171,13 @@ class BundleFile(File):
                 return reader.read_bytes(blockInfo.uncompressedSize)
 
         blocksReader = EndianBinaryReader(
-            b"".join(decompress_block(blockInfo) for blockInfo in m_BlocksInfo)
+            b"".join(decompress_block(blockInfo) for blockInfo in m_BlocksInfo),
+            offset=(blocksInfoReader.real_offset())
         )
 
         return m_DirectoryInfo, blocksReader
 
-    def save(self):
+    def save(self, packer="none"):
         # file_header
         #     signature	(string_to_null)
         #     format		(int)
@@ -193,7 +186,7 @@ class BundleFile(File):
         writer = EndianBinaryWriter()
 
         writer.write_string_to_null(self.signature)
-        writer.write_int(self.format)
+        writer.write_u_int(self.version)
         writer.write_string_to_null(self.version_player)
         writer.write_string_to_null(self.version_engine)
 
@@ -202,24 +195,31 @@ class BundleFile(File):
         elif self.signature in ["UnityWeb", "UnityRaw"]:
             raise NotImplemented("Saving Unity Web and Raw bundles isn't supported yet")
             # self.save_web_raw(writer)
-        elif signature == "UnityFS":
-            self.save_fs(writer)
+        elif self.signature == "UnityFS":
+            if not packer or packer == "none":
+                self.save_fs(writer)
+            elif packer == "lz4":
+                self.save_fs(writer, block_info_flag=194, data_flag=2)
+            else:
+                raise NotImplemented("UnityFS - Packer:", packer)
         return writer.bytes
 
-    def save_fs(self, writer: EndianBinaryWriter, padding=False):
+    def save_fs(self, writer: EndianBinaryWriter, padding=False, block_info_flag=64, data_flag=64):
         # header
         # compressed blockinfo (block details & directionary)
         # compressed assets
 
-        # 192 - uncompressed
-        # 194 - lz4
-        block_info_flag = 64
-        # 0/64 - uncompressed
-        # 1 - lzma
-        # 2 - lz4
-        # 3 - lz4hc - not implemented
-        # 4 - lzham - not implemented
-        data_flag = 64
+        # 0b1000000 / 0b11000000 | 64 / 192 - uncompressed
+        # 0b11000010 | 194 - lz4
+        #block_info_flag
+
+        # 0 / 0b1000000 | 0 / 64 - uncompressed
+        # 0b1   | 1 - lzma
+        # 0b10  | 2 - lz4
+        # 0b11  | 3 - lz4hc [not implemented]
+        # 0b100 | 4 - lzham [not implemented]
+        #data_flag
+
         # header:
         #     bundle_size		(long)
         #     compressed_size	(int)
@@ -257,7 +257,7 @@ class BundleFile(File):
         files = [
             (
                 name,
-                f.flag,
+                0, #f.flag,
                 data_writer.write_bytes(
                     f.bytes if isinstance(f, EndianBinaryReader) else f.save()
                 ),
