@@ -53,10 +53,7 @@ class WebFile(File):
             offset = reader.read_int()
             length = reader.read_int()
             path_length = reader.read_int()
-            name = reader.read_bytes(path_length)
-            if isinstance(name, memoryview):
-                name = name.tobytes()
-            name = name.decode("utf-8")
+            name = bytes(reader.read_bytes(path_length)).decode("utf-8")
             files.append((name, offset, length))
 
         # read file data and convert it

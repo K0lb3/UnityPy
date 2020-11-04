@@ -38,7 +38,7 @@ class AssetsManager:
         self.assets = {}
         self.resource_file_readers = {}
         self.import_files = {}
-
+        self.path = "."
         self.Progress = Progress()
 
         if args:
@@ -48,10 +48,13 @@ class AssetsManager:
                         if os.path.splitext(arg)[-1] in [".apk", ".zip"]:
                             self.load_zip_file(arg)
                         else:
+                            self.path = os.path.dirname(arg)
                             self.load_file(arg)
                     elif os.path.isdir(arg):
+                        self.path = arg
                         self.load_folder(arg)
                 else:
+                    self.path = None
                     self.load_file(arg)
 
     def load_files(self, files: list):
@@ -111,10 +114,10 @@ class AssetsManager:
         if file_name not in self.assets:
             logging.info(f"Loading {full_name}")
             try:
-                assets_file = SerializedFile(self, full_name, reader)
-                self.assets[assets_file.name] = assets_file
+                assets_file = SerializedFile(self, reader)
+                self.assets[file_name] = assets_file
 
-                for sharedFile in assets_file._externals:
+                for sharedFile in assets_file.externals:
                     shared_file_path = os.path.join(
                         os.path.dirname(full_name), sharedFile.name
                     )

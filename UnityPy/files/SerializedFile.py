@@ -25,6 +25,7 @@ class SerializedFileHeader:
         self.version = reader.read_u_int()
         self.data_offset = reader.read_u_int()
 
+
 class LocalSerializedObjectIdentifier:  # script type
     local_serialized_file_index: int
     local_identifier_in_file: int
@@ -180,10 +181,7 @@ class SerializedFile(File):
 
         if header.version >= 8:
             self._m_target_platform = reader.read_int()
-            try:
-                self.target_platform = BuildTarget(self._m_target_platform)
-            except KeyError:
-                self.target_platform = BuildTarget.UnknownPlatform
+            self.target_platform = BuildTarget(self._m_target_platform)
 
         if header.version >= 13:
             self._enable_type_tree = reader.read_boolean()
@@ -269,12 +267,12 @@ class SerializedFile(File):
         if self._enable_type_tree:
             type_tree = []
             if self.header.version >= 12 or self.header.version == 10:
-                type_.string_data = self.read_type_tree5(type_tree)
+                type_.string_data = self.read_type_tree_blob(type_tree)
             else:
                 self.read_type_tree(type_tree)
 
             if self.header.version >= 21:
-                type_.type_dependencies = reader.read_int_array()
+                type_.type_dependencies = self.reader.read_int_array()
 
             type_.nodes = type_tree
 
@@ -305,48 +303,35 @@ class SerializedFile(File):
         for i in range(children_count):
             self.read_type_tree(type_tree, level + 1)
 
-    def read_type_tree5(self, type_tree):
+    def read_type_tree_blob(self, type_tree):
+        reader = self.reader
         number_of_nodes = self.reader.read_int()
         string_buffer_size = self.reader.read_int()
 
-        node_size = 24
-        if self.header.version > 19:
-            node_size = 32
-
-        self.reader.Position += number_of_nodes * node_size
-        string_buffer_reader = EndianBinaryReader(self.reader.read(string_buffer_size))
-        self.reader.Position -= number_of_nodes * node_size + string_buffer_size
-
-        for i in range(number_of_nodes):
-            type_tree_node = TypeTreeNode()
-            type_tree.append(type_tree_node)
-            type_tree_node.version = self.reader.read_u_short()
-            type_tree_node.level = self.reader.read_byte()
-            type_tree_node.is_array = self.reader.read_boolean()
-            type_tree_node.type_str_offset = self.reader.read_u_int()
-            type_tree_node.name_str_offset = self.reader.read_u_int()
-            type_tree_node.byte_size = self.reader.read_int()
-            type_tree_node.index = self.reader.read_int()
-            type_tree_node.meta_flag = self.reader.read_int()
+        for _ in range(number_of_nodes):
+            node = TypeTreeNode()
+            type_tree.append(node)
+            node.version = reader.read_u_short()
+            node.level = reader.read_byte()
+            node.is_array = reader.read_boolean()
+            node.type_str_offset = reader.read_u_int()
+            node.name_str_offset = reader.read_u_int()
+            node.byte_size = reader.read_int()
+            node.index = reader.read_int()
+            node.meta_flag = reader.read_int()
 
             if self.header.version > 19:
-                type_tree_node.ref_type_hash = self.reader.read_u_long()
+                node.ref_type_hash = reader.read_u_long()
 
-            type_tree_node.type = read_string(
-                string_buffer_reader, type_tree_node.type_str_offset
-            )
-            type_tree_node.name = read_string(
-                string_buffer_reader, type_tree_node.name_str_offset
-            )
-
-        self.reader.Position += string_buffer_size
-
-        if self.header.version >= 21:
-            self.unknown_ttr5 = self.reader.read_u_int()
+        string_buffer_reader = EndianBinaryReader(
+            reader.read(string_buffer_size), reader.endian)
+        for node in type_tree:
+            node.type = read_string(string_buffer_reader, node.type_str_offset)
+            node.name = read_string(string_buffer_reader, node.name_str_offset)
 
         return string_buffer_reader.bytes
 
-    def save(self, packer: str="none") -> bytes:
+    def save(self, packer: str = "none") -> bytes:
         # Structure:
         #   1. header
         #       file header
@@ -514,7 +499,7 @@ class SerializedFile(File):
 
             # calc children count
             children_count = 0
-            for node2 in nodes[i + 1 :]:
+            for node2 in nodes[i + 1:]:
                 if node2.level == node.level:
                     break
                 if node2.level == node.level - 1:
@@ -642,7 +627,8 @@ class ObjectReader:
         if header.version < 16:
             self.class_id = reader.read_u_short()
             if types:
-                self.serialized_type = [x for x in types if x.class_id == self.type_id][0]
+                self.serialized_type = (
+                    x for x in types if x.class_id == self.type_id).next()
             else:
                 self.serialized_type = SerializedType()
         else:
