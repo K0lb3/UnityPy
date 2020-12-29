@@ -144,8 +144,9 @@ Some games save binary data as TextFile, so it's usually better to use ``.script
 
 ### [MonoBehaviour](UnityPy/classes/MonoBehaviour.py)
 
-MonoBehaviour assets are usually binary data that has to be decoded.
-(e.g. via msgpack, protobuf, kaitaistruct etc)
+MonoBehaviour assets are usually used to save the class instances with their values.
+If a type tree exists it can be used to read the whole data,
+but if it doesn't, then it is usually necessary to investigate the class that loads the specific MonoBehaviour to extract the data.
 
 * ``.name``
 * ``.script``- binary data (bytes)
