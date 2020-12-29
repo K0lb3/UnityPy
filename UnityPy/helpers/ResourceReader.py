@@ -1,7 +1,8 @@
-import os
+import os, glob
 
-from .ImportHelper import find_all_files
-
+def search_resource(path, name):
+    files = glob.glob(os.path.join(path, "**", name), recursive = True)
+    return files[0] if len(files) else ""
 
 def get_resource_data(*args):
     """
@@ -30,27 +31,28 @@ def get_resource_data(*args):
         resource_file_name = path
 
         reader = assets_file.environment.resources.get(resource_file_name)
+        base_name = os.path.basename(resource_file_name)
+        if not reader:
+            reader = assets_file.environment.resources.get(base_name)
         if not reader:
             reader = assets_file.environment.resources.get(
-                os.path.basename(resource_file_name)
-            )
-        if not reader:
-            reader = assets_file.environment.resources.get(
-                os.path.basename(resource_file_name.replace('.assets.resS', '.resource'))
+                base_name.replace('.assets.resS', '.resource')
             )
 
         if reader:
             reader.Position = offset
             return reader.read_bytes(size)
 
+        current_directory = ''
         if not assets_file.environment.path:
-            return
-        current_directory = os.path.dirname(assets_file.environment.path)
+            current_directory = os.getcwd()
+        else:
+            current_directory = os.path.dirname(assets_file.environment.path)
         resource_file_path = os.path.join(current_directory, resource_file_name)
         if not os.path.isfile(resource_file_path):
-            find_files = find_all_files(current_directory, resource_file_name)
-            if find_files:
-                resource_file_path = find_files[0]
+            resource_file_path = search_resource(current_directory, base_name)
+        if not os.path.isfile(resource_file_path):
+            resource_file_path = search_resource(current_directory, base_name.replace('.assets.resS', '.resource'))
 
         if os.path.isfile(resource_file_path):
             with open(resource_file_path, "rb") as f:
@@ -60,7 +62,6 @@ def get_resource_data(*args):
             raise FileNotFoundError(
                 f"Can't find the resource file {resource_file_name}"
             )
-
     else:
         reader.Position = offset
         return reader.read_bytes(size)
