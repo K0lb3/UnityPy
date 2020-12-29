@@ -233,7 +233,8 @@ class SerializedFile(File):
                     self.container[container] = asset
                     if hasattr(asset, "path_id"):
                         self._container[asset.path_id] = container
-        environment.container = {**environment.container, **self.container}
+        if environment is not None:
+            environment.container = {**environment.container, **self.container}
 
     def set_version(self, string_version):
         self.unity_version = string_version
