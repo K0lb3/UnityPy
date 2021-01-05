@@ -2,8 +2,10 @@ import os
 
 SAMPLES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "samples")
 
+
 def test_import():
     import UnityPy
+
 
 def test_read():
     import UnityPy
@@ -12,7 +14,8 @@ def test_read():
         for asset in am.assets.values():
             for obj in asset.objects.values():
                 obj.read()
-    
+
+
 def test_texture2d():
     import UnityPy
     for f in os.listdir(SAMPLES):
@@ -22,6 +25,7 @@ def test_texture2d():
                 if obj.type == "Texture2D":
                     obj.read().image.save("test.png")
 
+
 def test_sprite():
     import UnityPy
     for f in os.listdir(SAMPLES):
@@ -30,6 +34,16 @@ def test_sprite():
             for obj in asset.objects.values():
                 if obj.type == "Sprite":
                     obj.read().image.save("test.png")
+
+
+def test_audioclip():
+    import UnityPy
+    import platform
+    env = UnityPy.load("char_118_yuki.ab")
+    for obj in env.objects:
+        clip = obj.read()
+        clip.samples
+
 
 if __name__ == "__main__":
     for x in list(locals()):

@@ -1,20 +1,34 @@
+import ctypes
+import os
+import platform
+from UnityPy.streams import EndianBinaryWriter, EndianBinaryReader
+# pyfmodex init
 try:
-    from fsb5 import FSB5
-except ImportError:
-    print("Couldn't import fsb5.\nfsb5 is required to process convert audio clips.")
+    ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+    LIB_PATH = os.path.join(ROOT, "lib", "FMOD", platform.system(), platform.architecture()[0])
+
+    if platform.system() == 'Windows':
+        _dll = ctypes.WinDLL(os.path.join(LIB_PATH, "fmod.dll"))
+    elif platform.system() == "Linux":
+        _dll = ctypes.CDLL(os.path.join(LIB_PATH, "libfmod.so"))
+    elif platform.system() == "Darwin":
+        _dll = ctypes.CDLL(os.path.join(LIB_PATH, "libfmod.dylib"))
+
+    import pyfmodex
+    pyfmodex.fmodex._dll = _dll
+    from pyfmodex.structures import CREATESOUNDEXINFO
+    from pyfmodex.flags import MODE, TIMEUNIT, INIT_FLAGS
+except Exception as e:
+    print("Error during the pyfmodex initialisation - AudioClips.samples won't work", e)
 
 
 def extract_audioclip_samples(audio) -> dict:
-    """extracts all the sample data from an AudioClip
-	Copied from unitypack
-	https://github.com/HearthSim/UnityPack/blob/d9ce99fac3c917fa44b0042c9114b7cd03aa9884/unitypack/utils.py#L14
-
-
-	:param audio: AudioClip
-	:type audio: AudioClip
-	:return: {filename : sample(bytes)}
-	:rtype: dict
-	"""
+    """extracts all the samples from an AudioClip
+        :param audio: AudioClip
+        :type audio: AudioClip
+        :return: {filename : sample(bytes)}
+        :rtype: dict
+    """
 
     if not audio.m_AudioData:
         # eg. StreamedResource not available
@@ -25,22 +39,66 @@ def extract_audioclip_samples(audio) -> dict:
         return {'%s.ogg' % audio.name: audio.m_AudioData}
     elif magic == b'RIFF':
         return {'%s.wav' % audio.name: audio.m_AudioData}
-    return _extract_fsb(audio)
+    return dump_samples(audio)
 
 
-def _extract_fsb(audio) -> dict:
-    ret = {}
-    af = FSB5(audio.m_AudioData)
-    for i, sample in enumerate(af.samples):
+def dump_samples(clip):
+    # init system
+    system = pyfmodex.System()
+    system.init(1, INIT_FLAGS.NORMAL, None)
+    exinfo = CREATESOUNDEXINFO(length=clip.m_Size,)
+
+    # get sound
+    sound = system.create_sound(
+        bytes(clip.m_AudioData),
+        mode=MODE.OPENMEMORY,
+        exinfo=exinfo
+    )
+    # iterate over subsounds
+    samples = {}
+    for i in range(sound.num_subsounds):
         if i > 0:
-            filename = "%s-%i.%s" % (audio.name, i, af.get_sample_extension())
+            filename = "%s-%i.wav" % (clip.name, i)
         else:
-            filename = "%s.%s" % (audio.name, af.get_sample_extension())
-        try:
-            sample = af.rebuild_sample(sample)
-        except ValueError as e:
-            print("WARNING: Could not extract %r (%s)" % (audio, e))
-            continue
-        ret[filename] = sample
+            filename = "%s.wav" % (clip.name)
+        subsound = sound.get_subsound(i)
+        samples[filename] = subsound_to_wav(subsound)
+        subsound.release()
 
-    return ret
+    sound.release()
+    system.release()
+    return samples
+
+
+def subsound_to_wav(subsound):
+    # get sound settings
+    length = subsound.get_length(TIMEUNIT.PCMBYTES)
+    channels = subsound.format.channels
+    bits = subsound.format.bits
+    sample_rate = int(subsound.default_frequency)
+
+    # write to buffer
+    w = EndianBinaryWriter(endian="<")
+    # riff chucnk
+    w.write(b"RIFF")
+    w.write_int(length + 36)  # sizeof(FmtChunk) + sizeof(RiffChunk) + length
+    w.write(b"WAVE")
+    # fmt chunck
+    w.write(b"fmt ")
+    w.write_int(16)  # sizeof(FmtChunk) - sizeof(RiffChunk)
+    w.write_short(1)
+    w.write_short(channels)
+    w.write_int(sample_rate)
+    w.write_int(sample_rate * channels * bits // 8)
+    w.write_short(channels * bits // 8)
+    w.write_short(bits)
+    # data chunck
+    w.write(b"data")
+    w.write_int(length)
+    # data
+    lock = subsound.lock(0, length)
+    for ptr, length in lock:
+        ptr_data = ctypes.string_at(ptr, length.value)
+        w.write(ptr_data)
+    subsound.unlock(*lock)
+    return w.bytes

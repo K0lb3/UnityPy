@@ -155,6 +155,16 @@ but if it doesn't, then it is usually necessary to investigate the class that lo
 
 * ``.samples`` - ``{sample-name : sample-data}`` dict
 
+The samples are converted into the .wav format.
+The sample-data is a .wav file in bytes.
+
+```python
+clip : AudioClip
+for name, data in clip.samples.items():
+    with open(name, "wb") as f:
+        f.write(data)
+```
+
 ## Goals
 
 ### WIP

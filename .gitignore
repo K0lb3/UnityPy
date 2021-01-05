@@ -1,12 +1,11 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
+.dump
 .idea/
 *.py[cod]
 *$py.class
 test.py
 AssetStudio/
-# C extensions
-*.so
 
 # Distribution / packaging
 .Python
@@ -16,8 +15,6 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
 parts/
 sdist/
 var/

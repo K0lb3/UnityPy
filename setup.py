@@ -7,6 +7,7 @@ with open("README.md", "r") as fh:
 setuptools.setup(
 	name="UnityPy",
 	packages=setuptools.find_packages(),
+	include_package_data = True,
 	version=version,
 	author="K0lb3",
 	description="A pythonic port of AssetStudio by Perfare",
@@ -30,7 +31,7 @@ setuptools.setup(
 		"lz4",
 		"brotli",
 		"Pillow",
-		"fsb5",
+		"pyfmodex",
 		"texture2ddecoder"
 	]
 )

@@ -4,3 +4,4 @@ from .ClassIDType import ClassIDType
 from .FileType import FileType
 from .TextureFormat import TextureFormat
 from .SpriteMeshType import SpriteMeshType
+from .GfxPrimitiveType import GfxPrimitiveType
