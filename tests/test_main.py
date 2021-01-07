@@ -1,5 +1,4 @@
 import os
-
 SAMPLES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "samples")
 
 
@@ -39,10 +38,11 @@ def test_sprite():
 def test_audioclip():
     import UnityPy
     import platform
-    env = UnityPy.load("char_118_yuki.ab")
+    env = UnityPy.load(os.path.join(SAMPLES, "char_118_yuki.ab"))
     for obj in env.objects:
-        clip = obj.read()
-        clip.samples
+        if obj.type == "AudioClip":
+            clip = obj.read()
+            assert(len(clip.samples) == 1)
 
 
 if __name__ == "__main__":
