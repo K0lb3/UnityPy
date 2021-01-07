@@ -31,7 +31,6 @@ setuptools.setup(
 		"lz4",
 		"brotli",
 		"Pillow",
-		"pyfmodex",
 		"texture2ddecoder"
 	]
 )
