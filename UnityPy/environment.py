@@ -124,3 +124,7 @@ class Environment:
             if isinstance(f, File)
             for path,obj in f.container.items()
         }
+    
+    @property
+    def assets(self):
+        return self.files
