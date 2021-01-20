@@ -21,6 +21,10 @@ class Texture2D(Texture):
         self.image_data = img_data
         self.m_CompleteImageSize = len(self.image_data)
         self.m_TextureFormat = tex_format
+        
+        self.m_StreamData.path = ""
+        self.m_StreamData.offset = 0
+        self.m_StreamData.size = 0
 
     def __init__(self, reader):
         super().__init__(reader=reader)

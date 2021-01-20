@@ -4,12 +4,16 @@ from PIL import Image
 SAMPLES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "samples")
 
 
-def test_read():
+def test_read_single():
     for f in os.listdir(SAMPLES):
         env = UnityPy.load(os.path.join(SAMPLES, f))
         for obj in env.objects:
             obj.read()
 
+def test_read_batch():
+    env = UnityPy.load(SAMPLES)
+    for obj in env.objects:
+        obj.read()
 
 def test_texture2d():
     import UnityPy

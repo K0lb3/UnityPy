@@ -58,7 +58,7 @@ class Environment:
         # use a for loop because list size can change
         # for i, f in enumerate(self.import_files.values()):
         for f in files:
-            self.files[f[len(self.path)+1:]] = self.load_file(open(os.path.join(self.path,f),"rb"), self)
+            self.files[f[len(self.path):].lstrip("/\\")] = self.load_file(open(f,"rb"), self)
             # self.Progress.report(i + 1, len(self.import_files))
 
     def load_file(self, stream, parent = None):
