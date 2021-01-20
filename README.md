@@ -35,7 +35,7 @@ The following is a simple example.
 
 ```python
 import os
-from UnityPy import AssetsManager
+import UnityPy
 
 def unpack_all_assets(source_folder : str, destination_folder : str):
     # iterate over all files in source folder
@@ -43,27 +43,39 @@ def unpack_all_assets(source_folder : str, destination_folder : str):
         for file_name in files:
             # generate file_path
             file_path = os.path.join(root, file_name)
-            # load that file via AssetsManager
-            am = AssetsManager(file_path)
+            # load that file via UnityPy.load
+            env = UnityPy.load(file_path)
 
-            # iterate over all assets and named objects
-            for asset in am.assets.values():
-                for obj in asset.objects.values():
-                    # only process specific object types
-                    if obj.type in ["Texture2D", "Sprite"]:
-                        # parse the object data
-                        data = obj.read()
+            # iterate over internal objects
+            for obj in env.objects:
+                # process specific object types
+                if obj.type in ["Texture2D", "Sprite"]:
+                    # parse the object data
+                    data = obj.read()
 
-                        # create destination path
-                        dest = os.path.join(destination_folder, data.name)
+                    # create destination path
+                    dest = os.path.join(destination_folder, data.name)
 
-                        # make sure that the extension is correct
-                        # you probably only want to do so with images/textures
-                        dest, ext = os.path.splitext(dest)
-                        dest = dest + ".png"
+                    # make sure that the extension is correct
+                    # you probably only want to do so with images/textures
+                    dest, ext = os.path.splitext(dest)
+                    dest = dest + ".png"
 
-                        img = data.image
-                        img.save(dest)
+                    img = data.image
+                    img.save(dest)
+            
+            # alternative way which keeps the original path
+            for path,obj in env.container.items():
+                if obj.type in ["Texture2D", "Sprite"]:
+                    data = obj.read()
+                    # create dest based on original path
+                    dest = os.path.join(destination_folder, *path.split("/"))
+                    # make sure that the dir of that path exists
+                    os.makedirs(os.path.dirname(dest), exist_ok = True)
+                    # correct extension
+                    dest, ext = os.path.splitext(dest)
+                    dest = dest + ".png"
+                    data.image.save(dest)
 ```
 
 You probably have to read [Important Classes](#important-classes)
@@ -74,9 +86,9 @@ People who have slightly advanced python skills should take a look at [AssetBatc
 
 ## Important Classes
 
-### [AssetsManager](UnityPy/AssetsManager.py)
+### [Enivironment](UnityPy/environment.py)
 
-AssetsManager loads and parses the files that are given to it.
+Environment loads and parses the files that are given to it.
 It can be initialized via:
 
 * a file path - apk files can be loaded as well
@@ -86,11 +98,11 @@ It can be initialized via:
 
 UnityPy can detect itself if the file is a WebFile, BundleFile, Asset or APK itself.
 
-The unpacked assets will be loaded into ``.assets``, which is a dict consisting of ``asset-name : asset``.
+The unpacked assets will be loaded into ``.files``, which is a dict consisting of ``asset-name : asset``.
 
 ```python
-from UnityPy import AssetsManager
-am = AssetsManager(src)
+import UnityPy
+env = UnityPy.load(src)
 
 for asset_name, asset in am.assets.items():
     pass
@@ -122,6 +134,14 @@ All object types can be found in [UnityPy/classes](UnityPy/classes/).
 * ``.m_Width`` - texture width (int)
 * ``.m_Height`` - texture height (int)
 
+__Export__
+```python
+for obj in env.objects:
+    if obj.type == "Texture2D":
+        data = image.read()
+        data.image.save(path)
+```
+
 ### [Sprite](UnityPy/classes/Sprite.py)
 
 Sprites are part of a texture and can have a separate alpha-image as well.
@@ -131,6 +151,14 @@ Unlike most other extractors (including AssetStudio) UnityPy merges those two im
 * ``.image`` - converts the merged texture part into a ``PIL.Image``
 * ``.m_Width`` - sprite width (int)
 * ``.m_Height`` - sprite height (int)
+
+__Export__
+```python
+for obj in env.objects:
+    if obj.type == "Sprite":
+        data = image.read()
+        data.image.save(path)
+```
 
 ### [TextAsset](UnityPy/classes/TextAsset.py)
 
@@ -142,14 +170,37 @@ TextAssets are usually normal text files.
 
 Some games save binary data as TextFile, so it's usually better to use ``.script``.
 
+__Export__
+```python
+for obj in env.objects:
+    if obj.type == "TextAsset":
+        data = image.read()
+        with open(path, "wb") as f:
+            f.write(bytes(data.script))
+```
+
 ### [MonoBehaviour](UnityPy/classes/MonoBehaviour.py)
 
 MonoBehaviour assets are usually used to save the class instances with their values.
 If a type tree exists it can be used to read the whole data,
 but if it doesn't, then it is usually necessary to investigate the class that loads the specific MonoBehaviour to extract the data.
+([example](examples/CustomMonoBehaviour/get_scriptable_texture.py))
 
 * ``.name``
-* ``.script``- binary data (bytes)
+* ``.script``
+* ``.raw_data`` - data after the basic initialisation
+
+__Export__
+```python
+import json
+
+for obj in env.objects:
+    if obj.type == "MonoBehaviour":
+        data = image.read()
+        if data.type_tree:
+            with open(path, "wt", encoding="utf8") as f:
+                json.dump(data.type_tree.to_dict(), f, ensure_ascii = False, indent=4)            
+```
 
 ### [AudioClip](UnityPy/classes/AudioClip.py)
 
@@ -169,15 +220,7 @@ for name, data in clip.samples.items():
 
 ### WIP
 
-- [x] A documentation
-- [x] The ability to edit assets (like in UABE)
-
-### TODO
-
-- [ ] Support for more object types
-- [ ] Code optimization
-- [ ] Speed-ups via C-extensions
-- [ ] Multiprocessing
+- [] documentation
 
 ## Motivation
 
