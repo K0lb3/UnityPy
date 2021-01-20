@@ -1,38 +1,35 @@
 import os
+import UnityPy
+from PIL import Image
 SAMPLES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "samples")
 
 
-def test_import():
-    import UnityPy
-
-
 def test_read():
-    import UnityPy
     for f in os.listdir(SAMPLES):
-        am = UnityPy.AssetsManager(os.path.join(SAMPLES, f))
-        for asset in am.assets.values():
-            for obj in asset.objects.values():
-                obj.read()
+        env = UnityPy.load(os.path.join(SAMPLES, f))
+        for obj in env.objects:
+            obj.read()
 
 
 def test_texture2d():
     import UnityPy
     for f in os.listdir(SAMPLES):
-        am = UnityPy.AssetsManager(os.path.join(SAMPLES, f))
-        for asset in am.assets.values():
-            for obj in asset.objects.values():
-                if obj.type == "Texture2D":
-                    obj.read().image.save("test.png")
+        env = UnityPy.load(os.path.join(SAMPLES, f))
+        for obj in env.objects:
+            if obj.type == "Texture2D":
+                data = obj.read()
+                data.image.save("test.png")
+                data.image = data.image.transpose(Image.ROTATE_90)
+                data.save()
 
 
 def test_sprite():
     import UnityPy
     for f in os.listdir(SAMPLES):
-        am = UnityPy.AssetsManager(os.path.join(SAMPLES, f))
-        for asset in am.assets.values():
-            for obj in asset.objects.values():
-                if obj.type == "Sprite":
-                    obj.read().image.save("test.png")
+        env = UnityPy.load(os.path.join(SAMPLES, f))
+        for obj in env.objects:
+            if obj.type == "Sprite":
+                obj.read().image.save("test.png")
 
 
 def test_audioclip():
