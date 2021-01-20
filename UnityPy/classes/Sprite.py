@@ -171,7 +171,7 @@ class SpriteRenderData:
 
         if version >= (5, 6):  # 5.6 and up
             SubMeshesSize = reader.read_int()
-            self.m_SubMeshes = [SubMesh(reader, version) for _ in range(SubMeshesSize)]
+            self.m_SubMeshes = [SubMesh(reader) for _ in range(SubMeshesSize)]
             IndexBufferSize = reader.read_int()
             self.m_IndexBuffer = reader.read_bytes(IndexBufferSize)
             reader.align_stream()

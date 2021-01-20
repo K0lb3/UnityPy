@@ -10,7 +10,8 @@ from ..enums import TextureFormat, BuildTarget
 TF = TextureFormat
 PREFER_BASISU = False
 
-def prepare_raw_image(img, flip=True):
+def image_to_texture(tex, img : Image, flip=True):
+    # tex for eventually later usage of compressions
     _image = None
     if (isinstance(img, str) or isinstance(img, BufferedIOBase) or
         isinstance(img, RawIOBase) or isinstance(img, IOBase)):
@@ -20,8 +21,14 @@ def prepare_raw_image(img, flip=True):
     if _image:
         if flip:
             _image = _image.transpose(Image.FLIP_TOP_BOTTOM)
-        return _image.getdata()
-    return None
+    
+    if img.mode == "RGBA":
+        tex_format = TextureFormat.RGBA32
+    elif img.mode == "RGB":
+        tex_format = TextureFormat.RGB24
+    elif len(img.mode) == "A":
+        tex_format = TextureFormat.Alpha8
+    return _image.tobytes(), tex_format
 
 
 def get_image_from_texture2d(texture_2d, flip=True) -> Image:

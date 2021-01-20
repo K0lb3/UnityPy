@@ -3,7 +3,7 @@ from ..helpers import TypeTreeHelper
 from ..streams import EndianBinaryWriter, EndianBinaryReader
 
 
-class Object:
+class Object(object):
     type_tree: dict
 
     def __init__(self, reader):
@@ -16,7 +16,7 @@ class Object:
         self.platform = reader.platform
         self.serialized_type = reader.serialized_type
         self.byte_size = reader.byte_size
-        self.environment = reader.assets_file.environment
+        self.assets_file = reader.assets_file
 
         if self.platform == BuildTarget.NoTarget:
             self._object_hide_flags = reader.read_u_int()
@@ -86,7 +86,7 @@ class Object:
 from .PPtr import PPtr
 
 
-class NodeHelper(object):
+class NodeHelper:
     def __init__(self, data, assets_file):
         if "m_PathID" in data and "m_FileID" in data:
             # used to make pointers directly useable
@@ -107,8 +107,8 @@ class NodeHelper(object):
             return [NodeHelper(x, assets_file) for x in data]
         return data
 
-    def __item__(self, key):
-        return self.__dict__[key]
+    def __getitem__(self, item):
+        return getattr(self, item)
 
     def to_dict(self):
         def dump(val):
@@ -125,6 +125,15 @@ class NodeHelper(object):
             )
 
         return {key: dump(val) for key, val in self.__dict__.items()}
+
+    def items(self):
+        return self.__dict__.items()
+    
+    def values(self):
+        return self.__dict__.values()
+    
+    def keys(self):
+        return self.__dict__.keys()
 
     def __repr__(self):
         return "<NodeHelper - %s>" % self.__dict__.__repr__()

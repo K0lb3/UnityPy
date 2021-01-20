@@ -6,6 +6,7 @@ from .Texture2D import StreamingInfo
 from ..helpers.ResourceReader import get_resource_data
 from ..math import Matrix4x4, Vector3
 from ..streams import EndianBinaryWriter
+from ..enums import GfxPrimitiveType
 
 class MinMaxAABB:
     def __init__(self, reader):
@@ -323,10 +324,11 @@ class BlendShapeData:
 
 
 class SubMesh:
-    def __init__(self, reader, version):
+    def __init__(self, reader):
+        version = reader.version
         self.firstByte = reader.read_u_int()
         self.indexCount = reader.read_u_int()
-        self.topology = reader.read_int()
+        self.topology = GfxPrimitiveType(reader.read_int())
 
         if version < (4,):  # 4.0 down
             self.triangleCount = reader.read_u_int()
@@ -493,12 +495,12 @@ class Mesh(NamedObject):
 
         if version >= (2018, 3):  # 2018.3 and up
             reader.align_stream()
-            self.m_StreamData = StreamingInfo(reader)
+            self.m_StreamData = StreamingInfo(reader, version)
 
-        # try:
-        #    self.ProcessData()
-        # except:
-        #    pass
+        try:
+            self.ProcessData()
+        except:
+           pass
 
     def ProcessData(self):
         if self.m_StreamData and self.m_StreamData.path:
@@ -635,21 +637,21 @@ class Mesh(NamedObject):
         version = self.version
         m_CompressedMesh = self.m_CompressedMesh
         if m_CompressedMesh.m_Vertices.m_NumItems > 0:
-            m_VertexCount = m_CompressedMesh.m_Vertices.m_NumItems / 3
-            m_Vertices = m_CompressedMesh.m_Vertices.UnpackFloats(3, 4)
+            self.m_VertexCount = m_CompressedMesh.m_Vertices.m_NumItems / 3
+            self.m_Vertices = m_CompressedMesh.m_Vertices.UnpackFloats(3, 4)
         # UV
         if m_CompressedMesh.m_UV.m_NumItems > 0:  #
-            m_UV0 = m_CompressedMesh.m_UV.UnpackFloats(2, 4, 0, m_VertexCount)
+            self.m_UV0 = m_CompressedMesh.m_UV.UnpackFloats(2, 4, 0, m_VertexCount)
             if m_CompressedMesh.m_UV.m_NumItems >= m_VertexCount * 4:  #
-                m_UV1 = m_CompressedMesh.m_UV.UnpackFloats(
+                self.m_UV1 = m_CompressedMesh.m_UV.UnpackFloats(
                     2, 4, m_VertexCount * 2, m_VertexCount
                 )
             if m_CompressedMesh.m_UV.m_NumItems >= m_VertexCount * 6:  #
-                m_UV2 = m_CompressedMesh.m_UV.UnpackFloats(
+                self.m_UV2 = m_CompressedMesh.m_UV.UnpackFloats(
                     2, 4, m_VertexCount * 4, m_VertexCount
                 )
             if m_CompressedMesh.m_UV.m_NumItems >= m_VertexCount * 8:  #
-                m_UV3 = m_CompressedMesh.m_UV.UnpackFloats(
+                self.m_UV3 = m_CompressedMesh.m_UV.UnpackFloats(
                     2, 4, m_VertexCount * 6, m_VertexCount
                 )
         # BindPose

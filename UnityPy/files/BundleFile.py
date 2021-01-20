@@ -1,27 +1,22 @@
-﻿from .File import File
-from .SerializedFile import SerializedFile
+﻿from . import File
 from ..enums import FileType
 from ..helpers import CompressionHelper, ImportHelper
 from ..streams import EndianBinaryReader, EndianBinaryWriter
 
 from collections import namedtuple
-
-DirectoryInfo = namedtuple("DirectoryInfo", "path offset size")
-DirectoryInfoFS = namedtuple("DirectoryInfoFS", "offset size flags path")
 BlockInfo = namedtuple("BlockInfo", "uncompressedSize compressedSize flags")
+DirectoryInfoFS = namedtuple("DirectoryInfoFS", "offset size flags path")
 
 
-class BundleFile(File):
+class BundleFile(File.File):
     format: int
     is_changed: bool
     signature: str
     version_engine: str
     version_player: str
 
-    def __init__(self, reader: EndianBinaryReader, environment=None):
-        self.is_changed = False
-        self.environment = environment
-        self.files = {}
+    def __init__(self, reader: EndianBinaryReader, parent : File):
+        super().__init__(parent = parent)
         signature = self.signature = reader.read_string_to_null()
 
         if signature == "UnityArchive":
@@ -32,26 +27,6 @@ class BundleFile(File):
             m_DirectoryInfo, blocksReader = self.read_fs(reader)
 
         self.read_files(blocksReader, m_DirectoryInfo)
-
-    def read_files(self, blocksStream: EndianBinaryReader, m_DirectoryInfo):
-        for node in m_DirectoryInfo:
-            blocksStream.Position = node.offset
-            path = node.path
-            f = EndianBinaryReader(blocksStream.read(node.size), offset=(blocksStream.BaseOffset + node.offset))
-            f._flag = getattr(node, "flags", None)  # required for save
-            # check for serialized files
-            if path.endswith((".resS", ".resource", ".config", ".xml", ".dat")):
-                self.environment.resources[path] = f
-            else:
-                typ, _ = ImportHelper.check_file_type(f)
-                if typ == FileType.AssetsFile:
-                    f.Position = 0
-                    f = SerializedFile(f, self.environment, self)
-                    self.environment.assets[path] = f
-                else:
-                    self.environment.resources[path] = f
-
-            self.files[path] = f
 
     def read_web_raw(self, reader: EndianBinaryReader):
         # def read_header_and_blocks_info(self, reader:EndianBinaryReader):
@@ -88,7 +63,7 @@ class BundleFile(File):
         blocksReader = EndianBinaryReader(uncompressedBytes, offset=headerSize)
         nodesCount = blocksReader.read_int()
         m_DirectoryInfo = [
-            DirectoryInfo(
+            File.DirectoryInfo(
                 blocksReader.read_string_to_null(),  # path
                 blocksReader.read_u_int(),  # offset
                 blocksReader.read_u_int(),  # size
@@ -179,10 +154,10 @@ class BundleFile(File):
 
     def save(self, packer="none"):
         # file_header
-        #     signature	(string_to_null)
-        #     format		(int)
-        #     version_player	(string_to_null)
-        #     version_engine	(string_to_null)
+        #     signature    (string_to_null)
+        #     format        (int)
+        #     version_player    (string_to_null)
+        #     version_engine    (string_to_null)
         writer = EndianBinaryWriter()
 
         writer.write_string_to_null(self.signature)
@@ -221,11 +196,11 @@ class BundleFile(File):
         #data_flag
 
         # header:
-        #     bundle_size		(long)
-        #     compressed_size	(int)
-        #     uncompressed_size	(int)
-        #     flag			    (int)
-        #     ?padding?		    (bool)
+        #     bundle_size        (long)
+        #     compressed_size    (int)
+        #     uncompressed_size    (int)
+        #     flag                (int)
+        #     ?padding?            (bool)
         #   This will be written at the end,
         #   because the size can only be calculated after the data compression,
 
@@ -235,7 +210,7 @@ class BundleFile(File):
         #     *read compressed_size -> uncompressed_size
         #     0x10 offset
         #     *read blocks infos of the data stream
-        #     count			(int)
+        #     count            (int)
         #     (
         #         uncompressed_size(uint)
         #         compressed_size (uint)
@@ -244,12 +219,12 @@ class BundleFile(File):
         #     *decompression via info.flag & 0x3F
 
         #     *afterwards the file positions
-        #     file_count		(int)
+        #     file_count        (int)
         #     (
-        #         offset	(long)
-        #         size		(long)
-        #         flag		(int)
-        #         name		(string_to_null)
+        #         offset    (long)
+        #         size        (long)
+        #         flag        (int)
+        #         name        (string_to_null)
         #     )
 
         # file list & file data

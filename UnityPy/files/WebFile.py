@@ -1,23 +1,20 @@
-﻿from .BundleFile import BundleFile
-from .File import File
-from .SerializedFile import SerializedFile
+﻿from . import File
 from ..enums import FileType
 from ..helpers import CompressionHelper, ImportHelper
 from ..streams import EndianBinaryReader, EndianBinaryWriter
 
 
-class WebFile(File):
+class WebFile(File.File):
     """A package which can hold other WebFiles, Bundles and SerialiedFiles.
     It may be compressed via gzip or brotli.
 
     files -- list of all files in the WebFile
     """
 
-    def __init__(self, reader: EndianBinaryReader, environment=None):
+    def __init__(self, reader: EndianBinaryReader, parent : File):
         """Constructor Method
         """
-        self.files = {}
-        self.is_changed = False
+        super().__init__(parent=parent)
 
         # check compression
         magic = reader.read_bytes(2)
@@ -54,33 +51,9 @@ class WebFile(File):
             length = reader.read_int()
             path_length = reader.read_int()
             name = bytes(reader.read_bytes(path_length)).decode("utf-8")
-            files.append((name, offset, length))
+            files.append(File.DirectoryInfo(name, offset, length))
 
-        # read file data and convert it
-        for name, offset, length in files:
-            reader.Position = offset
-            data = reader.read(length)
-            typ, item = ImportHelper.check_file_type(data)
-
-            if typ == FileType.BundleFile:
-                item = BundleFile(item, environment)
-            elif typ == FileType.WebFile:
-                item = WebFile(item, environment)
-
-            if typ == FileType.AssetsFile:
-                # pre-check if resource file
-                if name.endswith((".resS", ".resource", ".config", ".xml", ".dat")):
-                    environment.resources[name] = item
-                else:
-                    # try to load the file as serialized file
-                    try:
-                        item = SerializedFile(item, environment)
-                        environment.assets[name] = item
-                    except ValueError:
-                        environment.resources[name] = item
-
-            self.files[name] = item
-            item.parent = self
+        self.read_files(reader, files)
 
     def save(
         self,

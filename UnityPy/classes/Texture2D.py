@@ -14,22 +14,13 @@ class Texture2D(Texture):
     def image(self, img):
         # img is PIL.Image / image path / opened file
         # overwrite original image data with the RGB(A) image data and sets the correct new format
-        img = Texture2DConverter.prepare_raw_image(img)
+        img_data,tex_format = Texture2DConverter.image_to_texture(self, img)
         if img is None:
             raise Exception("No image provided")
 
-        writer = EndianBinaryWriter()
-        for pix in img:
-            for val in pix:
-                writer.write_u_byte(val)
-        self.image_data = writer.bytes
+        self.image_data = img_data
         self.m_CompleteImageSize = len(self.image_data)
-        self.m_StreamData.offset = 0
-        self.m_StreamData.size = 0
-        self.m_StreamData.path = ''
-        self.m_TextureFormat = (
-            TextureFormat.RGBA32 if len(pix) == 4 else TextureFormat.RGB24
-        )
+        self.m_TextureFormat = tex_format
 
     def __init__(self, reader):
         super().__init__(reader=reader)
@@ -92,7 +83,7 @@ class Texture2D(Texture):
         writer.write_int(self.m_CompleteImageSize)
         if version >= (2020,):  # 2020.1 and up
             writer.write_int(self.mips_stripped)
-        writer.write_int(int(self.m_TextureFormat))
+        writer.write_int(self.m_TextureFormat.value)
         if version < (5, 2):  # 5.2 down
             writer.write_boolean(self.m_MipMap)
         else:

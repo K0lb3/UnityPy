@@ -3,22 +3,18 @@ import os
 from zipfile import ZipFile
 
 from . import files
+from .files import File
 from .enums import FileType
 from .helpers import ImportHelper
+from .streams import EndianBinaryReader
 
 
 class Environment:
     files: dict
-    resources: dict
-    container: dict
-    assets: dict
     path: str
 
     def __init__(self, *args):
         self.files = {}
-        self.container = {}
-        self.assets = {}
-        self.resources = {}
         self.path = "."
 
         if args:
@@ -29,23 +25,22 @@ class Environment:
                             self.load_zip_file(arg)
                         else:
                             self.path = os.path.dirname(arg)
-                            self.load_file(arg)
+                            self.load_files([arg])
                     elif os.path.isdir(arg):
                         self.path = arg
                         self.load_folder(arg)
                 else:
                     self.path = None
-                    self.load_file(data=arg)
+                    self.files[str(len(self.files))] = self.load_file(stream=arg)
 
         if len(self.files) == 1:
             self.file = list(self.files.values())[0]
 
     def load_files(self, files: list):
         """Loads all files (list) into the AssetsManager and merges .split files for common usage."""
-        path = os.path.dirname(files[0])
-        ImportHelper.merge_split_assets(path)
-        to_read_file = ImportHelper.processing_split_files(files)
-        self.load(to_read_file)
+        #ImportHelper.merge_split_assets(path)
+        #to_read_file = ImportHelper.processing_split_files(files)
+        self.load(files)
 
     def load_folder(self, path: str):
         """Loads all files in the given path and its subdirs into the AssetsManager."""
@@ -63,24 +58,23 @@ class Environment:
         # use a for loop because list size can change
         # for i, f in enumerate(self.import_files.values()):
         for f in files:
-            self.load_file(f)
+            self.files[f[len(self.path)+1:]] = self.load_file(open(os.path.join(self.path,f),"rb"), self)
             # self.Progress.report(i + 1, len(self.import_files))
 
-    def load_file(self, full_name: str = "", data=None):
-        typ, reader = ImportHelper.check_file_type(data if data else full_name)
-        if not full_name:
-            full_name = str(data[:256])
+    def load_file(self, stream, parent = None):
+        if not parent:
+            parent = self
+        typ, reader = ImportHelper.check_file_type(stream)
         if typ == FileType.AssetsFile:
-            self.files[full_name] = files.SerializedFile(reader, self)
-            self.assets[full_name] = self.files[full_name]
+            return files.SerializedFile(reader, parent)
         elif typ == FileType.BundleFile:
-            self.files[full_name] = files.BundleFile(reader, self)
+            return files.BundleFile(reader, parent)
         elif typ == FileType.WebFile:
-            self.files[full_name] = files.WebFile(reader, self)
+            return files.WebFile(reader, parent)
         elif typ == FileType.ZIP:
-            self.load_zip_file(reader.stream)
+            self.load_zip_file(stream)
         elif typ == FileType.ResourceFile:
-            self.resources[os.path.basename(full_name)] = reader
+            return EndianBinaryReader(stream)
 
     def load_zip_file(self, value):
         buffer = None
@@ -92,11 +86,17 @@ class Environment:
             buffer = value
 
         z = ZipFile(buffer)
-
         for path in z.namelist():
-            data = z.open(path).read()
-            if data:
-                self.load_file(path, data)
+            stream = z.open(path)
+            if stream._orig_file_size == 0:
+                continue
+            *path, name = path.split("/")
+            cur = self
+            for d in path:
+                if d not in cur.files:
+                    cur.files[d] = files.File(self)
+                cur = cur.files[d]
+            cur.files[name] = self.load_file(stream, cur)
 
     @property
     def objects(self):
@@ -115,3 +115,12 @@ class Environment:
             return ret
 
         return search(self)
+    
+    @property
+    def container(self):
+        return {
+            path : obj
+            for f in self.files.values()
+            if isinstance(f, File)
+            for path,obj in f.container.items()
+        }

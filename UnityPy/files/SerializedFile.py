@@ -2,7 +2,7 @@
 import re
 import sys
 
-from .File import File
+from . import File
 from .. import classes
 from ..CommonString import COMMON_STRING
 from ..enums import BuildTarget, ClassIDType
@@ -56,6 +56,9 @@ class FileIdentifier:  # external
     @property
     def name(self):
         return os.path.basename(self.path)
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__}({self.path})>"
 
     def __init__(self, header: SerializedFileHeader, reader: EndianBinaryReader):
         if header.version >= 6:
@@ -111,7 +114,7 @@ class SerializedType:
     old_type_hash: bytes  # Hash128}
 
 
-class SerializedFile(File):
+class SerializedFile(File.File):
     reader: EndianBinaryReader
     is_changed: bool
     unity_version: str
@@ -123,7 +126,7 @@ class SerializedFile(File):
     externals: list
     _container: dict
     objects: dict
-    container: dict
+    container_: dict
     _cache: dict
     header: SerializedFileHeader
 
@@ -131,9 +134,8 @@ class SerializedFile(File):
     def files(self):
         return self.objects
 
-    def __init__(self, reader: EndianBinaryReader, environment=None, parent=None):
+    def __init__(self, reader: EndianBinaryReader, parent=None):
         self.is_changed = False
-        self.environment = environment
         self.parent = parent
         self.reader = reader
 
@@ -148,7 +150,7 @@ class SerializedFile(File):
         self._container = {}
 
         self.objects = {}
-        self.container = {}
+        self.container_ = {}
         # used to speed up mass asset extraction
         # some assets refer to each other, so by keeping the result
         # of specific assets cached the extraction can be speed up by a lot.
@@ -230,11 +232,15 @@ class SerializedFile(File):
                 data = obj.read()
                 for container, asset_info in data.container.items():
                     asset = asset_info.asset
-                    self.container[container] = asset
+                    self.container_[container] = asset
                     if hasattr(asset, "path_id"):
                         self._container[asset.path_id] = container
-        if environment is not None:
-            environment.container = {**environment.container, **self.container}
+        #if environment is not None:
+        #    environment.container = {**environment.container, **self.container}
+
+    @property
+    def container(self):
+        return self.container_
 
     def set_version(self, string_version):
         self.unity_version = string_version
@@ -551,22 +557,25 @@ class SerializedFile(File):
             writer.write_byte(node.level)
             # is array
             writer.write_boolean(node.is_array)
-
+            # type str offfset
             writer.write_u_int(strings_values[i][0])
+            # name str offset
             writer.write_u_int(strings_values[i][1])
-
+            # byte size
             writer.write_int(node.byte_size)
+            # index
             writer.write_int(node.index)
+            # meta flag
             writer.write_int(node.meta_flag)
-
-            if self.header.version > 17:
-                writer.write(node.extra)
+            # ref hash
+            if self.header.version > 19:
+                writer.write_u_long(node.ref_type_hash)
 
         # string buffer
         writer.write(string_buffer.bytes)
 
         if self.header.version >= 21:
-            self.reader.write_bytes(b"\x00" * 4)
+            writer.write_bytes(b"\x00" * 4)
 
 
 def read_string(string_buffer_reader: EndianBinaryReader, value: int) -> str:
@@ -629,7 +638,7 @@ class ObjectReader:
             self.class_id = reader.read_u_short()
             if types:
                 self.serialized_type = (
-                    x for x in types if x.class_id == self.type_id).next()
+                    x for x in types if x.class_id == self.type_id).__next__()
             else:
                 self.serialized_type = SerializedType()
         else:

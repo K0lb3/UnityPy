@@ -72,6 +72,7 @@ def processing_split_files(select_file: list) -> list:
     return select_file
 
 
+
 def check_file_type(input_) -> (FileType, EndianBinaryReader):
     if isinstance(input_, str) and os.path.isfile(input_):
         reader = EndianBinaryReader(open(input_, "rb"))
@@ -129,7 +130,7 @@ def check_file_type(input_) -> (FileType, EndianBinaryReader):
             or any(
                 [
                     x < 0 or x > reader.Length
-                    for x in [metadata_size, version, data_offset]
+                    for x in [file_size, metadata_size, version, data_offset]
                 ]
             )
             or file_size < metadata_size
