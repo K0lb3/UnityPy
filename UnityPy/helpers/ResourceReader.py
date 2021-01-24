@@ -1,5 +1,6 @@
 import os, glob
 from ..streams import EndianBinaryReader
+from ..files import File
 
 def get_resource_data(*args):
     """
@@ -21,7 +22,7 @@ def get_resource_data(*args):
     elif len(args) == 3:
         reader = args[0]
     else:
-        raise TypeError(f"3/4 arguments required, but only {len(args)} given")
+        raise TypeError(f"3 or 4 arguments required, but only {len(args)} given")
 
     reader.Position = args[-2]
     return reader.read_bytes(args[-1])
@@ -34,6 +35,9 @@ def search_resource(res_path, assets_file):
     for p in [res_path, base_name, base_name2]:
         reader = assets_file.parent.files.get(p)
         if reader:
+            if isinstance(reader, File.File):
+                # in case the import helper accidently detected a resource file as something else
+                reader = reader.reader
             return reader
 
     # try to find it in the dir environment

@@ -67,12 +67,13 @@ class Texture2D(Texture):
         self.image_data = b""
         if image_data_size == 0 and version >= (5, 3):  # 5.3 and up
             self.m_StreamData = StreamingInfo(reader, version)
-            self.image_data = get_resource_data(
-                self.m_StreamData.path,
-                self.assets_file,
-                self.m_StreamData.offset,
-                self.m_StreamData.size,
-            )
+            if self.m_StreamData.size:
+                self.image_data = get_resource_data(
+                    self.m_StreamData.path,
+                    self.assets_file,
+                    self.m_StreamData.offset,
+                    self.m_StreamData.size,
+                )
         else:
             self.image_data = reader.read_bytes(image_data_size)
 
