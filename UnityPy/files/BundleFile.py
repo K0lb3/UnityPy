@@ -232,7 +232,7 @@ class BundleFile(File.File):
         files = [
             (
                 name,
-                0, #f.flag,
+                f.flags,
                 data_writer.write_bytes(
                     f.bytes if isinstance(f, EndianBinaryReader) else f.save()
                 ),

@@ -49,6 +49,8 @@ class File(object):
                         f = SerializedFile.SerializedFile(f, self)
                     except ValueError:
                         pass
+            # required for BundleFiles
+            f.flags = getattr(node,"flags",0)
             self.files[name] = f
 
     @property
