@@ -11,6 +11,7 @@ import struct
 from enum import IntEnum
 from ..export.MeshExporter import export_mesh
 
+
 class MinMaxAABB:
     def __init__(self, reader):
         self.m_Min = reader.read_vector3()
@@ -514,7 +515,7 @@ class Mesh(NamedObject):
         if version[:2] <= (3, 4):  # 3.4.2 and earlier
             m_Colors_size = reader.read_int()
             self.mColors = [
-                float(reader.read_byte())  # (float)reader.read_byte() / 0xFF
+                reader.read_byte()/0xFF
                 for _ in range(m_Colors_size * 4)
             ]
 
@@ -524,9 +525,8 @@ class Mesh(NamedObject):
 
         self.m_MeshUsageFlags = reader.read_int()
         if version >= (5,):  # 5.0 and up
-            l = reader.read_int()
             self.m_BakedConvexCollisionMesh = reader.read_bytes(
-                l
+                reader.read_int()
             )
             reader.align_stream()
             self.m_BakedTriangleCollisionMesh = reader.read_bytes(
@@ -660,9 +660,9 @@ class Mesh(NamedObject):
                             self.m_UV1 = componentsFloatArray
                         elif chn == 5:
                             if version[0] >= 5:  # kShaderChannelTexCoord2
-                                m_UV2 = componentsFloatArray
+                                self.m_UV2 = componentsFloatArray
                             else:  # kShaderChannelTangent
-                                m_Tangents = componentsFloatArray
+                                self.m_Tangents = componentsFloatArray
                         elif chn == 6: 	# kShaderChannelTexCoord3
                             self.m_UV3 = componentsFloatArray
                         elif chn == 7: 	# kShaderChannelTangent
