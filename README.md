@@ -204,7 +204,7 @@ for obj in env.objects:
 
 ### [AudioClip](UnityPy/classes/AudioClip.py)
 
-* ``.samples`` - ``{sample-name : sample-data}`` dict
+* ``.samples`` - ``{sample-name : sample-data}``
 
 The samples are converted into the .wav format.
 The sample-data is a .wav file in bytes.
@@ -214,6 +214,19 @@ clip : AudioClip
 for name, data in clip.samples.items():
     with open(name, "wb") as f:
         f.write(data)
+```
+
+### [Mesh](UnityPy/classes/Mesh.py)
+
+* ``.export()`` - mesh exported as .obj (str) 
+
+The mesh is converted into an Wavefront .obj file.
+
+```python
+mesh : Mesh
+with open(f"{mesh.name}.obj", "wt", newlines = "") as f:
+    # newlines = "" is important
+    f.write(mesh.export())
 ```
 
 ## Goals

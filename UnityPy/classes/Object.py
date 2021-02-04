@@ -45,6 +45,7 @@ class Object(object):
         return ""
 
     def read_type_tree(self) -> dict:
+        old_pos = self.reader.Position
         self.reader.reset()
         if self.serialized_type.nodes:
             self.type_tree = TypeTreeHelper(self.reader).read_value(
@@ -52,6 +53,7 @@ class Object(object):
             )
         else:
             self.type_tree = {}
+        self.reader.Position = old_pos
         return NodeHelper(self.type_tree, self.assets_file)
 
     def get_raw_data(self) -> bytes:

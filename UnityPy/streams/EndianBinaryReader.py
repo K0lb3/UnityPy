@@ -193,6 +193,8 @@ class EndianBinaryReader_Memoryview(EndianBinaryReader):
         self.view.release()
 
     def read(self, length: int):
+        if not length:
+            return b""
         ret = self.view[self.Position: self.Position + length]
         self.Position += length
         return ret
@@ -235,10 +237,7 @@ class EndianBinaryReader_Streamable(EndianBinaryReader):
         self.stream.close()
         pass
 
-    def read(self, *args):
-        _data = self.stream.read(*args)
-        # TODO: the switch in a debug module
-        if False and len(args) > 0 and len(_data) != args[0]:
-            raise EOFError("got only %d bytes out of %d requested" %
-                           (len(_data), args[0]))
-        return _data
+    def read(self, length):
+        if not length:
+            return b""
+        return self.stream.read(length)
