@@ -84,14 +84,15 @@ class BundleFile(File.File):
         uncompressedSize = reader.read_u_int()
         flags = reader.read_u_int()
 
+        if self.version >= 7:
+            reader.align_stream(16)
+
         _position = reader.Position
         if flags & 0x80 != 0:  # kArchiveBlocksInfoAtTheEnd
             reader.Position = reader.Length - compressedSize
             blocksInfoBytes = reader.read_bytes(compressedSize)
             reader.Position = _position
         else:  # 0x40 kArchiveBlocksAndDirectoryInfoCombined
-            if self.version >= 7:
-                reader.allign_stream(16)
             blocksInfoBytes = reader.read_bytes(compressedSize)
 
         switch = flags & 0x3F
