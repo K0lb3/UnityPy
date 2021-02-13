@@ -28,7 +28,7 @@ class Renderer(Component):
                 self.m_LightProbeUsage = reader.read_byte()
                 self.m_ReflectionProbeUsage = reader.read_byte()
                 if version >= (2019, 3):  # 2019.3 and up
-                    self.m_RayTracingMode = reader.ReadByte()
+                    self.m_RayTracingMode = reader.read_byte()
                 if version >= (2020,):  # 2020.1 and up
                     self.m_RayTraceProcedural = reader.read_byte()
                 reader.align_stream()
