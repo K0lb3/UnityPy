@@ -104,12 +104,12 @@ def check_file_type(input_) -> (FileType, EndianBinaryReader):
         if reader.Length < 128:
             return FileType.ResourceFile, reader
 
-        magic = reader.read_bytes(2)
+        magic = bytes(reader.read_bytes(2))
         reader.Position = 0
         if GZIP_MAGIC == magic:
             return FileType.WebFile, reader
         reader.Position = 0x20
-        magic = reader.read_bytes(6)
+        magic = bytes(reader.read_bytes(6))
         reader.Position = 0
         if BROTLI_MAGIC == magic:
             return FileType.WebFile, reader
@@ -118,11 +118,27 @@ def check_file_type(input_) -> (FileType, EndianBinaryReader):
         old_endian = reader.endian
         assets_file = True
         # read as if assetsfile and check version
+        # ReadHeader
         reader.Position = 0
         metadata_size = reader.read_u_int()
         file_size = reader.read_u_int()
         version = reader.read_u_int()
         data_offset = reader.read_u_int()
+
+        if version >= 9:
+            endian = ">" if reader.read_boolean() else "<"
+            reserved = reader.read_bytes(3)
+        else:
+            reader.Position = file_size - metadata_size
+            endian = ">" if reader.read_boolean() else "<"
+
+        if version >= 22:
+            metadata_size = reader.read_u_int()
+            file_size = reader.read_long()
+            data_offset = reader.read_long()
+            unknown = reader.read_long()  # unknown
+
+        reader.endian = endian
 
         if (
             version < 0
@@ -136,15 +152,6 @@ def check_file_type(input_) -> (FileType, EndianBinaryReader):
             or file_size < metadata_size
         ):
             return FileType.ResourceFile, reader
-
-        if version >= 9:
-            endian = ">" if reader.read_boolean() else "<"
-            reserved = reader.read_bytes(3)
-        else:
-            reader.Position = file_size - metadata_size
-            endian = ">" if reader.read_boolean() else "<"
-
-        reader.endian = endian
 
         if version >= 7:
             unity_version = reader.read_string_to_null()
