@@ -18,6 +18,9 @@ class BundleFile(File.File):
     def __init__(self, reader: EndianBinaryReader, parent : File):
         super().__init__(parent = parent)
         signature = self.signature = reader.read_string_to_null()
+        self.version = reader.read_u_int()
+        self.version_player = reader.read_string_to_null()
+        self.version_engine = reader.read_string_to_null()
 
         if signature == "UnityArchive":
             raise NotImplemented("BundleFile - UnityArchive")
@@ -31,9 +34,7 @@ class BundleFile(File.File):
     def read_web_raw(self, reader: EndianBinaryReader):
         # def read_header_and_blocks_info(self, reader:EndianBinaryReader):
         isCompressed = self.signature == "UnityWeb"
-        version = self.version = reader.read_u_int()
-        self.version_player = reader.read_string_to_null()
-        self.version_engine = reader.read_string_to_null()
+        version = self.version
         if version >= 4:
             _hash = reader.read_bytes(16)
             crc = reader.read_u_int()
@@ -74,9 +75,7 @@ class BundleFile(File.File):
         return m_DirectoryInfo, blocksReader
 
     def read_fs(self, reader: EndianBinaryReader):
-        self.version = reader.read_u_int()
-        self.version_player = reader.read_string_to_null()
-        self.version_engine = reader.read_string_to_null()
+        version = self.version
         size = reader.read_long()
 
         # header
@@ -229,6 +228,7 @@ class BundleFile(File.File):
         #     )
 
         # file list & file data
+        # prep nodes and build up block data
         data_writer = EndianBinaryWriter()
         files = [
             (
@@ -257,6 +257,7 @@ class BundleFile(File.File):
         compressed_data_size = len(file_data)
 
         # write the block_info
+        # uncompressedDataHash
         block_writer = EndianBinaryWriter(b"\x00" * 0x10)
         # data block info
         # block count
@@ -266,7 +267,7 @@ class BundleFile(File.File):
         # compressed size
         block_writer.write_u_int(compressed_data_size)
         # flag
-        block_writer.write_short(data_flag)
+        block_writer.write_u_short(data_flag)
 
         # file block info
         # file count
@@ -279,7 +280,7 @@ class BundleFile(File.File):
             block_writer.write_long(f_len)
             offset += f_len
             # flag
-            block_writer.write_int(f_flag)
+            block_writer.write_u_int(f_flag)
             # name
             block_writer.write_string_to_null(f_name)
 
@@ -300,21 +301,31 @@ class BundleFile(File.File):
         compressed_block_data_size = len(block_data)
 
         # write the header info
+        ## file size
         writer.write_long(
             writer.Length
             + 8
             + 4
             + 4
             + 4
-            + (1 if padding else 0)
+            + (8 if self.version>= 7 else 0)
             + compressed_block_data_size
             + compressed_data_size
         )
-        writer.write_int(compressed_block_data_size)
-        writer.write_int(uncompressed_block_data_size)
-        writer.write_int(block_info_flag)
-        if padding:
-            writer.write_boolean(padding)
+        ## compressed blockInfoBytes size
+        writer.write_u_int(compressed_block_data_size)
+        ## uncompressed size
+        writer.write_u_int(uncompressed_block_data_size)
+        ## compression flag
+        writer.write_u_int(block_info_flag)
+        
+        if self.version >= 7:
+            # UnityFS\x00 - 8
+            # size 8
+            # comp sizes 4+4
+            # flag 4
+            # sum : 28 -> +8 alignment
+            writer.align_stream(16)
 
         if (block_info_flag & 0x80) != 0:  # at end of file
             writer.write(file_data)

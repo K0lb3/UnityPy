@@ -235,7 +235,7 @@ class SerializedFile(File.File):
                     self.container_[container] = asset
                     if hasattr(asset, "path_id"):
                         self._container[asset.path_id] = container
-        #if environment is not None:
+        # if environment is not None:
         #    environment.container = {**environment.container, **self.container}
 
     @property
@@ -404,38 +404,41 @@ class SerializedFile(File.File):
         for external in externals:
             external.write(header, header_writer)
 
-        header_writer.write_string_to_null(self.userInformation)
-        if header.version >= 21:
-            header_writer.write_int(self.unknown)
+        if header.version >= 20:
+            header_writer.write_int(len(self.ref_types))
+            for ref_type in self.ref_types:
+                save_serialized_type(ref_type, header, header_writer)
+
+        if header.version >= 5:
+            header_writer.write_string_to_null(self.userInformation)
 
         if header.version >= 9:
             # file header
-            fileheader_size = 4 * 4 + 1 + 3  # following + endian + reserved
-            metadata_size = header_writer.Length
+            fileheader_size = 4 * 4 + 1 + 3 + (28 if header.version >= 22 else 0) # following + endian + reserved
             # metadata size
-            fileheader_writer.write_u_int(header_writer.Length)
+            metadata_size = header_writer.Length
+            fileheader_writer.write_u_int(metadata_size)
             # align between metadata and data
             mod = (fileheader_size + metadata_size) % 16
             align_length = 16 - mod if mod else 0
 
             # file size
-            fileheader_writer.write_u_int(
-                header_writer.Length
-                + data_writer.Length
-                + fileheader_size
-                + align_length
-            )
+            file_size = metadata_size + data_writer.Length + fileheader_size + align_length
+            fileheader_writer.write_u_int(file_size)
             # version
             fileheader_writer.write_u_int(header.version)
             # data offset
-            fileheader_writer.write_u_int(
-                header_writer.Length + fileheader_size + align_length
-            )
+            data_offset = metadata_size + fileheader_size + align_length
+            fileheader_writer.write_u_int(data_offset)
             # endian
             fileheader_writer.write_boolean(header.endian == ">")
             fileheader_writer.write_bytes(header.reserved)
 
-            # self.reader.bytes[fileheader_size:fileheader_size+header_writer.Length] == header_writer.bytes
+            if header.version >= 22:
+                fileheader_writer.write_u_int(metadata_size)
+                fileheader_writer.write_long(file_size)
+                fileheader_writer.write_long(data_offset)
+                fileheader_writer.write_long(self.unknown)
 
             return (
                 fileheader_writer.bytes
@@ -660,8 +663,9 @@ class ObjectReader:
             self.stripped = reader.read_byte()
 
     def write(self, header, writer, data_writer):
-        # validated
-        if header.version < 14:
+        if self.assets_file.big_id_enabled:
+            writer.write_long(self.path_id)
+        elif header.version < 14:
             writer.write_int(self.path_id)
         else:
             writer.align_stream()
@@ -673,20 +677,29 @@ class ObjectReader:
             self.reset()
             data = self.reader.read(self.byte_size)
 
-        writer.write_u_int(data_writer.Position)
+        if header.version >= 22:
+            writer.write_long(data_writer.Position)
+        else:
+            writer.write_u_int(data_writer.Position)
+        
         writer.write_u_int(len(data))
-
         data_writer.write(data)
 
         writer.write_int(self.type_id)
-
+        
         if header.version < 16:
             # WARNING - CLASSIDTYPE MIGHT CHANGE THE NUMBER IF IT'S UNKNOWN
             writer.write_u_short(self.class_id)
+
+        if header.version < 11:
             writer.write_u_short(self.is_destroyed)
+
+        if 11 <= header.version < 17:
+            writer.write_short(self.serialized_type.script_type_index)
 
         if header.version == 15 or header.version == 16:
             writer.write_byte(self.stripped)
+
 
     def set_raw_data(self, data):
         self.data = data
