@@ -49,7 +49,7 @@ def merge_split_assets(path: str, all_directories=False):
     for split_file in split_files:
         dest_file = file_name_without_extension(split_file)
         dest_path = os.path.dirname(split_file)
-        dest_full = os.path.join(dest_file, dest_path)
+        dest_full = os.path.join(dest_path, dest_file)
 
         if not os.path.exists(dest_full):
             with open(dest_full, "wb") as f:
