@@ -86,7 +86,7 @@ People who have slightly advanced python skills should take a look at [AssetBatc
 
 ## Important Classes
 
-### [Enivironment](UnityPy/environment.py)
+### [Environment](UnityPy/environment.py)
 
 Environment loads and parses the files that are given to it.
 It can be initialized via:
