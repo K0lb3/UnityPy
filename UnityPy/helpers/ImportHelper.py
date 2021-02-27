@@ -116,7 +116,6 @@ def check_file_type(input_) -> (FileType, EndianBinaryReader):
 
         # check if AssetsFile
         old_endian = reader.endian
-        assets_file = True
         # read as if assetsfile and check version
         # ReadHeader
         reader.Position = 0
@@ -125,43 +124,29 @@ def check_file_type(input_) -> (FileType, EndianBinaryReader):
         version = reader.read_u_int()
         data_offset = reader.read_u_int()
 
-        if version >= 9:
+        if version >= 22:
             endian = ">" if reader.read_boolean() else "<"
             reserved = reader.read_bytes(3)
-        else:
-            reader.Position = file_size - metadata_size
-            endian = ">" if reader.read_boolean() else "<"
-
-        if version >= 22:
             metadata_size = reader.read_u_int()
             file_size = reader.read_long()
             data_offset = reader.read_long()
             unknown = reader.read_long()  # unknown
 
-        reader.endian = endian
 
-        if (
-            version < 0
-            or version > 100
-            or any(
-                [
-                    x < 0 or x > reader.Length
-                    for x in [file_size, metadata_size, version, data_offset]
-                ]
-            )
-            or file_size < metadata_size
-        ):
-            return FileType.ResourceFile, reader
-
-        if version >= 7:
-            unity_version = reader.read_string_to_null()
-            if len([x for x in re.split(r"\D", unity_version) if x != ""]) < 2:
-                assets_file = False
-
-        # check end
+        # reset
         reader.endian = old_endian
         reader.Position = 0
-        if assets_file:
-            return FileType.AssetsFile, reader
-        else:
+        # check info
+        if any((
+            version < 0,
+            version > 100,
+            *[
+                x < 0 or x > reader.Length
+                for x in [file_size, metadata_size, version, data_offset]
+            ],
+            file_size < metadata_size,
+            file_size < data_offset
+        )):
             return FileType.ResourceFile, reader
+        else:
+            return FileType.AssetsFile, reader
