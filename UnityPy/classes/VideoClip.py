@@ -6,37 +6,39 @@ from .PPtr import PPtr
 class VideoClip(NamedObject):
     def __init__(self, reader):
         super().__init__(reader=reader)
-        self.original_path = reader.read_aligned_string()
-        self.proxy_width = reader.read_u_int()
-        self.proxy_height = reader.read_u_int()
-        self.width = reader.read_u_int()
-        self.height = reader.read_u_int()
+        self.m_OriginalPath = reader.read_aligned_string()
+        self.m_ProxyWidth = reader.read_u_int()
+        self.m_ProxyHeight = reader.read_u_int()
+        self.Width = reader.read_u_int()
+        self.Height = reader.read_u_int()
         if self.version >= (2017, 2):  # 2017.2 and up
-            self.pixel_aspec_ratio_num = reader.read_u_int()
-            self.pixel_aspec_ratio_den = reader.read_u_int()
-        self.frame_rate = reader.read_double()
-        self.frame_count = reader.read_u_long()
-        self.format = reader.read_int()
-        self.audio_channel_count = reader.read_u_short_array()
+            self.m_PixelAspecRatioNum = reader.read_u_int()
+            self.m_PixelAspecRatioDen = reader.read_u_int()
+        self.m_FrameRate = reader.read_double()
+        self.m_FrameCount = reader.read_u_long()
+        self.m_Format = reader.read_int()
+        self.m_AudioChannelCount = reader.read_u_short_array()
         reader.align_stream()
-        self.audio_sample_rate = reader.read_u_int_array()
-        self.audio_language = reader.read_string_array()
-        # StreamedResource m_ExternalResources
+        self.m_AudioSampleRate = reader.read_u_int_array()
+        self.m_AudioLanguage = reader.read_string_array()
         if self.version >= (2020,):  # 2020.1 and up
-            video_shader_size = reader.ReadInt32()
-            self.video_shaders = [PPtr(reader) for _ in range(video_shader_size)]
+            m_VideoShadersSize = reader.read_int()
+            self.m_VideoShaders = [
+                PPtr(reader) for _ in range(m_VideoShadersSize)
+            ]
 
-        # StreamedResource
-        source = reader.read_aligned_string()
-        offset = reader.read_u_long()
-        size = reader.read_u_long()
+        # m_ExternalResources = new StreamedResource(reader)
+        self.source = reader.read_aligned_string()
+        self.offset = reader.read_u_long()
+        self.size = reader.read_u_long()
 
-        self.has_split_alpha = reader.read_boolean()
-
+        self.m_HasSplitAlpha = reader.read_boolean()
         if self.version >= (2020,):  # 2020.1 and up
             self.m_sRGB = reader.read_boolean()
 
-        if source:
-            self.VideoData = get_resource_data(source, self.assets_file, offset, size)
+        if self.source:
+            self.m_VideoData = get_resource_data(
+                self.source, self.assets_file, self.offset, self.size)
         else:
-            self.VideoData = reader.read(size)
+            self.reader.Position = self.data_offset
+            self.m_VideoData = self.reader.read_bytes(self.size)

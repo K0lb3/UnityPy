@@ -102,9 +102,8 @@ class EndianBinaryWriter:
 
     def align_stream(self, alignment=4):
         pos = self.stream.tell()
-        mod = pos % alignment
-        if mod != 0:
-            self.write(b"\0" * (alignment - mod))
+        align = (alignment - pos % alignment) % alignment
+        self.write(b"\0" * align)
 
     def write_quaternion(self, value: Quaternion):
         self.write_float(value.X)
@@ -148,6 +147,10 @@ class EndianBinaryWriter:
             self.write_int(len(value))
         for val in value:
             command(val)
+
+    def write_byte_array(self, value: bytes):
+        self.write_int(len(value))
+        self.write(value)
 
     def write_boolean_array(self, value: list):
         self.write_array(self.write_boolean, value)

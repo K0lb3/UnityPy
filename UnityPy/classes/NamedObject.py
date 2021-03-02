@@ -8,6 +8,8 @@ class NamedObject(EditorExtension):
         self.reader.reset()
         self.name = self.reader.read_aligned_string()
 
-    def save(self, writer: EndianBinaryWriter):
+    def save(self, writer: EndianBinaryWriter = None):
+        if not writer:
+            writer = EndianBinaryWriter(self.reader.endian)
         super().save(writer)
         writer.write_aligned_string(self.name) # self.name if self.name else '' ?

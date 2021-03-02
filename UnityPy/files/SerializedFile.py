@@ -113,6 +113,60 @@ class SerializedType:
     script_id: bytes  # Hash128
     old_type_hash: bytes  # Hash128}
 
+    def __init__(self, reader, serialized_file):
+        version = serialized_file.header.version
+        self.class_id = reader.read_int()
+
+        if version >= 16:
+            self.is_stripped_type = reader.read_boolean()
+
+        if version >= 17:
+            self.script_type_index = reader.read_short()
+
+        if version >= 13:
+            if (version < 16 and self.class_id < 0) or (
+                version >= 16 and self.class_id == 114
+            ):
+                self.script_id = reader.read_bytes(16)  # Hash128
+            self.old_type_hash = reader.read_bytes(16)  # Hash128
+
+        if serialized_file._enable_type_tree:
+            type_tree = []
+            if version >= 12 or version == 10:
+                self.string_data = serialized_file.read_type_tree_blob(
+                    type_tree)
+            else:
+                serialized_file.read_type_tree(type_tree)
+
+            if version >= 21:
+                self.type_dependencies = reader.read_int_array()
+
+            self.nodes = type_tree
+
+    def write(self, serialized_file, writer):
+        version = serialized_file.header.version
+        writer.write_int(self.class_id)
+
+        if version >= 16:
+            writer.write_boolean(self.is_stripped_type)
+
+        if version >= 17:
+            writer.write_short(self.script_type_index)
+
+        if version >= 13:
+            if (version < 16 and self.class_id < 0) or (
+                version >= 16 and self.class_id == 114
+            ):
+                writer.write_bytes(self.script_id)  # Hash128
+            writer.write_bytes(self.old_type_hash)  # Hash128
+
+        if serialized_file._enable_type_tree:
+            if version >= 12 or version == 10:
+                serialized_file.save_type_tree5(
+                    self.nodes, writer, self.string_data)
+            else:
+                serialized_file.save_type_tree(self.nodes, writer)
+
 
 class SerializedFile(File.File):
     reader: EndianBinaryReader
@@ -165,15 +219,14 @@ class SerializedFile(File.File):
         if header.version >= 9:
             header.endian = ">" if reader.read_boolean() else "<"
             header.reserved = reader.read_bytes(3)
+            if header.version >= 22:
+                header.metadata_size = reader.read_u_int()
+                header.file_size = reader.read_long()
+                header.data_offset = reader.read_long()
+                self.unknown = reader.read_long()  # unknown
         else:
             reader.Position = header.file_size - header.metadata_size
             header.endian = ">" if reader.read_boolean() else "<"
-
-        if header.version >= 22:
-            header.metadata_size = reader.read_u_int()
-            header.file_size = reader.read_long()
-            header.data_offset = reader.read_long()
-            self.unknown = reader.read_long()  # unknown
 
         reader.endian = header.endian
 
@@ -190,7 +243,7 @@ class SerializedFile(File.File):
 
         # ReadTypes
         type_count = reader.read_int()
-        self.types = [self.read_serialized_type() for _ in range(type_count)]
+        self.types = [SerializedType(reader, self) for _ in range(type_count)]
 
         self.big_id_enabled = 0
         if 7 <= header.version < 14:
@@ -220,7 +273,7 @@ class SerializedFile(File.File):
         if header.version >= 20:
             ref_type_count = reader.read_int()
             self.ref_types = [
-                self.read_serialized_type() for _ in range(ref_type_count)
+                SerializedType(reader, self) for _ in range(ref_type_count)
             ]
 
         if header.version >= 5:
@@ -253,37 +306,6 @@ class SerializedFile(File.File):
         self.is_changed = True
         if self.parent:
             self.parent.mark_changed()
-
-    def read_serialized_type(self):
-        type_ = SerializedType()
-        type_.class_id = self.reader.read_int()
-
-        if self.header.version >= 16:
-            type_.is_stripped_type = self.reader.read_boolean()
-
-        if self.header.version >= 17:
-            type_.script_type_index = self.reader.read_short()
-
-        if self.header.version >= 13:
-            if (self.header.version < 16 and type_.class_id < 0) or (
-                self.header.version >= 16 and type_.class_id == 114
-            ):
-                type_.script_id = self.reader.read_bytes(16)  # Hash128
-            type_.old_type_hash = self.reader.read_bytes(16)  # Hash128
-
-        if self._enable_type_tree:
-            type_tree = []
-            if self.header.version >= 12 or self.header.version == 10:
-                type_.string_data = self.read_type_tree_blob(type_tree)
-            else:
-                self.read_type_tree(type_tree)
-
-            if self.header.version >= 21:
-                type_.type_dependencies = self.reader.read_int_array()
-
-            type_.nodes = type_tree
-
-        return type_
 
     def read_type_tree(self, type_tree, level=0):
         if level == RECURSION_LIMIT - 1:
@@ -339,130 +361,107 @@ class SerializedFile(File.File):
         return string_buffer_reader.bytes
 
     def save(self, packer: str = "none") -> bytes:
-        # Structure:
-        #   1. header
-        #       file header
-        #       types
-        #       objects
-        #       scripts
-        #       externals
-        #   2. small 0es offset - align stream
-        #   3. objects data
+        # 1. header -> has to be delayed until the very end
+        # 2. data -> types, objects, scripts, ...
 
-        # adjust metadata_size, data_offst and file_size
+        # so write the data first
         header = self.header
-        types = self.types
-        objects = self.objects
-        script_types = self.script_types
-        externals = self.externals
-
-        # the data-offset is required for the header and is kinda hard to calculate,
-        # so we split the asset building up into multiple parts
-        fileheader_writer = EndianBinaryWriter()
-        header_writer = EndianBinaryWriter(endian=header.endian)
+        meta_writer = EndianBinaryWriter(endian=header.endian)
         data_writer = EndianBinaryWriter(endian=header.endian)
-
-        # 1. building the header without file header
-
-        # reader.Position = header.file_size - header.metadata_size
-        # header.endian = '>' if reader.read_boolean() else '<'
-        if header.version < 9:
-            header_writer.write_boolean(header.endian == ">")
-
         if header.version >= 7:
-            header_writer.write_string_to_null(self.unity_version)
+            meta_writer.write_string_to_null(self.unity_version)
 
         if header.version >= 8:
-            header_writer.write_int(self._m_target_platform)
+            meta_writer.write_int(self._m_target_platform)
 
         if header.version >= 13:
-            header_writer.write_boolean(self._enable_type_tree)
+            meta_writer.write_boolean(self._enable_type_tree)
 
-        # types
-        header_writer.write_int(len(types))
-        for typ in types:
-            self.save_serialized_type(typ, header, header_writer)
+        # ReadTypes
+        meta_writer.write_int(len(self.types))
+        for typ in self.types:
+            typ.write(self, meta_writer)
 
         if 7 <= header.version < 14:
-            header_writer.write_int(self.big_id_enabled)
+            meta_writer.write_int(self.big_id_enabled)
 
-        # objects
-        header_writer.write_int(len(objects))
-        for i, obj in enumerate(objects.values()):
-            obj.write(header, header_writer, data_writer)
-            if i < len(objects) - 1:
-                data_writer.align_stream(8)
+        # ReadObjects
+        meta_writer.write_int(len(self.objects))
+        for obj in self.objects.values():
+            obj.write(header, meta_writer, data_writer)
+            data_writer.align_stream(8)
 
-        # scripts
+        # Read Scripts
         if header.version >= 11:
-            header_writer.write_int(len(script_types))
-            for script_type in script_types:
-                script_type.write(header, header_writer)
+            meta_writer.write_int(len(self.script_types))
+            for script_type in self.script_types:
+                script_type.write(header, meta_writer)
 
-        # externals
-        header_writer.write_int(len(externals))
-        for external in externals:
-            external.write(header, header_writer)
+        # Read Externals
+        meta_writer.write_int(len(self.externals))
+        for external in self.externals:
+            external.write(header, meta_writer)
 
         if header.version >= 20:
-            header_writer.write_int(len(self.ref_types))
+            meta_writer.write_int(len(self.ref_types))
             for ref_type in self.ref_types:
-                save_serialized_type(ref_type, header, header_writer)
+                typ.write(self, meta_writer)
 
         if header.version >= 5:
-            header_writer.write_string_to_null(self.userInformation)
+            meta_writer.write_string_to_null(self.userInformation)
 
+        # prepare header
+        writer = EndianBinaryWriter()
+        header_size = 16  # 4*4
+        metadata_size = meta_writer.Length
+        data_size = data_writer.Length
         if header.version >= 9:
-            # file header
-            fileheader_size = 4 * 4 + 1 + 3 + (28 if header.version >= 22 else 0) # following + endian + reserved
-            # metadata size
-            metadata_size = header_writer.Length
-            fileheader_writer.write_u_int(metadata_size)
-            # align between metadata and data
-            mod = (fileheader_size + metadata_size) % 16
-            align_length = 16 - mod if mod else 0
+            # 1 bool + 3 reserved + extra header 4 + 3*8
+            header_size += 4 if header.version < 22 else 4+28
+            data_offset = header_size + metadata_size
+            # align data_offset
+            data_offset += (16 - data_offset % 16) % 16
+            file_size = data_offset + data_size
+            if header.version < 22:
+                writer.write_u_int(metadata_size)
+                writer.write_u_int(file_size)
+                writer.write_u_int(header.version)
+                # reader.Position = header.file_size - header.metadata_size
+                # so data follows right after this header -> after 32
+                writer.write_u_int(writer.Position+4+meta_writer.size)
+                writer.write_boolean(">" == header.endian)
+                writer.write_bytes(header.reserved)
+            else:
+                # old header
+                writer.write_u_int(0)
+                writer.write_u_int(0)
+                writer.write_u_int(header.version)
+                writer.write_u_int(0)
+                writer.write_boolean(">" == header.endian)
+                writer.write_bytes(header.reserved)
+                writer.write_u_int(metadata_size)
+                writer.write_long(file_size)
+                writer.write_long(data_offset)
+                writer.write_long(self.unknown)
 
-            # file size
-            file_size = metadata_size + data_writer.Length + fileheader_size + align_length
-            fileheader_writer.write_u_int(file_size)
-            # version
-            fileheader_writer.write_u_int(header.version)
-            # data offset
-            data_offset = metadata_size + fileheader_size + align_length
-            fileheader_writer.write_u_int(data_offset)
-            # endian
-            fileheader_writer.write_boolean(header.endian == ">")
-            fileheader_writer.write_bytes(header.reserved)
-
-            if header.version >= 22:
-                fileheader_writer.write_u_int(metadata_size)
-                fileheader_writer.write_long(file_size)
-                fileheader_writer.write_long(data_offset)
-                fileheader_writer.write_long(self.unknown)
-
-            return (
-                fileheader_writer.bytes
-                + header_writer.bytes
-                + b"\x00" * align_length
-                + data_writer.bytes
-            )
+            writer.write_bytes(meta_writer.bytes)
+            writer.align_stream(16)
+            writer.write_bytes(data_writer.bytes)
 
         else:
-            # file header
-            fileheader_size = 4 * 4
-            metadata_size = header_writer.Length
-            # metadata size
-            fileheader_writer.write_u_int(metadata_size)
-            # file size
-            fileheader_writer.write_u_int(
-                metadata_size + data_writer.Length + fileheader_size
-            )
-            # version
-            fileheader_writer.write_u_int(header.version)
-            # data offset - unity seems to align the stream .... but it's apparently not necessary
-            fileheader_writer.write_u_int(fileheader_size)
+            metadata_size += 1  # endian boolean
+            file_size = header_size + metadata_size + data_size
+            writer.write_u_int(metadata_size)
+            writer.write_u_int(file_size)
+            writer.write_u_int(header.version)
+            # reader.Position = header.file_size - header.metadata_size
+            # so data follows right after this header -> after 32
+            writer.write_u_int(32)
+            writer.write_bytes(data_writer.bytes)
+            writer.write_boolean(">" == header.endian)
+            writer.write_bytes(meta_writer.bytes)
 
-            return fileheader_writer.bytes + data_writer.bytes + header_writer.bytes
+        return writer.bytes
 
     def save_serialized_type(
         self,
@@ -601,6 +600,10 @@ class ObjectReader:
     class_id: ClassIDType
     path_id: int
     serialized_type: SerializedType
+    _read_until: int
+    # saves where the parser stopped
+    # in case that not all data is read
+    # and the obj.data is changed, the unknown data can be added again
 
     def __init__(self, assets_file, reader):
         self.assets_file = assets_file
@@ -673,6 +676,13 @@ class ObjectReader:
 
         if self.data:
             data = self.data
+            # in some cases the parser doesn't read all of the object data
+            # games might still require the missing data
+            # so following code appends the missing data back to edited objects
+            end_pos = self.byte_start + self.byte_size
+            if self._read_until != end_pos:
+                self.reader.Position = self._read_until
+                data += self.reader.read_bytes(end_pos - self._read_until)
         else:
             self.reset()
             data = self.reader.read(self.byte_size)
@@ -681,12 +691,12 @@ class ObjectReader:
             writer.write_long(data_writer.Position)
         else:
             writer.write_u_int(data_writer.Position)
-        
+
         writer.write_u_int(len(data))
         data_writer.write(data)
 
         writer.write_int(self.type_id)
-        
+
         if header.version < 16:
             # WARNING - CLASSIDTYPE MIGHT CHANGE THE NUMBER IF IT'S UNKNOWN
             writer.write_u_short(self.class_id)
@@ -699,7 +709,6 @@ class ObjectReader:
 
         if header.version == 15 or header.version == 16:
             writer.write_byte(self.stripped)
-
 
     def set_raw_data(self, data):
         self.data = data
@@ -718,7 +727,7 @@ class ObjectReader:
 
     def read(self):
         try:
-            return getattr(classes, self.type.name, classes.Object)(self)
+            obj = getattr(classes, self.type.name, classes.Object)(self)
         except Exception as e:
             raise e
         # TODO: only specific exceptions here?
@@ -731,7 +740,8 @@ class ObjectReader:
                 if " " in key:
                     obj.__dict__[key.replace(" ", "_")] = val
                     delattr(obj, key)
-            return obj
+        self._read_until = self.reader.Position
+        return obj
 
     def __getattr__(self, item: str):
         if hasattr(self.reader, item):

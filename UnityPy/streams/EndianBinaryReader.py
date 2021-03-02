@@ -101,10 +101,7 @@ class EndianBinaryReader:
         return ""
 
     def align_stream(self, alignment=4):
-        pos = self.Position
-        mod = pos % alignment
-        if mod != 0:
-            self.Position += alignment - mod
+        self.Position += (alignment - self.Position % alignment) % alignment
 
     def read_quaternion(self):
         return Quaternion(
@@ -131,6 +128,9 @@ class EndianBinaryReader:
         return Color(
             self.read_float(), self.read_float(), self.read_float(), self.read_float()
         )
+
+    def read_byte_array(self):
+        return self.read(self.read_int())
 
     def read_matrix(self):
         return Matrix4x4(self.read_float_array(16))
@@ -229,7 +229,7 @@ class EndianBinaryReader_Streamable(EndianBinaryReader):
     def bytes(self):
         last_pos = self.Position
         self.Position = 0
-        ret = self.read()
+        ret = self.read(self.Length)
         self.Position = last_pos
         return ret
 
@@ -237,7 +237,7 @@ class EndianBinaryReader_Streamable(EndianBinaryReader):
         self.stream.close()
         pass
 
-    def read(self, length):
+    def read(self, length: int):
         if not length:
             return b""
         return self.stream.read(length)

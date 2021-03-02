@@ -22,10 +22,7 @@ class Texture2D(Texture):
         self.m_CompleteImageSize = len(self.image_data)
         self.m_TextureFormat = tex_format
         
-        if self.m_StreamData:
-            self.m_StreamData.path = ""
-            self.m_StreamData.offset = 0
-            self.m_StreamData.size = 0
+        self.m_StreamData = None
 
     def __init__(self, reader):
         super().__init__(reader=reader)
@@ -63,7 +60,10 @@ class Texture2D(Texture):
             self.m_LightmapFormat = reader.read_int()
         if version >= (3, 5):  # 3.5 and up
             self.m_ColorSpace = reader.read_int()
-
+        if version >= (2020,2): # 2020.2 and up
+            self.m_PlatformBlob = reader.read_byte_array()
+            reader.align_stream()
+        
         image_data_size = reader.read_int()
         self.image_data = b""
         if image_data_size == 0 and version >= (5, 3):  # 5.3 and up
@@ -114,12 +114,16 @@ class Texture2D(Texture):
             writer.write_int(self.m_LightmapFormat)
         if version >= (3, 5):  # 3.5 and up
             writer.write_int(self.m_ColorSpace)
-
-        writer.write_int(len(self.image_data))
-        writer.write_bytes(self.image_data)
-
+        if version >= (2020,2): # 2020.2 and up
+            writer.write_byte_array(self.m_PlatformBlob)
+            writer.align_stream()
+        
         if self.m_StreamData:
+            writer.write_int(0)
             self.m_StreamData.save(writer, version)
+        else:
+            writer.write_int(len(self.image_data))
+            writer.write_bytes(self.image_data)
 
         self.set_raw_data(writer.bytes)
 
