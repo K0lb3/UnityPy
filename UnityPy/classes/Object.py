@@ -1,12 +1,12 @@
 from ..enums import BuildTarget
 from ..helpers import TypeTreeHelper
-from ..streams import EndianBinaryWriter, EndianBinaryReader
-
+from ..streams import EndianBinaryWriter
+from ..files import ObjectReader
 
 class Object(object):
     type_tree: dict
 
-    def __init__(self, reader):
+    def __init__(self, reader: ObjectReader):
         self.reader = reader
         self.assets_file = reader.assets_file
         self.type = reader.type

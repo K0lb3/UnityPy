@@ -100,11 +100,21 @@ UnityPy can detect itself if the file is a WebFile, BundleFile, Asset or APK its
 
 The unpacked assets will be loaded into ``.files``, which is a dict consisting of ``asset-name : asset``.
 
+The all objects of the loaded assets can be easily accessed via ``.objects``,
+which itself is a simple recursive iterator.
+
 ```python
+import io
 import UnityPy
+
+# all of the following would work
+src = "file_path"
+src = b"bytes"
+src = io.BytesIO(b"Streamable")
+
 env = UnityPy.load(src)
 
-for asset_name, asset in am.assets.items():
+for obj in env.objects:
     pass
 ```
 

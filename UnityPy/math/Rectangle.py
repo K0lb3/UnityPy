@@ -12,9 +12,9 @@ class Rectangle:
         elif kwargs:
             self.__dict__.update(kwargs)
 
-    def round(rect):
+    def round(self):
         return Rectangle(
-            round(rect.x), round(rect.y), round(rect.width), round(rect.height)
+            round(self.x), round(self.y), round(self.width), round(self.height)
         )
 
     @property
@@ -35,8 +35,8 @@ class Rectangle:
 
     @property
     def size(self):
-        return (self.width, self.height)
+        return self.width, self.height
 
     @property
     def location(self):
-        return (self.x, self.y)
+        return self.x, self.y

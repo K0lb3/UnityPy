@@ -2,10 +2,11 @@ from ctypes import *
 from enum import Enum
 import os
 import platform
-from UnityPy.streams import EndianBinaryWriter, EndianBinaryReader
+from UnityPy.streams import EndianBinaryWriter
+
 # dll init
 ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
-LIB_PATH = os.path.join(ROOT, "lib", "FMOD",platform.system(), platform.architecture()[0])
+LIB_PATH = os.path.join(ROOT, "lib", "FMOD", platform.system(), platform.architecture()[0])
 if platform.system() == 'Windows':
     _dll = WinDLL(os.path.join(LIB_PATH, "fmod.dll"))
 elif platform.system() == "Linux":
@@ -13,7 +14,9 @@ elif platform.system() == "Linux":
 elif platform.system() == "Darwin":
     _dll = CDLL(os.path.join(LIB_PATH, "libfmod.dylib"))
 else:
-    print("UnityPy/export/AudioClipConverter - Warning: unknown system\nIf you want to export AudioClips, you have to set UnityPy.export.AudioClipConverter._dll yourself.")
+    print(
+        "UnityPy/export/AudioClipConverter - Warning: unknown system\nIf you want to export AudioClips, you have to set UnityPy.export.AudioClipConverter._dll yourself.")
+
 
 def extract_audioclip_samples(audio) -> dict:
     """extracts all the samples from an AudioClip
@@ -22,11 +25,11 @@ def extract_audioclip_samples(audio) -> dict:
         :return: {filename : sample(bytes)}
         :rtype: dict
     """
-
+    
     if not audio.m_AudioData:
         # eg. StreamedResource not available
         return {}
-
+    
     magic = memoryview(audio.m_AudioData)[:4]
     if magic == b'OggS':
         return {'%s.ogg' % audio.name: audio.m_AudioData}
@@ -37,15 +40,15 @@ def extract_audioclip_samples(audio) -> dict:
 
 def dump_samples(clip):
     # init system
-    #system = pyfmodex.System()
+    # system = pyfmodex.System()
     sys_ptr = c_void_p()
     ckresult(_dll.FMOD_System_Create(byref(sys_ptr)))
-    #system.init(1, INIT_FLAGS.NORMAL, None)
+    # system.init(1, INIT_FLAGS.NORMAL, None)
     ckresult(_dll.FMOD_System_Init(sys_ptr, clip.m_Channels, None, None))
-
+    
     # get sound
     exinfo = byref(CREATESOUNDEXINFO(length=clip.m_Size))
-    #sound = system.create_sound(bytes(clip.m_AudioData),mode=MODE.OPENMEMORY,exinfo=exinfo)
+    # sound = system.create_sound(bytes(clip.m_AudioData),mode=MODE.OPENMEMORY,exinfo=exinfo)
     snd_ptr = c_void_p()
     ckresult(_dll.FMOD_System_CreateSound(sys_ptr, bytes(
         clip.m_AudioData), 0x00000800, exinfo, byref(snd_ptr)))
@@ -56,11 +59,11 @@ def dump_samples(clip):
         if i > 0:
             filename = "%s-%i.wav" % (clip.name, i)
         else:
-            filename = "%s.wav" % (clip.name)
+            filename = "%s.wav" % clip.name
         subsound = sound.get_subsound(i)
         samples[filename] = subsound_to_wav(subsound)
         subsound.release()
-
+    
     sound.release()
     # system.release()
     ckresult(_dll.FMOD_System_Release(sys_ptr))
@@ -73,7 +76,7 @@ def subsound_to_wav(subsound):
     channels = subsound.format.channels
     bits = subsound.format.bits
     sample_rate = int(subsound.default_frequency)
-
+    
     # write to buffer
     w = EndianBinaryWriter(endian="<")
     # riff chucnk
@@ -108,7 +111,7 @@ def subsound_to_wav(subsound):
 
 class CREATESOUNDEXINFO(Structure):
     _fields_ = [("cbsize", c_int), ("length", c_uint)]
-
+    
     def __init__(self, *args, **kwargs):
         Structure.__init__(self, *args, **kwargs)
         self.cbsize = sizeof(self)
@@ -125,27 +128,27 @@ class Sound(object):
         :param ptr: The pointer representing this object.
         """
         self._ptr = ptr
-
+    
     def _call_fmod(self, funcname, *args):
         result = getattr(_dll, funcname)(self._ptr, *args)
         ckresult(result)
-
+    
     @property
     def num_subsounds(self):
         num = c_int()
         self._call_fmod("FMOD_Sound_GetNumSubSounds", byref(num))
         return num.value
-
+    
     def get_subsound(self, index):
         sh_ptr = c_void_p()
         self._call_fmod("FMOD_Sound_GetSubSound", index, byref(sh_ptr))
         return Sound(sh_ptr)
-
+    
     def get_length(self, ltype):
         len = c_uint()
         self._call_fmod("FMOD_Sound_GetLength", byref(len), int(ltype))
         return len.value
-
+    
     @property
     def format(self):
         type = c_int()
@@ -155,14 +158,14 @@ class Sound(object):
         self._call_fmod("FMOD_Sound_GetFormat", byref(type),
                         byref(format), byref(channels), byref(bits))
         return so(type=type.value, format=format.value, channels=channels.value, bits=bits.value)
-
+    
     @property
     def default_frequency(self):
         freq = c_float()
         pri = c_int()
         self._call_fmod("FMOD_Sound_GetDefaults", byref(freq), byref(pri))
         return freq.value
-
+    
     def lock(self, offset, length):
         ptr1 = c_void_p()
         len1 = c_uint()
@@ -170,11 +173,11 @@ class Sound(object):
         len2 = c_uint()
         ckresult(_dll.FMOD_Sound_Lock(self._ptr, offset, length,
                                       byref(ptr1), byref(ptr2), byref(len1), byref(len2)))
-        return ((ptr1, len1), (ptr2, len2))
-
+        return (ptr1, len1), (ptr2, len2)
+    
     def release(self):
         self._call_fmod("FMOD_Sound_Release")
-
+    
     def unlock(self, i1, i2):
         """I1 and I2 are tuples of form (ptr, len)."""
         ckresult(_dll.FMOD_Sound_Unlock(self._ptr, i1[0], i2[0], i1[1], i2[1]))
@@ -190,7 +193,7 @@ class FmodError(Exception):
     def __init__(self, result):
         self.result = result
         self.message = result.name.replace("_", " ")
-
+    
     def __str__(self):
         return self.message
 

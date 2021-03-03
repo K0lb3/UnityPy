@@ -1,6 +1,5 @@
 ﻿from . import File
-from ..enums import FileType
-from ..helpers import CompressionHelper, ImportHelper
+from ..helpers import CompressionHelper
 from ..streams import EndianBinaryReader, EndianBinaryWriter
 
 
@@ -10,16 +9,16 @@ class WebFile(File.File):
 
     files -- list of all files in the WebFile
     """
-
-    def __init__(self, reader: EndianBinaryReader, parent : File):
+    
+    def __init__(self, reader: EndianBinaryReader, parent: File):
         """Constructor Method
         """
         super().__init__(parent=parent)
-
+        
         # check compression
         magic = reader.read_bytes(2)
         reader.Position = 0
-
+        
         if magic == CompressionHelper.GZIP_MAGIC:
             self.packer = "gzip"
             data = CompressionHelper.decompress_gzip(reader.bytes)
@@ -35,16 +34,16 @@ class WebFile(File.File):
             else:
                 self.packer = "none"
                 reader.endian = "<"
-
+        
         # signature check
         signature = reader.read_string_to_null()
         if signature != "UnityWebData1.0":
             return
         self.signature = signature
-
+        
         # read header -> contains file headers
         head_length = reader.read_int()
-
+        
         files = []
         while reader.Position < head_length:
             offset = reader.read_int()
@@ -52,32 +51,32 @@ class WebFile(File.File):
             path_length = reader.read_int()
             name = bytes(reader.read_bytes(path_length)).decode("utf-8")
             files.append(File.DirectoryInfo(name, offset, length))
-
+        
         self.read_files(reader, files)
-
+    
     def save(
-        self,
-        files: dict = None,
-        packer: str = "none",
-        signature: str = "UnityWebData1.0",
+            self,
+            files: dict = None,
+            packer: str = "none",
+            signature: str = "UnityWebData1.0",
     ) -> bytes:
         # solve defaults
         if not files:
             files = self.files
         if not packer:
             packer = self.packer
-
+        
         # get raw data
         files = {
             name: f.bytes if isinstance(f, EndianBinaryReader) else f.save()
             for name, f in files.items()
         }
-
+        
         # create writer
         writer = EndianBinaryWriter(endian="<")
         # signature
         writer.write_string_to_null(signature)
-
+        
         # data offset
         offset = sum(
             [
@@ -89,9 +88,9 @@ class WebFile(File.File):
                 4,  # offset int
             ]
         )
-
+        
         writer.write_int(offset)
-
+        
         # 1. file headers
         for name, data in files.items():
             # offset
@@ -104,11 +103,11 @@ class WebFile(File.File):
             enc_path = name.encode("utf-8")
             writer.write_int(len(enc_path))
             writer.write(enc_path)
-
+        
         # 2. file data
         for data in files.values():
             writer.write(data)
-
+        
         if packer == "gzip":
             return CompressionHelper.compress_gzip(writer.bytes)
         elif packer == "brotli":

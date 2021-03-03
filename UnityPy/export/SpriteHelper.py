@@ -59,7 +59,6 @@ def get_image_from_sprite(m_Sprite) -> Image:
     m_Texture2D = sprite_atlas_data.texture
     alpha_texture = sprite_atlas_data.alphaTexture
     texture_rect = sprite_atlas_data.textureRect
-    texture_rect_offset = sprite_atlas_data.textureRectOffset
     settings_raw = sprite_atlas_data.settingsRaw
 
     original_image = get_image(m_Sprite, m_Texture2D, alpha_texture)

@@ -13,4 +13,4 @@ class AnimatorOverrideController(RuntimeAnimatorController):
         super().__init__(reader=reader)
         self.controller = PPtr(reader)
         num_overrides = reader.read_int()
-        self.clips = [AnimationClipOverride(reader) for i in range(num_overrides)]
+        self.clips = [AnimationClipOverride(reader) for _ in range(num_overrides)]

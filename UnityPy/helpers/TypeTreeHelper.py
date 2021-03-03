@@ -130,9 +130,8 @@ class TypeTreeHelper:
         i.v += 2
         return value, align
 
-    def read_value(self, members: list, i) -> object:
-        if type(i) != RefInt:
-            i = RefInt(i)
+    def read_value(self, members: list, _i) -> object:
+        i = RefInt(_i) if type(_i) != RefInt else _i
         member = members[i.v]
         level = member.level
         var_type_str = member.type
@@ -152,7 +151,7 @@ class TypeTreeHelper:
                     size = self.reader.read_int()
                     vector = get_members(members, level, i)[3:]
                     i.v += len(vector) + 2
-                    value = [self.read_value(vector, 0) for j in range(size)]
+                    value = [self.read_value(vector, 0) for _ in range(size)]
                 else:
                     eclass = get_members(members, level, i)
                     eclass.pop(0)
@@ -304,7 +303,7 @@ class TypeTreeHelper:
 		ret = stream.read()
 		stream.seek(pos)
 		return ret
-	
+
 	def write_value(value: dict, members: list, write: EndianBinaryReader, i):
 		member = members[i.v]
 		level = member.level

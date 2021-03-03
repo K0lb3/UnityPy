@@ -2,7 +2,7 @@ from enum import IntEnum
 
 from .Mesh import BoneWeights4, SubMesh, VertexData
 from .NamedObject import NamedObject
-from .PPtr import PPtr, save_ptr
+from .PPtr import PPtr
 from ..export import SpriteHelper
 from ..enums import SpriteMeshType
 from ..streams import EndianBinaryWriter

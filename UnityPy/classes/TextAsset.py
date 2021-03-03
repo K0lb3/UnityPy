@@ -1,9 +1,9 @@
 from .NamedObject import NamedObject
-from ..streams import EndianBinaryWriter, EndianBinaryReader
+from ..streams import EndianBinaryWriter
 
 
 class TextAsset(NamedObject):
-    def __init__(self, reader: EndianBinaryReader):
+    def __init__(self, reader):
         super().__init__(reader=reader)
         self.script = reader.read_bytes(reader.read_int())
 

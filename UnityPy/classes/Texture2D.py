@@ -14,14 +14,14 @@ class Texture2D(Texture):
     def image(self, img):
         # img is PIL.Image / image path / opened file
         # overwrite original image data with the RGB(A) image data and sets the correct new format
-        img_data,tex_format = Texture2DConverter.image_to_texture(self, img)
+        img_data,tex_format = Texture2DConverter.image_to_texture(img)
         if img is None:
             raise Exception("No image provided")
 
         self.image_data = img_data
         self.m_CompleteImageSize = len(self.image_data)
         self.m_TextureFormat = tex_format
-        
+
         self.m_StreamData = None
 
     def __init__(self, reader):
@@ -63,9 +63,10 @@ class Texture2D(Texture):
         if version >= (2020,2): # 2020.2 and up
             self.m_PlatformBlob = reader.read_byte_array()
             reader.align_stream()
-        
+
         image_data_size = reader.read_int()
         self.image_data = b""
+
         if image_data_size == 0 and version >= (5, 3):  # 5.3 and up
             self.m_StreamData = StreamingInfo(reader, version)
             if self.m_StreamData.size:
@@ -117,7 +118,7 @@ class Texture2D(Texture):
         if version >= (2020,2): # 2020.2 and up
             writer.write_byte_array(self.m_PlatformBlob)
             writer.align_stream()
-        
+
         if self.m_StreamData:
             writer.write_int(0)
             self.m_StreamData.save(writer, version)

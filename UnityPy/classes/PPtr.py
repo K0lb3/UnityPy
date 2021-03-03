@@ -1,4 +1,5 @@
-from ..streams import EndianBinaryReader, EndianBinaryWriter
+from ..files import ObjectReader
+from ..streams import EndianBinaryWriter
 from ..helpers import ImportHelper
 from .. import files
 from ..enums import FileType
@@ -16,7 +17,7 @@ def save_ptr(obj, writer: EndianBinaryWriter, version):
 cached_managers = dict()
 
 class PPtr:
-    def __init__(self, reader: EndianBinaryReader):
+    def __init__(self, reader: ObjectReader):
         self._version = reader.version2
         self.index = -2
         self.file_id = reader.read_int()

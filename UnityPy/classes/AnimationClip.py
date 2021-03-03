@@ -341,7 +341,7 @@ class StreamedCurveKey:
         """
         # Stepped
         if self.coeff[0] == 0 and self.coeff[1] == 0 and self.coeff[2] == 0:
-            return float.PositiveInfinity
+            return float('inf')
 
         dx = max(dx, 0.0001)
         dy = rhs.value - self.value

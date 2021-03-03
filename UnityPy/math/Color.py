@@ -13,9 +13,6 @@ class Color:
         self.B = b
         self.A = a
 
-    def GetHashCode(self):
-        return Vector4(self).GetHashCode()
-
     def __eq__(self, other):
         if isinstance(other, Color):
             return self.__dict__ == other.__dict__

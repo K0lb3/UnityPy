@@ -1,6 +1,4 @@
-﻿from sys import platform
-
-import texture2ddecoder
+﻿import texture2ddecoder
 from PIL import Image
 from copy import copy
 from io import BytesIO, BufferedIOBase, RawIOBase, IOBase
@@ -8,13 +6,13 @@ import struct
 from ..enums import TextureFormat, BuildTarget
 
 TF = TextureFormat
-PREFER_BASISU = False
 
-def image_to_texture(tex, img : Image, flip=True):
+
+def image_to_texture(img: Image, flip: bool = True):
     # tex for eventually later usage of compressions
     _image = None
     if (isinstance(img, str) or isinstance(img, BufferedIOBase) or
-        isinstance(img, RawIOBase) or isinstance(img, IOBase)):
+            isinstance(img, RawIOBase) or isinstance(img, IOBase)):
         _image = Image.open(img)
     elif isinstance(img, Image.Image):
         _image = img
@@ -44,31 +42,32 @@ def get_image_from_texture2d(texture_2d, flip=True) -> Image:
     image_data = copy(bytes(texture_2d.image_data))
     if not image_data:
         return Image.new("RGB", (0, 0))
-
-    texture_format = texture_2d.m_TextureFormat if isinstance(texture_2d, TextureFormat) else TextureFormat(texture_2d.m_TextureFormat)
+    
+    texture_format = texture_2d.m_TextureFormat if isinstance(texture_2d, TextureFormat) else TextureFormat(
+        texture_2d.m_TextureFormat)
     selection = CONV_TABLE[texture_format]
-
+    
     if len(selection) == 0:
         raise NotImplementedError(
             f"Not implemented texture format: {texture_format.name}"
         )
-
+    
     if texture_format in XBOX_SWAP_FORMATS:
         image_data = swap_bytes_for_xbox(image_data, texture_2d.platform)
-
+    
     if "Crunched" in texture_format.name:
         version = texture_2d.version
-        if (version[0] > 2017 or (version[0] == 2017 and version[1] >= 3) #2017.3 and up
-            or texture_format == TextureFormat.ETC_RGB4Crunched
-            or texture_format == TextureFormat.ETC2_RGBA8Crunched):
+        if (version[0] > 2017 or (version[0] == 2017 and version[1] >= 3)  # 2017.3 and up
+                or texture_format == TextureFormat.ETC_RGB4Crunched
+                or texture_format == TextureFormat.ETC2_RGBA8Crunched):
             image_data = texture2ddecoder.unpack_unity_crunch(image_data)
         else:
             image_data = texture2ddecoder.unpack_crunch(image_data)
-
+    
     img = selection[0](
         image_data, texture_2d.m_Width, texture_2d.m_Height, *selection[1:]
     )
-
+    
     if img and flip:
         return img.transpose(Image.FLIP_TOP_BOTTOM)
     return img
@@ -86,15 +85,15 @@ def swap_bytes_for_xbox(image_data: bytes, build_target: BuildTarget) -> bytes:
     :rtype: bytes
     """
     if (
-        build_target == BuildTarget.XBOX360
+            build_target == BuildTarget.XBOX360
     ):  # swap bytes for Xbox confirmed,PS3 not encountered
         for i in range(0, len(image_data), 2):
-            image_data[i : i + 2] = image_data[i : i + 2][::-1]
+            image_data[i: i + 2] = image_data[i: i + 2][::-1]
     return image_data
 
 
 def pillow(
-    image_data: bytes, width: int, height: int, mode: str, codec: str, args, swap=False
+        image_data: bytes, width: int, height: int, mode: str, codec: str, args, swap: tuple = None
 ) -> Image:
     img = (
         Image.frombytes(mode, (width, height), image_data, codec, args)
@@ -112,7 +111,7 @@ def atc(image_data: bytes, width: int, height: int, alpha: bool) -> Image:
         image_data = texture2ddecoder.decode_atc_rgba8(image_data, width, height)
     else:
         image_data = texture2ddecoder.decode_atc_rgb4(image_data, width, height)
-
+    
     return Image.frombytes("RGBA", (width, height), image_data, "raw", "BGRA")
 
 
@@ -140,6 +139,7 @@ def etc(image_data: bytes, width: int, height: int, fmt: list):
         raise NotImplementedError("unknown etc mode")
     return Image.frombytes("RGBA", (width, height), image_data, "raw", "BGRA")
 
+
 def eac(image_data: bytes, width: int, height: int, fmt: list):
     if fmt == "EAC_R":
         image_data = texture2ddecoder.decode_eacr(image_data, width, height)
@@ -151,24 +151,18 @@ def eac(image_data: bytes, width: int, height: int, fmt: list):
         image_data = texture2ddecoder.decode_eacrg_signed(image_data, width, height)
     return Image.frombytes("RGBA", (width, height), image_data, "raw", "BGRA")
 
+
 def half(
-    image_data: bytes, width: int, height: int, mode: str, codec: str, args, swap=False
+        image_data: bytes, width: int, height: int, mode: str, codec: str, args, swap: tuple = None
 ) -> Image:
     # convert half-float to int8
     stream = BytesIO(image_data)
     image_data = bytes(
-        int(struct.unpackb("e", stream.read(2))*256)
-        for i in range(width*height*len(codec))
+        int(struct.unpack("e", stream.read(2))[0] * 256)
+        for _ in range(width * height * len(codec))
     )
-    img = (
-        Image.frombytes(mode, (width, height), image_data, codec, args)
-        if width
-        else Image.new(mode, (width, height))
-    )
-    if swap:
-        channels = img.split()
-        img = Image.merge(mode, [channels[x] for x in swap])
-    return img
+    return pillow(image_data, width, height, mode, codec, args, swap)
+
 
 CONV_TABLE = {
 #  FORMAT                  FUNC     #ARGS.....

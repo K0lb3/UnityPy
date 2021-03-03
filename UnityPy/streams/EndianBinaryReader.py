@@ -15,13 +15,13 @@ class EndianBinaryReader:
             obj = super(EndianBinaryReader, cls).__new__(
                 EndianBinaryReader_Memoryview)
         else:
-            obj = obj = super(EndianBinaryReader, cls).__new__(
+            obj = super(EndianBinaryReader, cls).__new__(
                 EndianBinaryReader_Streamable
             )
         obj.__init__(item, endian)
         return obj
 
-    def __init__(self, endian=">", offset=0):
+    def __init__(self, item, endian=">", offset=0):
         self.endian = endian
         self.BaseOffset = offset
         self.Position = 0
@@ -136,7 +136,7 @@ class EndianBinaryReader:
         return Matrix4x4(self.read_float_array(16))
 
     def read_array(self, command, length: int):
-        return [command() for i in range(length)]
+        return [command() for _ in range(length)]
 
     def read_boolean_array(self):
         return self.read_array(self.read_boolean, self.read_int())
@@ -181,7 +181,7 @@ class EndianBinaryReader_Memoryview(EndianBinaryReader):
     view: memoryview
 
     def __init__(self, view, endian=">", offset=0):
-        super().__init__(endian=endian, offset=offset)
+        super().__init__(view, endian=endian, offset=offset)
         self.view = memoryview(view)
         self.Length = len(view)
 
@@ -203,7 +203,7 @@ class EndianBinaryReader_Memoryview(EndianBinaryReader):
         length = self.read_int()
         if 0 < length <= self.Length - self.Position:
             string_data = self.read_bytes(length)
-            result = string_data.tobytes().decode("utf8", "backslashreplace")
+            result = bytes(string_data).decode("utf8", "backslashreplace")
             self.align_stream()
             return result
         return ""
@@ -215,7 +215,7 @@ class EndianBinaryReader_Streamable(EndianBinaryReader):
     def __init__(self, stream, endian=">", offset=0):
         self.stream = stream
         self.Length = self.stream.seek(0, 2) - offset
-        super().__init__(endian=endian, offset=offset)
+        super().__init__(stream, endian=endian, offset=offset)
 
     def get_position(self):
         return self.stream.tell()

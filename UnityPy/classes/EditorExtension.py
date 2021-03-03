@@ -1,11 +1,11 @@
 from .Object import Object
 from .PPtr import PPtr, save_ptr
 from ..enums import BuildTarget
-from ..streams import EndianBinaryWriter, EndianBinaryReader
+from ..streams import EndianBinaryWriter
 
 
 class EditorExtension(Object):
-    def __init__(self, reader: EndianBinaryReader):
+    def __init__(self, reader):
         super().__init__(reader=reader)
         if self.platform == BuildTarget.NoTarget:
             self.prefab_parent_object = PPtr(reader)

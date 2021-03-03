@@ -1,4 +1,4 @@
-﻿COMMON_STRING = {
+﻿CommonString = {
     0: "AABB",
     5: "AnimationClip",
     19: "AnimationCurve",
