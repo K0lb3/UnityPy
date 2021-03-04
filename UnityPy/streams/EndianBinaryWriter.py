@@ -92,12 +92,13 @@ class EndianBinaryWriter:
 	"""
 
     def write_string_to_null(self, value: str):
-        self.write(value.encode("utf8"))
+        self.write(value.encode("utf8", "backslashreplace"))
         self.write(b"\0")
 
     def write_aligned_string(self, value: str):
-        self.write_int(len(value))
-        self.write(value.encode("utf8", "backslashreplace"))
+        bstring = value.encode("utf8", "backslashreplace")
+        self.write_int(len(bstring))
+        self.write(bstring)
         self.align_stream(4)
 
     def align_stream(self, alignment=4):

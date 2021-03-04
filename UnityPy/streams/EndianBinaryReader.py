@@ -89,7 +89,7 @@ class EndianBinaryReader:
             c = self.read(1)
             if not c:
                 raise ValueError("Unterminated string: %r" % ret)
-        return b"".join(ret).decode("utf8", "replace")
+        return b"".join(ret).decode("utf8", "backslashreplace")
 
     def read_aligned_string(self):
         length = self.read_int()
