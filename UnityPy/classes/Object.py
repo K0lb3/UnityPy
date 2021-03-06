@@ -81,6 +81,9 @@ class Object(object):
         if item in self.type_tree:
             return self.type_tree[item]
 
+    def get(self, key, default = None):
+        return getattr(self, key, default)
+
     def __repr__(self):
         return "<%s %s>" % (self.__class__.__name__, self.name)
 

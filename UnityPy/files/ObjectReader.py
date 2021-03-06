@@ -154,6 +154,9 @@ class ObjectReader:
         self._read_until = self.reader.Position
         return obj
     
+    def get(self, key, default = None):
+        return getattr(self, key, default)
+
     def __getattr__(self, item: str):
         if hasattr(self.reader, item):
             return getattr(self.reader, item)

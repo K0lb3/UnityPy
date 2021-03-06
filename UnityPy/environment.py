@@ -121,3 +121,6 @@ class Environment:
     @property
     def assets(self):
         return self.files
+    
+    def get(self, key, default = None):
+        return getattr(self, key, default)

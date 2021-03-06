@@ -65,6 +65,9 @@ class File(object):
             for path, obj in f.container.items()
         }
     
+    def get(self, key, default = None):
+        return getattr(self, key, default)
+    
     def keys(self):
         return self.files.keys()
     

@@ -91,13 +91,15 @@ class Texture2D(Texture):
         if version >= (2020,):  # 2020.1 and up
             writer.write_int(self.mips_stripped)
         writer.write_int(self.m_TextureFormat.value)
-        if version < (5, 2):  # 5.2 down
+        if version[2:] < (5, 2):  # 5.2 down
             writer.write_boolean(self.m_MipMap)
         else:
             writer.write_int(self.m_MipCount)
-        writer.write_boolean(self.m_IsReadable)  # 2.6 and up
+        
+        if version >= (2, 6):  # 2.6 and up
+            writer.write_boolean(self.m_IsReadable)  # 2.6 and up
         if version >= (2020,):  # 2020.1 and up
-            writer.write_boolean(self.is_pre_processed )
+            writer.write_boolean(self.is_pre_processed)
         if version >= (2019, 3):  # 2019.3 and up
             writer.write_boolean(self.ignore_master_texture_limit)
         if (3,) <= version[:2] <= (5, 4):  # 3.0 - 5.4
