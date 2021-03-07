@@ -22,7 +22,10 @@ class Texture2D(Texture):
         self.m_CompleteImageSize = len(self.image_data)
         self.m_TextureFormat = tex_format
 
-        self.m_StreamData = None
+        if self.m_StreamData:
+            self.m_StreamData.offset = 0
+            self.m_StreamData.size = 0
+            self.m_StreamData.path = ''
 
     def __init__(self, reader):
         super().__init__(reader=reader)
@@ -120,13 +123,14 @@ class Texture2D(Texture):
         if version >= (2020,2): # 2020.2 and up
             writer.write_byte_array(self.m_PlatformBlob)
             writer.align_stream()
-
-        if self.m_StreamData:
+        
+        if self.m_StreamData and self.m_StreamData.path:
             writer.write_int(0)
-            self.m_StreamData.save(writer, version)
         else:
             writer.write_int(len(self.image_data))
             writer.write_bytes(self.image_data)
+        
+        self.m_StreamData.save(writer, version)
 
         self.set_raw_data(writer.bytes)
 
