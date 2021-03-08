@@ -1,4 +1,5 @@
 import math
+import traceback
 
 from .AnimationClip import AABB, PackedFloatVector, PackedIntVector
 from .NamedObject import NamedObject
@@ -16,7 +17,7 @@ class MinMaxAABB:
     def __init__(self, reader):
         self.m_Min = reader.read_vector3()
         self.m_Max = reader.read_vector3()
-    
+
     def save(self, writer):
         writer.write_vector3(self.m_Min)
         writer.write_vector3(self.m_Max)
@@ -43,7 +44,7 @@ class CompressedMesh:
                 self.m_Colors = PackedIntVector(reader)
             else:
                 self.m_UVInfo = reader.read_u_int()
-    
+
     def save(self, writer, version):
         self.m_Vertices.save(writer)
         self.m_UV.save(writer)
@@ -72,7 +73,7 @@ class StreamInfo:
             version = reader.version
             self.channelMask = reader.read_u_int()
             self.offset = reader.read_u_int()
-            
+
             if version < (4,):  # 4.0 down
                 self.stride = reader.read_u_int()
                 self.align = reader.read_u_int()
@@ -82,11 +83,11 @@ class StreamInfo:
                 self.frequency = reader.read_u_short()
         else:
             self.__dict__ = kwargs
-    
+
     def save(self, writer: EndianBinaryWriter, version: tuple):
         writer.write_u_int(self.channelMask)
         writer.write_u_int(self.offset)
-        
+
         if version < (4,):  # 4.0 down
             writer.write_u_int(self.stride)
             writer.write_u_int(self.align)
@@ -102,7 +103,7 @@ class ChannelInfo:
         self.offset = reader.read_byte()
         self.format = reader.read_byte()
         self.dimension = reader.read_byte()
-    
+
     def save(self, writer):
         writer.write_byte(self.stream)
         writer.write_byte(self.offset)
@@ -114,62 +115,62 @@ class VertexData:
     def __init__(self, reader):
         self.reader = reader
         version = reader.version
-        
+
         if version < (2018,):  # 2018 down
             self.m_CurrentChannels = reader.read_u_int()
-        
+
         self.m_VertexCount = reader.read_u_int()
-        
+
         if version >= (4,):  # 4.0 and up
             m_ChannelsSize = reader.read_int()
             self.m_Channels = [ChannelInfo(reader)
                                for _ in range(m_ChannelsSize)]
-        
+
         if version < (5,):  # 5.0 down
             if version < (4,):  # 4.0 down
                 m_StreamsSize = 4
             else:
                 m_StreamsSize = reader.read_int()
-            
+
             self.m_Streams = [StreamInfo(reader=reader)
                               for _ in range(m_StreamsSize)]
-            
+
             if version < (4,):  # 4.0 down
                 self.GetChannels()
         else:  # 5.0 and up
             self.GetStreams()
-        
+
         self.m_DataSize = reader.read_bytes(reader.read_int())
         reader.align_stream()
-    
+
     def save(self, writer: EndianBinaryWriter, version):
         if version < (2018,):  # 2018 down
             writer.write_u_int(self.m_CurrentChannels)
-        
+
         writer.write_u_int(self.m_VertexCount)
-        
+
         if version >= (4,):  # 4.0 and up
             writer.write_int(len(self.m_Channels))
             for ch in self.m_Channels:
                 ch.save(writer)
-        
+
         if (4,) <= version[:2] < (5,):  # 4.0 and up to 5.0
             writer.write_int(len(self.m_Streams))
-            
+
             for stream in self.m_Streams:
                 stream.save(writer=writer, version=version)
-            
+
             if version < (4,):  # 4.0 down
                 raise Exception("Unsupported version")
         else:  # 5.0 and up
             # for stream in self.m_Streams:
             #    stream.save(writer)
             pass
-        
+
         writer.write_int(len(self.m_DataSize))
         writer.write_bytes(self.m_DataSize)
         writer.align_stream()
-    
+
     def GetStreams(self):
         streamCount = 1 + (
             0 if not self.m_Channels else max(
@@ -184,7 +185,7 @@ class VertexData:
                 if m_Channel.stream == s:
                     if m_Channel.dimension > 0:
                         chnMask |= 1 << chn  # Shift 1UInt << chn
-                    stride += m_Channel.dimension * MeshHelper.GetFormatSize(
+                        stride += m_Channel.dimension * MeshHelper.GetFormatSize(
                         self.reader.version,
                         m_Channel.format
                     )
@@ -200,7 +201,7 @@ class VertexData:
             offset = (offset + (16 - 1)) & ~(
                     16 - 1
             )  # (offset + (16u - 1u)) & ~(16u - 1u);
-    
+
     def GetChannels(self):
         self.m_Channels = []  # ChannelInfo[6]
         for i in range(6):
@@ -232,7 +233,7 @@ class VertexData:
                     offset += m_Channel.dimension * MeshHelper.GetFormatSize(
                         self.reader.version, m_Channel.format
                     )
-    
+
     def FixChannel(self):
         if any(
                 [x.dimension > 4 for x in self.m_Channels]
@@ -271,7 +272,7 @@ class BoneWeights4:
         else:
             self.weight = [0.0] * 4
             self.boneIndex = [0] * 4
-    
+
     def save(self, writer):
         writer.write_float_array(self.weight)
         writer.write_int_array(self.boneIndex)
@@ -288,7 +289,7 @@ class BlendShapeVertex:
 class MeshBlendShape:
     def __init__(self, reader):
         version = reader.version
-        
+
         if version < (4, 3):  # 4.3 down
             self.name = reader.read_aligned_string()
         self.firstVertex = reader.read_u_int()
@@ -313,14 +314,14 @@ class MeshBlendShapeChannel:
 class BlendShapeData:
     def __init__(self, reader):
         version = reader.version
-        
+
         if version >= (4, 3):  # 4.3 and up
             numVerts = reader.read_int()
             self.vertices = [BlendShapeVertex(reader) for _ in range(numVerts)]
-            
+
             numShapes = reader.read_int()
             self.shapes = [MeshBlendShape(reader) for _ in range(numShapes)]
-            
+
             numChannels = reader.read_int()
             self.channels = [MeshBlendShapeChannel(
                 reader) for _ in range(numChannels)]
@@ -342,29 +343,29 @@ class SubMesh:
         self.firstByte = reader.read_u_int()
         self.indexCount = reader.read_u_int()
         self.topology = GfxPrimitiveType(reader.read_int())
-        
+
         if version < (4,):  # 4.0 down
             self.triangleCount = reader.read_u_int()
-        
+
         if version >= (2017, 3):  # 2017.3 and up
             self.baseVertex = reader.read_u_int()
-        
+
         if version >= (3,):  # 3.0 and up
             self.firstVertex = reader.read_u_int()
             self.vertexCount = reader.read_u_int()
             self.localAABB = AABB(reader)
-    
+
     def save(self, writer, version):
         writer.write_u_int(self.firstByte)
         writer.write_u_int(self.indexCount)
         writer.write_int(self.topology)
-        
+
         if version < (4,):  # 4.0 down
             writer.write_u_int(self.triangleCount)
-        
+
         if version >= (2017, 3):  # 2017.3 and up
             writer.write_u_int(self.baseVertex)
-        
+
         if version >= (3,):  # 3.0 and up
             writer.write_u_int(self.firstVertex)
             writer.write_u_int(self.vertexCount)
@@ -372,14 +373,14 @@ class SubMesh:
 
 
 class Mesh(NamedObject):
-    
+
     def export(self):
         return export_mesh(self)
-    
+
     def __init__(self, reader):
         super().__init__(reader=reader)
         version = reader.version
-        
+
         self.m_Use16BitIndices = True
         self.m_Indices = []
         self.m_BindPose = []
@@ -397,13 +398,13 @@ class Mesh(NamedObject):
         self.m_UV6 = []
         self.m_UV7 = []
         self.m_Tangents = []
-        
+
         if version < (3, 5):  # 3.5 down
             self.m_Use16BitIndices = reader.read_int() > 0
-        
+
         if version[:2] <= (2, 5):  # 2.5 and down
             m_IndexBuffer_size = reader.read_int()
-            
+
             if self.m_Use16BitIndices:
                 self.m_IndexBuffer = [
                     reader.read_u_short()
@@ -413,25 +414,25 @@ class Mesh(NamedObject):
             else:
                 self.m_IndexBuffer = reader.read_u_int_array(
                     math.ceil(m_IndexBuffer_size / 4))
-        
+
         m_SubMeshesSize = reader.read_int()
         self.m_SubMeshes = [SubMesh(reader) for _ in range(m_SubMeshesSize)]
-        
+
         if version >= (4, 1):  # 4.1 and up
             self.m_Shapes = BlendShapeData(reader)
-        
+
         if version >= (4, 3):  # 4.3 and up
             self.m_BindPose = reader.read_matrix_array()
             self.m_BoneNameHashes = reader.read_u_int_array()
             self.m_RootBoneNameHash = reader.read_u_int()
-        
+
         if version >= (2, 6):  # 2.6.0 and up
             if version >= (2019,):  # 2019 and up
                 m_BonesAABBSize = reader.read_int()
                 self.m_BonesAABB = [MinMaxAABB(reader)
                                     for _ in range(m_BonesAABBSize)]
                 self.m_VariableBoneCountWeights = reader.read_u_int_array()
-            
+
             self.m_MeshCompression = reader.read_byte()
             if version >= (4,):  #
                 if version < (5,):  #
@@ -440,7 +441,7 @@ class Mesh(NamedObject):
                 self.m_KeepVertices = reader.read_boolean()
                 self.m_KeepIndices = reader.read_boolean()
             reader.align_stream()
-            
+
             # Unity fixed it in 2017.3.1p1 and later versions
             if (
                     version >= (2017, 4)  # 2017.4
@@ -451,7 +452,7 @@ class Mesh(NamedObject):
             ):
                 self.m_IndexFormat = reader.read_int()
                 self.m_Use16BitIndices = self.m_IndexFormat == 0
-            
+
             m_IndexBuffer_size = reader.read_int()
             if self.m_Use16BitIndices:
                 self.m_IndexBuffer = [
@@ -461,21 +462,21 @@ class Mesh(NamedObject):
             else:
                 self.m_IndexBuffer = reader.read_u_int_array(
                     math.ceil(m_IndexBuffer_size / 4))
-        
+
         if version < (3, 5):  # 3.4.2 and earlier
             self.m_VertexCount = reader.read_int()
             self.m_Vertices = reader.read_float_array(
                 self.m_VertexCount * 3)  # Vector3
-            
+
             self.m_SkinSize = reader.read_int()
             self.m_Skin = [BoneWeights4(reader) for _ in range(self.m_SkinSize)]
-            
+
             self.m_BindPose = reader.read_matrix_array()
             self.m_UV0 = reader.read_float_array(
                 reader.read_int() * 2)  # Vector2
             self.m_UV1 = reader.read_float_array(
                 reader.read_int() * 2)  # Vector2
-            
+
             if version[:2] <= (2, 5):  # 2.5 and down
                 m_TangentSpace_size = reader.read_int()
                 self.m_Normals = [0] * (m_TangentSpace_size * 3)
@@ -500,28 +501,28 @@ class Mesh(NamedObject):
             if version[:2] < (2018, 2):  # 2018.2 down
                 m_SkinSize = reader.read_int()
                 self.m_Skin = [BoneWeights4(reader) for _ in range(m_SkinSize)]
-            
+
             if version[:2] <= (4, 2):  # 4.2 and down
                 self.m_BindPose = reader.read_matrix_array()
-            
+
             self.m_VertexData = VertexData(reader)
-        
+
         if version >= (2, 6):  # 2.6.0 and later
             self.m_CompressedMesh = CompressedMesh(reader)
-        
+
         self.m_LocalAABB = AABB(reader)
-        
+
         if version[:2] <= (3, 4):  # 3.4.2 and earlier
             m_Colors_size = reader.read_int()
             self.mColors = [
                 reader.read_byte() / 0xFF
                 for _ in range(m_Colors_size * 4)
             ]
-            
+
             m_CollisionTriangles_size = reader.read_int()
             reader.Position += m_CollisionTriangles_size * 4  # UInt32 indices
             m_CollisionVertexCount = reader.read_int()
-        
+
         self.m_MeshUsageFlags = reader.read_int()
         if version >= (5,):  # 5.0 and up
             self.m_BakedConvexCollisionMesh = reader.read_bytes(
@@ -531,19 +532,21 @@ class Mesh(NamedObject):
             self.m_BakedTriangleCollisionMesh = reader.read_bytes(
                 reader.read_int())
             reader.align_stream()
-        
+
         if version >= (2018, 2):  # 2018.2 and up
             self.m_MeshMetrics = [reader.read_float(), reader.read_float()]
-        
+
         if version >= (2018, 3):  # 2018.3 and up
             reader.align_stream()
             self.m_StreamData = StreamingInfo(reader, version)
-        
+
         try:
             self.ProcessData()
-        except:
+        except Exception as e:
+            print(traceback.format_exc())
+
             pass
-    
+
     def ProcessData(self):
         if self.m_StreamData and self.m_StreamData.path:
             if self.m_VertexData.m_VertexCount > 0:  #
@@ -555,57 +558,57 @@ class Mesh(NamedObject):
                 )
         # Fix channel after 2018.3
         version = self.version
-        if version >= (2018, 3):  #
-            self.m_VertexData.FixChannel()
+        #if version >= (2018, 3):  #
+        #    self.m_VertexData.FixChannel()
         if version >= (3, 5):  # 3.5 and up
             self.ReadVertexData()
-        
+
         if version >= (2, 6):  # 2.6.0 and later
             self.DecompressCompressedMesh()
-        
+
         self.GetTriangles()
-    
+
     def ReadVertexData(self):
         version = self.version
         m_VertexData = self.m_VertexData
         m_VertexCount = self.m_VertexCount = m_VertexData.m_VertexCount
-        
+
         for chn, m_Channel in enumerate(m_VertexData.m_Channels):
             if m_Channel.dimension > 0:
                 m_Stream = m_VertexData.m_Streams[m_Channel.stream]
                 channelMask = bin(m_Stream.channelMask)[::-1]
-                if channelMask[chn] == "1":
+                if channelMask[chn]:
                     if version[0] < 2018 and chn == 2 and m_Channel.format == 2:
                         m_Channel.dimension = 4
-                    
+
                     componentByteSize = MeshHelper.GetFormatSize(
                         version, m_Channel.format)
                     componentBytes = bytearray(
                         m_VertexCount * m_Channel.dimension * componentByteSize)
                     for v in range(m_VertexCount):
-                        vertexOffset = m_Stream.offset + m_Channel.offset + m_Stream.stride * v
+                        vertexOffset = int(m_Stream.offset) + m_Channel.offset + int(m_Stream.stride) * v
                         for d in range(m_Channel.dimension):
                             componentOffsetSrc = vertexOffset + componentByteSize * d  # src offset
                             componentOffsetDst = componentByteSize * \
                                                  (v * m_Channel.dimension + d)  # dst offst
-                            
+
                             buff = m_VertexData.m_DataSize[componentOffsetSrc:
                                                            componentOffsetSrc + componentByteSize]
                             if self.reader.endian == "<" and componentByteSize > 1:  # swap bytes
                                 buff = buff[::-1]
-                            
+
                             componentBytes[componentOffsetDst: componentOffsetDst +
                                                                componentByteSize] = buff
                             # Buffer.BlockCopy(m_VertexData.m_DataSize, componentOffset, componentBytes, componentByteSize * (v * m_Channel.dimension + d), componentByteSize);
                             # (Array src, int srcOffset, Array dst, int dstOffset, int count);
-                    
+
                     if MeshHelper.IsIntFormat(version, m_Channel.format):
                         componentsIntArray = MeshHelper.BytesToIntArray(
                             componentBytes, componentByteSize)
                     else:
                         componentsFloatArray = MeshHelper.BytesToFloatArray(
                             componentBytes, componentByteSize)
-                    
+
                     if version[0] >= 2018:
                         if chn == 0:  # kShaderChannelVertex
                             self.m_Vertices = componentsFloatArray
@@ -666,31 +669,42 @@ class Mesh(NamedObject):
                             self.m_UV3 = componentsFloatArray
                         elif chn == 7:  # kShaderChannelTangent
                             self.m_Tangents = componentsFloatArray
-    
+
     def DecompressCompressedMesh(self):
         # Vertex
         version = self.version
         m_CompressedMesh = self.m_CompressedMesh
         if m_CompressedMesh.m_Vertices.m_NumItems > 0:
-            self.m_VertexCount = m_CompressedMesh.m_Vertices.m_NumItems / 3
-            self.m_Vertices = m_CompressedMesh.m_Vertices.UnpackFloats(3, 4)
+            self.m_VertexCount = int(m_CompressedMesh.m_Vertices.m_NumItems / 3)
+            self.m_Vertices = m_CompressedMesh.m_Vertices.UnpackFloats(3, 3 * 4)
         m_VertexCount = self.m_VertexCount
         # UV
         if m_CompressedMesh.m_UV.m_NumItems > 0:  #
-            self.m_UV0 = m_CompressedMesh.m_UV.UnpackFloats(
-                2, 4, 0, m_VertexCount)
+
+            m_UVInfo = m_CompressedMesh.m_UVInfo
+            if m_UVInfo != 0:
+                kInfoBitsPerUV = 4
+                kUVDimensionMask = 3
+                kUVChannelExists = 4
+                kMaxTexCoordShaderChannels = 8
+
+                uvSrcOffset = 0
+
+                for uv in range(kMaxTexCoordShaderChannels):
+                    texCoordBits = m_UVInfo >> (uv * kInfoBitsPerUV)
+                    texCoordBits &= (1 << kInfoBitsPerUV) - 1
+                    if (texCoordBits & kUVChannelExists) != 0:
+                        uvDim = 1 + int(texCoordBits & kUVDimensionMask)
+                        m_UV = m_CompressedMesh.m_UV.UnpackFloats(uvDim, uvDim * 4, uvSrcOffset, self.m_VertexCount)
+                        self.SetUV(uv, m_UV)
+            else:
+                self.m_UV0 = m_CompressedMesh.m_UV.UnpackFloats(
+                    2, 2*4, 0, m_VertexCount)
             if m_CompressedMesh.m_UV.m_NumItems >= m_VertexCount * 4:  #
                 self.m_UV1 = m_CompressedMesh.m_UV.UnpackFloats(
-                    2, 4, m_VertexCount * 2, m_VertexCount
+                    2, 2 * 4, m_VertexCount * 2, m_VertexCount
                 )
-            if m_CompressedMesh.m_UV.m_NumItems >= m_VertexCount * 6:  #
-                self.m_UV2 = m_CompressedMesh.m_UV.UnpackFloats(
-                    2, 4, m_VertexCount * 4, m_VertexCount
-                )
-            if m_CompressedMesh.m_UV.m_NumItems >= m_VertexCount * 8:  #
-                self.m_UV3 = m_CompressedMesh.m_UV.UnpackFloats(
-                    2, 4, m_VertexCount * 6, m_VertexCount
-                )
+
         # BindPose
         if version < (5,):  # 5.0 down
             if m_CompressedMesh.m_BindPoses.m_NumItems > 0:  #
@@ -701,15 +715,14 @@ class Mesh(NamedObject):
                     Matrix4x4(m_BindPoses_Unpacked[i: i + 16])
                     for i in range(0, m_CompressedMesh.m_BindPoses.m_NumItems, 16)
                 ]
-        
         # Normal
         if m_CompressedMesh.m_Normals.m_NumItems > 0:
             normalData = m_CompressedMesh.m_Normals.UnpackFloats(2, 4 * 2)
             signs = m_CompressedMesh.m_NormalSigns.UnpackInts()
             self.m_Normals = []  # float[m_CompressedMesh.m_Normals.m_NumItems / 2 * 3]
             for i in range(0, math.ceil(m_CompressedMesh.m_Normals.m_NumItems / 2)):
-                x = normalData[i + 0]
-                y = normalData[i + 1]
+                x = normalData[i * 2 + 0]
+                y = normalData[i * 2 + 1]
                 zsqr = 1 - x * x - y * y
                 if zsqr >= 0:
                     z = math.sqrt(zsqr)
@@ -747,24 +760,23 @@ class Mesh(NamedObject):
                     z = -z
                 w = 1.0 if signs[i * 2 + 1] > 0 else -1.0
                 self.m_Tangents.extend([x, y, z, w])
-        
+
         # FloatColor
         if version >= (5,):  # 5.0 and up
             if m_CompressedMesh.m_FloatColors.m_NumItems > 0:  #
                 self.m_Colors = m_CompressedMesh.m_FloatColors.UnpackFloats(
                     1, 4)
+
         # Skin
         if m_CompressedMesh.m_Weights.m_NumItems > 0:
             weights = m_CompressedMesh.m_Weights.UnpackInts()
             boneIndices = m_CompressedMesh.m_BoneIndices.UnpackInts()
-            
             self.InitMSkin()
-            
             bonePos = 0
             boneIndexPos = 0
             j = 0
             sum = 0
-            
+
             for i in range(m_CompressedMesh.m_Weights.m_NumItems):
                 # read bone index and weight.
                 self.m_Skin[bonePos].weight[j] = weights[i] / 31.0
@@ -772,14 +784,15 @@ class Mesh(NamedObject):
                 boneIndexPos += 1
                 j += 1
                 sum += weights[i]
-                
+
                 # the weights add up to one. fill the rest for this vertex with zero, and continue with next one.
                 if sum >= 31:  #
                     while j < 4:
                         self.m_Skin[bonePos].weight[j] = 0
                         self.m_Skin[bonePos].boneIndex[j] = 0
-                        bonePos += 1
                         j += 1
+
+                    bonePos += 1
                     j = 0
                     sum = 0
                 # we read three weights, but they don't add up to one. calculate the fourth one, and read
@@ -791,10 +804,9 @@ class Mesh(NamedObject):
                     bonePos += 1
                     j = 0
                     sum = 0
-        
         # IndexBuffer
         if m_CompressedMesh.m_Triangles.m_NumItems > 0:  #
-            self.m_IndexBuffer = m_CompressedMesh.m_Triangles.UnpackUInts()
+            self.m_IndexBuffer = m_CompressedMesh.m_Triangles.UnpackInts()
         # Color
         if (
                 hasattr(m_CompressedMesh, "m_Colors")
@@ -804,32 +816,32 @@ class Mesh(NamedObject):
             m_CompressedMesh.m_Colors.m_BitSize /= 4
             tempColors = m_CompressedMesh.m_Colors.UnpackInts()
             self.m_Colors = [color / 255 for color in tempColors]
-    
+
     def GetTriangles(self):
         m_IndexBuffer = self.m_IndexBuffer
         m_Indices = self.m_Indices
-        
+
         for m_SubMesh in self.m_SubMeshes:
             firstIndex = m_SubMesh.firstByte // 2
             if not self.m_Use16BitIndices:
-                firstIndex /= 2
-            
+                firstIndex //= 2
+
             indexCount = m_SubMesh.indexCount
             topology = m_SubMesh.topology
             if topology == GfxPrimitiveType.kPrimitiveTriangles:
                 m_Indices.extend(
                     m_IndexBuffer[firstIndex: firstIndex + indexCount * 3])
-            
+
             elif self.version[0] < 4 or topology == GfxPrimitiveType.kPrimitiveTriangleStrip:
                 # de-stripify :
                 triIndex = 0
                 for i in range(indexCount - 2):
                     a, b, c = m_IndexBuffer[firstIndex + i: firstIndex + i + 3]
-                    
+
                     # skip degenerates
                     if a == b or a == c or b == c:
                         continue
-                    
+
                     # do the winding flip-flop of strips :
                     m_Indices.extend(
                         [b, a, c] if ((i & 1) == 1) else [a, b, c]
@@ -837,7 +849,7 @@ class Mesh(NamedObject):
                     triIndex += 3
                 # fix indexCount
                 m_SubMesh.indexCount = triIndex
-            
+
             elif topology == GfxPrimitiveType.kPrimitiveQuads:
                 for q in range(0, indexCount, 4):
                     m_Indices.extend([
@@ -850,13 +862,54 @@ class Mesh(NamedObject):
                     ])
                 # fix indexCount
                 m_SubMesh.indexCount = indexCount // 2 * 3
-            
+
             else:
                 raise NotImplementedError(
                     "Failed getting triangles. Submesh topology is lines or points.")
-    
+
+
     def InitMSkin(self):
         self.m_Skin = [BoneWeights4() for _ in range(self.m_VertexCount)]
+
+    def SetUV(self, uv:int, m_UV):
+        if uv == 0:
+            self.m_UV0 = m_UV
+        elif uv == 1:
+            self.m_UV1 = m_UV
+        elif uv == 2:
+            self.m_UV2 = m_UV
+        elif uv == 3:
+            self.m_UV3 == m_UV
+        elif uv == 4:
+            self.m_UV4 == m_UV
+        elif uv == 5:
+            self.m_UV5 == m_UV
+        elif uv == 6:
+            self.m_UV6 == m_UV
+        elif uv == 7:
+            self.m_UV7 == m_UV
+        else:
+            raise IndexError("Out of Range")
+
+    def GetUV(self, uv: int):
+        if uv == 0:
+            return self.m_UV0
+        elif uv == 1:
+            return self.m_UV1
+        elif uv == 2:
+            return self.m_UV2
+        elif uv == 3:
+            return self.m_UV3
+        elif uv == 4:
+            return self.m_UV4
+        elif uv == 5:
+            return self.m_UV5
+        elif uv == 6:
+            return self.m_UV6
+        elif uv == 7:
+            return self.m_UV7
+        else:
+            raise IndexError("Out of Range")
 
 
 class MeshHelper:
@@ -926,7 +979,7 @@ class MeshHelper:
             elif format == VertexFormatV2019.kVertexFormatSInt32:
                 return 4
         raise ValueError(format)
-    
+
     @staticmethod
     def IsIntFormat(version, format: int) -> bool:
         if version[0] < 2017:
@@ -935,7 +988,7 @@ class MeshHelper:
             return format >= 7
         else:
             return format >= 6
-    
+
     @staticmethod
     def BytesToFloatArray(inputBytes, size):
         return [
@@ -945,7 +998,7 @@ class MeshHelper:
             0
             for i in range(len(inputBytes) // size)
         ]
-    
+
     @staticmethod
     def BytesToIntArray(inputBytes, size):
         return [

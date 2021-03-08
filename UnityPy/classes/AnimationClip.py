@@ -80,12 +80,12 @@ class PackedFloatVector:
         indexPos: int = bitPos // 8
         bitPos %= 8
 
-        scale: float = 1.0 / self.m_Range
+        scale: float = 1.0 / self.m_Range if self.m_Range != 0 else 0.0001
         if numChunks == -1:
             numChunks = self.m_NumItems // itemCountInChunk
-        end = chunkStride * numChunks / 4
+        end = int(chunkStride * numChunks / 4)
         data = []
-        for index in (0, end, chunkStride // 4):
+        for index in range(0, end, chunkStride // 4):
             for i in range(itemCountInChunk):
                 x = 0  # uint
                 bits = 0
@@ -101,7 +101,7 @@ class PackedFloatVector:
                         bitPos = 0
 
                 x &= uint((1 << self.m_BitSize) - 1)  # (uint)(1 << m_BitSize) - 1u
-                data.append(x / (scale * ((1 << self.m_BitSize) - 1)) + self.m_Start)
+                data.append(x / (scale * ((1 << self.m_BitSize) - 1) if self.m_BitSize != 0 else 1 ) + self.m_Start)
 
         return data
 
@@ -136,7 +136,7 @@ class PackedIntVector:
         for i in range(self.m_NumItems):
             bits = 0
             entry = 0
-            while bits << m_BitSize:
+            while bits < m_BitSize:
                 entry |= (self.m_Data[indexPos] >> bitPos) << bits
                 num = min(m_BitSize - bits, 8 - bitPos)
                 bitPos += num
