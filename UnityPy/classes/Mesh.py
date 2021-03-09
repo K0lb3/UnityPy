@@ -700,10 +700,10 @@ class Mesh(NamedObject):
             else:
                 self.m_UV0 = m_CompressedMesh.m_UV.UnpackFloats(
                     2, 2*4, 0, m_VertexCount)
-            if m_CompressedMesh.m_UV.m_NumItems >= m_VertexCount * 4:  #
-                self.m_UV1 = m_CompressedMesh.m_UV.UnpackFloats(
-                    2, 2 * 4, m_VertexCount * 2, m_VertexCount
-                )
+                if m_CompressedMesh.m_UV.m_NumItems >= m_VertexCount * 4:  #
+                    self.m_UV1 = m_CompressedMesh.m_UV.UnpackFloats(
+                        2, 2 * 4, m_VertexCount * 2, m_VertexCount
+                    )
 
         # BindPose
         if version < (5,):  # 5.0 down
