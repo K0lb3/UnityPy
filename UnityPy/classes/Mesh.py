@@ -577,7 +577,7 @@ class Mesh(NamedObject):
             if m_Channel.dimension > 0:
                 m_Stream = m_VertexData.m_Streams[m_Channel.stream]
                 channelMask = bin(m_Stream.channelMask)[::-1]
-                if channelMask[chn]:
+                if channelMask[chn] == "1":
                     if version[0] < 2018 and chn == 2 and m_Channel.format == 2:
                         m_Channel.dimension = 4
 
