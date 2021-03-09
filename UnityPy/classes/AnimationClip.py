@@ -80,7 +80,7 @@ class PackedFloatVector:
         indexPos: int = bitPos // 8
         bitPos %= 8
 
-        scale: float = 1.0 / self.m_Range if self.m_Range != 0 else 0.0001
+        scale: float = (1.0 / self.m_Range) if self.m_Range else float('inf')
         if numChunks == -1:
             numChunks = self.m_NumItems // itemCountInChunk
         end = int(chunkStride * numChunks / 4)
@@ -101,7 +101,8 @@ class PackedFloatVector:
                         bitPos = 0
 
                 x &= uint((1 << self.m_BitSize) - 1)  # (uint)(1 << m_BitSize) - 1u
-                data.append(x / (scale * ((1 << self.m_BitSize) - 1) if self.m_BitSize != 0 else 1 ) + self.m_Start)
+                denomi = scale * ((1 << self.m_BitSize) - 1)
+                data.append( (x / denomi if denomi else float('inf')) + self.m_Start)
 
         return data
 
