@@ -172,10 +172,10 @@ class VertexData:
         writer.align_stream()
 
     def GetStreams(self):
-        streamCount = 1 + (
-            0 if not self.m_Channels else max(
-                [x.stream for x in self.m_Channels])
-        )
+        streamCount = 1
+        if self.m_Channels:
+            streamCount += max(x.stream for x in self.m_Channels)
+        
         self.m_Streams = {}
         offset = 0
         for s in range(streamCount):
@@ -186,9 +186,9 @@ class VertexData:
                     if m_Channel.dimension > 0:
                         chnMask |= 1 << chn  # Shift 1UInt << chn
                         stride += m_Channel.dimension * MeshHelper.GetFormatSize(
-                        self.reader.version,
-                        m_Channel.format
-                    )
+                            self.reader.version,
+                            m_Channel.format
+                        )
             self.m_Streams[s] = StreamInfo(
                 channelMask=chnMask,
                 offset=offset,
@@ -233,35 +233,6 @@ class VertexData:
                     offset += m_Channel.dimension * MeshHelper.GetFormatSize(
                         self.reader.version, m_Channel.format
                     )
-
-    def FixChannel(self):
-        if any(
-                [x.dimension > 4 for x in self.m_Channels]
-        ):  # m_Channels.FirstOrDefault(x => x.dimension > 4) != null: #
-            fixStream = max(
-                [x.stream for x in self.m_Channels]
-            )  # m_Channels.Max(x => x.stream)
-            fixChannels = [
-                x for x in self.m_Channels if x.dimension > 0 and x.stream == fixStream
-            ]
-            stride = 0
-            for i, curChannel in enumerate(fixChannels):
-                preChannel = fixChannels[i - 1]
-                offset = curChannel.offset - preChannel.offset
-                preChannel.dimension = offset / MeshHelper.GetFormatSize(
-                    self.reader.version, preChannel.format
-                )
-                stride += offset
-            # Fix Last
-            m_Channel = fixChannels[-1]
-            streamSize = len(self.m_DataSize) - \
-                         self.m_Streams[fixStream].offset
-            totalStride = streamSize / self.m_VertexCount
-            channelStride = totalStride - stride
-            m_Channel.dimension = channelStride / MeshHelper.GetFormatSize(
-                self.reader.version, m_Channel.format
-            )
-            self.GetStreams()
 
 
 class BoneWeights4:
@@ -544,12 +515,11 @@ class Mesh(NamedObject):
             self.ProcessData()
         except Exception as e:
             print(traceback.format_exc())
-
             pass
 
     def ProcessData(self):
         if self.m_StreamData and self.m_StreamData.path:
-            if self.m_VertexData.m_VertexCount > 0:  #
+            if self.m_VertexData.m_VertexCount > 0:
                 self.m_VertexData.m_DataSize = get_resource_data(
                     self.m_StreamData.path,
                     self.assets_file,
@@ -558,8 +528,6 @@ class Mesh(NamedObject):
                 )
         # Fix channel after 2018.3
         version = self.version
-        #if version >= (2018, 3):  #
-        #    self.m_VertexData.FixChannel()
         if version >= (3, 5):  # 3.5 and up
             self.ReadVertexData()
 
@@ -589,11 +557,11 @@ class Mesh(NamedObject):
                         vertexOffset = int(m_Stream.offset) + m_Channel.offset + int(m_Stream.stride) * v
                         for d in range(m_Channel.dimension):
                             componentOffsetSrc = vertexOffset + componentByteSize * d  # src offset
-                            componentOffsetDst = componentByteSize * \
-                                                 (v * m_Channel.dimension + d)  # dst offst
+                            componentOffsetDst = componentByteSize * (v * m_Channel.dimension + d)  # dst offst
 
                             buff = m_VertexData.m_DataSize[componentOffsetSrc:
                                                            componentOffsetSrc + componentByteSize]
+                            
                             if self.reader.endian == "<" and componentByteSize > 1:  # swap bytes
                                 buff = buff[::-1]
 
