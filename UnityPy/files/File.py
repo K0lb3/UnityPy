@@ -1,6 +1,6 @@
 from ..enums import FileType
 from ..helpers import ImportHelper
-from ..streams import EndianBinaryReader
+from ..streams import EndianBinaryReader, EndianBinaryWriter
 
 from collections import namedtuple
 
@@ -55,6 +55,23 @@ class File(object):
             # required for BundleFiles
             f.flags = getattr(node, "flags", 0)
             self.files[name] = f
+    
+    def get_writeable_cab(self, name : str = "CAB-UnityPy_Mod.resS"):
+        """
+        Creates a new cab file in the bundle that contains the given data.
+        This is usefull for asset types that use resource files. 
+        """
+        if name in self.files:
+            if isinstance(self.files[name], EndianBinaryWriter):
+                return self.files[name]
+            else:
+                raise ValueError("This cab already exists and isn't an EndianBinaryWriter")
+        
+        writer = EndianBinaryWriter()
+        writer.flags = 4
+        writer.name = name
+        self.files[name] = writer
+        return writer
     
     @property
     def container(self):

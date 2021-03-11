@@ -236,7 +236,7 @@ class BundleFile(File.File):
                 name,
                 f.flags,
                 data_writer.write_bytes(
-                    f.bytes if isinstance(f, EndianBinaryReader) else f.save()
+                    f.bytes if isinstance(f, (EndianBinaryReader, EndianBinaryWriter)) else f.save()
                 ),
             )
             for name, f in self.files.items()

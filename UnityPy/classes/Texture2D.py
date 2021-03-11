@@ -19,13 +19,30 @@ class Texture2D(Texture):
             raise Exception("No image provided")
 
         self.image_data = img_data
-        self.m_CompleteImageSize = len(self.image_data)
+        # width * height * channel count
+        self.m_CompleteImageSize = img.width * img.height * len(img.getbands())
         self.m_TextureFormat = tex_format
-
+    
+    @property
+    def image_data(self):
+        return self._image_data
+    
+    @image_data.setter
+    def image_data(self, data):
+        self._image_data = data
+        # prefer writing to cab if possible
         if self.m_StreamData:
-            self.m_StreamData.offset = 0
-            self.m_StreamData.size = 0
-            self.m_StreamData.path = ''
+            cab = self.assets_file.get_writeable_cab()
+            if cab:
+                self.m_StreamData.offset = cab.Position
+                cab.write(data)
+                self.m_StreamData.size = len(data)
+                self.m_StreamData.path = cab.name
+            else:
+                self.m_StreamData.offset = 0
+                self.m_StreamData.size = 0
+                self.m_StreamData.path = ''
+
 
     def __init__(self, reader):
         super().__init__(reader=reader)
@@ -35,7 +52,7 @@ class Texture2D(Texture):
         self.m_Height = reader.read_int()
         self.m_CompleteImageSize = reader.read_int()
         if version >= (2020,):  # 2020.1 and up
-            self.mips_stripped = reader.read_int()
+            self.m_MipsStripped = reader.read_int()
         self.m_TextureFormat = TextureFormat(reader.read_int())
         if version[:2] < (5, 2):  # 5.2 down
             self.m_MipMap = reader.read_boolean()
@@ -45,13 +62,13 @@ class Texture2D(Texture):
         if version >= (2, 6):  # 2.6 and up
             self.m_IsReadable = reader.read_boolean()  # 2.6 and up
         if version >= (2020,):  # 2020.1 and up
-            self.is_pre_processed = reader.read_boolean()
+            self.IsPreProcessed = reader.read_boolean()
         if version >= (2019, 3):  # 2019.3 and up
-            self.ignore_master_texture_limit = reader.read_boolean()
+            self.m_IgnoreMasterTextureLimit = reader.read_boolean()
         if (3,) <= version[:2] <= (5, 4):  # 3.0 - 5.4
             self.m_ReadAllowed = reader.read_boolean()
         if version >= (2018, 2):  # 2018.2 and up
-            self.m_streaming_mipmaps = reader.read_boolean()
+            self.m_StreamingMipmaps = reader.read_boolean()
 
         reader.align_stream()
         if version >= (2018, 2):  # 2018.2 and up
@@ -68,19 +85,22 @@ class Texture2D(Texture):
             reader.align_stream()
 
         image_data_size = reader.read_int()
-        self.image_data = b""
+        self._image_data = b""
 
-        if image_data_size == 0 and version >= (5, 3):  # 5.3 and up
+        if image_data_size != 0:
+            self._image_data = reader.read_bytes(image_data_size)
+        
+        self.m_StreamData = None
+        if version >= (5, 3):  # 5.3 and up
+            # always read the StreamingInfo for resaving
             self.m_StreamData = StreamingInfo(reader, version)
-            if self.m_StreamData.size:
-                self.image_data = get_resource_data(
+            if image_data_size == 0 and self.m_StreamData.path:
+                self._image_data = get_resource_data(
                     self.m_StreamData.path,
                     self.assets_file,
                     self.m_StreamData.offset,
                     self.m_StreamData.size,
                 )
-        else:
-            self.image_data = reader.read_bytes(image_data_size)
 
     def save(self, writer: EndianBinaryWriter = None):
         if writer is None:
@@ -124,21 +144,29 @@ class Texture2D(Texture):
             writer.write_byte_array(self.m_PlatformBlob)
             writer.align_stream()
         
-        if self.m_StreamData and self.m_StreamData.path:
-            writer.write_int(0)
-        else:
+
+        if version[:2] < (5,3):
+            # version without m_StreamData
             writer.write_int(len(self.image_data))
             writer.write_bytes(self.image_data)
-        
-        self.m_StreamData.save(writer, version)
+        else:
+            # decide if m_StreamData is used
+            if self.m_StreamData.path:
+                # used -> don't save the image_data
+                writer.write_int(0)
+            else:
+                writer.write_int(len(self.image_data))
+                writer.write_bytes(self.image_data)
+
+            self.m_StreamData.save(writer, version)
 
         self.set_raw_data(writer.bytes)
 
 
 class StreamingInfo:
-    offset: int = 0
-    size: int = 0
-    path: str = ""
+    offset: int
+    size: int
+    path: str
 
     def __init__(self, reader, version):
         if version >= (2020,):  # 2020.1 and up

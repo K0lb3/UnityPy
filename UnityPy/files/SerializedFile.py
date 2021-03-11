@@ -358,6 +358,33 @@ class SerializedFile(File.File):
         
         return string_buffer_reader.bytes
     
+    def get_writeable_cab(self, name : str = "CAB-UnityPy_Mod.resS"):
+        """
+        Creates a new cab file in the bundle that contains the given data.
+        This is usefull for asset types that use resource files. 
+        """
+        if not isinstance(self.parent, (File.BundleFile.BundleFile, File.WebFile.WebFile)):
+            return None
+        cab = self.parent.get_writeable_cab(name)
+
+        cab_path = f"archive:/{name}"
+        if not any(cab_path == x.path for x in self.externals):
+            # register as external
+            class FileIdentifierFake:
+                pass
+            file_identifier = FileIdentifierFake()
+            file_identifier.__class__ = FileIdentifier
+            file_identifier.temp_empty = ""
+            import uuid
+            file_identifier.guid = uuid.uuid1().urn[-16:].encode("ascii")
+            file_identifier.path = f"archive:/{name}"
+            file_identifier.type = 0
+            self.externals.append(
+                file_identifier
+            )
+        
+        return cab
+    
     def save(self) -> bytes:
         # 1. header -> has to be delayed until the very end
         # 2. data -> types, objects, scripts, ...
