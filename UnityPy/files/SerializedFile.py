@@ -367,8 +367,8 @@ class SerializedFile(File.File):
             return None
         cab = self.parent.get_writeable_cab(name)
 
-        cab_path = f"archive:/{name}"
-        if not any(cab_path == x.path for x in self.externals):
+        cab.path = f"archive:/{name}"
+        if not any(cab.path == x.path for x in self.externals):
             # register as external
             class FileIdentifierFake:
                 pass
@@ -377,7 +377,7 @@ class SerializedFile(File.File):
             file_identifier.temp_empty = ""
             import uuid
             file_identifier.guid = uuid.uuid1().urn[-16:].encode("ascii")
-            file_identifier.path = f"archive:/{name}"
+            file_identifier.path = cab.path
             file_identifier.type = 0
             self.externals.append(
                 file_identifier

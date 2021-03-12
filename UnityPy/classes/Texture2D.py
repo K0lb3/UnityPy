@@ -37,7 +37,7 @@ class Texture2D(Texture):
                 self.m_StreamData.offset = cab.Position
                 cab.write(data)
                 self.m_StreamData.size = len(data)
-                self.m_StreamData.path = cab.name
+                self.m_StreamData.path = cab.path
             else:
                 self.m_StreamData.offset = 0
                 self.m_StreamData.size = 0
@@ -62,7 +62,7 @@ class Texture2D(Texture):
         if version >= (2, 6):  # 2.6 and up
             self.m_IsReadable = reader.read_boolean()  # 2.6 and up
         if version >= (2020,):  # 2020.1 and up
-            self.IsPreProcessed = reader.read_boolean()
+            self.m_IsPreProcessed = reader.read_boolean()
         if version >= (2019, 3):  # 2019.3 and up
             self.m_IgnoreMasterTextureLimit = reader.read_boolean()
         if (3,) <= version[:2] <= (5, 4):  # 3.0 - 5.4
@@ -112,9 +112,9 @@ class Texture2D(Texture):
         writer.write_int(self.m_Height)
         writer.write_int(self.m_CompleteImageSize)
         if version >= (2020,):  # 2020.1 and up
-            writer.write_int(self.mips_stripped)
+            writer.write_int(self.m_MipsStripped)
         writer.write_int(self.m_TextureFormat.value)
-        if version[2:] < (5, 2):  # 5.2 down
+        if version[:2] < (5, 2):  # 5.2 down
             writer.write_boolean(self.m_MipMap)
         else:
             writer.write_int(self.m_MipCount)
@@ -122,13 +122,13 @@ class Texture2D(Texture):
         if version >= (2, 6):  # 2.6 and up
             writer.write_boolean(self.m_IsReadable)  # 2.6 and up
         if version >= (2020,):  # 2020.1 and up
-            writer.write_boolean(self.is_pre_processed)
+            writer.write_boolean(self.m_IsPreProcessed)
         if version >= (2019, 3):  # 2019.3 and up
-            writer.write_boolean(self.ignore_master_texture_limit)
+            writer.write_boolean(self.m_IgnoreMasterTextureLimit)
         if (3,) <= version[:2] <= (5, 4):  # 3.0 - 5.4
             writer.write_boolean(self.m_ReadAllowed)  # 3.0 - 5.4
         if version >= (2018, 2):  # 2018.2 and up
-            writer.write_boolean(self.m_streaming_mipmaps)
+            writer.write_boolean(self.m_StreamingMipmaps)
 
         writer.align_stream()
         if version >= (2018, 2):  # 2018.2 and up
