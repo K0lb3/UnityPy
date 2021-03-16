@@ -29,7 +29,7 @@ class File(object):
             elif isinstance(f, SerializedFile.SerializedFile):
                 for obj in f.objects.values():
                     yield obj
-            elif isinstance(f, SerializedFile.ObjectReader):
+            elif isinstance(f, ObjectReader.ObjectReader):
                 yield f
     
     def read_files(self, reader: EndianBinaryReader, files: list):
@@ -105,4 +105,4 @@ class File(object):
 
 
 # recursive import requires the import down here
-from . import BundleFile, SerializedFile, WebFile
+from . import BundleFile, SerializedFile, WebFile, ObjectReader
