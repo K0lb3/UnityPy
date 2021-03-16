@@ -234,8 +234,8 @@ The mesh is converted into an Wavefront .obj file.
 
 ```python
 mesh : Mesh
-with open(f"{mesh.name}.obj", "wt", newlines = "") as f:
-    # newlines = "" is important
+with open(f"{mesh.name}.obj", "wt", newline = "") as f:
+    # newline = "" is important
     f.write(mesh.export())
 ```
 
