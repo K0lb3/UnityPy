@@ -32,7 +32,10 @@ def get_resource_data(*args):
 def search_resource(res_path, assets_file):
     # try to find the resource in the Unity packages
     base_name = os.path.basename(res_path)
-    base_name2 = base_name.replace('.assets.resS', '.resource')
+    if os.path.splitext(base_name)[1] == ".resource":
+        base_name2 = base_name.replace('.resource', '.assets.resS')
+    else:
+        base_name2 = base_name.replace('.assets.resS', '.resource')
     
     for p in [res_path, base_name, base_name2]:
         reader = assets_file.parent.files.get(p)
@@ -46,7 +49,7 @@ def search_resource(res_path, assets_file):
     c = assets_file
     path = getattr(assets_file, "path", None)
     while not path:
-        c = c.parent
+        c = getattr(c,"parent",None)
         if c == None:
             raise FileNotFoundError(
                 f"Can't find the resource file {res_path}"
