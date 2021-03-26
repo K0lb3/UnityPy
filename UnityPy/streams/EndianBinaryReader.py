@@ -94,7 +94,7 @@ class EndianBinaryReader:
     def read_aligned_string(self):
         length = self.read_int()
         if 0 < length <= self.Length - self.Position:
-            string_data = bytes(self.read_bytes)(length)
+            string_data = bytes(self.read_bytes(length))
             result = string_data.decode("utf8", "backslashreplace")
             self.align_stream()
             return result
