@@ -1,9 +1,14 @@
 from enum import IntEnum
 
 from .NamedObject import NamedObject
-
+from ..export.ShaderConverter import export_shader
+from ..enums import ShaderCompilerPlatform, ShaderGpuProgramType, SerializedPropertyType
+from ..enums import TextureDimension, PassType
 
 class Shader(NamedObject):
+    def export(self):
+        return export_shader(self)
+
     def __init__(self, reader):
         super().__init__(reader=reader)
         version = reader.version
@@ -52,31 +57,10 @@ class SamplerParameter:
         self.sampler = reader.read_u_int()
         self.bindPoint = reader.read_int()
 
-
-class TextureDimension(IntEnum):
-    kTexDimUnknown = (-1,)
-    kTexDimNone = (0,)
-    kTexDimAny = (1,)
-    kTexDim2D = (2,)
-    kTexDim3D = (3,)
-    kTexDimCUBE = (4,)
-    kTexDim2DArray = (5,)
-    kTexDimCubeArray = (6,)
-    kTexDimForce32Bit = (2147483647,)
-
-
 class SerializedTextureProperty:
     def __init__(self, reader):
         self.m_DefaultName = reader.read_aligned_string()
         self.m_TexDim = TextureDimension(reader.read_int())
-
-
-class SerializedPropertyType(IntEnum):
-    kColor = (0,)
-    kVector = (1,)
-    kFloat = (2,)
-    kRange = (3,)
-    kTexture = (4,)
 
 
 class SerializedProperty:
@@ -257,36 +241,6 @@ class UAVParameter:
         self.m_OriginalIndex = reader.read_int()
 
 
-class ShaderGpuProgramType(IntEnum):
-    kShaderGpuProgramUnknown = (0,)
-    kShaderGpuProgramGLLegacy = (1,)
-    kShaderGpuProgramGLES31AEP = (2,)
-    kShaderGpuProgramGLES31 = (3,)
-    kShaderGpuProgramGLES3 = (4,)
-    kShaderGpuProgramGLES = (5,)
-    kShaderGpuProgramGLCore32 = (6,)
-    kShaderGpuProgramGLCore41 = (7,)
-    kShaderGpuProgramGLCore43 = (8,)
-    kShaderGpuProgramDX9VertexSM20 = (9,)
-    kShaderGpuProgramDX9VertexSM30 = (10,)
-    kShaderGpuProgramDX9PixelSM20 = (11,)
-    kShaderGpuProgramDX9PixelSM30 = (12,)
-    kShaderGpuProgramDX10Level9Vertex = (13,)
-    kShaderGpuProgramDX10Level9Pixel = (14,)
-    kShaderGpuProgramDX11VertexSM40 = (15,)
-    kShaderGpuProgramDX11VertexSM50 = (16,)
-    kShaderGpuProgramDX11PixelSM40 = (17,)
-    kShaderGpuProgramDX11PixelSM50 = (18,)
-    kShaderGpuProgramDX11GeometrySM40 = (19,)
-    kShaderGpuProgramDX11GeometrySM50 = (20,)
-    kShaderGpuProgramDX11HullSM50 = (21,)
-    kShaderGpuProgramDX11DomainSM50 = (22,)
-    kShaderGpuProgramMetalVS = (23,)
-    kShaderGpuProgramMetalFS = (24,)
-    kShaderGpuProgramSPIRV = (25,)
-    kShaderGpuProgramConsole = (26,)
-
-
 class SerializedSubProgram:
     def __init__(self, reader):
         version = reader.version
@@ -352,13 +306,6 @@ class SerializedProgram:
         self.m_SubPrograms = [
             SerializedSubProgram(reader) for _ in range(numSubPrograms)
         ]
-
-
-class PassType(IntEnum):
-    kPassTypeNormal = (0,)
-    kPassTypeUse = (1,)
-    kPassTypeGrab = 2
-
 
 class SerializedPass:
     def __init__(self, reader):
@@ -442,27 +389,3 @@ class SerializedShader:
         self.m_DisableNoSubshadersMessage = reader.read_boolean()
         reader.align_stream()
 
-
-class ShaderCompilerPlatform(IntEnum):
-    kShaderCompPlatformNone = (-1,)
-    kShaderCompPlatformGL = (0,)
-    kShaderCompPlatformD3D9 = (1,)
-    kShaderCompPlatformXbox360 = (2,)
-    kShaderCompPlatformPS3 = (3,)
-    kShaderCompPlatformD3D11 = (4,)
-    kShaderCompPlatformGLES20 = (5,)
-    kShaderCompPlatformNaCl = (6,)
-    kShaderCompPlatformFlash = (7,)
-    kShaderCompPlatformD3D11_9x = (8,)
-    kShaderCompPlatformGLES3Plus = (9,)
-    kShaderCompPlatformPSP2 = (10,)
-    kShaderCompPlatformPS4 = (11,)
-    kShaderCompPlatformXboxOne = (12,)
-    kShaderCompPlatformPSM = (13,)
-    kShaderCompPlatformMetal = (14,)
-    kShaderCompPlatformOpenGLCore = (15,)
-    kShaderCompPlatformN3DS = (16,)
-    kShaderCompPlatformWiiU = (17,)
-    kShaderCompPlatformVulkan = (18,)
-    kShaderCompPlatformSwitch = (19,)
-    kShaderCompPlatformXboxOneD3D12 = (20,)
