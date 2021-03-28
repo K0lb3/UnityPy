@@ -239,6 +239,20 @@ with open(f"{mesh.name}.obj", "wt", newline = "") as f:
     f.write(mesh.export())
 ```
 
+### [Font](UnityPy/classes/Font.py)
+
+```python
+if obj.type == "Font":
+    font : Font = obj.read()
+    if font.m_FontData:
+        extension = ".ttf"
+        if font.m_FontData[0:4] == b"OTTO":
+            extension = ".otf"
+    
+    with open(os.path.join(path, font.name+extension), "wb") as f:
+        f.write(font.m_FontData)
+```
+
 ## Goals
 
 ### WIP
