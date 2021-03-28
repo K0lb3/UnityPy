@@ -1,6 +1,7 @@
 from ..enums import ClassIDType
 from . import SerializedFile
 from .. import classes
+from ..streams import EndianBinaryReader
 
 
 class ObjectReader:
@@ -17,7 +18,7 @@ class ObjectReader:
     # in case that not all data is read
     # and the obj.data is changed, the unknown data can be added again
     
-    def __init__(self, assets_file, reader):
+    def __init__(self, assets_file, reader : EndianBinaryReader):
         self.assets_file = assets_file
         self.reader = reader
         self.data = b""
@@ -124,7 +125,7 @@ class ObjectReader:
     def set_raw_data(self, data):
         self.data = data
         self.assets_file.mark_changed()
-    
+
     @property
     def container(self):
         return (
@@ -132,7 +133,15 @@ class ObjectReader:
             if self.path_id in self.assets_file._container
             else None
         )
+
+    @property
+    def Position(self):
+        return self.reader.Position
     
+    @Position.setter
+    def Position(self, pos):
+        self.reader.Position = pos
+
     def reset(self):
         self.reader.Position = self.byte_start
     
