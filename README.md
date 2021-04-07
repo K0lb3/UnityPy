@@ -29,6 +29,13 @@ or download/clone the git and use
 python setup.py install
 ```
 
+### Notes
+
+#### Windows
+
+Visual C++ Redistributable is required for the brotli dependency.
+
+
 ## Example
 
 The following is a simple example.
