@@ -79,24 +79,12 @@ class EndianBinaryWriter:
     def write_boolean(self, value: bool):
         self.write(struct.pack(self.endian + "?", value))
 
-    """
-	def write_string(self, size=None, encoding="utf-8") -> str:
-		if size is None:
-			ret = self.write_string_to_null()
-		else:
-			ret = struct.unpack(f"{self.endian}{size}is", self.read(size))[0]
-		try:
-			return ret.decode(encoding)
-		except UnicodeDecodeError:
-			return ret
-	"""
-
     def write_string_to_null(self, value: str):
-        self.write(value.encode("utf8", "backslashreplace"))
+        self.write(value.encode("utf8", "surrogateescape"))
         self.write(b"\0")
 
     def write_aligned_string(self, value: str):
-        bstring = value.encode("utf8", "backslashreplace")
+        bstring = value.encode("utf8", "surrogateescape")
         self.write_int(len(bstring))
         self.write(bstring)
         self.align_stream(4)

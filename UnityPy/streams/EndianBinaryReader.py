@@ -71,7 +71,7 @@ class EndianBinaryReader:
     def read_boolean(self) -> bool:
         return bool(struct.unpack(self.endian + "?", self.read(1))[0])
 
-    def read_string(self, size=None, encoding="utf-8") -> str:
+    def read_string(self, size=None, encoding="utf8") -> str:
         if size is None:
             ret = self.read_string_to_null()
         else:
@@ -89,13 +89,13 @@ class EndianBinaryReader:
             c = self.read(1)
             if not c:
                 raise ValueError("Unterminated string: %r" % ret)
-        return b"".join(ret).decode("utf8", "backslashreplace")
+        return b"".join(ret).decode("utf8", "surrogateescape")
 
     def read_aligned_string(self):
         length = self.read_int()
         if 0 < length <= self.Length - self.Position:
             string_data = bytes(self.read_bytes(length))
-            result = string_data.decode("utf8", "backslashreplace")
+            result = string_data.decode("utf8", "surrogateescape")
             self.align_stream()
             return result
         return ""
@@ -203,7 +203,7 @@ class EndianBinaryReader_Memoryview(EndianBinaryReader):
         length = self.read_int()
         if 0 < length <= self.Length - self.Position:
             string_data = self.read_bytes(length)
-            result = bytes(string_data).decode("utf8", "backslashreplace")
+            result = bytes(string_data).decode("utf8", "surrogateescape")
             self.align_stream()
             return result
         return ""
