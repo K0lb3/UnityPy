@@ -175,7 +175,7 @@ class VertexData:
         streamCount = 1
         if self.m_Channels:
             streamCount += max(x.stream for x in self.m_Channels)
-        
+
         self.m_Streams = {}
         offset = 0
         for s in range(streamCount):
@@ -199,7 +199,7 @@ class VertexData:
             offset += self.m_VertexCount * stride
             # static size_t align_streamSize (size_t size) { return (size + (kVertexStreamAlign-1)) & ~(kVertexStreamAlign-1)
             offset = (offset + (16 - 1)) & ~(
-                    16 - 1
+                16 - 1
             )  # (offset + (16u - 1u)) & ~(16u - 1u);
 
     def GetChannels(self):
@@ -329,7 +329,7 @@ class SubMesh:
     def save(self, writer, version):
         writer.write_u_int(self.firstByte)
         writer.write_u_int(self.indexCount)
-        writer.write_int(self.topology)
+        writer.write_int(self.topology.value)
 
         if version < (4,):  # 4.0 down
             writer.write_u_int(self.triangleCount)
@@ -440,7 +440,8 @@ class Mesh(NamedObject):
                 self.m_VertexCount * 3)  # Vector3
 
             self.m_SkinSize = reader.read_int()
-            self.m_Skin = [BoneWeights4(reader) for _ in range(self.m_SkinSize)]
+            self.m_Skin = [BoneWeights4(reader)
+                           for _ in range(self.m_SkinSize)]
 
             self.m_BindPose = reader.read_matrix_array()
             self.m_UV0 = reader.read_float_array(
@@ -554,19 +555,21 @@ class Mesh(NamedObject):
                     componentBytes = bytearray(
                         m_VertexCount * m_Channel.dimension * componentByteSize)
                     for v in range(m_VertexCount):
-                        vertexOffset = int(m_Stream.offset) + m_Channel.offset + int(m_Stream.stride) * v
+                        vertexOffset = int(
+                            m_Stream.offset) + m_Channel.offset + int(m_Stream.stride) * v
                         for d in range(m_Channel.dimension):
                             componentOffsetSrc = vertexOffset + componentByteSize * d  # src offset
-                            componentOffsetDst = componentByteSize * (v * m_Channel.dimension + d)  # dst offst
+                            componentOffsetDst = componentByteSize * \
+                                (v * m_Channel.dimension + d)  # dst offst
 
                             buff = m_VertexData.m_DataSize[componentOffsetSrc:
                                                            componentOffsetSrc + componentByteSize]
-                            
+
                             if self.reader.endian == "<" and componentByteSize > 1:  # swap bytes
                                 buff = buff[::-1]
 
                             componentBytes[componentOffsetDst: componentOffsetDst +
-                                                               componentByteSize] = buff
+                                           componentByteSize] = buff
                             # Buffer.BlockCopy(m_VertexData.m_DataSize, componentOffset, componentBytes, componentByteSize * (v * m_Channel.dimension + d), componentByteSize);
                             # (Array src, int srcOffset, Array dst, int dstOffset, int count);
 
@@ -643,8 +646,10 @@ class Mesh(NamedObject):
         version = self.version
         m_CompressedMesh = self.m_CompressedMesh
         if m_CompressedMesh.m_Vertices.m_NumItems > 0:
-            self.m_VertexCount = int(m_CompressedMesh.m_Vertices.m_NumItems / 3)
-            self.m_Vertices = m_CompressedMesh.m_Vertices.UnpackFloats(3, 3 * 4)
+            self.m_VertexCount = int(
+                m_CompressedMesh.m_Vertices.m_NumItems / 3)
+            self.m_Vertices = m_CompressedMesh.m_Vertices.UnpackFloats(
+                3, 3 * 4)
         m_VertexCount = self.m_VertexCount
         # UV
         if m_CompressedMesh.m_UV.m_NumItems > 0:  #
@@ -663,7 +668,8 @@ class Mesh(NamedObject):
                     texCoordBits &= (1 << kInfoBitsPerUV) - 1
                     if (texCoordBits & kUVChannelExists) != 0:
                         uvDim = 1 + int(texCoordBits & kUVDimensionMask)
-                        m_UV = m_CompressedMesh.m_UV.UnpackFloats(uvDim, uvDim * 4, uvSrcOffset, self.m_VertexCount)
+                        m_UV = m_CompressedMesh.m_UV.UnpackFloats(
+                            uvDim, uvDim * 4, uvSrcOffset, self.m_VertexCount)
                         self.SetUV(uv, m_UV)
             else:
                 self.m_UV0 = m_CompressedMesh.m_UV.UnpackFloats(
@@ -835,11 +841,10 @@ class Mesh(NamedObject):
                 raise NotImplementedError(
                     "Failed getting triangles. Submesh topology is lines or points.")
 
-
     def InitMSkin(self):
         self.m_Skin = [BoneWeights4() for _ in range(self.m_VertexCount)]
 
-    def SetUV(self, uv:int, m_UV):
+    def SetUV(self, uv: int, m_UV):
         if uv == 0:
             self.m_UV0 = m_UV
         elif uv == 1:
