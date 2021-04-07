@@ -1,7 +1,7 @@
-from enum import Enum
+from enum import IntEnum
 
 
-class GfxPrimitiveType(Enum):
+class GfxPrimitiveType(IntEnum):
     kPrimitiveTriangles = 0
     kPrimitiveTriangleStrip = 1
     kPrimitiveQuads = 2

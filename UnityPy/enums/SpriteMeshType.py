@@ -1,6 +1,6 @@
-from enum import Enum
+from enum import IntEnum
 
 
-class SpriteMeshType(Enum):
+class SpriteMeshType(IntEnum):
     kSpriteMeshTypeFullRect = 0
     kSpriteMeshTypeTight = 1

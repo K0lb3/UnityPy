@@ -1,7 +1,7 @@
-from enum import Enum
+from enum import IntEnum
 
 
-class TextureFormat(Enum):
+class TextureFormat(IntEnum):
     Alpha8 = 1
     ARGB4444 = 2
     RGB24 = 3

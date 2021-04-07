@@ -1,7 +1,7 @@
-from enum import Enum
+from enum import IntEnum
 
 
-class FileType(Enum):
+class FileType(IntEnum):
     AssetsFile = 0
     BundleFile = 1
     WebFile = 2

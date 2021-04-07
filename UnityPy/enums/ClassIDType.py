@@ -383,4 +383,10 @@ class ClassIDType(IntEnum):
 
     @classmethod
     def _missing_(cls, value):
-        return ClassIDType.UnknownType
+        ret = ClassIDType.UnknownType
+        ret._value = value
+        return ret
+
+    @property
+    def value(self):
+        return getattr(self, "_value", "_value_")
