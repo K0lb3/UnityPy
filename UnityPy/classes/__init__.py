@@ -26,6 +26,7 @@ from .PlayerSettings import PlayerSettings
 from .RectTransform import RectTransform
 from .Renderer import Renderer
 from .RuntimeAnimatorController import RuntimeAnimatorController
+from .ResourceManager import ResourceManager
 from .Shader import Shader
 from .SkinnedMeshRenderer import SkinnedMeshRenderer
 from .Sprite import Sprite
