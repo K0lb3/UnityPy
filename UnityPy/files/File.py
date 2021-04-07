@@ -22,6 +22,9 @@ class File(object):
         self.parent = parent
     
     def get_objects(self):
+        if self.isinstance(SerializedFile.SerializedFile):
+            return self.objects.values()
+        
         for f in self.files.values():
             if isinstance(f, (BundleFile.BundleFile, WebFile.WebFile)):
                 for obj in f.objects:
