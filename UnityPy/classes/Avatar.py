@@ -106,7 +106,8 @@ class Human:
             numHandles = reader.read_int()
             self.m_Handles = [Handle(reader) for _ in range(numHandles)]
             numColliders = reader.read_int()
-            self.m_ColliderArray = [Collider(reader) for _ in range(numColliders)]
+            self.m_ColliderArray = [Collider(reader)
+                                    for _ in range(numColliders)]
         self.m_HumanBoneIndex = reader.read_int_array()
         self.m_HumanBoneMass = reader.read_float_array()
 

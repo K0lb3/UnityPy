@@ -4,12 +4,12 @@ from ..helpers import ImportHelper
 from .. import files
 from ..enums import FileType
 
-def save_ptr(obj, writer: EndianBinaryWriter, version):
+def save_ptr(obj, writer: EndianBinaryWriter):
     if isinstance(obj, PPtr):
         writer.write_int(obj.file_id)
     else:
         writer.write_int(0)  # it's usually 0......
-    if version < 14:
+    if obj._version < 14:
         writer.write_int(obj.path_id)
     else:
         writer.write_long(obj.path_id)
@@ -26,7 +26,7 @@ class PPtr:
         self._obj = None
 
     def save(self, writer: EndianBinaryWriter):
-        save_ptr(self, writer, self._version)
+        save_ptr(self, writer)
 
     def get_obj(self):
         if self._obj != None:

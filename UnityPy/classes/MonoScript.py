@@ -6,17 +6,18 @@ class MonoScript(NamedObject):
         super().__init__(reader=reader)
         version = self.version
         if version >= (3, 4):  # 3.4 and up
-            self.execution_order = reader.read_int()
+            self.m_ExecutionOrder = reader.read_int()
         if version < (5,):  # 5.0 down
-            self.properties_hash = reader.read_u_int()
+            self.m_PropertiesHash = reader.read_u_int()
         else:
-            self.properties_hash = reader.read_bytes(16)
+            self.m_PropertiesHash = reader.read_bytes(16)
         if version < (3,):  # 3.0 down
-            self.path_name = reader.read_aligned_string()
+            self.m_PathName = reader.read_aligned_string()
 
-        self.class_name = reader.read_aligned_string()
+        self.m_ClassName = reader.read_aligned_string()
         if version >= (3,):  # 3.0 and up
-            self.namespace = reader.read_aligned_string()
-        self.assembly_name = reader.read_aligned_string()
+            self.m_Namespace = reader.read_aligned_string()
+
+        self.m_AssemblyName = reader.read_aligned_string()
         if version < (2018, 2):  # 2018.2 down
-            self.is_editor_script = reader.read_boolean()
+            self.m_IsEditorScript = reader.read_boolean()

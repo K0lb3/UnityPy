@@ -7,16 +7,17 @@ class SpriteAtlas(NamedObject):
     def __init__(self, reader):
         super().__init__(reader=reader)
         packed_sprites_size = reader.read_int()
-        self.PackSprites = [PPtr(reader) for _ in range(packed_sprites_size)]
+        self.m_PackedSprites = [PPtr(reader)
+                                for _ in range(packed_sprites_size)]
 
-        self.packed_sprite_names_to_index = reader.read_string_array()
+        self.m_PackedSpriteNamesToIndex = reader.read_string_array()
         m_render_data_map_size = reader.read_int()
-        self.render_data_map = {}
+        self.m_RenderDataMap = {}
         for _ in range(m_render_data_map_size):
             first = reader.read_bytes(16)  # GUID
             second = reader.read_long()
             value = SpriteAtlasData(reader)
-            self.render_data_map[(first, second)] = value
+            self.m_RenderDataMap[(first, second)] = value
 
 
 class SpriteAtlasData:

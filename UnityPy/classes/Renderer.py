@@ -55,7 +55,8 @@ class Renderer(Component):
             self.m_LightmapTilingOffsetDynamic = reader.read_vector4()
 
         m_MaterialsSize = reader.read_int()
-        self.m_Materials = [PPtr(reader) for _ in range(m_MaterialsSize)]  # Material
+        self.m_Materials = [PPtr(reader)
+                            for _ in range(m_MaterialsSize)]  # Material
 
         if version < (3,):  # 3.0 down
             self.m_LightmapTilingOffset = reader.read_vector4()

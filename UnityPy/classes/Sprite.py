@@ -122,24 +122,17 @@ class SpritePackingMode(IntEnum):
 
 class SpriteSettings:
     def __init__(self, reader):
-        self.value = reader.read_u_int()
-
-    @property
-    def value(self):
-        return self.m_settingsRaw
-
-    @value.setter
-    def value(self, _value):
-        self.m_settingsRaw = _value
-
-        self.packed = self.m_settingsRaw & 1  # 1
-        self.packingMode = SpritePackingMode((self.m_settingsRaw >> 1) & 1)  # 1
-        self.packingRotation = SpritePackingRotation((self.m_settingsRaw >> 2) & 0xF)  # 4
-        self.meshType = SpriteMeshType((self.m_settingsRaw >> 6) & 1)  # 1
+        self.settingsRaw = reader.read_u_int()
+        self.packed = self.settingsRaw & 1  # 1
+        self.packingMode = SpritePackingMode(
+            (self.settingsRaw >> 1) & 1)  # 1
+        self.packingRotation = SpritePackingRotation(
+            (self.settingsRaw >> 2) & 0xF)  # 4
+        self.meshType = SpriteMeshType((self.settingsRaw >> 6) & 1)  # 1
         # rest of the bits are reserved
 
     def save(self, writer):
-        writer.write_u_int(self.m_settingsRaw)
+        writer.write_u_int(self.settingsRaw)
 
 
 class SpriteVertex:
@@ -154,6 +147,7 @@ class SpriteVertex:
         writer.write_vector3(self.pos)
         if version[:2] <= (4, 3):  # 4.3 and down
             writer.write__vector2(self.uv)
+
 
 class SpriteRenderData:
     def __init__(self, reader):

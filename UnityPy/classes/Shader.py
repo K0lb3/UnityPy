@@ -5,6 +5,7 @@ from ..export.ShaderConverter import export_shader
 from ..enums import ShaderCompilerPlatform, ShaderGpuProgramType, SerializedPropertyType
 from ..enums import TextureDimension, PassType
 
+
 class Shader(NamedObject):
     def export(self):
         return export_shader(self)
@@ -56,6 +57,7 @@ class SamplerParameter:
     def __init__(self, reader):
         self.sampler = reader.read_u_int()
         self.bindPoint = reader.read_int()
+
 
 class SerializedTextureProperty:
     def __init__(self, reader):
@@ -307,6 +309,7 @@ class SerializedProgram:
             SerializedSubProgram(reader) for _ in range(numSubPrograms)
         ]
 
+
 class SerializedPass:
     def __init__(self, reader):
         version = reader.version
@@ -388,4 +391,3 @@ class SerializedShader:
         ]
         self.m_DisableNoSubshadersMessage = reader.read_boolean()
         reader.align_stream()
-

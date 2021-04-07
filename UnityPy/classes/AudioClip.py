@@ -26,7 +26,6 @@ class AudioClip(NamedObject):
             else:
                 self.m_Size = reader.read_int()
 
-            self.extension = AUDIO_TYPE_EXTEMSION.get(self.m_Type, ".audioclip")
         else:
             self.m_LoadType = reader.read_int()
             self.m_Channels = reader.read_int()
@@ -45,16 +44,16 @@ class AudioClip(NamedObject):
             self.m_Size = reader.read_long()
             self.m_CompressionFormat = AudioCompressionFormat(reader.read_int())
 
-            self.extension = AUDIO_TYPE_EXTEMSION.get(
-                self.m_CompressionFormat, ".audioclip"
-            )
-
         if self.m_Source:
             self.m_AudioData = get_resource_data(
                 self.m_Source, self.assets_file, self.m_Offset, self.m_Size
             )
         else:
             self.m_AudioData = reader.read_bytes(self.m_Size)
+    
+    @property
+    def extension(self):
+        return  AUDIO_TYPE_EXTEMSION.get(self.m_CompressionFormat, ".audioclip")
 
     @property
     def samples(self) -> dict:

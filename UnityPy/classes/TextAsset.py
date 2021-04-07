@@ -5,7 +5,16 @@ from ..streams import EndianBinaryWriter
 class TextAsset(NamedObject):
     def __init__(self, reader):
         super().__init__(reader=reader)
-        self.script = reader.read_bytes(reader.read_int())
+        self.m_Script = reader.read_bytes(reader.read_int())
+
+    @property
+    def script(self):
+        # required for backward compatibility
+        return self.m_Script
+
+    @script.setter
+    def script(self, value):
+        self.m_Script = value
 
     @property
     def text(self):
@@ -19,8 +28,8 @@ class TextAsset(NamedObject):
         if writer is None:
             writer = EndianBinaryWriter(endian=self.reader.endian)
         super().save(writer)
-        writer.write_int(len(self.script))
-        writer.write_bytes(self.script)
+        writer.write_int(len(self.m_Script))
+        writer.write_bytes(self.m_Script)
         writer.align_stream()
 
         self.set_raw_data(writer.bytes)

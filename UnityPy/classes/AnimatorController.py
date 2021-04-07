@@ -171,7 +171,8 @@ class BlendTreeConstant:
         version = reader.version
 
         numNodes = reader.read_int()
-        self.m_NodeArray = [BlendTreeNodeConstant(reader) for _ in range(numNodes)]
+        self.m_NodeArray = [BlendTreeNodeConstant(
+            reader) for _ in range(numNodes)]
 
         if version < (4, 5):  # 4.5 down
             self.m_BlendEventArrayConstant = ValueArrayConstant(reader)
@@ -190,7 +191,8 @@ class StateConstant:
 
         if version < (5, 2):  # 5.2 down
             numInfos = reader.read_int()
-            self.m_LeafInfoArray = [LeafInfoConstant(reader) for _ in range(numInfos)]
+            self.m_LeafInfoArray = [LeafInfoConstant(
+                reader) for _ in range(numInfos)]
 
         numBlends = reader.read_int()
         self.m_BlendTreeConstantArray = [
@@ -252,7 +254,8 @@ class StateMachineConstant:
         version = reader.version
 
         numStates = reader.read_int()
-        self.m_StateConstantArray = [StateConstant(reader) for _ in range(numStates)]
+        self.m_StateConstantArray = [
+            StateConstant(reader) for _ in range(numStates)]
 
         numAnyStates = reader.read_int()
         self.m_AnyStateTransitionConstantArray = [
