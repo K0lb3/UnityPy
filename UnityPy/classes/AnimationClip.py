@@ -129,7 +129,7 @@ class PackedIntVector:
         writer.align_stream()
 
     def UnpackInts(self):
-        data = []
+        data = [0] * self.m_NumItems
         indexPos = 0
         bitPos = 0
         m_BitSize = self.m_BitSize
@@ -158,7 +158,7 @@ class PackedQuatVector:
 
     def UnpackQuats(self):
         m_Data = self.m_Data
-        data = []
+        data = [None]*self.m_NumItems
         indexPos = 0
         bitPos = 0
 
