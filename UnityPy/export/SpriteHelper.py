@@ -52,7 +52,7 @@ def get_image_from_sprite(m_Sprite) -> Image:
                 atlas = None
 
     if atlas:
-        sprite_atlas_data = atlas.render_data_map[m_Sprite.m_RenderDataKey]
+        sprite_atlas_data = atlas.m_RenderDataMap[m_Sprite.m_RenderDataKey]
     else:
         sprite_atlas_data = m_Sprite.m_RD
 

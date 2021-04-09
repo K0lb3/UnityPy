@@ -7,7 +7,7 @@ from .files import File
 from .enums import FileType
 from .helpers import ImportHelper
 from .streams import EndianBinaryReader
-
+from .files import SerializedFile
 
 class Environment:
     files: dict
@@ -127,8 +127,18 @@ class Environment:
         }
 
     @property
-    def assets(self):
-        return self.files
+    def assets(self) -> list:
+        """
+        Lists all assets / SerializedFiles within this environment.
+        """
+        def gen_all_asset_files(file, ret  = []):
+            for f in getattr(file, "files", {}).values():
+                if isinstance(f, SerializedFile):
+                    ret.append(f)
+                else:
+                    gen_all_asset_files(f, ret)
+            return ret
+        return gen_all_asset_files(self)
 
     def get(self, key, default=None):
         return getattr(self, key, default)

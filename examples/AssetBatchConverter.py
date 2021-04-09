@@ -1,9 +1,23 @@
 import os
-from UnityPy import AssetsManager
+import UnityPy
 from collections import Counter
 import zipfile
+import json
 
-TYPES = ['Sprite', 'Texture2D', 'TextAsset']
+TYPES = [
+    # Images
+    'Sprite',
+    'Texture2D',
+    # Text (filish)
+    'TextAsset',
+    'Shader',
+    'MonoBehaviour',
+    'Mesh'
+    # Font
+    'Font',
+    # Audio
+    'AudioClip',
+]
 
 ROOT = os.path.dirname(os.path.realpath(__file__))
 
@@ -23,87 +37,141 @@ os.makedirs(DST, exist_ok=True)
 
 
 def main():
-	for root, dirs, files in os.walk(ASSETS, topdown=False):
-		if '.git' in root:
-			continue
-		for f in files:
-			print(f)
-			extension = os.path.splitext(f)[1]
-			src = os.path.realpath(os.path.join(root, f))
+    for root, dirs, files in os.walk(ASSETS, topdown=False):
+        if '.git' in root:
+            continue
+        for f in files:
+            print(f)
+            extension = os.path.splitext(f)[1]
+            src = os.path.realpath(os.path.join(root, f))
 
-			if extension == ".zip":
-				archive = zipfile.ZipFile(src, 'r')
-				for zf in archive.namelist():
-					extract_assets(archive.open(zf))
-			else:
-				extract_assets(src)
+            if extension == ".zip":
+                archive = zipfile.ZipFile(src, 'r')
+                for zf in archive.namelist():
+                    extract_assets(archive.open(zf))
+            else:
+                extract_assets(src)
 
 
 def extract_assets(src):
-	# load source
-	am = AssetsManager(src)
+    # load source
+    env = UnityPy.load(src)
 
-	# iterate over assets
-	for asset in am.assets.values():
-		# assets without container / internal path will be ignored for now
-		if not asset.container:
-			continue
+    # iterate over assets
+    for asset in env.assets:
+        # assets without container / internal path will be ignored for now
+        if not asset.container:
+            continue
 
-		# check which mode we will have to use
-		num_cont = sum(1 for obj in asset.container.values() if obj.type in TYPES)
-		num_objs = sum(1 for obj in asset.objects.values() if obj.type in TYPES)
+        # check which mode we will have to use
+        num_cont = sum(1 for obj in asset.container.values()
+                       if obj.type in TYPES)
+        num_objs = sum(1 for obj in asset.objects.values()
+                       if obj.type in TYPES)
 
-		# check if container contains all important assets, if yes, just ignore the container
-		if num_objs <= num_cont * 2:
-			for asset_path, obj in asset.container.items():
-				fp = os.path.join(DST, *asset_path.split('/')[IGNOR_DIR_COUNT:])
-				export_obj(obj, fp)
+        # check if container contains all important assets, if yes, just ignore the container
+        if num_objs <= num_cont * 2:
+            for asset_path, obj in asset.container.items():
+                fp = os.path.join(DST, *asset_path.split('/')
+                                  [IGNOR_DIR_COUNT:])
+                export_obj(obj, fp)
 
-		# otherwise use the container to generate a path for the normal objects
-		else:
-			extracted = []
-			# find the most common path
-			occurence_count = Counter(os.path.splitext(asset_path)[0] for asset_path in asset.container.keys())
-			local_path = os.path.join(DST, *occurence_count.most_common(1)[0][0].split('/')[IGNOR_DIR_COUNT:])
+        # otherwise use the container to generate a path for the normal objects
+        else:
+            extracted = []
+            # find the most common path
+            occurence_count = Counter(os.path.splitext(asset_path)[
+                                      0] for asset_path in asset.container.keys())
+            local_path = os.path.join(
+                DST, *occurence_count.most_common(1)[0][0].split('/')[IGNOR_DIR_COUNT:])
 
-			for obj in asset.objects.values():
-				if obj.path_id not in extracted:
-					extracted.extend(export_obj(obj, local_path, append_name=True))
+            for obj in asset.objects.values():
+                if obj.path_id not in extracted:
+                    extracted.extend(export_obj(
+                        obj, local_path, append_name=True))
 
 
 def export_obj(obj, fp: str, append_name: bool = False) -> list:
-	if obj.type not in TYPES:
-		return []
-	data = obj.read()
-	if append_name:
-		fp = os.path.join(fp, data.name)
+    if obj.type not in TYPES:
+        return []
 
-	fp, extension = os.path.splitext(fp)
-	os.makedirs(os.path.dirname(fp), exist_ok=True)
+    data = obj.read()
+    if append_name:
+        fp = os.path.join(fp, data.name)
 
-	if obj.type == 'TextAsset':
-		if not extension:
-			extension = '.txt'
-		with open(f"{fp}{extension}", 'wb') as f:
-			f.write(data.script)
+    fp, extension = os.path.splitext(fp)
+    os.makedirs(os.path.dirname(fp), exist_ok=True)
 
-	elif obj.type == "Sprite":
-		extension = ".png"
-		data.image.save(f"{fp}{extension}")
+    # streamlineable types
+    export = None
+    if obj.type == 'TextAsset':
+        if not extension:
+            extension = '.txt'
+        export = data.script
 
-		return [obj.path_id, data.m_RD.texture.path_id, getattr(data.m_RD.alphaTexture, 'path_id', None)]
+    elif obj.type == "Font":
+        if data.m_FontData:
+            extension = ".ttf"
+            if data.m_FontData[0:4] == b"OTTO":
+                extension = ".otf"
+            export = data.m_FontData
+        else:
+            return [obj.path_id]
 
-	elif obj.type == "Texture2D":
-		extension = ".png"
-		fp = f"{fp}{extension}"
-		if not os.path.exists(fp):
-			try:
-				data.image.save(fp)
-			except EOFError:
-				pass
+    elif obj.type == "Mesh":
+        extension = ".obf"
+        export = data.export().encode("utf8")
 
-	return [obj.path_id]
+    elif obj.type == "Shader":
+        extension = ".txt"
+        export = data.export().encode("utf8")
+
+    elif obj.type == "MonoBehaviour":
+        # The data structure of MonoBehaviours is custom
+        # and is stored as nodes
+        # If this structure doesn't exist,
+        # it might still help to at least save the binary data,
+        # which can then be inspected in detail.
+        if obj.serialized_type.nodes:
+            extension = ".json"
+            export = json.dumps(
+                obj.read_typetree(),
+                indent=4,
+                ensure_ascii=False
+            ).encode("utf8")
+        else:
+            extension = ".bin"
+            export = data.raw_data
+
+    if export:
+        with open(f"{fp}{extension}", "wb") as f:
+            f.write(export)
+
+    # non-streamlineable types
+    if obj.type == "Sprite" and data.Width:
+        data.image.save(f"{fp}.png")
+
+        return [obj.path_id, data.m_RD.texture.path_id, getattr(data.m_RD.alphaTexture, 'path_id', None)]
+
+    elif obj.type == "Texture2D":
+        if not os.path.exists(fp) and data.Width:
+            # textures can have size 0.....
+            data.image.save(f"{fp}.png")
+
+    elif obj.type == "AudioClip":
+        samples = data.samples
+        if len(samples) == 0:
+            pass
+        elif len(samples) == 1:
+            with open(f"{fp}.wav", "wb") as f:
+                f.write(list(data.samples.values())[0])
+        else:
+            os.makedirs(fp, exist_ok=True)
+            for name, clip_data in samples.items():
+                with open(os.path.join(fp, f"{name}.wav"), "wb") as f:
+                    f.write(clip_data)
+    return [obj.path_id]
 
 
 if __name__ == '__main__':
-	main()
+    main()
