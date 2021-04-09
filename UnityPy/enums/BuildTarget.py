@@ -47,4 +47,4 @@ class BuildTarget(IntEnum):
 
     @property
     def value(self):
-        return getattr(self, "_value", "_value_")
+        return getattr(self, "_value", self._value_)
