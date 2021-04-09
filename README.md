@@ -7,13 +7,20 @@
 
 A Unity asset extractor for Python based on [AssetStudio](https://github.com/Perfare/AssetStudio).
 
+Next to extraction it also supports editing Unity assets.
+So far following obj types can be edited:
+  - Texture2D
+  - Sprite(indirectly via linked Texture2D)
+  - TextAsset
+  - MonoBehaviour
+
+If you need advice or if you want to talk about (game) data-mining,
+feel free to join the [UnityPy Discord](https://discord.gg/C6txv7M).
+
 1. [Installation](#installation)
 2. [Example](#example)
 3. [Important Classes](#important-classes)
 4. [Important Object Types](#important-object-types)
-5. [Goals](#goals)
-6. [Motivation](#motivation)
-7. [Community](#community)
 
 ## Installation
 
@@ -39,6 +46,7 @@ Visual C++ Redistributable is required for the brotli dependency.
 ## Example
 
 The following is a simple example.
+
 
 ```python
 import os
@@ -70,7 +78,7 @@ def unpack_all_assets(source_folder : str, destination_folder : str):
 
                     img = data.image
                     img.save(dest)
-            
+
             # alternative way which keeps the original path
             for path,obj in env.container.items():
                 if obj.type in ["Texture2D", "Sprite"]:
@@ -88,7 +96,8 @@ def unpack_all_assets(source_folder : str, destination_folder : str):
 You probably have to read [Important Classes](#important-classes)
 and [Important Object Types](#important-object-types) to understand how it works.
 
-People who have slightly advanced python skills should take a look at [AssetBatchConverter.py](AssetBatchConverter.py) for a more advanced example.
+People who have slightly advanced python skills should take a look at [examples/AssetBatchConverter.py](examples/AssetBatchConverter.py) for a more advanced example.
+It can also be used as general template.
 
 
 ## Important Classes
@@ -122,7 +131,14 @@ src = io.BytesIO(b"Streamable")
 env = UnityPy.load(src)
 
 for obj in env.objects:
-    pass
+    ...
+
+# saving an edited file
+    # apply modifications to the objects
+    # don't forget to use data.save()
+    ...
+with open(dst, "wb") as f:
+    f.write(env.file.save())
 ```
 
 ### [Asset](UnityPy/files/SerializedFile.py)
@@ -153,10 +169,17 @@ All object types can be found in [UnityPy/classes](UnityPy/classes/).
 
 __Export__
 ```python
+from PIL import Image
 for obj in env.objects:
     if obj.type == "Texture2D":
+        # export texture
         data = image.read()
         data.image.save(path)
+        # edit texture
+        fp = os.path.join(replace_dir, data.name)
+        pil_img = Image.open(fp)
+        data.image = pil_img
+        data.save()
 ```
 
 ### [Sprite](UnityPy/classes/Sprite.py)
@@ -191,9 +214,15 @@ __Export__
 ```python
 for obj in env.objects:
     if obj.type == "TextAsset":
+        # export asset
         data = image.read()
         with open(path, "wb") as f:
             f.write(bytes(data.script))
+        # edit asset
+        fp = os.path.join(replace_dir, data.name)
+        with open(fp, "rb") as f:
+            data.script = f.read()
+        data.save()
 ```
 
 ### [MonoBehaviour](UnityPy/classes/MonoBehaviour.py)
@@ -213,10 +242,28 @@ import json
 
 for obj in env.objects:
     if obj.type == "MonoBehaviour":
-        data = image.read()
-        if data.type_tree:
-            with open(path, "wt", encoding="utf8") as f:
-                json.dump(data.type_tree.to_dict(), f, ensure_ascii = False, indent=4)            
+        # export
+        if obj.serialized_type.nodes:
+            # save decoded data
+            tree = obj.read_typetree()
+            fp = os.path.join(extract_dir, f"{data.name}.json"):
+            with open(fp, "wt", encoding = "utf8") as f:
+                json.dump(tree, f, ensure_ascii = False, indent = 4)
+        else:
+            # save raw relevant data (without Unity MonoBehaviour header)
+            data = obj.read()
+            fp = os.path.join(extract_dir, f"{data.name}.bin"):
+            with open(fp, "wb") as f:
+                f.write(data.raw_data)
+
+        # edit
+        if obj.serialized_type.nodes:
+            tree = obj.read_typetree()
+            # apply modifications to the data within the tree
+            obj.save_typetree(tree)
+        else:
+            with open(replace_dir, data.name) as f:
+                data.save(raw_data = f.read())
 ```
 
 ### [AudioClip](UnityPy/classes/AudioClip.py)
@@ -235,7 +282,7 @@ for name, data in clip.samples.items():
 
 ### [Mesh](UnityPy/classes/Mesh.py)
 
-* ``.export()`` - mesh exported as .obj (str) 
+* ``.export()`` - mesh exported as .obj (str)
 
 The mesh is converted into an Wavefront .obj file.
 
@@ -255,24 +302,7 @@ if obj.type == "Font":
         extension = ".ttf"
         if font.m_FontData[0:4] == b"OTTO":
             extension = ".otf"
-    
+
     with open(os.path.join(path, font.name+extension), "wb") as f:
         f.write(font.m_FontData)
 ```
-
-## Goals
-
-### WIP
-
-- [] documentation
-
-## Motivation
-
-I'm an active data-miner and noticed that unitypack has problems with new unity assets.
-The problem in unitypack isn't that easy to fix and the undocumented code is a bit hard to understand.
-That's why I tried other tools like UABE and AssetStudio. Sadly none of these tools can be used like unitypack.
-That's why I started this project.
-
-## Community
-
-### [Discord](https://discord.gg/C6txv7M)

@@ -15,7 +15,7 @@ setuptools.setup(
 	long_description_content_type="text/markdown",
 	url="https://github.com/K0lb3/UnityPy",
 	download_url="https://github.com/K0lb3/UnityPy/tarball/master",
-	keywords=['Unity', 'UnityPy', "unity3d", "unpack", "AssetStudio", 'unitypack'],
+	keywords=['python', 'unity', 'unity-asset', 'python3', 'data-minig', 'unitypack', 'assetstudio', 'unity-asset-extractor'],
 	classifiers=[
 		"License :: OSI Approved :: MIT License",
 		"Operating System :: OS Independent",
@@ -32,9 +32,13 @@ setuptools.setup(
 		"Topic :: Multimedia :: Graphics",
 	],
 	install_requires=[
-		"lz4",
-		"brotli",
+		# block compression/decompression
+		"lz4", # BundleFile block compression
+		"brotli", # WebFile compression
+		# Texture & Sprite handling
 		"Pillow",
-		"texture2ddecoder"
+		"texture2ddecoder", # texture decompression
+		# raw typetree dumping
+		"tabulate"
 	]
 )
