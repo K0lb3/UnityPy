@@ -2,9 +2,9 @@ name: Test and Publish
 
 on: [push, pull_request]
 
+
 jobs:
   deploy:
-
     strategy:
       fail-fast: false
       matrix:
@@ -25,6 +25,8 @@ jobs:
 
     runs-on: ${{ matrix.os }}
     name: ${{ matrix.os }} ${{ matrix.architecture }} - ${{ matrix.python-version }}
+    env:
+      DEPENDENCIES: lz4 brotli Pillow texture2ddecoder tabulate
 
     steps:
     - uses: actions/checkout@v2
@@ -38,7 +40,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install --upgrade wheel setuptools twine
-        pip install pytest lz4 brotli Pillow texture2ddecoder
+        pip install pytest ${{ env.DEPENDENCIES }}
     
     - name: Install module
       run: |
@@ -58,7 +60,7 @@ jobs:
       uses: RalfG/python-wheels-manylinux-build@v0.3.3-manylinux2010_x86_64
       with:
         python-versions: 'cp36-cp36m cp37-cp37m cp38-cp38 cp39-cp39'
-        build-requirements: 'lz4 brotli Pillow texture2ddecoder'
+        build-requirements: ${{ env.DEPENDENCIES }}
     
     - name: Publish wheels to PyPI
       if: success() && github.event_name == 'push'
