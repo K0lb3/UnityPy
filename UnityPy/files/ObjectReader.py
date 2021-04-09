@@ -94,10 +94,11 @@ class ObjectReader:
             # in some cases the parser doesn't read all of the object data
             # games might still require the missing data
             # so following code appends the missing data back to edited objects
-            end_pos = self.byte_start + self.byte_size
-            if self._read_until != end_pos:
-                self.reader.Position = self._read_until
-                data += self.reader.read_bytes(end_pos - self._read_until)
+            if self.type != ClassIDType.MonoBehaviour:
+                end_pos = self.byte_start + self.byte_size
+                if self._read_until != end_pos:
+                    self.reader.Position = self._read_until
+                    data += self.reader.read_bytes(end_pos - self._read_until)
         else:
             self.reset()
             data = self.reader.read(self.byte_size)

@@ -22,7 +22,7 @@ class MonoBehaviour(Behaviour):
         super().save(writer)
         save_ptr(self.m_Script, writer)
         writer.write_aligned_string(self.name)
-        writer.write(self.raw_data)
+        writer.write(raw_data)
         
         self.set_raw_data(writer.bytes)
 
