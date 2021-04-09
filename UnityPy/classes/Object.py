@@ -1,7 +1,10 @@
+from .PPtr import PPtr
 from ..enums import BuildTarget
 from ..helpers import TypeTreeHelper
 from ..streams import EndianBinaryWriter
 from ..files import ObjectReader
+import types
+
 
 class Object(object):
     type_tree: dict
@@ -29,44 +32,69 @@ class Object(object):
 
         self.reader.reset()
         if type(self) == Object:
-            self.__dict__.update(self.read_type_tree().__dict__)
+            self.read_typetree()
 
     def has_struct_member(self, name: str) -> bool:
         return self.serialized_type.m_Nodes and any(
             [x.name == name for x in self.serialized_type.m_Nodes]
         )
 
-    def dump(self) -> str:
-        self.reader.reset()
-        if getattr(self.serialized_type, "nodes", None):
-            sb = []
-            TypeTreeHelper(self.reader).read_type_string(sb, self.serialized_type.nodes)
-            return "".join(sb)
-        return ""
+    def dump_typetree(self, nodes: list = None) -> str:
+        return self.reader.dump_typetree(nodes=nodes)
 
-    def read_type_tree(self) -> dict:
-        old_pos = self.reader.Position
-        self.reader.reset()
-        if self.serialized_type.nodes:
-            self.type_tree = TypeTreeHelper(self.reader).read_value(
-                self.serialized_type.nodes, 0
-            )
-        else:
-            self.type_tree = {}
-        self.reader.Position = old_pos
-        return NodeHelper(self.type_tree, self.assets_file)
+    def dump_typetree_structure(self) -> str:
+        return self.reader.dump_typetree_structure()
+
+    def read_typetree(self, nodes: list = None) -> dict:
+        tree = self.reader.read_typetree()
+        self.type_tree = NodeHelper(tree, self.assets_file)
+        return tree
+
+    def save_typetree(self, nodes: list = None, writer: EndianBinaryWriter = None):
+        if not writer:
+            writer = EndianBinaryWriter(endian=self.reader.endian)
+
+        def class_to_dict(value):
+            if isinstance(value, list):
+                return [class_to_dict(val) for val in value]
+            elif isinstance(value, dict):
+                return {
+                    key: class_to_dict(val)
+                    for key, val in value.items()
+                }
+            elif hasattr(value, "__dict__"):
+                if isinstance(value, PPtr):
+                    return {"m_PathID": value.path_id, "m_FileID": value.file_id}
+                return {
+                    key: class_to_dict(val)
+                    for key, val in value.__dict__.items()
+                    if not isinstance(value, (types.FunctionType, types.MethodType)) and not key in ["type_tree", "assets_file"]
+                }
+            else:
+                return value
+
+        obj = class_to_dict(self if not self.type_tree else self.type_tree)
+        return self.reader.save_typetree(obj, nodes, writer)
 
     def get_raw_data(self) -> bytes:
-        self.reader.reset()
-        return self.reader.read_bytes(self.byte_size)
+        return self.reader.get_raw_data()
 
     def set_raw_data(self, data):
-        self.reader.data = data
+        self.reader.set_raw_data(data)
 
-    def save(self, writer: EndianBinaryWriter, intern_call=False):
+    def save(self, writer: EndianBinaryWriter = None, intern_call=False):
+        if not writer:
+            writer = EndianBinaryWriter(endian=self.reader.endian)
         if intern_call:
             if self.platform == BuildTarget.NoTarget:
                 writer.write_u_int(self._object_hide_flags)
+        elif self.serialized_type.nodes:
+            # save for objects WITHOUT specific save function
+            # so we have to use the typetree if it exists
+            self.save_typetree()
+        else:
+            raise NotImplementedError(
+                "There is no save function for this obj.type nor has it any typetree nodes that could be used.")
 
     def _save(self, writer):
         # the reader is actually an ObjectReader,
@@ -77,18 +105,20 @@ class Object(object):
         """
         If item not found in __dict__, read type_tree and check if it is in there.
         """
-        self.read_type_tree()
+        if item == "type_tree" or self.type_tree == None:
+            old_pos = self.reader.Position
+            return self.read_typetree()
+            self.Reader.Position = old_pos
+
         if item in self.type_tree:
             return self.type_tree[item]
+        raise KeyError()
 
-    def get(self, key, default = None):
+    def get(self, key, default=None):
         return getattr(self, key, default)
 
     def __repr__(self):
         return "<%s %s>" % (self.__class__.__name__, self.name)
-
-
-from .PPtr import PPtr
 
 
 class NodeHelper:
@@ -102,7 +132,7 @@ class NodeHelper:
             self.__class__ = PPtr
         else:
             self.__dict__ = {
-                str(key): NodeHelper(val, assets_file) for key, val in data.items()
+                key: NodeHelper(val, assets_file) for key, val in data.items()
             }
 
     def __new__(cls, data, assets_file):
@@ -133,13 +163,12 @@ class NodeHelper:
 
     def items(self):
         return self.__dict__.items()
-    
+
     def values(self):
         return self.__dict__.values()
-    
+
     def keys(self):
         return self.__dict__.keys()
 
     def __repr__(self):
         return "<NodeHelper - %s>" % self.__dict__.__repr__()
-
