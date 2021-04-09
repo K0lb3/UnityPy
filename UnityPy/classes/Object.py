@@ -110,9 +110,11 @@ class Object(object):
             return self.read_typetree()
             self.Reader.Position = old_pos
 
-        if item in self.type_tree:
-            return self.type_tree[item]
-        raise KeyError()
+        ret = getattr(self.type_tree, item, None)
+        if ret:
+            return ret
+        else:
+            raise KeyError()
 
     def get(self, key, default=None):
         return getattr(self, key, default)
