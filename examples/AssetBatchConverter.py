@@ -62,16 +62,18 @@ def extract_assets(src):
         # assets without container / internal path will be ignored for now
         if not asset.container:
             continue
-
+        # filter objects and put Texture2Ds at the end of the list
+        objs = sorted((obj for obj in asset.get_objects(
+        ) if obj.type.name in TYPES), key=lambda x: 1 if x.type == "Texture2D" else 0)
+        cobjs = sorted(((key, obj) for key, obj in asset.container.items(
+        ) if obj.type.name in TYPES), key=lambda x: 1 if x[1].type == "Texture2D" else 0)
         # check which mode we will have to use
-        num_cont = sum(1 for obj in asset.container.values()
-                       if obj.type in TYPES)
-        num_objs = sum(1 for obj in asset.objects.values()
-                       if obj.type in TYPES)
+        num_cont = sum(cobjs)
+        num_objs = len(objs)
 
         # check if container contains all important assets, if yes, just ignore the container
         if num_objs <= num_cont * 2:
-            for asset_path, obj in asset.container.items():
+            for asset_path, obj in cobjs:
                 fp = os.path.join(DST, *asset_path.split('/')
                                   [IGNOR_DIR_COUNT:])
                 export_obj(obj, fp)
@@ -85,7 +87,7 @@ def extract_assets(src):
             local_path = os.path.join(
                 DST, *occurence_count.most_common(1)[0][0].split('/')[IGNOR_DIR_COUNT:])
 
-            for obj in asset.objects.values():
+            for obj in objs:
                 if obj.path_id not in extracted:
                     extracted.extend(export_obj(
                         obj, local_path, append_name=True))
@@ -148,13 +150,13 @@ def export_obj(obj, fp: str, append_name: bool = False) -> list:
             f.write(export)
 
     # non-streamlineable types
-    if obj.type == "Sprite" and data.Width:
+    if obj.type == "Sprite":
         data.image.save(f"{fp}.png")
 
         return [obj.path_id, data.m_RD.texture.path_id, getattr(data.m_RD.alphaTexture, 'path_id', None)]
 
     elif obj.type == "Texture2D":
-        if not os.path.exists(fp) and data.Width:
+        if not os.path.exists(fp) and data.m_Width:
             # textures can have size 0.....
             data.image.save(f"{fp}.png")
 

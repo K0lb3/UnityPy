@@ -2,7 +2,9 @@ from ..files import ObjectReader
 from ..streams import EndianBinaryWriter
 from ..helpers import ImportHelper
 from .. import files
-from ..enums import FileType
+from ..enums import FileType, ClassIDType
+import os
+from .. import environment
 
 def save_ptr(obj, writer: EndianBinaryWriter):
     if isinstance(obj, PPtr):
@@ -40,10 +42,19 @@ class PPtr:
                 external_name = self.assets_file.externals[self.file_id - 1].name
                 parent = self.assets_file.parent
                 if parent is not None:
-                    if external_name not in parent.files:
-                        external_name = external_name.upper()
                     if external_name in parent.files:
                         manager = parent.files[external_name]
+                    elif external_name.upper() in parent.files:
+                        manager = parent.files[external_name.upper()]
+                    else:
+                        while not isinstance(parent, environment.Environment):
+                            parent = parent.parent
+                        if parent.path:
+                            path = parent.path
+                            files = os.listdir(path)
+                            if external_name in files:
+                                parent.load_files([os.path.join(path, external_name)])
+                                manager = parent.files[external_name]
                 else:
                     if external_name not in cached_managers:
                         typ, reader = ImportHelper.check_file_type(external_name)
@@ -52,13 +63,16 @@ class PPtr:
                     if external_name in cached_managers:
                         manager = cached_managers[external_name]
 
-
         if manager and self.path_id in manager.objects:
             self._obj = manager.objects[self.path_id]
         else:
             self._obj = None
 
         return self._obj
+
+    @property
+    def type(self):
+        return ClassIDType.UnknownType
 
     def __getattr__(self, key):
         obj = self.get_obj()
