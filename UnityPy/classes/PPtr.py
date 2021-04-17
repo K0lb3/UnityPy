@@ -70,13 +70,11 @@ class PPtr:
 
         return self._obj
 
-    @property
-    def type(self):
-        return ClassIDType.UnknownType
-
     def __getattr__(self, key):
         obj = self.get_obj()
         if obj is None:
+            if key == "type":
+                return ClassIDType.UnknownType
             raise AttributeError(key)
         return getattr(obj, key)
 
