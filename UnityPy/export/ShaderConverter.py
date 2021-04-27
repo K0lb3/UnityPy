@@ -16,7 +16,7 @@ HEADER = '''
 
 
 def export_shader(m_Shader):
-    if m_Shader.m_SubProgramBlob: # 5.3 - 5.4
+    if hasattr(m_Shader, "m_SubProgramBlob"): # 5.3 - 5.4
         decompressedBytes = CompressionHelper.decompress_lz4(
             m_Shader.m_SubProgramBlob, m_Shader.decompressedSize)
 
@@ -25,7 +25,7 @@ def export_shader(m_Shader):
 
         return HEADER + program.Export(m_Shader.m_Script.decode("utf8"))
 
-    if m_Shader.compressedBlob: # 5.5 and up
+    if hasattr(m_Shader, "compressedBlob"): # 5.5 and up
         return HEADER + ConvertSerializedShader(m_Shader)
 
     return HEADER + m_Shader.m_Script.decode("utf8")
@@ -242,7 +242,7 @@ def ConvertSerializedTagMap(m_Tags, intent: int):
         for key, value in m_Tags.tags.items():
             sb.append("\"{0}\" = \"{1}\" ".format(key, value))
         sb.append("}\n")
-    
+
     return "".join(sb)
 
 def ConvertSerializedProperties(m_PropInfo):

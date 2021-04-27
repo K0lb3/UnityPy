@@ -101,20 +101,18 @@ class Object(object):
         # the data value is written back into the asset
         self.reader.data = writer.bytes
 
-    def __getattr__(self, item):
+    def __getattr__(self, name):
         """
         If item not found in __dict__, read type_tree and check if it is in there.
         """
-        if item == "type_tree" or self.type_tree == None:
+        if name == "type_tree" or self.type_tree == None:
             old_pos = self.reader.Position
-            return self.read_typetree()
-            self.Reader.Position = old_pos
+            self.read_typetree()
+            self.reader.Position = old_pos
+            if name == "type_tree":
+                return self.type_tree
 
-        ret = getattr(self.type_tree, item, None)
-        if ret:
-            return ret
-        else:
-            raise KeyError()
+        return getattr(self.type_tree, name)
 
     def get(self, key, default=None):
         return getattr(self, key, default)
