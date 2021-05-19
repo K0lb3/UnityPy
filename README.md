@@ -150,7 +150,7 @@ All objects can be found in the ``.objects`` dict - ``{ID : object}``.
 
 The objects which have a file path can be found in the ``.container`` dict - ``{path : object}``.
 
-### [Object](UnityPy/ObjectReader.py)
+### [Object](UnityPy/classes/ObjectReader.py)
 
 Objects contain the *actual* files which, e.g. textures, text files, meshes, settings, ...
 
