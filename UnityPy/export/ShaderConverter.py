@@ -565,7 +565,7 @@ class ShaderSubProgram:
 
                 entryName = reader.read_string_to_null()
                 buff = reader.read_bytes(int(reader.Length - reader.Position))
-                sp.append(buff.decode("utf8"))
+                sb.append(buff.decode("utf8"))
             elif self.m_ProgramType == ShaderGpuProgramType.kShaderGpuProgramSPIRV:
                 # TODO SpirVShaderConverter
                 pass
