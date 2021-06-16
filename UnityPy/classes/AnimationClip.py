@@ -366,9 +366,9 @@ class StreamedClip:
 
     def ReadData(self):
         frameList = []
-        buffer = bytearray(len(self.data) * 4)
-        for i in range(len(self.data)):
-            buffer[i*4:(i+1)*4] = self.data[i].to_bytes(4, 'big')
+        buffer = b"".join(
+            val.to_bytes(4, 'big') for val in self.data
+        )
         reader = EndianBinaryReader(buffer)
         while reader.Position < reader.Length:
             frameList.append(StreamedFrame(reader))
