@@ -1,3 +1,4 @@
+from sqlalchemy import null
 from .PPtr import PPtr
 from ..enums import BuildTarget
 from ..helpers import TypeTreeHelper
@@ -129,6 +130,7 @@ class NodeHelper:
             self.file_id = data["m_FileID"]
             self.index = data.get("m_Index", -2)
             self.assets_file = assets_file
+            self._obj = None
             self.__class__ = PPtr
         else:
             self.__dict__ = {
