@@ -3,6 +3,7 @@ from ..enums import TextureFormat
 from ..export import Texture2DConverter
 from ..helpers.ResourceReader import get_resource_data
 from ..streams import EndianBinaryWriter
+from PIL import Image
 
 
 class Texture2D(Texture):
@@ -11,10 +12,10 @@ class Texture2D(Texture):
         return Texture2DConverter.get_image_from_texture2d(self)
 
     @image.setter
-    def image(self, img):
+    def image(self, img: Image):
         # img is PIL.Image / image path / opened file
         # overwrite original image data with the RGB(A) image data and sets the correct new format
-        img_data,tex_format = Texture2DConverter.image_to_texture(img)
+        img_data, tex_format = Texture2DConverter.image_to_texture(img)
         if img is None:
             raise Exception("No image provided")
 
@@ -22,13 +23,13 @@ class Texture2D(Texture):
         # width * height * channel count
         self.m_CompleteImageSize = img.width * img.height * len(img.getbands())
         self.m_TextureFormat = tex_format
-    
+
     @property
     def image_data(self):
         return self._image_data
-    
+
     @image_data.setter
-    def image_data(self, data):
+    def image_data(self, data: bytes):
         self._image_data = data
         # prefer writing to cab if possible
         if self.m_StreamData:
@@ -41,8 +42,24 @@ class Texture2D(Texture):
             else:
                 self.m_StreamData.offset = 0
                 self.m_StreamData.size = 0
-                self.m_StreamData.path = ''
+                self.m_StreamData.path = ""
 
+    def set_image(
+        img: Image, target_format: TextureFormat = None, in_cab: bool = False
+    ):
+        img_data, tex_format = Texture2DConverter.image_to_texture(img)
+        if img is None:
+            raise Exception("No image provided")
+        if in_cab:
+            self.image_data = img_data
+        else:
+            self._image_data = img_data
+            self.m_StreamData.offset = 0
+            self.m_StreamData.size = 0
+            self.m_StreamData.path = ""
+        # width * height * channel count
+        self.m_CompleteImageSize = img.width * img.height * len(img.getbands())
+        self.m_TextureFormat = tex_format
 
     def __init__(self, reader):
         super().__init__(reader=reader)
@@ -80,7 +97,7 @@ class Texture2D(Texture):
             self.m_LightmapFormat = reader.read_int()
         if version >= (3, 5):  # 3.5 and up
             self.m_ColorSpace = reader.read_int()
-        if version >= (2020,2): # 2020.2 and up
+        if version >= (2020, 2):  # 2020.2 and up
             self.m_PlatformBlob = reader.read_byte_array()
             reader.align_stream()
 
@@ -89,7 +106,7 @@ class Texture2D(Texture):
 
         if image_data_size != 0:
             self._image_data = reader.read_bytes(image_data_size)
-        
+
         self.m_StreamData = None
         if version >= (5, 3):  # 5.3 and up
             # always read the StreamingInfo for resaving
@@ -118,7 +135,7 @@ class Texture2D(Texture):
             writer.write_boolean(self.m_MipMap)
         else:
             writer.write_int(self.m_MipCount)
-        
+
         if version >= (2, 6):  # 2.6 and up
             writer.write_boolean(self.m_IsReadable)  # 2.6 and up
         if version >= (2020,):  # 2020.1 and up
@@ -140,12 +157,11 @@ class Texture2D(Texture):
             writer.write_int(self.m_LightmapFormat)
         if version >= (3, 5):  # 3.5 and up
             writer.write_int(self.m_ColorSpace)
-        if version >= (2020,2): # 2020.2 and up
+        if version >= (2020, 2):  # 2020.2 and up
             writer.write_byte_array(self.m_PlatformBlob)
             writer.align_stream()
-        
 
-        if version[:2] < (5,3):
+        if version[:2] < (5, 3):
             # version without m_StreamData
             writer.write_int(len(self.image_data))
             writer.write_bytes(self.image_data)
