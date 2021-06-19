@@ -366,7 +366,9 @@ class StreamedClip:
 
     def ReadData(self):
         frameList = []
-        buffer = self.data[0 : len(self.data) * 4]
+        buffer = b"".join(
+            val.to_bytes(4, 'big') for val in self.data
+        )
         reader = EndianBinaryReader(buffer)
         while reader.Position < reader.Length:
             frameList.append(StreamedFrame(reader))
@@ -510,26 +512,26 @@ class AnimationClipBindingConstant:
         numMappings = reader.read_int()
         self.pptrCurveMapping = [PPtr(reader) for _ in range(numMappings)]  # Object
 
-        def FindBinding(self, index):
-            curves = 0
-            for b in self.genericBindings:
-                if b.typeID == ClassIDType.Transform:  #
-                    switch = b.attribute
+    def FindBinding(self, index):
+        curves = 0
+        for b in self.genericBindings:
+            if b.typeID == ClassIDType.Transform:  #
+                switch = b.attribute
 
-                    if switch in [1, 3, 4]:
-                        # case 1: #kBindTransformPosition
-                        # case 3: #kBindTransformScale
-                        # case 4: #kBindTransformEuler
-                        curves += 3
-                    elif switch == 2:  # kBindTransformRotation
-                        curves += 4
-                    else:
-                        curves += 1
+                if switch in [1, 3, 4]:
+                    # case 1: #kBindTransformPosition
+                    # case 3: #kBindTransformScale
+                    # case 4: #kBindTransformEuler
+                    curves += 3
+                elif switch == 2:  # kBindTransformRotation
+                    curves += 4
                 else:
                     curves += 1
-                if curves > index:
-                    return b
-            return None
+            else:
+                curves += 1
+            if curves > index:
+                return b
+        return None
 
 
 class AnimationType(IntEnum):
