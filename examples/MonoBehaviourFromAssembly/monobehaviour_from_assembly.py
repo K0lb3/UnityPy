@@ -74,7 +74,7 @@ def dump_assembly_trees(dll_folder: str, out_path: str):
     # init pythonnet, so that it uses the correct .net for the generator
     pythonnet_init()
     # create generator
-    g = prepare_typetree_generator()
+    g = create_generator(dll_folder)
 
     # generate a typetree for all existing classes in the Assembly-CSharp
     # while this could also be done dynamically for each required class,
@@ -119,7 +119,7 @@ def create_generator(dll_folder: str):
     # create an instance of the Generator class
     g = Generator()
     # load the dll folder into the generator
-    g.load_folder(dll_folder)
+    g.loadFolder(dll_folder)
     return g
 
 
