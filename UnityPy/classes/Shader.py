@@ -20,9 +20,9 @@ class Shader(NamedObject):
             ]
 
             if version >= (2019, 3):  # 2019.3 and up
-                offsets = reader.read_u_int_array_array()[0]
-                compressedLengths = reader.read_u_int_array_array()[0]
-                decompressedLengths = reader.read_u_int_array_array()[0]
+                self.offsets = reader.read_u_int_array_array()[0]
+                self.compressedLengths = reader.read_u_int_array_array()[0]
+                self.decompressedLengths = reader.read_u_int_array_array()[0]
             else:
                 self.offsets = reader.read_u_int_array()
                 self.compressedLengths = reader.read_u_int_array()
