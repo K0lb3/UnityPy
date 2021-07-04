@@ -53,8 +53,9 @@ class Environment:
     def load(self, files: list):
         """Loads all files into the AssetsManager."""
         for f in files:
-            self.files[f[len(self.path):].lstrip(
-                "/\\")] = self.load_file(open(f, "rb"), self)
+            with open(f, "rb") as handle:
+                self.files[f[len(self.path):].lstrip(
+                    "/\\")] = self.load_file(handle, self)
 
     def load_file(self, stream, parent=None):
         if not parent:
