@@ -1,4 +1,5 @@
-﻿from UnityPy.streams import EndianBinaryReader, EndianBinaryWriter
+﻿from typing import Dict
+from UnityPy.streams import EndianBinaryReader, EndianBinaryWriter
 from ctypes import c_uint32
 import base64
 import tabulate
@@ -44,6 +45,9 @@ def read_typetree(nodes: list, reader: EndianBinaryReader) -> dict:
             The parsed typtree
     '''
     # reader.reset()
+    if isinstance(nodes[0], dict):
+        nodes = node_dict_to_class(nodes)
+
     obj = {}
     i = c_uint32(1)
     while i.value < len(nodes):
@@ -150,6 +154,9 @@ def read_typetree_str(sb: list, nodes: list, reader: EndianBinaryReader) -> list
             The sb given as input
     '''
     # reader.reset()
+    if isinstance(nodes[0], dict):
+        nodes = node_dict_to_class(nodes)
+
     i = c_uint32(0)
     while i.value < len(nodes):
         read_value_str(sb, nodes, reader, i)
@@ -312,7 +319,10 @@ def write_typetree(obj: dict, nodes: list, writer: EndianBinaryWriter = None) ->
     '''
     if not writer:
         writer = EndianBinaryWriter()
-
+    
+    if isinstance(nodes[0], dict):
+        nodes = node_dict_to_class(nodes)
+    
     i = c_uint32(1)
     while i.value < len(nodes):
         value = obj[nodes[i.value].name]
@@ -390,3 +400,10 @@ def write_value(value, nodes: list, writer: EndianBinaryWriter, i: c_uint32):
 
     if align:
         writer.align_stream()
+
+def node_dict_to_class(nodes: list):
+    class Fake:
+        def __init__(self, data) -> None:
+            self.__dict__ = data
+    
+    return [Fake(node) for node in nodes]

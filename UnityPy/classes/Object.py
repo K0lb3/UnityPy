@@ -46,7 +46,7 @@ class Object(object):
         return self.reader.dump_typetree_structure()
 
     def read_typetree(self, nodes: list = None) -> dict:
-        tree = self.reader.read_typetree()
+        tree = self.reader.read_typetree(nodes)
         self.type_tree = NodeHelper(tree, self.assets_file)
         return tree
 
