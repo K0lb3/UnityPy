@@ -45,7 +45,7 @@ class Texture2D(Texture):
                 self.m_StreamData.path = ""
 
     def set_image(
-        img: Image, target_format: TextureFormat = None, in_cab: bool = False
+        self, img: Image, target_format: TextureFormat = None, in_cab: bool = False
     ):
         img_data, tex_format = Texture2DConverter.image_to_texture(img)
         if img is None:
