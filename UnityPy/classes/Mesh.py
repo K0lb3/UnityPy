@@ -519,15 +519,19 @@ class Mesh(NamedObject):
             pass
 
     def ProcessData(self):
-        # Fix attribute error
-        if hasattr(self, 'm_StreamData') and self.m_StreamData and self.m_StreamData.path:
-            if self.m_VertexData.m_VertexCount > 0:
-                self.m_VertexData.m_DataSize = get_resource_data(
-                    self.m_StreamData.path,
-                    self.assets_file,
-                    self.m_StreamData.offset,
-                    self.m_StreamData.size,
-                )
+        # `m_StreamData` attribute may not exists for some assets
+        try:
+            path = self.m_StreamData.path
+        except AttributeError:
+            path = None
+        if path and self.m_VertexData.m_VertexCount > 0:
+            self.m_VertexData.m_DataSize = get_resource_data(
+                self.m_StreamData.path,
+                self.assets_file,
+                self.m_StreamData.offset,
+                self.m_StreamData.size,
+            )
+
         # Fix channel after 2018.3
         version = self.version
         if version >= (3, 5):  # 3.5 and up
