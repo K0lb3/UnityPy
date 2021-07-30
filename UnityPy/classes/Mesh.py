@@ -519,7 +519,8 @@ class Mesh(NamedObject):
             pass
 
     def ProcessData(self):
-        if self.m_StreamData and self.m_StreamData.path:
+        # Fix attribute error
+        if hasattr(self, 'm_StreamData') and self.m_StreamData and self.m_StreamData.path:
             if self.m_VertexData.m_VertexCount > 0:
                 self.m_VertexData.m_DataSize = get_resource_data(
                     self.m_StreamData.path,
