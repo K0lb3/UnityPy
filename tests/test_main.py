@@ -1,6 +1,7 @@
 import os
 import UnityPy
 from PIL import Image
+
 SAMPLES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "samples")
 
 
@@ -10,13 +11,16 @@ def test_read_single():
         for obj in env.objects:
             obj.read()
 
+
 def test_read_batch():
     env = UnityPy.load(SAMPLES)
     for obj in env.objects:
         obj.read()
 
+
 def test_texture2d():
     import UnityPy
+
     for f in os.listdir(SAMPLES):
         env = UnityPy.load(os.path.join(SAMPLES, f))
         for obj in env.objects:
@@ -29,6 +33,7 @@ def test_texture2d():
 
 def test_sprite():
     import UnityPy
+
     for f in os.listdir(SAMPLES):
         env = UnityPy.load(os.path.join(SAMPLES, f))
         for obj in env.objects:
@@ -38,12 +43,25 @@ def test_sprite():
 
 def test_audioclip():
     import UnityPy
-    import platform
+
     env = UnityPy.load(os.path.join(SAMPLES, "char_118_yuki.ab"))
     for obj in env.objects:
         if obj.type == "AudioClip":
             clip = obj.read()
-            assert(len(clip.samples) == 1)
+            assert len(clip.samples) == 1
+
+
+def test_mesh():
+    env = UnityPy.load(os.path.join(SAMPLES, "xinzexi_2_n_tex"))
+    with open(os.path.join(SAMPLES, 'xinzexi_2_n_tex_mesh'), 'rb') as f:
+        wanted = f.read()
+    for obj in env.objects:
+        if obj.type == "Mesh":
+            mesh = obj.read()
+            data = mesh.export()
+            if isinstance(data, str):
+                data = data.encode()
+            assert data == wanted
 
 
 if __name__ == "__main__":
