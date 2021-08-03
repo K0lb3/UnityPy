@@ -60,7 +60,7 @@ def test_mesh():
             mesh = obj.read()
             data = mesh.export()
             if isinstance(data, str):
-                data = data.encode()
+                data = data.encode('utf8')
             assert data == wanted
 
 
