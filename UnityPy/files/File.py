@@ -10,6 +10,7 @@ DirectoryInfo = namedtuple("DirectoryInfo", "path offset size")
 class File(object):
     name: str
     files: dict
+    cab_file: str
     is_changed: bool
     signature: str
     packer: str
@@ -19,6 +20,7 @@ class File(object):
     def __init__(self, parent=None):
         self.files = {}
         self.is_changed = False
+        self.cab_file = "CAB-UnityPy_Mod.resS"
         self.parent = parent
 
     def get_assets(self):
@@ -68,11 +70,18 @@ class File(object):
             f.flags = getattr(node, "flags", 0)
             self.files[name] = f
 
-    def get_writeable_cab(self, name: str = "CAB-UnityPy_Mod.resS"):
+    def get_writeable_cab(self, name: str = None):
         """
         Creates a new cab file in the bundle that contains the given data.
         This is usefull for asset types that use resource files.
         """
+
+        if not name:
+            name = self.cab_file
+
+        if not name:
+            return None
+
         if name in self.files:
             if isinstance(self.files[name], EndianBinaryWriter):
                 return self.files[name]

@@ -4,6 +4,7 @@ from ..export import Texture2DConverter
 from ..helpers.ResourceReader import get_resource_data
 from ..streams import EndianBinaryWriter
 from PIL import Image
+from io import BufferedIOBase, RawIOBase, IOBase
 
 
 class Texture2D(Texture):
@@ -12,21 +13,31 @@ class Texture2D(Texture):
         return Texture2DConverter.get_image_from_texture2d(self)
 
     @image.setter
-    def image(self, img: Image):
+    def image(self, img):
         # img is PIL.Image / image path / opened file
         # overwrite original image data with the RGB(A) image data and sets the correct new format
-        img_data, tex_format = Texture2DConverter.image_to_texture(img)
         if img is None:
             raise Exception("No image provided")
 
+        if (isinstance(img, str) or isinstance(img, BufferedIOBase) or
+                isinstance(img, RawIOBase) or isinstance(img, IOBase)):
+            img = Image.open(img)
+
+        img_data, tex_format = Texture2DConverter.image_to_texture2d(img)
         self.image_data = img_data
         # width * height * channel count
-        self.m_CompleteImageSize = img.width * img.height * len(img.getbands())
+        self.m_CompleteImageSize = len(self._image_data)# img.width * img.height * len(img.getbands())
         self.m_TextureFormat = tex_format
 
     @property
     def image_data(self):
         return self._image_data
+
+    def reset_streamdata(self):
+        if not self.m_StreamData: return
+        self.m_StreamData.offset = 0
+        self.m_StreamData.size = 0
+        self.m_StreamData.path = ""
 
     @image_data.setter
     def image_data(self, data: bytes):
@@ -40,25 +51,22 @@ class Texture2D(Texture):
                 self.m_StreamData.size = len(data)
                 self.m_StreamData.path = cab.path
             else:
-                self.m_StreamData.offset = 0
-                self.m_StreamData.size = 0
-                self.m_StreamData.path = ""
+                self.reset_streamdata()
 
     def set_image(
-        self, img: Image, target_format: TextureFormat = None, in_cab: bool = False
+        self, img, target_format: TextureFormat = None, in_cab: bool = False
     ):
-        img_data, tex_format = Texture2DConverter.image_to_texture(img)
         if img is None:
             raise Exception("No image provided")
+        img_data, tex_format = Texture2DConverter.image_to_texture2d(img)
+
         if in_cab:
             self.image_data = img_data
         else:
             self._image_data = img_data
-            self.m_StreamData.offset = 0
-            self.m_StreamData.size = 0
-            self.m_StreamData.path = ""
+            self.reset_streamdata()
         # width * height * channel count
-        self.m_CompleteImageSize = img.width * img.height * len(img.getbands())
+        self.m_CompleteImageSize = len(self._image_data)#img.width * img.height * len(img.getbands())
         self.m_TextureFormat = tex_format
 
     def __init__(self, reader):
