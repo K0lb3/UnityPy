@@ -54,13 +54,13 @@ def test_audioclip():
 def test_mesh():
     env = UnityPy.load(os.path.join(SAMPLES, "xinzexi_2_n_tex"))
     with open(os.path.join(SAMPLES, 'xinzexi_2_n_tex_mesh'), 'rb') as f:
-        wanted = f.read()
+        wanted = f.read().replace(b'\r', b'')
     for obj in env.objects:
         if obj.type == "Mesh":
             mesh = obj.read()
             data = mesh.export()
             if isinstance(data, str):
-                data = data.encode('utf8')
+                data = data.encode('utf8').replace(b'\r', b'')
             assert data == wanted
 
 
