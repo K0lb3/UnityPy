@@ -63,7 +63,7 @@ jobs:
         build-requirements: ${{ env.DEPENDENCIES }}
     
     - name: Publish wheels to PyPI
-      if: success() && github.event_name == 'push'
+      if: success() && github.event_name == 'push' && env.TWINE_PASSWORD != ''
       env:
         TWINE_USERNAME: __token__
         TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
