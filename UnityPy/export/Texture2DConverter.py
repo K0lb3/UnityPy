@@ -1,32 +1,28 @@
 ﻿import texture2ddecoder
 from PIL import Image
 from copy import copy
-from io import BytesIO, BufferedIOBase, RawIOBase, IOBase
+from io import BytesIO
 import struct
 from ..enums import TextureFormat, BuildTarget
 
 TF = TextureFormat
 
 
-def image_to_texture(img: Image, flip: bool = True):
+def image_to_texture2d(img: Image, flip: bool = True):
     # tex for eventually later usage of compressions
-    _image = None
-    if (isinstance(img, str) or isinstance(img, BufferedIOBase) or
-            isinstance(img, RawIOBase) or isinstance(img, IOBase)):
-        _image = Image.open(img)
-    elif isinstance(img, Image.Image):
-        _image = img
-    if _image:
-        if flip:
-            _image = _image.transpose(Image.FLIP_TOP_BOTTOM)
-    
+
+    tex_format = None
+    if flip:
+        img = img.transpose(Image.FLIP_TOP_BOTTOM)
+
     if img.mode == "RGBA":
         tex_format = TextureFormat.RGBA32
     elif img.mode == "RGB":
         tex_format = TextureFormat.RGB24
-    elif len(img.mode) == "A":
+    elif img.mode == "A":
         tex_format = TextureFormat.Alpha8
-    return _image.tobytes(), tex_format
+
+    return img.tobytes(), tex_format
 
 
 def get_image_from_texture2d(texture_2d, flip=True) -> Image:
@@ -46,15 +42,15 @@ def get_image_from_texture2d(texture_2d, flip=True) -> Image:
     texture_format = texture_2d.m_TextureFormat if isinstance(texture_2d, TextureFormat) else TextureFormat(
         texture_2d.m_TextureFormat)
     selection = CONV_TABLE[texture_format]
-    
+
     if len(selection) == 0:
         raise NotImplementedError(
             f"Not implemented texture format: {texture_format.name}"
         )
-    
+
     if texture_format in XBOX_SWAP_FORMATS:
         image_data = swap_bytes_for_xbox(image_data, texture_2d.platform)
-    
+
     if "Crunched" in texture_format.name:
         version = texture_2d.version
         if (version[0] > 2017 or (version[0] == 2017 and version[1] >= 3)  # 2017.3 and up
@@ -63,11 +59,11 @@ def get_image_from_texture2d(texture_2d, flip=True) -> Image:
             image_data = texture2ddecoder.unpack_unity_crunch(image_data)
         else:
             image_data = texture2ddecoder.unpack_crunch(image_data)
-    
+
     img = selection[0](
         image_data, texture_2d.m_Width, texture_2d.m_Height, *selection[1:]
     )
-    
+
     if img and flip:
         return img.transpose(Image.FLIP_TOP_BOTTOM)
     return img
@@ -111,7 +107,7 @@ def atc(image_data: bytes, width: int, height: int, alpha: bool) -> Image:
         image_data = texture2ddecoder.decode_atc_rgba8(image_data, width, height)
     else:
         image_data = texture2ddecoder.decode_atc_rgb4(image_data, width, height)
-    
+
     return Image.frombytes("RGBA", (width, height), image_data, "raw", "BGRA")
 
 
