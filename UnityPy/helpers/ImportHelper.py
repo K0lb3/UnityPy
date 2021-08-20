@@ -96,7 +96,7 @@ def check_file_type(input_) -> (FileType, EndianBinaryReader):
         return FileType.BundleFile, reader
     elif signature == "UnityWebData1.0":
         return FileType.WebFile, reader
-    elif signature == "PK\x03\x04\x14":
+    elif signature == "PK\x03\x04":
         return FileType.ZIP, reader
     else:
         if reader.Length < 128:

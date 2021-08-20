@@ -81,12 +81,21 @@ class Environment:
         if isinstance(value, str) and os.path.exists(value):
             buffer = open(value, "rb")
         elif isinstance(value, (bytes, bytearray)):
-            buffer = ZipFile(io.BytesIO(value))
+            buffer = io.BytesIO(value)
         elif isinstance(value, (io.BufferedReader, io.BufferedIOBase)):
             buffer = value
 
         z = ZipFile(buffer)
+        splits = {}
         for path in z.namelist():
+            
+            if path[-7:-1] == ".split":
+                name = path[:-7]
+                if name not in splits:
+                    splits[name] = []
+                splits[name].append(path)
+                continue
+
             stream = z.open(path)
             if stream._orig_file_size == 0:
                 continue
@@ -97,6 +106,22 @@ class Environment:
                     cur.files[d] = files.File(self)
                 cur = cur.files[d]
             cur.files[name] = self.load_file(stream, cur)
+        
+        # merge splits
+        for path, items in splits.items():
+            # merge data
+            data = io.BytesIO()
+            for item in items:
+                with z.open(item) as f:
+                    data.write(f.read())
+            *path, name = path.split("/")
+            cur = self
+            for d in path:
+                if d not in cur.files:
+                    cur.files[d] = files.File(self)
+                cur = cur.files[d]
+            cur.files[name] = self.load_file(data, cur)
+
         z.close()
 
     @property
