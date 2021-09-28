@@ -3,6 +3,7 @@ from ..helpers import ImportHelper
 from ..streams import EndianBinaryReader, EndianBinaryWriter
 
 from collections import namedtuple
+from os.path import basename
 
 DirectoryInfo = namedtuple("DirectoryInfo", "path offset size")
 
@@ -17,11 +18,12 @@ class File(object):
 
     # parent: File
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, name=None):
         self.files = {}
         self.is_changed = False
         self.cab_file = "CAB-UnityPy_Mod.resS"
         self.parent = parent
+        self.name = basename(name) if isinstance(name, str) else ''
 
     def get_assets(self):
         if isinstance(self, SerializedFile.SerializedFile):
@@ -33,6 +35,19 @@ class File(object):
                     yield asset
             elif isinstance(f, SerializedFile.SerializedFile):
                 yield f
+
+    def get_filtered_objects(self, obj_types=[]):
+        if len(obj_types) == 0:
+            return self.get_objects()
+        for f in self.files.values():
+            if isinstance(f, (BundleFile.BundleFile, WebFile.WebFile)):
+                for obj in f.objects:
+                    if obj.type in obj_types:
+                        yield obj
+            elif isinstance(f, SerializedFile.SerializedFile):
+                for obj in f.objects.values():
+                    if obj.type in obj_types:
+                        yield obj
 
     def get_objects(self):
         for f in self.files.values():
@@ -55,15 +70,15 @@ class File(object):
             # f._flag = getattr(node, "flags", None)  # required for save
             typ, _ = ImportHelper.check_file_type(f)
             if typ == FileType.BundleFile:
-                f = BundleFile.BundleFile(f, self)
+                f = BundleFile.BundleFile(f, self, name=name)
             elif typ == FileType.WebFile:
-                f = WebFile.WebFile(f, self)
+                f = WebFile.WebFile(f, self, name=name)
             elif typ == FileType.AssetsFile:
                 # pre-check if resource file
                 if not name.endswith((".resS", ".resource", ".config", ".xml", ".dat")):
                     # try to load the file as serialized file
                     try:
-                        f = SerializedFile.SerializedFile(f, self)
+                        f = SerializedFile.SerializedFile(f, self, name=name)
                     except ValueError:
                         pass
             # required for BundleFiles
@@ -123,8 +138,11 @@ class File(object):
         return f"<{self.__class__.__name__}>"
 
     def mark_changed(self):
+        if isinstance(self.parent, File):
+            self.parent.mark_changed()
         self.is_changed = True
 
 
 # recursive import requires the import down here
 from . import BundleFile, SerializedFile, WebFile, ObjectReader
+

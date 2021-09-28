@@ -75,7 +75,7 @@ class FileIdentifier:  # external
         writer.write_string_to_null(self.path)
 
 
-class TypeTreeNode:
+class TypeTreeNode(dict):
     type: str
     name: str
     byte_size: int
@@ -187,11 +187,16 @@ class SerializedFile(File.File):
 
     @property
     def files(self):
-        return self.objects
+        if self.objects:
+            return self.objects
+        return {}
 
-    def __init__(self, reader: EndianBinaryReader, parent=None):
-        self.is_changed = False
-        self.parent = parent
+    @files.setter
+    def files(self, value):
+        self.objects = value
+
+    def __init__(self, reader: EndianBinaryReader, parent=None, name=None):
+        super().__init__(parent=parent, name=name)
         self.reader = reader
 
         self.unity_version = "2.5.0f5"
@@ -303,11 +308,6 @@ class SerializedFile(File.File):
         version_split = re.split(r"\D", string_version)
         self.version = tuple(int(x) for x in version_split)
 
-    def mark_changed(self):
-        self.is_changed = True
-        if self.parent:
-            self.parent.mark_changed()
-
     def read_type_tree(self, type_tree):
         level_stack = [[0,1]]
         while level_stack:
@@ -316,7 +316,7 @@ class SerializedFile(File.File):
                 level_stack.pop()
             else:
                 level_stack[-1][1] -= 1
-            
+
             type_tree_node = TypeTreeNode()
             type_tree.append(type_tree_node)
             type_tree_node.level = level
@@ -338,7 +338,7 @@ class SerializedFile(File.File):
             if children_count:
                 level_stack.append([level+1, children_count])
         return type_tree
-    
+
 
     def read_type_tree_blob(self, type_tree):
         reader = self.reader
@@ -371,7 +371,7 @@ class SerializedFile(File.File):
     def get_writeable_cab(self, name: str = "CAB-UnityPy_Mod.resS"):
         """
         Creates a new cab file in the bundle that contains the given data.
-        This is usefull for asset types that use resource files. 
+        This is usefull for asset types that use resource files.
         """
         if not isinstance(self.parent, (File.BundleFile.BundleFile, File.WebFile.WebFile)):
             return None
@@ -395,7 +395,7 @@ class SerializedFile(File.File):
 
         return cab
 
-    def save(self) -> bytes:
+    def save(self, packer: str=None) -> bytes:
         # 1. header -> has to be delayed until the very end
         # 2. data -> types, objects, scripts, ...
 
@@ -607,3 +607,4 @@ def read_string(string_buffer_reader: EndianBinaryReader, value: int) -> str:
         return CommonString[offset]
 
     return str(offset)
+

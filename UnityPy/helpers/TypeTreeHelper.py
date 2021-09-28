@@ -3,7 +3,28 @@ from UnityPy.streams import EndianBinaryReader, EndianBinaryWriter
 from ctypes import c_uint32
 import base64
 import tabulate
+from ..exceptions import TypeTreeError as TypeTreeError
 
+'''
+Example Nodes:
+[{
+    "level": 0,
+    "type": "MonoBehaviour",
+    "name": "Base",
+    "meta_flag": 0
+},
+{
+    "level": 1,
+    "type": "int",
+    "name": "m_SomeNode",
+    "meta_flag": 0
+}]
+
+Example TypeTree:
+{
+    "m_SomeNode": 1
+}
+'''
 
 def get_nodes(nodes: list, index: int) -> list:
     '''Copies all nodes above the level of the node at the set index.
@@ -45,8 +66,10 @@ def read_typetree(nodes: list, reader: EndianBinaryReader) -> dict:
             The parsed typtree
     '''
     # reader.reset()
-    if isinstance(nodes[0], dict):
+    if isinstance(nodes, list) and isinstance(nodes[0], dict):
         nodes = node_dict_to_class(nodes)
+    else:
+        raise ValueError("nodes must be a list() of dict()-type elements")
 
     obj = {}
     i = c_uint32(1)
@@ -57,8 +80,8 @@ def read_typetree(nodes: list, reader: EndianBinaryReader) -> dict:
 
     readed = reader.Position - reader.byte_start
     if readed != reader.byte_size:
-        print(
-            f"Error while read type, read {readed} bytes but expected {reader.byte_size} bytes")
+        raise TypeTreeError(
+            f"Error while read type, read {readed} bytes but expected {reader.byte_size} bytes", nodes)
 
     return obj
 
@@ -154,8 +177,10 @@ def read_typetree_str(sb: list, nodes: list, reader: EndianBinaryReader) -> list
             The sb given as input
     '''
     # reader.reset()
-    if isinstance(nodes[0], dict):
+    if isinstance(nodes, list) and isinstance(nodes[0], dict):
         nodes = node_dict_to_class(nodes)
+    else:
+        raise ValueError("nodes must be a list() of dict()-type elements")
 
     i = c_uint32(0)
     while i.value < len(nodes):
@@ -164,8 +189,8 @@ def read_typetree_str(sb: list, nodes: list, reader: EndianBinaryReader) -> list
 
     readed = reader.Position - reader.byte_start
     if readed != reader.byte_size:
-        print(
-            f"Error while read type, read {readed} bytes but expected {reader.byte_size} bytes")
+        raise TypeTreeError(
+            f"Error while read type, read {readed} bytes but expected {reader.byte_size} bytes", nodes)
 
     return sb
 
@@ -319,10 +344,12 @@ def write_typetree(obj: dict, nodes: list, writer: EndianBinaryWriter = None) ->
     '''
     if not writer:
         writer = EndianBinaryWriter()
-    
-    if isinstance(nodes[0], dict):
+
+    if isinstance(nodes, list) and isinstance(nodes[0], dict):
         nodes = node_dict_to_class(nodes)
-    
+    else:
+        raise ValueError("nodes must be a list() of dict()-type elements")
+
     i = c_uint32(1)
     while i.value < len(nodes):
         value = obj[nodes[i.value].name]
@@ -401,9 +428,10 @@ def write_value(value, nodes: list, writer: EndianBinaryWriter, i: c_uint32):
     if align:
         writer.align_stream()
 
+class FakeNode:
+    def __init__(self, data) -> None:
+        self.__dict__ = data
+
 def node_dict_to_class(nodes: list):
-    class Fake:
-        def __init__(self, data) -> None:
-            self.__dict__ = data
-    
-    return [Fake(node) for node in nodes]
+    return [FakeNode(node) for node in nodes]
+

@@ -200,13 +200,12 @@ class ObjectReader:
 
     def read_typetree(self, nodes: list = None) -> dict:
         self.reset()
+        tree = {}
         if nodes:
             tree = TypeTreeHelper.read_typetree(nodes, self)
-        elif getattr(self.serialized_type, "nodes", None):
+        elif self.serialized_type.nodes:
             tree = TypeTreeHelper.read_typetree(
                 self.serialized_type.nodes, self)
-        else:
-            tree = {}
         return tree
 
     def save_typetree(self, tree: dict, nodes: list = None, writer: EndianBinaryWriter = None):
@@ -218,7 +217,7 @@ class ObjectReader:
             TypeTreeHelper.write_typetree(
                 tree, self.serialized_type.nodes, writer)
         else:
-            raise ValueError("There are no typetree nodes for this object.")
+            raise ValueError("There are no TypeTree nodes for this object.")
         data = writer.bytes
         self.set_raw_data(data)
         return data
@@ -232,3 +231,6 @@ class ObjectReader:
 
     def set_raw_data(self, data):
         self.data = data
+        if self.assets_file:
+            self.assets_file.mark_changed()
+

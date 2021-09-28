@@ -44,7 +44,7 @@ jobs:
     
     - name: Install module
       run: |
-        python setup.py install
+        pip install . --use-feature=in-tree-build
     
     - name: Test with pytest
       run: |
@@ -69,3 +69,4 @@ jobs:
         TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
       run: |
         twine upload dist/* --skip-existing
+
