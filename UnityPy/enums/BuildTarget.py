@@ -39,12 +39,31 @@ class BuildTarget(IntEnum):
     Switch = 38
     NoTarget = -2
 
-    @classmethod
-    def _missing_(cls, value):
-        ret = BuildTarget.UnknownPlatform
-        ret._value = value
-        return ret
+    def __str__(self):
+        return self.name
 
-    @property
-    def value(self):
-        return getattr(self, "_value", self._value_)
+    def __format__(self, fmt):
+        return self.name
+
+    def __eq__(self, value):
+        if isinstance(value, str):
+            return self.name == value
+        elif isinstance(value, BuildTarget):
+            return self._value_ == value._value_
+        elif isinstance(value, int):
+            if self.has_value(value):
+                return self._value_ == value
+            return False
+        return self._value_ == value
+
+    @classmethod
+    def has_value(cls, value):
+        return value in cls._value2member_map_ 
+     
+
+def makeBuildTarget(_bt):
+    if isinstance(_bt, BuildTarget):
+        return _bt
+    elif BuildTarget.has_value(_bt):
+        return BuildTarget(_bt)
+    return _bt

@@ -3,7 +3,7 @@ from enum import IntEnum
 
 from .NamedObject import NamedObject
 from .PPtr import PPtr
-from ..enums import ClassIDType
+from ..enums import ClassIDType, makeClassID
 from ..math import Quaternion, Vector3
 from ..streams import EndianBinaryReader
 
@@ -225,7 +225,7 @@ class FloatCurve:
         self.curve = AnimationCurve(reader, reader.read_float)  # Float
         self.attribute = reader.read_aligned_string()
         self.path = reader.read_aligned_string()
-        self.classID = ClassIDType(reader.read_int())
+        self.classID = makeClassID(reader.read_int())
         self.script = PPtr(reader)  # MonoScript
 
 
@@ -496,9 +496,9 @@ class GenericBinding:
         self.attribute = reader.read_u_int()
         self.script = PPtr(reader)  # Object
         if version >= (5, 6):  # 5.6 and up
-            self.typeID = ClassIDType(reader.read_int())
+            self.typeID = makeClassID(reader.read_int())
         else:
-            self.typeID = ClassIDType(reader.read_u_short())
+            self.typeID = makeClassID(reader.read_u_short())
         self.customType = reader.read_byte()
         self.isPPtrCurve = reader.read_byte()
         reader.align_stream()

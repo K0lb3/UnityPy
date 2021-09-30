@@ -3,7 +3,7 @@ import re
 import sys
 
 from . import File, ObjectReader
-from ..enums import BuildTarget, ClassIDType, CommonString
+from ..enums import BuildTarget, makeBuildTarget, ClassIDType, CommonString
 from ..streams import EndianBinaryReader, EndianBinaryWriter
 
 RECURSION_LIMIT = sys.getrecursionlimit()
@@ -237,7 +237,7 @@ class SerializedFile(File.File):
 
         if header.version >= 8:
             self._m_target_platform = reader.read_int()
-            self.target_platform = BuildTarget(self._m_target_platform)
+            self.target_platform = makeBuildTarget(self._m_target_platform)
 
         if header.version >= 13:
             self._enable_type_tree = reader.read_boolean()

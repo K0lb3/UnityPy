@@ -1,4 +1,4 @@
-from ..enums import ClassIDType
+from ..enums import ClassIDType, makeClassID
 from . import SerializedFile
 from .. import classes
 from ..streams import EndianBinaryReader, EndianBinaryWriter
@@ -67,7 +67,7 @@ class ObjectReader:
             self.serialized_type = typ
             self.class_id = typ.class_id
 
-        self.type = ClassIDType(self.class_id)
+        self.type = makeClassID(self.class_id)
 
         if header.version < 11:
             self.is_destroyed = reader.read_u_short()
