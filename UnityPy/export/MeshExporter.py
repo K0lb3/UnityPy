@@ -1,3 +1,4 @@
+import re
 def export_mesh(m_Mesh):
     if m_Mesh.m_VertexCount <= 0:
         return False
@@ -55,5 +56,5 @@ def export_mesh(m_Mesh):
             )
         sum = end
     # endregion
-    sb = "".join(sb).replace("NaN", "0").replace("e", "E")
+    sb = re.sub(r"(\d+)e-(\d+)", r"\1E-\2", "".join(sb).replace("NaN", "0"))
     return sb
