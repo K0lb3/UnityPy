@@ -16,6 +16,7 @@ class Environment:
     def __init__(self, *args):
         self.files = {}
         self.path = "."
+        self.opened = None
 
         if args:
             for arg in args:
@@ -53,8 +54,12 @@ class Environment:
     def load(self, files: list):
         """Loads all files into the AssetsManager."""
         for f in files:
+            self.opened = open(f, 'rb')
             self.files[f[len(self.path):].lstrip(
-                "/\\")] = self.load_file(open(f, "rb"), self)
+                "/\\")] = self.load_file(self.opened, self)
+
+    def close(self):
+        self.opened.close()
 
     def load_file(self, stream, parent=None):
         if not parent:
