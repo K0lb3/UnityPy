@@ -176,6 +176,10 @@ class EndianBinaryReader:
         """
         return self.BaseOffset + self.Position
 
+    def read_the_rest(self, obj_start, obj_size):
+        """ Returns the rest of the current reader bytes."""
+        return self.read_bytes(obj_size - (self.Position - obj_start))
+
 
 class EndianBinaryReader_Memoryview(EndianBinaryReader):
     view: memoryview
@@ -241,3 +245,4 @@ class EndianBinaryReader_Streamable(EndianBinaryReader):
         if not length:
             return b""
         return self.stream.read(length)
+

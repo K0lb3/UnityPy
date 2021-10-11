@@ -16,6 +16,7 @@ class Environment:
     def __init__(self, *args):
         self.files = {}
         self.path = "."
+        self.out_path = os.path.join(os.getcwd(), "output")
 
         if args:
             for arg in args:
@@ -62,18 +63,19 @@ class Environment:
         typ, reader = ImportHelper.check_file_type(stream)
         try:
             if typ == FileType.AssetsFile:
-                return files.SerializedFile(reader, parent)
+                return files.SerializedFile(reader, parent, name=stream.name)
             elif typ == FileType.BundleFile:
-                return files.BundleFile(reader, parent)
+                return files.BundleFile(reader, parent, name=stream.name)
             elif typ == FileType.WebFile:
-                return files.WebFile(reader, parent)
+                return files.WebFile(reader, parent, name=stream.name)
             elif typ == FileType.ZIP:
                 self.load_zip_file(stream)
             elif typ == FileType.ResourceFile:
                 return EndianBinaryReader(stream)
-        except:
+        except Exception as e:
             # just to be sure
             # cuz the SerializedFile detection isn't perfect
+            print("Error loading, reverting to EndianBinaryReader:\n", e.message)
             return EndianBinaryReader(stream)
 
     def load_zip_file(self, value):
@@ -88,7 +90,7 @@ class Environment:
         z = ZipFile(buffer)
         splits = {}
         for path in z.namelist():
-            
+
             if path[-7:-1] == ".split":
                 name = path[:-7]
                 if name not in splits:
@@ -106,7 +108,7 @@ class Environment:
                     cur.files[d] = files.File(self)
                 cur = cur.files[d]
             cur.files[name] = self.load_file(stream, cur)
-        
+
         # merge splits
         for path, items in splits.items():
             # merge data
@@ -123,6 +125,16 @@ class Environment:
             cur.files[name] = self.load_file(data, cur)
 
         z.close()
+
+    def save(self, pack="none"):
+        """ Saves all changed assets.
+            Mark assets as changed using `.mark_changed()`.
+            pack = "none" (default) or "lz4"
+        """
+        for f in self.files:
+            if self.files[f].is_changed:
+                with open(os.path.join(self.out_path, os.path.basename(f)), 'wb') as out:
+                    out.write(self.files[f].save(packer=pack))
 
     @property
     def objects(self):
@@ -167,3 +179,4 @@ class Environment:
 
     def get(self, key, default=None):
         return getattr(self, key, default)
+

@@ -10,10 +10,10 @@ class WebFile(File.File):
     files -- list of all files in the WebFile
     """
     
-    def __init__(self, reader: EndianBinaryReader, parent: File):
+    def __init__(self, reader: EndianBinaryReader, parent: File, name=None):
         """Constructor Method
         """
-        super().__init__(parent=parent)
+        super().__init__(parent=parent, name=name)
         
         # check compression
         magic = reader.read_bytes(2)
@@ -114,3 +114,4 @@ class WebFile(File.File):
             return CompressionHelper.compress_brotli(writer.bytes)
         else:
             return writer.bytes
+

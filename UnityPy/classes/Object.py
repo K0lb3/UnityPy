@@ -4,7 +4,7 @@ from ..helpers import TypeTreeHelper
 from ..streams import EndianBinaryWriter
 from ..files import ObjectReader
 import types
-
+from ..exceptions import TypeTreeError as TypeTreeError
 
 class Object(object):
     type_tree: dict
@@ -46,7 +46,11 @@ class Object(object):
         return self.reader.dump_typetree_structure()
 
     def read_typetree(self, nodes: list = None) -> dict:
-        tree = self.reader.read_typetree(nodes)
+        try:
+            tree = self.reader.read_typetree(nodes)
+        except TypeTreeError as e:
+            print("Failed to read TypeTree:\n", e.message)
+            return {}
         self.type_tree = NodeHelper(tree, self.assets_file)
         return tree
 
@@ -173,3 +177,4 @@ class NodeHelper:
 
     def __repr__(self):
         return "<NodeHelper - %s>" % self.__dict__.__repr__()
+
