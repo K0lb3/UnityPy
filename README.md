@@ -17,6 +17,11 @@ So far following obj types can be edited:
 If you need advice or if you want to talk about (game) data-mining,
 feel free to join the [UnityPy Discord](https://discord.gg/C6txv7M).
 
+
+If you're making an income by using UnityPy,
+please donate a small part to it to a charitable cause of your choice or sponsor this project with a small amount.
+
+
 1. [Installation](#installation)
 2. [Example](#example)
 3. [Important Classes](#important-classes)
