@@ -5,6 +5,7 @@ import sys
 from . import File, ObjectReader
 from ..enums import BuildTarget, ClassIDType, CommonString
 from ..streams import EndianBinaryReader, EndianBinaryWriter
+from ..helpers.TypeTreeHelper import TypeTreeNode
 
 RECURSION_LIMIT = sys.getrecursionlimit()
 
@@ -75,22 +76,6 @@ class FileIdentifier:  # external
         writer.write_string_to_null(self.path)
 
 
-class TypeTreeNode(dict):
-    type: str
-    name: str
-    byte_size: int
-    index: int
-    is_array: int
-    version: int
-    meta_flag: int
-    level: int
-    type_str_offset: int
-    name_str_offset: int
-
-    def __repr__(self):
-        return f"<TypeTreeNode({self.level} {self.type} {self.name})>"
-
-
 class BuildType:
     build_type: str
 
@@ -126,7 +111,7 @@ class SerializedType:
 
         if version >= 13:
             if (version < 16 and self.class_id < 0) or (
-                    version >= 16 and self.class_id == 114
+                version >= 16 and self.class_id == 114
             ):
                 self.script_id = reader.read_bytes(16)  # Hash128
             self.old_type_hash = reader.read_bytes(16)  # Hash128
@@ -134,8 +119,7 @@ class SerializedType:
         if serialized_file._enable_type_tree:
             type_tree = []
             if version >= 12 or version == 10:
-                self.string_data = serialized_file.read_type_tree_blob(
-                    type_tree)
+                self.string_data = serialized_file.read_type_tree_blob(type_tree)
             else:
                 serialized_file.read_type_tree(type_tree)
 
@@ -156,15 +140,14 @@ class SerializedType:
 
         if version >= 13:
             if (version < 16 and self.class_id < 0) or (
-                    version >= 16 and self.class_id == 114
+                version >= 16 and self.class_id == 114
             ):
                 writer.write_bytes(self.script_id)  # Hash128
             writer.write_bytes(self.old_type_hash)  # Hash128
 
         if serialized_file._enable_type_tree:
             if version >= 12 or version == 10:
-                serialized_file.save_type_tree5(
-                    self.nodes, writer, self.string_data)
+                serialized_file.save_type_tree5(self.nodes, writer, self.string_data)
             else:
                 serialized_file.save_type_tree(self.nodes, writer)
 
@@ -309,7 +292,7 @@ class SerializedFile(File.File):
         self.version = tuple(int(x) for x in version_split)
 
     def read_type_tree(self, type_tree):
-        level_stack = [[0,1]]
+        level_stack = [[0, 1]]
         while level_stack:
             level, count = level_stack[-1]
             if count == 1:
@@ -336,9 +319,8 @@ class SerializedFile(File.File):
 
             children_count = self.reader.read_int()
             if children_count:
-                level_stack.append([level+1, children_count])
+                level_stack.append([level + 1, children_count])
         return type_tree
-
 
     def read_type_tree_blob(self, type_tree):
         reader = self.reader
@@ -361,7 +343,8 @@ class SerializedFile(File.File):
                 node.ref_type_hash = reader.read_u_long()
 
         string_buffer_reader = EndianBinaryReader(
-            reader.read(string_buffer_size), reader.endian)
+            reader.read(string_buffer_size), reader.endian
+        )
         for node in type_tree:
             node.type = read_string(string_buffer_reader, node.type_str_offset)
             node.name = read_string(string_buffer_reader, node.name_str_offset)
@@ -373,7 +356,9 @@ class SerializedFile(File.File):
         Creates a new cab file in the bundle that contains the given data.
         This is usefull for asset types that use resource files.
         """
-        if not isinstance(self.parent, (File.BundleFile.BundleFile, File.WebFile.WebFile)):
+        if not isinstance(
+            self.parent, (File.BundleFile.BundleFile, File.WebFile.WebFile)
+        ):
             return None
         cab = self.parent.get_writeable_cab(name)
 
@@ -382,20 +367,20 @@ class SerializedFile(File.File):
             # register as external
             class FileIdentifierFake:
                 pass
+
             file_identifier = FileIdentifierFake()
             file_identifier.__class__ = FileIdentifier
             file_identifier.temp_empty = ""
             import uuid
+
             file_identifier.guid = uuid.uuid1().urn[-16:].encode("ascii")
             file_identifier.path = cab.path
             file_identifier.type = 0
-            self.externals.append(
-                file_identifier
-            )
+            self.externals.append(file_identifier)
 
         return cab
 
-    def save(self, packer: str=None) -> bytes:
+    def save(self, packer: str = None) -> bytes:
         # 1. header -> has to be delayed until the very end
         # 2. data -> types, objects, scripts, ...
 
@@ -499,10 +484,10 @@ class SerializedFile(File.File):
         return writer.bytes
 
     def save_serialized_type(
-            self,
-            typ: SerializedType,
-            header: SerializedFileHeader,
-            writer: EndianBinaryWriter,
+        self,
+        typ: SerializedType,
+        header: SerializedFileHeader,
+        writer: EndianBinaryWriter,
     ):
         writer.write_int(typ.class_id)
 
@@ -514,7 +499,7 @@ class SerializedFile(File.File):
 
         if header.version >= 13:
             if (header.version < 16 and typ.class_id < 0) or (
-                    header.version >= 16 and typ.class_id == 114
+                header.version >= 16 and typ.class_id == 114
             ):
                 writer.write_bytes(typ.script_id)  # Hash128
             writer.write_bytes(typ.old_type_hash)  # Hash128
@@ -543,7 +528,7 @@ class SerializedFile(File.File):
 
             # calc children count
             children_count = 0
-            for node2 in nodes[i + 1:]:
+            for node2 in nodes[i + 1 :]:
                 if node2.level == node.level:
                     break
                 if node2.level == node.level - 1:
