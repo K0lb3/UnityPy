@@ -60,7 +60,7 @@ jobs:
       uses: RalfG/python-wheels-manylinux-build@v0.3.4-manylinux2010_x86_64
       with:
         python-versions: 'cp36-cp36m cp37-cp37m cp38-cp38 cp39-cp39'
-        system-packages: 'jpeg-dev zlib-dev'
+        system-packages: 'jpeg-devel zlib-devel'
         build-requirements: ${{ env.DEPENDENCIES }}
     
     - name: Publish wheels to PyPI
