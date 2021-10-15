@@ -339,7 +339,7 @@ class SerializedFile(File.File):
             node.index = reader.read_int()
             node.meta_flag = reader.read_int()
 
-            if self.header.version > 19:
+            if self.header.version >= 19:
                 node.ref_type_hash = reader.read_u_long()
 
         string_buffer_reader = EndianBinaryReader(
