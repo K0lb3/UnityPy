@@ -14,8 +14,8 @@ def export_mesh(m_Mesh):
         c = 4
 
     for v in range(int(m_Mesh.m_VertexCount)):
-        sb.append("v {0} {1} {2}\r\n".format(
-            -m_Mesh.m_Vertices[v * c], m_Mesh.m_Vertices[v * c + 1], m_Mesh.m_Vertices[v * c + 2]))
+        sb.append("v {0:.7G} {1:.7G} {2:.7G}\r\n".format(
+            -m_Mesh.m_Vertices[v * c], m_Mesh.m_Vertices[v * c + 1], m_Mesh.m_Vertices[v * c + 2]).replace("nan","0"))
     # endregion
 
     # region UV
@@ -26,8 +26,8 @@ def export_mesh(m_Mesh):
             c = 3
 
         for v in range(int(m_Mesh.m_VertexCount)):
-            sb.append("vt {0} {1}\r\n".format(
-                m_Mesh.m_UV0[v * c], m_Mesh.m_UV0[v * c + 1]))
+            sb.append("vt {0:.7G} {1:.7G}\r\n".format(
+                m_Mesh.m_UV0[v * c], m_Mesh.m_UV0[v * c + 1]).replace("nan","0"))
     # endregion
 
     # region Normals
@@ -38,8 +38,8 @@ def export_mesh(m_Mesh):
             c = 4
 
         for v in range(int(m_Mesh.m_VertexCount)):
-            sb.append("vn {0} {1} {2}\r\n".format(
-                -m_Mesh.m_Normals[v * c], m_Mesh.m_Normals[v * c + 1], m_Mesh.m_Normals[v * c + 2]))
+            sb.append("vn {0:.7G} {1:.7G} {2:.7G}\r\n".format(
+                -m_Mesh.m_Normals[v * c], m_Mesh.m_Normals[v * c + 1], m_Mesh.m_Normals[v * c + 2]).replace("nan","0"))
     # endregion
 
     # region Face
@@ -56,5 +56,4 @@ def export_mesh(m_Mesh):
             )
         sum = end
     # endregion
-    sb = re.sub(r"(\d+)e-(\d+)", r"\1E-\2", "".join(sb).replace("NaN", "0"))
-    return sb
+    return "".join(sb)
