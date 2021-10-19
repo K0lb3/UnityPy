@@ -14,10 +14,11 @@ jobs:
           "windows-latest"
         ]
         python-version: [
+          #"3.10", not yet available on ubuntu
           "3.9",
           "3.8",
           "3.7",
-          "3.6",
+          #"3.6" not available anymore on macOS
         ]
         architecture: ["x86", "x64"]
     
@@ -26,7 +27,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     name: ${{ matrix.os }} ${{ matrix.architecture }} - ${{ matrix.python-version }}
     env:
-      DEPENDENCIES: lz4 brotli Pillow texture2ddecoder tabulate
+      DEPENDENCIES: lz4 brotli Pillow texture2ddecoder tabulate etcpak
 
     steps:
     - uses: actions/checkout@v2
@@ -55,16 +56,17 @@ jobs:
       run: |
         python setup.py sdist bdist_wheel
 
-    - name: Build manylinux Python wheels
-      if: success() && runner.os == 'Linux' && github.event_name == 'push'
-      uses: RalfG/python-wheels-manylinux-build@v0.3.4-manylinux2010_x86_64
-      with:
-        python-versions: 'cp36-cp36m cp37-cp37m cp38-cp38 cp39-cp39'
-        system-packages: 'jpeg-devel zlib-devel'
-        build-requirements: ${{ env.DEPENDENCIES }}
+#    TODO - fix missing PIL components
+#    - name: Build manylinux Python wheels
+#      if: success() && runner.os == 'Linux' && github.event_name == 'push'
+#      uses: RalfG/python-wheels-manylinux-build@v0.3.4-manylinux2010_x86_64
+#      with:
+#        python-versions: 'cp36-cp36m cp37-cp37m cp38-cp38 cp39-cp39'
+#        system-packages: 'jpeg-devel zlib-devel'
+#        build-requirements: ${{ env.DEPENDENCIES }}
     
     - name: Publish wheels to PyPI
-      if: success() && github.event_name == 'push' && env.TWINE_PASSWORD != ''
+      if: success() && github.event_name == 'push' && env.TWINE_PASSWORD != '' && runner.os != 'Linux' # TODO - remove != Linux once manylinux is fixed
       env:
         TWINE_USERNAME: __token__
         TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
