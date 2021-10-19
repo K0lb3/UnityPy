@@ -38,6 +38,7 @@ setuptools.setup(
 		# Texture & Sprite handling
 		"Pillow",
 		"texture2ddecoder", # texture decompression
+		"etcpak", # ETC & DXT compression
 		# raw typetree dumping
 		"tabulate"
 	]
