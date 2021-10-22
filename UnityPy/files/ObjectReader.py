@@ -96,7 +96,7 @@ class ObjectReader:
             # so following code appends the missing data back to edited objects
             if self.type != ClassIDType.MonoBehaviour:
                 end_pos = self.byte_start + self.byte_size
-                if self._read_until != end_pos:
+                if self._read_until and self._read_until != end_pos:
                     self.reader.Position = self._read_until
                     data += self.reader.read_bytes(end_pos - self._read_until)
         else:
