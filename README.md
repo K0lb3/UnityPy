@@ -69,7 +69,7 @@ def unpack_all_assets(source_folder : str, destination_folder : str):
             # iterate over internal objects
             for obj in env.objects:
                 # process specific object types
-                if obj.type in ["Texture2D", "Sprite"]:
+                if obj.type.name in ["Texture2D", "Sprite"]:
                     # parse the object data
                     data = obj.read()
 
@@ -86,7 +86,7 @@ def unpack_all_assets(source_folder : str, destination_folder : str):
 
             # alternative way which keeps the original path
             for path,obj in env.container.items():
-                if obj.type in ["Texture2D", "Sprite"]:
+                if obj.type.name in ["Texture2D", "Sprite"]:
                     data = obj.read()
                     # create dest based on original path
                     dest = os.path.join(destination_folder, *path.split("/"))
@@ -176,7 +176,7 @@ __Export__
 ```python
 from PIL import Image
 for obj in env.objects:
-    if obj.type == "Texture2D":
+    if obj.type.name == "Texture2D":
         # export texture
         data = image.read()
         data.image.save(path)
@@ -200,7 +200,7 @@ Unlike most other extractors (including AssetStudio) UnityPy merges those two im
 __Export__
 ```python
 for obj in env.objects:
-    if obj.type == "Sprite":
+    if obj.type.name == "Sprite":
         data = image.read()
         data.image.save(path)
 ```
@@ -218,7 +218,7 @@ Some games save binary data as TextFile, so it's usually better to use ``.script
 __Export__
 ```python
 for obj in env.objects:
-    if obj.type == "TextAsset":
+    if obj.type.name == "TextAsset":
         # export asset
         data = image.read()
         with open(path, "wb") as f:
@@ -246,7 +246,7 @@ __Export__
 import json
 
 for obj in env.objects:
-    if obj.type == "MonoBehaviour":
+    if obj.type.name == "MonoBehaviour":
         # export
         if obj.serialized_type.nodes:
             # save decoded data
@@ -301,7 +301,7 @@ with open(f"{mesh.name}.obj", "wt", newline = "") as f:
 ### [Font](UnityPy/classes/Font.py)
 
 ```python
-if obj.type == "Font":
+if obj.type.name == "Font":
     font : Font = obj.read()
     if font.m_FontData:
         extension = ".ttf"
