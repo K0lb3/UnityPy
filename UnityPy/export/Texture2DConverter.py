@@ -43,9 +43,10 @@ def image_to_texture2d(img: Image, target_texture_format: TF, flip: bool = True)
         tex_format = TF.ETC2_RGBA8
     # A
     elif target_texture_format == TF.Alpha8:
-        enc_img = Image.tobytes("raw", "A")
+        enc_img = img.tobytes("raw", "A")
         tex_format = TF.Alpha8
-    # R
+    # R - should probably be moerged into #A, as pure R is used as Alpha
+    # but need test data for this first
     elif target_texture_format in [
         TF.R8,
         TF.R16,
@@ -54,7 +55,7 @@ def image_to_texture2d(img: Image, target_texture_format: TF, flip: bool = True)
         TF.EAC_R,
         TF.EAC_R_SIGNED,
     ]:
-        enc_img = Image.tobytes("raw", "R")
+        enc_img = img.tobytes("raw", "R")
         tex_format = TF.R8
     # RGBA
     elif target_texture_format in [
@@ -65,7 +66,7 @@ def image_to_texture2d(img: Image, target_texture_format: TF, flip: bool = True)
         TF.PVRTC_RGB4,
         TF.ATC_RGB4,
     ]:
-        enc_img = Image.tobytes("raw", "RGB")
+        enc_img = img.tobytes("raw", "RGB")
         tex_format = TF.RGB24
     # everything else defaulted to RGBA
     else:
