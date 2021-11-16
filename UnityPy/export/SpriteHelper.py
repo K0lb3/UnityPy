@@ -3,6 +3,7 @@ from enum import IntEnum
 from PIL import Image, ImageDraw
 
 from .Texture2DConverter import get_image_from_texture2d
+from ..enums import ClassIDType
 from ..streams import EndianBinaryReader
 
 
@@ -21,7 +22,7 @@ class SpritePackingMode(IntEnum):
 
 
 def get_image(sprite, texture, alpha_texture) -> Image:
-    if alpha_texture and getattr(alpha_texture, "type", "") == "Texture2D":
+    if alpha_texture and getattr(alpha_texture, "type", "") == ClassIDType.Texture2D:
         cache_id = (texture.path_id, alpha_texture.path_id)
         if cache_id not in sprite.assets_file._cache:
             original_image = get_image_from_texture2d(texture.read(), False)
@@ -45,7 +46,7 @@ def get_image_from_sprite(m_Sprite) -> Image:
     elif m_Sprite.m_AtlasTags:
         # looks like the direct pointer is empty, let's try to find the Atlas via its name
         for obj in m_Sprite.assets_file.objects.values():
-            if obj.type == "SpriteAtlas":
+            if obj.type == ClassIDType.SpriteAtlas:
                 atlas = obj.read()
                 if atlas.name == m_Sprite.m_AtlasTags[0]:
                     break
