@@ -22,7 +22,7 @@ class SpritePackingMode(IntEnum):
 
 
 def get_image(sprite, texture, alpha_texture) -> Image:
-    if alpha_texture and getattr(alpha_texture, "type", "") == ClassIDType.Texture2D:
+    if alpha_texture and getattr(alpha_texture, "type", ClassIDType.UnknownType) == ClassIDType.Texture2D:
         cache_id = (texture.path_id, alpha_texture.path_id)
         if cache_id not in sprite.assets_file._cache:
             original_image = get_image_from_texture2d(texture.read(), False)
