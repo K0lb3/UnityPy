@@ -50,7 +50,7 @@ class Object(object):
         try:
             tree = self.reader.read_typetree(nodes)
         except TypeTreeError as e:
-            print("Failed to read TypeTree:\n", e.message)
+            print("Failed to read TypeTree:\n", e)
             return {}
         self.type_tree = NodeHelper(tree, self.assets_file)
         return tree
