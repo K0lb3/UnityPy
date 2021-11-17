@@ -81,7 +81,7 @@ class Environment:
         except Exception as e:
             # just to be sure
             # cuz the SerializedFile detection isn't perfect
-            print("Error loading, reverting to EndianBinaryReader:\n", e.message)
+            print("Error loading, reverting to EndianBinaryReader:\n", e)
             return EndianBinaryReader(stream)
 
     def load_zip_file(self, value):
