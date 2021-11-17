@@ -14,7 +14,7 @@ class MonoBehaviour(Behaviour):
             try:
                 self.read_typetree()
             except TypeTreeError as e:
-                print("Failed to read TypeTree:\n", e.message)
+                print("Failed to read TypeTree:\n", e)
                 self.assets_file._enable_type_tree = False
 
     def save(self, writer: EndianBinaryWriter = None, raw_data: bytes = None):
