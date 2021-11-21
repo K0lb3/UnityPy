@@ -12,10 +12,12 @@ from .files import SerializedFile
 
 class Environment:
     files: dict
+    cabs: dict
     path: str
 
     def __init__(self, *args):
         self.files = {}
+        self.cabs = {}
         self.path = "."
         self.out_path = os.path.join(os.getcwd(), "output")
 
@@ -145,7 +147,7 @@ class Environment:
                     out.write(self.files[f].save(packer=pack))
 
     @property
-    def objects(self):
+    def objects(self) -> list:
         def search(item):
             ret = []
             if not isinstance(item, Environment) and getattr(item, "objects", None):
@@ -187,6 +189,12 @@ class Environment:
 
         return gen_all_asset_files(self)
 
-    def get(self, key, default=None):
+    def get(self, key: str, default=None):
         return getattr(self, key, default)
+
+    def register_cab(self, name: str, item: object) -> None:
+        self.cabs[name.lower()] = item
+
+    def get_cab(self, name: str) -> object:
+        return self.cabs.get(name.lower(), None)
 

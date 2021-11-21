@@ -39,29 +39,34 @@ class PPtr:
 
         elif self.file_id > 0 and self.file_id - 1 < len(self.assets_file.externals):
             if self.index == -2:
+                environment = self.assets_file.environment
                 external_name = self.assets_file.externals[self.file_id - 1].name
-                parent = self.assets_file.parent
-                if parent is not None:
-                    if external_name in parent.files:
-                        manager = parent.files[external_name]
-                    elif external_name.upper() in parent.files:
-                        manager = parent.files[external_name.upper()]
-                    else:
-                        while not isinstance(parent, environment.Environment):
-                            parent = parent.parent
-                        if parent.path:
-                            path = parent.path
-                            files = os.listdir(path)
-                            if external_name in files:
-                                parent.load_files([os.path.join(path, external_name)])
-                                manager = parent.files[external_name]
-                else:
-                    if external_name not in cached_managers:
-                        typ, reader = ImportHelper.check_file_type(external_name)
-                        if typ == FileType.AssetsFile:
-                            cached_managers[external_name] = files.SerializedFile(reader)
-                    if external_name in cached_managers:
-                        manager = cached_managers[external_name]
+                # try to find it in the already registered cabs
+                manager = environment.get_cab(external_name)
+                
+                if not manager:
+                    # guess we have to try to find it as file then
+                    path = environment.path
+                    if path:
+                        basename = os.path.basename(external_name)
+                        possible_names = [basename, basename.lower(), basename.upper()]
+                        for root, dirs, files in os.walk(path):
+                            for name in files:
+                                if name in possible_names:
+                                    manager = environment.load_file(os.path.join(root, name))
+                                    break
+                            else:
+                                # else is reached if the previous loop didn't break
+                                continue
+                            break
+                        print(external_name, "not found")
+                # else:
+                #     if external_name not in cached_managers:
+                #         typ, reader = ImportHelper.check_file_type(external_name)
+                #         if typ == FileType.AssetsFile:
+                #             cached_managers[external_name] = files.SerializedFile(reader)
+                #     if external_name in cached_managers:
+                #         manager = cached_managers[external_name]
 
         if manager and self.path_id in manager.objects:
             self._obj = manager.objects[self.path_id]

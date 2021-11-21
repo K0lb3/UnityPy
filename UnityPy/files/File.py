@@ -17,13 +17,15 @@ class File(object):
     packer: str
 
     # parent: File
+    # environment: Environment
 
     def __init__(self, parent=None, name=None):
         self.files = {}
         self.is_changed = False
         self.cab_file = "CAB-UnityPy_Mod.resS"
         self.parent = parent
-        self.name = basename(name) if isinstance(name, str) else ''
+        self.environment = self.environment = getattr(parent, "environment", parent) if parent else None
+        self.name = basename(name) if isinstance(name, str) else ""
 
     def get_assets(self):
         if isinstance(self, SerializedFile.SerializedFile):
@@ -65,8 +67,9 @@ class File(object):
         for node in files:
             reader.Position = node.offset
             name = node.path
-            f = EndianBinaryReader(reader.read(node.size), offset=(
-                reader.BaseOffset + node.offset))
+            f = EndianBinaryReader(
+                reader.read(node.size), offset=(reader.BaseOffset + node.offset)
+            )
             # f._flag = getattr(node, "flags", None)  # required for save
             typ, _ = ImportHelper.check_file_type(f)
             if typ == FileType.BundleFile:
@@ -81,6 +84,11 @@ class File(object):
                         f = SerializedFile.SerializedFile(f, self, name=name)
                     except ValueError:
                         pass
+
+            if isinstance(f, (EndianBinaryReader, SerializedFile.SerializedFile)):
+                if self.environment:
+                    self.environment.register_cab(name, f)
+
             # required for BundleFiles
             f.flags = getattr(node, "flags", 0)
             self.files[name] = f
@@ -102,7 +110,8 @@ class File(object):
                 return self.files[name]
             else:
                 raise ValueError(
-                    "This cab already exists and isn't an EndianBinaryWriter")
+                    "This cab already exists and isn't an EndianBinaryWriter"
+                )
 
         writer = EndianBinaryWriter()
         writer.flags = 4
