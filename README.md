@@ -101,8 +101,8 @@ def unpack_all_assets(source_folder : str, destination_folder : str):
 You probably have to read [Important Classes](#important-classes)
 and [Important Object Types](#important-object-types) to understand how it works.
 
-People who have slightly advanced python skills should take a look at [examples/AssetBatchConverter.py](examples/AssetBatchConverter.py) for a more advanced example.
-It can also be used as general template.
+People who have slightly advanced python skills should take a look at [UnityPy/tools/extractor.py](UnityPy/tools/extractor.py) for a more advanced example.
+It can also be used as general template or simply as importable tool.
 
 
 ## Important Classes
