@@ -18,7 +18,7 @@ from UnityPy.files import BundleFile
 from UnityPy.files.SerializedFile import FileIdentifier, ObjectReader, SerializedType
 
 
-SERIALIZED_PATH = "globalgamemanagers"
+SERIALIZED_PATH = r"globalgamemanagers"
 DATA_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data")
 
 
@@ -38,7 +38,7 @@ def main():
     or_bp = list(sf.objects.values())[0].__dict__  # object data
 
     bf.files["serialized_file"] = sf
-    sf._flag = 4
+    sf.flags = 4
 
     # remove all unnesessary stuff
     for key in list(sf.objects.keys()):
@@ -60,7 +60,7 @@ def main():
 
 def add_cab(bf, sf, root, f):
     fp = os.path.join(root, f)
-    bf.files[f] = Fake(data=open(fp, "rb").read(), _flag=4)
+    bf.files[f] = Fake(data=open(fp, "rb").read(), flags=4)
     sf.externals.append(
         Fake(
             temp_empty="",
