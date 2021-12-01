@@ -1,5 +1,5 @@
 import io
-import struct
+from struct import unpack
 
 from ..math import Color, Matrix4x4, Quaternion, Vector2, Vector3, Vector4, Rectangle
 
@@ -36,46 +36,46 @@ class EndianBinaryReader:
         return b""
 
     def read_byte(self) -> int:
-        return struct.unpack(self.endian + "b", self.read(1))[0]
+        return unpack(self.endian + "b", self.read(1))[0]
 
     def read_u_byte(self) -> int:
-        return struct.unpack(self.endian + "B", self.read(1))[0]
+        return unpack(self.endian + "B", self.read(1))[0]
 
     def read_bytes(self, num) -> bytes:
         return self.read(num)
 
     def read_short(self) -> int:
-        return struct.unpack(self.endian + "h", self.read(2))[0]
+        return unpack(self.endian + "h", self.read(2))[0]
 
     def read_int(self) -> int:
-        return struct.unpack(self.endian + "i", self.read(4))[0]
+        return unpack(self.endian + "i", self.read(4))[0]
 
     def read_long(self) -> int:
-        return struct.unpack(self.endian + "q", self.read(8))[0]
+        return unpack(self.endian + "q", self.read(8))[0]
 
     def read_u_short(self) -> int:
-        return struct.unpack(self.endian + "H", self.read(2))[0]
+        return unpack(self.endian + "H", self.read(2))[0]
 
     def read_u_int(self) -> int:
-        return struct.unpack(self.endian + "I", self.read(4))[0]
+        return unpack(self.endian + "I", self.read(4))[0]
 
     def read_u_long(self) -> int:
-        return struct.unpack(self.endian + "Q", self.read(8))[0]
+        return unpack(self.endian + "Q", self.read(8))[0]
 
     def read_float(self) -> float:
-        return struct.unpack(self.endian + "f", self.read(4))[0]
+        return unpack(self.endian + "f", self.read(4))[0]
 
     def read_double(self) -> float:
-        return struct.unpack(self.endian + "d", self.read(8))[0]
+        return unpack(self.endian + "d", self.read(8))[0]
 
     def read_boolean(self) -> bool:
-        return bool(struct.unpack(self.endian + "?", self.read(1))[0])
+        return bool(unpack(self.endian + "?", self.read(1))[0])
 
     def read_string(self, size=None, encoding="utf8") -> str:
         if size is None:
             ret = self.read_string_to_null()
         else:
-            ret = struct.unpack(f"{self.endian}{size}is", self.read(size))[0]
+            ret = unpack(f"{self.endian}{size}is", self.read(size))[0]
         try:
             return ret.decode(encoding)
         except UnicodeDecodeError:
@@ -218,7 +218,6 @@ class EndianBinaryReader_Streamable(EndianBinaryReader):
 
     def __init__(self, stream, endian=">", offset=0):
         self.stream = stream
-        self.Length = self.stream.seek(0, 2) - offset
         super().__init__(stream, endian=endian, offset=offset)
 
     def get_position(self):
@@ -226,6 +225,13 @@ class EndianBinaryReader_Streamable(EndianBinaryReader):
 
     def set_position(self, value):
         self.stream.seek(value+self.BaseOffset)
+
+    @property
+    def Length(self):
+        pos = self.Position
+        length = self.stream.seek(0, 2) - self.BaseOffset
+        self.Position = pos
+        return length
 
     Position = property(get_position, set_position)
 

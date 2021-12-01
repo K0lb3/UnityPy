@@ -1,5 +1,5 @@
 import io
-import struct
+from struct import pack
 
 from ..math import Color, Matrix4x4, Quaternion, Vector2, Vector3, Vector4, Rectangle
 
@@ -14,6 +14,8 @@ class EndianBinaryWriter:
         if isinstance(input_, (bytes, bytearray)):
             self.stream = io.BytesIO(input_)
             self.stream.seek(0, 2)
+        elif isinstance(input_, io.IOBase):
+            self.stream = input_
         else:
             raise ValueError("Invalid input type - %s." % type(input_))
         self.endian = endian
@@ -44,40 +46,40 @@ class EndianBinaryWriter:
         return ret
 
     def write_byte(self, value: int):
-        self.write(struct.pack(self.endian + "b", value))
+        self.write(pack(self.endian + "b", value))
 
     def write_u_byte(self, value: int):
-        self.write(struct.pack(self.endian + "B", value))
+        self.write(pack(self.endian + "B", value))
 
     def write_bytes(self, value: bytes):
         return self.write(value)
 
     def write_short(self, value: int):
-        self.write(struct.pack(self.endian + "h", value))
+        self.write(pack(self.endian + "h", value))
 
     def write_int(self, value: int):
-        self.write(struct.pack(self.endian + "i", value))
+        self.write(pack(self.endian + "i", value))
 
     def write_long(self, value: int):
-        self.write(struct.pack(self.endian + "q", value))
+        self.write(pack(self.endian + "q", value))
 
     def write_u_short(self, value: int):
-        self.write(struct.pack(self.endian + "H", value))
+        self.write(pack(self.endian + "H", value))
 
     def write_u_int(self, value: int):
-        self.write(struct.pack(self.endian + "I", value))
+        self.write(pack(self.endian + "I", value))
 
     def write_u_long(self, value: int):
-        self.write(struct.pack(self.endian + "Q", value))
+        self.write(pack(self.endian + "Q", value))
 
     def write_float(self, value: float):
-        self.write(struct.pack(self.endian + "f", value))
+        self.write(pack(self.endian + "f", value))
 
     def write_double(self, value: float):
-        self.write(struct.pack(self.endian + "d", value))
+        self.write(pack(self.endian + "d", value))
 
     def write_boolean(self, value: bool):
-        self.write(struct.pack(self.endian + "?", value))
+        self.write(pack(self.endian + "?", value))
 
     def write_string_to_null(self, value: str):
         self.write(value.encode("utf8", "surrogateescape"))
