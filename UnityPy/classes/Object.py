@@ -115,7 +115,8 @@ class Object(object):
             self.reader.Position = old_pos
             if name == "type_tree":
                 return self.type_tree
-
+        elif name == "read":
+            return lambda : self
         return getattr(self.type_tree, name)
 
     def get(self, key, default=None):
