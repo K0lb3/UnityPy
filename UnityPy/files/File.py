@@ -114,7 +114,14 @@ class File(object):
                 )
 
         writer = EndianBinaryWriter()
-        writer.flags = 4
+        # try to find another resource file to copy the flags from
+        for name, f in self.files.items():
+            if name.endswith(".resS"):
+                writer.flags = f.flags
+                writer.endian = f.endian
+                break
+        else:
+            writer.flags = 0
         writer.name = name
         self.files[name] = writer
         return writer

@@ -285,11 +285,11 @@ class SerializedFile(File.File):
         return self.container_
 
     def set_version(self, string_version):
+        self.unity_version = string_version
         if string_version == "0.0.0":
             # weird case, but apparently can happen?
             # check "cant read Texture2D by 2020.3.13 f1 AssetBundle #77" for details
             string_version = self.parent.version_engine
-        self.unity_version = string_version
         build_type = re.findall(r"([^\d.])", string_version)
         self.build_type = BuildType(build_type[0] if build_type else "")
         version_split = re.split(r"\D", string_version)
