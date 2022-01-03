@@ -364,9 +364,9 @@ class SerializedFile(File.File):
             self.parent, (File.BundleFile.BundleFile, File.WebFile.WebFile)
         ):
             return None
+        
         cab = self.parent.get_writeable_cab(name)
-
-        cab.path = f"archive:/{name}"
+        cab.path = f"archive:/{self.name}/{name}"
         if not any(cab.path == x.path for x in self.externals):
             # register as external
             class FileIdentifierFake:

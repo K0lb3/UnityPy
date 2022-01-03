@@ -115,8 +115,8 @@ class File(object):
 
         writer = EndianBinaryWriter()
         # try to find another resource file to copy the flags from
-        for name, f in self.files.items():
-            if name.endswith(".resS"):
+        for fname, f in self.files.items():
+            if fname.endswith(".resS"):
                 writer.flags = f.flags
                 writer.endian = f.endian
                 break
