@@ -235,7 +235,7 @@ class ConstantBuffer:
             ]
         self.m_Size = reader.read_int()
 
-        if version > (2020, 3):
+        if version >= (2021,1,4) or (version[0] = 2020 and version >= (2020,3,2)):
             self.m_IsPartialCB = reader.read_boolean()
             reader.align_stream()
 
@@ -291,7 +291,7 @@ class SerializedSubProgram:
         self.m_BlobIndex = reader.read_u_int()
         self.m_Channels = ParserBindChannels(reader)
 
-        if version >= (2019,) and version < (2021, 2):  # 2019 and up
+        if (2019,) <= version < (2021,2):  # 2019 ~2021.1
             self.m_GlobalKeywordIndices = reader.read_u_short_array()
             reader.align_stream()
             self.m_LocalKeywordIndices = reader.read_u_short_array()
@@ -305,7 +305,7 @@ class SerializedSubProgram:
         self.m_GpuProgramType = ShaderGpuProgramType(reader.read_byte())
         reader.align_stream()
 
-        if version > (2017,):
+        if version >= (2021,1,4) or (version[0] = 2020 and version >= (2020,3,2)):
             self.m_Parameters = SerializedProgramParameters(reader)
         else:
             numVectorParams = reader.read_int()
@@ -354,7 +354,7 @@ class SerializedProgram:
             SerializedSubProgram(reader) for _ in range(numSubPrograms)
         ]
 
-        if version > (2020, 3):
+        if version >= (2021,1,4) or (version[0] = 2020 and version >= (2020,3,2)):
             self.m_CommonParameters = SerializedProgramParameters(reader)
 
 
