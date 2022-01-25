@@ -51,16 +51,17 @@ class Texture2D(Texture):
     @image_data.setter
     def image_data(self, data: bytes):
         self._image_data = data
-        # prefer writing to cab if possible
-        if self.version >= (5, 3) and self.m_StreamData.path:
-            cab = self.assets_file.get_writeable_cab()
-            if cab:
-                self.m_StreamData.offset = cab.Position
-                cab.write(data)
-                self.m_StreamData.size = len(data)
-                self.m_StreamData.path = cab.path
-            else:
-                self.reset_streamdata()
+        # ignore writing to cab for now until it's more stable
+        # if self.version >= (5, 3) and self.m_StreamData.path:
+        #     cab = self.assets_file.get_writeable_cab()
+        #     if cab:
+        #         self.m_StreamData.offset = cab.Position
+        #         cab.write(data)
+        #         self.m_StreamData.size = len(data)
+        #         self.m_StreamData.path = cab.path
+        #     else:
+        #         self.reset_streamdata()
+        self.reset_streamdata()
 
     def set_image(self, img, target_format: TextureFormat = None, in_cab: bool = False):
         if img is None:
