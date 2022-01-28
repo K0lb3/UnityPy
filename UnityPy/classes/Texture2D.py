@@ -30,10 +30,18 @@ class Texture2D(Texture):
         img_data, tex_format = Texture2DConverter.image_to_texture2d(
             img, self.m_TextureFormat
         )
+
+        # disable mipmaps as we don't store them ourselves by default
+        if self.version[:2] < (5, 2):  # 5.2 down
+            self.m_MipMap = False
+        else:
+            self.m_MipCount = 1
+
         self.image_data = img_data
+        self.m_MipCount = 1
         # width * height * channel count
         self.m_CompleteImageSize = len(
-            self._image_data
+            img_data
         )  # img.width * img.height * len(img.getbands())
         self.m_TextureFormat = tex_format
 
@@ -63,21 +71,48 @@ class Texture2D(Texture):
         #         self.reset_streamdata()
         self.reset_streamdata()
 
-    def set_image(self, img, target_format: TextureFormat = None, in_cab: bool = False):
+    def set_image(
+        self,
+        img,
+        target_format: TextureFormat = None,
+        in_cab: bool = False,
+        mipmap_count: int = 1,
+    ):
         if img is None:
             raise Exception("No image provided")
         if not target_format:
             target_format = self.m_TextureFormat
+
         img_data, tex_format = Texture2DConverter.image_to_texture2d(img, target_format)
+        if mipmap_count > 1:
+            width = self.m_Width
+            height = self.m_Height
+            re_img = img
+            for i in range(mipmap_count - 1):
+                width //= 2
+                height //= 2
+                if width < 1 or height < 1:
+                    mipmap_count = i + 1
+                    break
+                re_img = re_img.resize((width, height), Image.BICUBIC)
+                img_data += Texture2DConverter.image_to_texture2d(
+                    re_img, target_format
+                )[0]
+
+        if self.version[:2] < (5, 2):  # 5.2 down
+            self.m_MipMap = mipmap_count > 1
+        else:
+            self.m_MipCount = mipmap_count
 
         if in_cab:
             self.image_data = img_data
         else:
             self._image_data = img_data
             self.reset_streamdata()
+
         # width * height * channel count
         self.m_CompleteImageSize = len(
-            self._image_data
+            img_data
         )  # img.width * img.height * len(img.getbands())
         self.m_TextureFormat = tex_format
 
