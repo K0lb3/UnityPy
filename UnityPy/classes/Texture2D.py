@@ -91,7 +91,7 @@ class Texture2D(Texture):
             for i in range(mipmap_count - 1):
                 width //= 2
                 height //= 2
-                if width < 1 or height < 1:
+                if width < 4 or height < 4:
                     mipmap_count = i + 1
                     break
                 re_img = re_img.resize((width, height), Image.BICUBIC)
