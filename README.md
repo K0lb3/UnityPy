@@ -251,13 +251,13 @@ for obj in env.objects:
         if obj.serialized_type.nodes:
             # save decoded data
             tree = obj.read_typetree()
-            fp = os.path.join(extract_dir, f"{data.name}.json"):
+            fp = os.path.join(extract_dir, f"{data.name}.json")
             with open(fp, "wt", encoding = "utf8") as f:
                 json.dump(tree, f, ensure_ascii = False, indent = 4)
         else:
             # save raw relevant data (without Unity MonoBehaviour header)
             data = obj.read()
-            fp = os.path.join(extract_dir, f"{data.name}.bin"):
+            fp = os.path.join(extract_dir, f"{data.name}.bin")
             with open(fp, "wb") as f:
                 f.write(data.raw_data)
 
