@@ -6,7 +6,7 @@ from ..streams import EndianBinaryReader
 
 
 def file_name_without_extension(file_name: str) -> str:
-    return os.path.splitext(os.path.basename(file_name))[0]
+    return os.path.join(os.path.dirname(file_name),os.path.splitext(os.path.basename(file_name))[0])
 
 
 def list_all_files(directory: str) -> List[str]:
@@ -63,10 +63,9 @@ def merge_split_assets(path: str, all_directories: bool = False):
 def processing_split_files(select_file: list) -> list:
     split_files = [fp for fp in select_file if ".split" in fp]
     select_file = [f for f in select_file if f not in split_files]
-
     split_files = set([file_name_without_extension(fp) for fp in split_files])
     for splitFile in split_files:
-        if os.path.isfile:
+        if os.path.isfile(splitFile) and splitFile not in select_file:
             select_file.append(splitFile)
     return select_file
 
