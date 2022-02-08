@@ -4,7 +4,7 @@ from .Mesh import BoneWeights4, SubMesh, VertexData
 from .NamedObject import NamedObject
 from .PPtr import PPtr
 from ..export import SpriteHelper
-from ..enums import SpriteMeshType
+from ..enums import SpriteMeshType, SpritePackingMode, SpritePackingRotation
 from ..streams import EndianBinaryWriter, EndianBinaryReader
 
 
@@ -51,7 +51,10 @@ class Sprite(NamedObject):
         if version >= (2018,):  # 2018 and up
             m_BonesSize = reader.read_int()
             # TODO: might occur in earlier 2020 versions - 2020.3.13 reported
-            if version >= (2020,3,):
+            if version >= (
+                2020,
+                3,
+            ):
                 self.m_Bones = [SpriteBone() for _ in range(m_BonesSize)]
             else:
                 self.m_Bones = [reader.read_vector2_array() for _ in range(m_BonesSize)]
@@ -111,19 +114,6 @@ class SecondarySpriteTexture:
     def save(self, writer):
         self.texture.save(writer)
         writer.write_string_to_null(self.name)
-
-
-class SpritePackingRotation(IntEnum):
-    kSPRNone = (0,)
-    kSPRFlipHorizontal = (1,)
-    kSPRFlipVertical = (2,)
-    kSPRRotate180 = (3,)
-    kSPRRotate90 = 4
-
-
-class SpritePackingMode(IntEnum):
-    kSPMTight = (0,)
-    kSPMRectangle = 1
 
 
 class SpriteSettings:

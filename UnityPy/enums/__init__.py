@@ -9,5 +9,7 @@ from .CommonString import CommonString
 from .ShaderCompilerPlatform import ShaderCompilerPlatform
 from .ShaderGpuProgramType import ShaderGpuProgramType
 from .SerializedPropertyType import SerializedPropertyType
+from .SpritePackingMode import SpritePackingMode
+from .SpritePackingRotation import SpritePackingRotation
 from .TextureDimension import TextureDimension
 from .PassType import PassType
