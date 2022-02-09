@@ -1,28 +1,18 @@
-from enum import IntEnum
+from enum import IntEnum, IntFlag
 
 from PIL import Image, ImageDraw
 
 from .Texture2DConverter import get_image_from_texture2d
-from ..enums import ClassIDType
+from ..enums import ClassIDType, SpritePackingMode, SpritePackingRotation
 from ..streams import EndianBinaryReader
 
 
-# should be imported from Sprite, but too lazy to fix the import issues caused by that
-class SpritePackingRotation(IntEnum):
-    kSPRNone = (0,)
-    kSPRFlipHorizontal = (1,)
-    kSPRFlipVertical = (2,)
-    kSPRRotate180 = (3,)
-    kSPRRotate90 = 4
-
-
-class SpritePackingMode(IntEnum):
-    kSPMTight = (0,)
-    kSPMRectangle = 1
-
-
 def get_image(sprite, texture, alpha_texture) -> Image:
-    if alpha_texture and getattr(alpha_texture, "type", ClassIDType.UnknownType) == ClassIDType.Texture2D:
+    if (
+        alpha_texture
+        and getattr(alpha_texture, "type", ClassIDType.UnknownType)
+        == ClassIDType.Texture2D
+    ):
         cache_id = (texture.path_id, alpha_texture.path_id)
         if cache_id not in sprite.assets_file._cache:
             original_image = get_image_from_texture2d(texture.read(), False)
@@ -65,7 +55,12 @@ def get_image_from_sprite(m_Sprite) -> Image:
     original_image = get_image(m_Sprite, m_Texture2D, alpha_texture)
 
     sprite_image = original_image.crop(
-        (texture_rect.x, texture_rect.y, texture_rect.x + texture_rect.width, texture_rect.y + texture_rect.height)
+        (
+            texture_rect.x,
+            texture_rect.y,
+            texture_rect.x + texture_rect.width,
+            texture_rect.y + texture_rect.height,
+        )
     )
 
     if settings_raw.packed == 1:

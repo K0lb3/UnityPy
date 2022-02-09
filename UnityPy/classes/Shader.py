@@ -45,12 +45,10 @@ class StructParameter:
         self.m_StructSize = reader.read_int()
 
         numVectorParams = reader.read_int()
-        self.m_VectorParams = [VectorParameter(
-            reader) for _ in range(numVectorParams)]
+        self.m_VectorParams = [VectorParameter(reader) for _ in range(numVectorParams)]
 
         numMatrixParams = reader.read_int()
-        self.m_MatrixParams = [MatrixParameter(
-            reader) for _ in range(numMatrixParams)]
+        self.m_MatrixParams = [MatrixParameter(reader) for _ in range(numMatrixParams)]
 
 
 class SamplerParameter:
@@ -169,8 +167,7 @@ class ShaderBindChannel:
 class ParserBindChannels:
     def __init__(self, reader):
         numChannels = reader.read_int()
-        self.m_Channels = [ShaderBindChannel(
-            reader) for _ in range(numChannels)]
+        self.m_Channels = [ShaderBindChannel(reader) for _ in range(numChannels)]
         reader.align_stream()
         self.m_SourceMap = reader.read_u_int()
 
@@ -222,12 +219,10 @@ class ConstantBuffer:
         self.m_NameIndex = reader.read_int()
 
         numMatrixParams = reader.read_int()
-        self.m_MatrixParams = [MatrixParameter(
-            reader) for _ in range(numMatrixParams)]
+        self.m_MatrixParams = [MatrixParameter(reader) for _ in range(numMatrixParams)]
 
         numVectorParams = reader.read_int()
-        self.m_VectorParams = [VectorParameter(
-            reader) for _ in range(numVectorParams)]
+        self.m_VectorParams = [VectorParameter(reader) for _ in range(numVectorParams)]
         if version >= (2017, 3):  # 2017.3 and up
             numStructParams = reader.read_int()
             self.m_StructParams = [
@@ -235,7 +230,7 @@ class ConstantBuffer:
             ]
         self.m_Size = reader.read_int()
 
-        if version >= (2021,1,4) or (version[0] == 2020 and version >= (2020,3,2)):
+        if version >= (2021, 1, 4) or (version[0] == 2020 and version >= (2020, 3, 2)):
             self.m_IsPartialCB = reader.read_boolean()
             reader.align_stream()
 
@@ -250,12 +245,10 @@ class UAVParameter:
 class SerializedProgramParameters:
     def __init__(self, reader):
         numVectorParams = reader.read_int()
-        self.m_VectorParams = [VectorParameter(
-            reader) for _ in range(numVectorParams)]
+        self.m_VectorParams = [VectorParameter(reader) for _ in range(numVectorParams)]
 
         numMatrixParams = reader.read_int()
-        self.m_MatrixParams = [MatrixParameter(
-            reader) for _ in range(numMatrixParams)]
+        self.m_MatrixParams = [MatrixParameter(reader) for _ in range(numMatrixParams)]
 
         numTextureParams = reader.read_int()
         self.m_TextureParams = [
@@ -263,8 +256,7 @@ class SerializedProgramParameters:
         ]
 
         numBufferParams = reader.read_int()
-        self.m_BufferParams = [BufferBinding(
-            reader) for _ in range(numBufferParams)]
+        self.m_BufferParams = [BufferBinding(reader) for _ in range(numBufferParams)]
 
         numConstantBuffers = reader.read_int()
         self.m_ConstantBuffers = [
@@ -280,8 +272,7 @@ class SerializedProgramParameters:
         self.m_UAVParams = [UAVParameter(reader) for _ in range(numUAVParams)]
 
         numSamplers = reader.read_int()
-        self.m_Samplers = [SamplerParameter(
-            reader) for _ in range(numSamplers)]
+        self.m_Samplers = [SamplerParameter(reader) for _ in range(numSamplers)]
 
 
 class SerializedSubProgram:
@@ -291,7 +282,7 @@ class SerializedSubProgram:
         self.m_BlobIndex = reader.read_u_int()
         self.m_Channels = ParserBindChannels(reader)
 
-        if (2019,) <= version < (2021,2):  # 2019 ~2021.1
+        if (2019,) <= version < (2021, 2):  # 2019 ~2021.1
             self.m_GlobalKeywordIndices = reader.read_u_short_array()
             reader.align_stream()
             self.m_LocalKeywordIndices = reader.read_u_short_array()
@@ -305,16 +296,18 @@ class SerializedSubProgram:
         self.m_GpuProgramType = ShaderGpuProgramType(reader.read_byte())
         reader.align_stream()
 
-        if version >= (2021,1,4) or (version[0] == 2020 and version >= (2020,3,2)):
+        if version >= (2021, 1, 4) or (version[0] == 2020 and version >= (2020, 3, 2)):
             self.m_Parameters = SerializedProgramParameters(reader)
         else:
             numVectorParams = reader.read_int()
-            self.m_VectorParams = [VectorParameter(
-                reader) for _ in range(numVectorParams)]
+            self.m_VectorParams = [
+                VectorParameter(reader) for _ in range(numVectorParams)
+            ]
 
             numMatrixParams = reader.read_int()
-            self.m_MatrixParams = [MatrixParameter(
-                reader) for _ in range(numMatrixParams)]
+            self.m_MatrixParams = [
+                MatrixParameter(reader) for _ in range(numMatrixParams)
+            ]
 
             numTextureParams = reader.read_int()
             self.m_TextureParams = [
@@ -322,8 +315,9 @@ class SerializedSubProgram:
             ]
 
             numBufferParams = reader.read_int()
-            self.m_BufferParams = [BufferBinding(
-                reader) for _ in range(numBufferParams)]
+            self.m_BufferParams = [
+                BufferBinding(reader) for _ in range(numBufferParams)
+            ]
 
             numConstantBuffers = reader.read_int()
             self.m_ConstantBuffers = [
@@ -337,6 +331,10 @@ class SerializedSubProgram:
 
             numUAVParams = reader.read_int()
             self.m_UAVParams = [UAVParameter(reader) for _ in range(numUAVParams)]
+
+            if version >= (2017,):  # 2017 and up
+                numSamplers = reader.read_int()
+                self.m_Samples = [SamplerParameter(reader) for _ in range(numSamplers)]
 
         if version >= (2017, 2):  # 2017.2 and up
             if version >= (2021,):
@@ -354,7 +352,7 @@ class SerializedProgram:
             SerializedSubProgram(reader) for _ in range(numSubPrograms)
         ]
 
-        if version >= (2021,1,4) or (version[0] == 2020 and version >= (2020,3,2)):
+        if version >= (2021, 1, 4) or (version[0] == 2020 and version >= (2020, 3, 2)):
             self.m_CommonParameters = SerializedProgramParameters(reader)
 
 
@@ -440,8 +438,7 @@ class SerializedShader:
 
         self.m_PropInfo = SerializedProperties(reader)
         numSubShaders = reader.read_int()
-        self.m_SubShaders = [SerializedSubShader(
-            reader) for _ in range(numSubShaders)]
+        self.m_SubShaders = [SerializedSubShader(reader) for _ in range(numSubShaders)]
 
         if version >= (2021, 2):
             self.m_KeywordNames = reader.read_string_array()
@@ -459,7 +456,8 @@ class SerializedShader:
         if version >= (2021,):
             m_CustomEditorForRenderPipelinesSize = reader.read_int()
             self.m_CustomEditorForRenderPipelines = [
-                SerializedCustomEditorForRenderPipeline(reader) for _ in range(m_CustomEditorForRenderPipelinesSize)
+                SerializedCustomEditorForRenderPipeline(reader)
+                for _ in range(m_CustomEditorForRenderPipelinesSize)
             ]
 
         self.m_DisableNoSubshadersMessage = reader.read_boolean()

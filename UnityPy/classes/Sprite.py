@@ -4,8 +4,8 @@ from .Mesh import BoneWeights4, SubMesh, VertexData
 from .NamedObject import NamedObject
 from .PPtr import PPtr
 from ..export import SpriteHelper
-from ..enums import SpriteMeshType
-from ..streams import EndianBinaryWriter
+from ..enums import SpriteMeshType, SpritePackingMode, SpritePackingRotation
+from ..streams import EndianBinaryWriter, EndianBinaryReader
 
 
 class Sprite(NamedObject):
@@ -50,9 +50,14 @@ class Sprite(NamedObject):
 
         if version >= (2018,):  # 2018 and up
             m_BonesSize = reader.read_int()
-            self.m_Bones = [
-                reader.read_vector2_array() for _ in range(m_BonesSize)
-            ]
+            # TODO: might occur in earlier 2020 versions - 2020.3.13 reported
+            if version >= (
+                2020,
+                3,
+            ):
+                self.m_Bones = [SpriteBone() for _ in range(m_BonesSize)]
+            else:
+                self.m_Bones = [reader.read_vector2_array() for _ in range(m_BonesSize)]
 
     def save(self, writer: EndianBinaryWriter = None):
         if writer is None:
@@ -91,8 +96,12 @@ class Sprite(NamedObject):
 
         if version >= (2018,):  # 2018 and up
             writer.write_int(len(self.m_Bones))
-            for bone in self.m_Bones:
-                writer.write_vector2_array(bone)
+            if version >= (2020, 3):
+                for bone in self.m_Bones:
+                    bone.save(writer)
+            else:
+                for bone in self.m_Bones:
+                    writer.write_vector2_array(bone)
 
         self.set_raw_data(writer.bytes)
 
@@ -107,27 +116,12 @@ class SecondarySpriteTexture:
         writer.write_string_to_null(self.name)
 
 
-class SpritePackingRotation(IntEnum):
-    kSPRNone = (0,)
-    kSPRFlipHorizontal = (1,)
-    kSPRFlipVertical = (2,)
-    kSPRRotate180 = (3,)
-    kSPRRotate90 = 4
-
-
-class SpritePackingMode(IntEnum):
-    kSPMTight = (0,)
-    kSPMRectangle = 1
-
-
 class SpriteSettings:
     def __init__(self, reader):
         self.settingsRaw = reader.read_u_int()
         self.packed = self.settingsRaw & 1  # 1
-        self.packingMode = SpritePackingMode(
-            (self.settingsRaw >> 1) & 1)  # 1
-        self.packingRotation = SpritePackingRotation(
-            (self.settingsRaw >> 2) & 0xF)  # 4
+        self.packingMode = SpritePackingMode((self.settingsRaw >> 1) & 1)  # 1
+        self.packingRotation = SpritePackingRotation((self.settingsRaw >> 2) & 0xF)  # 4
         self.meshType = SpriteMeshType((self.settingsRaw >> 6) & 1)  # 1
         # rest of the bits are reserved
 
@@ -236,3 +230,25 @@ class SpriteRenderData:
 
         if version >= (2017,):  # 2017 and up
             writer.write_float(self.downscaleMultiplier)
+
+
+class SpriteBone:
+    name: str
+    position: tuple
+    rotation: tuple
+    length: float
+    parentId: int
+
+    def __init__(self, reader: EndianBinaryReader) -> None:
+        self.name = reader.read_aligned_string()
+        self.position = reader.read_vector3()
+        self.rotation = reader.read_vector3()
+        self.length = reader.read_float()
+        self.parentId = reader.read_int()
+
+    def save(self, writer: EndianBinaryWriter):
+        writer.write_aligned_string(self.name)
+        writer.write_vector3(self.position)
+        writer.write_vector3(self.rotation)
+        writer.write_float(self.length)
+        writer.write_int(self.parentId)
