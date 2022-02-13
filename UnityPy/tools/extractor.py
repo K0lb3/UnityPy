@@ -154,9 +154,9 @@ def exportFont(obj: Font, fp: str, extension: str = "") -> List[int]:
     return [obj.path_id]
 
 
-def exportMesh(obj: Mesh, fp: str, extension=".obf") -> List[int]:
+def exportMesh(obj: Mesh, fp: str, extension=".obj") -> List[int]:
     if not extension:
-        extension = ".obf"
+        extension = ".obj"
     with open(f"{fp}{extension}", "wt", encoding="utf8", newline="") as f:
         f.write(obj.export())
     return [obj.path_id]
