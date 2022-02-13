@@ -21,10 +21,8 @@ class GameObject(EditorExtension):
     def save(self, writer:EndianBinaryWriter=None):
         super().save(writer)
         data = bytearray(self.reader.get_raw_data())
-        print(data)
         if self.m_IsActive is True:
             data[-1] = 0x1
         else:
             data[-1] = 0x0
-        print(data)
         self.set_raw_data(data)
