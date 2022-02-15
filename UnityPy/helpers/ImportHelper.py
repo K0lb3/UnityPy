@@ -58,7 +58,7 @@ def merge_split_assets(path: str, all_directories: bool = False):
                     if not os.path.isfile(split_part):
                         break
                     f.write(open(split_part, "rb").read())
-
+                    i += 1
 
 def processing_split_files(select_file: list) -> list:
     split_files = [fp for fp in select_file if ".split" in fp]
