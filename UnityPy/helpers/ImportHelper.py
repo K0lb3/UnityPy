@@ -44,12 +44,10 @@ def merge_split_assets(path: str, all_directories: bool = False):
         split_files = [
             os.path.join(path, fp) for fp in os.listdir(path) if fp[-7:] == ".split0"
         ]
-
     for split_file in split_files:
         dest_file = file_name_without_extension(split_file)
         dest_path = os.path.dirname(split_file)
         dest_full = os.path.join(dest_path, dest_file)
-
         if not os.path.exists(dest_full):
             with open(dest_full, "wb") as f:
                 i = 0
@@ -58,8 +56,8 @@ def merge_split_assets(path: str, all_directories: bool = False):
                     if not os.path.isfile(split_part):
                         break
                     f.write(open(split_part, "rb").read())
-
-
+                    i += 1
+#
 def processing_split_files(select_file: list) -> list:
     split_files = [fp for fp in select_file if ".split" in fp]
     select_file = [f for f in select_file if f not in split_files]
