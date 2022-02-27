@@ -1,6 +1,8 @@
+from functools import reduce
 import io
 import os
 from zipfile import ZipFile
+import re
 
 from . import files
 from .files import File
@@ -8,6 +10,8 @@ from .enums import FileType
 from .helpers import ImportHelper
 from .streams import EndianBinaryReader
 from .files import SerializedFile
+
+reSplitFile = re.compile(r"^(.+)\.split(\d+)$")
 
 
 class Environment:
@@ -42,23 +46,58 @@ class Environment:
 
     def load_files(self, files: list):
         """Loads all files (list) into the AssetsManager and merges .split files for common usage."""
-        # ImportHelper.merge_split_assets(path)
-        # to_read_file = ImportHelper.processing_split_files(files)
+        # filter split files
+        i = 0
+        splits = []
+        while i < len(files):
+            path = files[i]
+            splitMatch = reSplitFile.match(path)
+            if reSplitFile.match(path):
+                name = splitMatch[1]
+                if name not in splits:
+                    splits.append(name)
+                files.remove(path)
+            else:
+                i += 1
+
+        # merge splits
+        for basepath in splits:
+            # merge data
+            data = io.BytesIO()
+            for i in range(1, 999):
+                item = f"{basepath}.split{i}"
+                if os.path.exists(item):
+                    with open(item, "rb") as f:
+                        data.write(f.read())
+                else:
+                    break
+            self.files[self.reduce_path(basepath)] = self.load_file(data)
+
+        # load all other files
         self.load(files)
 
     def load_folder(self, path: str):
         """Loads all files in the given path and its subdirs into the AssetsManager."""
-        ImportHelper.merge_split_assets(path, True)
-        files = ImportHelper.list_all_files(path)
-        to_read_file = ImportHelper.processing_split_files(files)
-        self.load(to_read_file)
+        self.load_files(
+            [
+                os.path.join(root, f)
+                for root, dirs, files in os.walk(path)
+                for f in files
+            ]
+        )
+
+    def reduce_path(self, fp: str) -> str:
+        return fp[len(self.path) :].lstrip("/\\")
 
     def load(self, files: list):
         """Loads all files into the AssetsManager."""
-        for f in files:
-            self.files[f[len(self.path) :].lstrip("/\\")] = self.load_file(
-                open(f, "rb"), self
-            )
+        self.files.update(
+            {
+                self.reduce_path(f): self.load_file(open(f, "rb"))
+                for f in files
+                if os.path.exists(f)
+            }
+        )
 
     def load_file(self, stream, parent=None):
         if not parent:
@@ -96,14 +135,13 @@ class Environment:
             buffer = value
 
         z = ZipFile(buffer)
-        splits = {}
+        splits = []
         for path in z.namelist():
-
-            if path[-7:-1] == ".split":
-                name = path[:-7]
+            splitMatch = reSplitFile.match(path)
+            if reSplitFile.match(path):
+                name = splitMatch[1]
                 if name not in splits:
                     splits[name] = []
-                splits[name].append(path)
                 continue
 
             stream = z.open(path)
@@ -118,13 +156,17 @@ class Environment:
             cur.files[name] = self.load_file(stream, cur)
 
         # merge splits
-        for path, items in splits.items():
+        for basepath in splits:
             # merge data
             data = io.BytesIO()
-            for item in items:
-                with z.open(item) as f:
-                    data.write(f.read())
-            *path, name = path.split("/")
+            for i in range(1, 999):
+                item = f"{basepath}.split{i}"
+                if item in z.namelist():
+                    with z.open(item) as f:
+                        data.write(f.read())
+                else:
+                    break
+            *path, name = basepath.split("/")
             cur = self
             for d in path:
                 if d not in cur.files:
@@ -135,9 +177,9 @@ class Environment:
         z.close()
 
     def save(self, pack="none"):
-        """ Saves all changed assets.
-            Mark assets as changed using `.mark_changed()`.
-            pack = "none" (default) or "lz4"
+        """Saves all changed assets.
+        Mark assets as changed using `.mark_changed()`.
+        pack = "none" (default) or "lz4"
         """
         for f in self.files:
             if self.files[f].is_changed:
@@ -197,4 +239,3 @@ class Environment:
 
     def get_cab(self, name: str) -> object:
         return self.cabs.get(name.lower(), None)
-
