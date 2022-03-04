@@ -1,10 +1,19 @@
-import re
-def export_mesh(m_Mesh):
+from UnityPy.classes import Mesh
+
+
+def export_mesh(m_Mesh: Mesh, format="obj") -> str:
+    if format == "obj":
+        return export_mesh_obj(m_Mesh)
+    raise NotImplementedError(f"Export format {format} not implemented")
+
+
+def export_mesh_obj(m_Mesh, material_names: list = None):
     if m_Mesh.m_VertexCount <= 0:
         return False
 
     sb = [f"g {m_Mesh.name}\r\n"]
-
+    if material_names:
+        sb.append(f"mtllib {m_Mesh.name}.mtl\r\n")
     # region Vertices
     if not m_Mesh.m_Vertices:
         return False
@@ -14,8 +23,13 @@ def export_mesh(m_Mesh):
         c = 4
 
     for v in range(int(m_Mesh.m_VertexCount)):
-        sb.append("v {0:.7G} {1:.7G} {2:.7G}\r\n".format(
-            -m_Mesh.m_Vertices[v * c], m_Mesh.m_Vertices[v * c + 1], m_Mesh.m_Vertices[v * c + 2]).replace("nan","0"))
+        sb.append(
+            "v {0:.7G} {1:.7G} {2:.7G}\r\n".format(
+                -m_Mesh.m_Vertices[v * c],
+                m_Mesh.m_Vertices[v * c + 1],
+                m_Mesh.m_Vertices[v * c + 2],
+            ).replace("nan", "0")
+        )
     # endregion
 
     # region UV
@@ -26,8 +40,11 @@ def export_mesh(m_Mesh):
             c = 3
 
         for v in range(int(m_Mesh.m_VertexCount)):
-            sb.append("vt {0:.7G} {1:.7G}\r\n".format(
-                m_Mesh.m_UV0[v * c], m_Mesh.m_UV0[v * c + 1]).replace("nan","0"))
+            sb.append(
+                "vt {0:.7G} {1:.7G}\r\n".format(
+                    m_Mesh.m_UV0[v * c], m_Mesh.m_UV0[v * c + 1]
+                ).replace("nan", "0")
+            )
     # endregion
 
     # region Normals
@@ -38,21 +55,30 @@ def export_mesh(m_Mesh):
             c = 4
 
         for v in range(int(m_Mesh.m_VertexCount)):
-            sb.append("vn {0:.7G} {1:.7G} {2:.7G}\r\n".format(
-                -m_Mesh.m_Normals[v * c], m_Mesh.m_Normals[v * c + 1], m_Mesh.m_Normals[v * c + 2]).replace("nan","0"))
+            sb.append(
+                "vn {0:.7G} {1:.7G} {2:.7G}\r\n".format(
+                    -m_Mesh.m_Normals[v * c],
+                    m_Mesh.m_Normals[v * c + 1],
+                    m_Mesh.m_Normals[v * c + 2],
+                ).replace("nan", "0")
+            )
     # endregion
 
     # region Face
     sum = 0
     for i in range(len(m_Mesh.m_SubMeshes)):
         sb.append(f"g {m_Mesh.name}_{i}\r\n")
+        if material_names and i < len(material_names) and material_names[i]:
+            sb.append(f"usemtl {material_names[i]}\r\n")
         indexCount = m_Mesh.m_SubMeshes[i].indexCount
         end = sum + indexCount // 3
         for f in range(sum, end):
-            sb.append("f {0}/{0}/{0} {1}/{1}/{1} {2}/{2}/{2}\r\n".format(
-                m_Mesh.m_Indices[f * 3 + 2] + 1,
-                m_Mesh.m_Indices[f * 3 + 1] + 1,
-                m_Mesh.m_Indices[f * 3] + 1)
+            sb.append(
+                "f {0}/{0}/{0} {1}/{1}/{1} {2}/{2}/{2}\r\n".format(
+                    m_Mesh.m_Indices[f * 3 + 2] + 1,
+                    m_Mesh.m_Indices[f * 3 + 1] + 1,
+                    m_Mesh.m_Indices[f * 3] + 1,
+                )
             )
         sum = end
     # endregion

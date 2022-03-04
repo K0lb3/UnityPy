@@ -1,1 +1,1 @@
-from . import SpriteHelper, Texture2DConverter, AudioClipConverter, MeshExporter
+from . import MeshRendererExporter, SpriteHelper, Texture2DConverter, AudioClipConverter, MeshExporter

@@ -9,7 +9,7 @@ from ..streams import EndianBinaryWriter
 from ..enums import GfxPrimitiveType
 import struct
 from enum import IntEnum
-from ..export.MeshExporter import export_mesh
+from ..export import MeshExporter
 
 
 class MinMaxAABB:
@@ -339,7 +339,7 @@ class SubMesh:
 
 class Mesh(NamedObject):
     def export(self):
-        return export_mesh(self)
+        return MeshExporter.export_mesh(self)
 
     def __init__(self, reader):
         super().__init__(reader=reader)

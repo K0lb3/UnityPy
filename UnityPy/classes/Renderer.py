@@ -1,5 +1,6 @@
 from .Component import Component
 from .PPtr import PPtr
+from ..export import MeshRendererExporter
 
 
 class StaticBatchInfo:
@@ -55,8 +56,7 @@ class Renderer(Component):
             self.m_LightmapTilingOffsetDynamic = reader.read_vector4()
 
         m_MaterialsSize = reader.read_int()
-        self.m_Materials = [PPtr(reader)
-                            for _ in range(m_MaterialsSize)]  # Material
+        self.m_Materials = [PPtr(reader) for _ in range(m_MaterialsSize)]  # Material
 
         if version < (3,):  # 3.0 down
             self.m_LightmapTilingOffset = reader.read_vector4()
@@ -90,3 +90,6 @@ class Renderer(Component):
             # SInt16 m_SortingLayer 5.6 and up
             self.m_SortingOrder = reader.read_short()
             reader.align_stream()
+
+    def export(self, export_dir: str) -> None:
+        MeshRendererExporter.export_mesh_renderer(self, export_dir)

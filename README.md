@@ -12,14 +12,14 @@ So far following obj types can be edited:
   - Texture2D
   - Sprite(indirectly via linked Texture2D)
   - TextAsset
-  - MonoBehaviour
+  - MonoBehaviour (and all other types that you have the typetree of)
 
 If you need advice or if you want to talk about (game) data-mining,
 feel free to join the [UnityPy Discord](https://discord.gg/C6txv7M).
 
 
 If you're making an income by using UnityPy,
-please donate a small part to it to a charitable cause of your choice or sponsor this project with a small amount.
+please donate a small part of it to a charitable cause of your choice or sponsor this project with a small amount.
 
 
 1. [Installation](#installation)
@@ -102,7 +102,7 @@ You probably have to read [Important Classes](#important-classes)
 and [Important Object Types](#important-object-types) to understand how it works.
 
 People who have slightly advanced python skills should take a look at [UnityPy/tools/extractor.py](UnityPy/tools/extractor.py) for a more advanced example.
-It can also be used as general template or simply as importable tool.
+It can also be used as the general template or simply as an importable tool.
 
 
 ## Important Classes
@@ -114,14 +114,14 @@ It can be initialized via:
 
 * a file path - apk files can be loaded as well
 * a folder path - loads all files in that folder (bad idea for folders with a lot of files)
-* a stream - e.g. io.BytesIO, filestream,...
+* a stream - e.g. io.BytesIO, file stream,...
 * a bytes object - will be loaded into a stream
 
-UnityPy can detect itself if the file is a WebFile, BundleFile, Asset or APK itself.
+UnityPy can detect itself if the file is a WebFile, BundleFile, Asset, or APK itself.
 
 The unpacked assets will be loaded into ``.files``, which is a dict consisting of ``asset-name : asset``.
 
-The all objects of the loaded assets can be easily accessed via ``.objects``,
+All objects of the loaded assets can be easily accessed via ``.objects``,
 which itself is a simple recursive iterator.
 
 ```python
@@ -276,26 +276,13 @@ for obj in env.objects:
 * ``.samples`` - ``{sample-name : sample-data}``
 
 The samples are converted into the .wav format.
-The sample-data is a .wav file in bytes.
+The sample data is a .wav file in bytes.
 
 ```python
 clip : AudioClip
 for name, data in clip.samples.items():
     with open(name, "wb") as f:
         f.write(data)
-```
-
-### [Mesh](UnityPy/classes/Mesh.py)
-
-* ``.export()`` - mesh exported as .obj (str)
-
-The mesh is converted into an Wavefront .obj file.
-
-```python
-mesh : Mesh
-with open(f"{mesh.name}.obj", "wt", newline = "") as f:
-    # newline = "" is important
-    f.write(mesh.export())
 ```
 
 ### [Font](UnityPy/classes/Font.py)
@@ -310,4 +297,32 @@ if obj.type.name == "Font":
 
     with open(os.path.join(path, font.name+extension), "wb") as f:
         f.write(font.m_FontData)
+```
+
+
+### [Mesh](UnityPy/classes/Mesh.py)
+
+* ``.export()`` - mesh exported as .obj (str)
+
+The mesh is converted into a Wavefront .obj file.
+
+```python
+mesh : Mesh
+with open(f"{mesh.name}.obj", "wt", newline = "") as f:
+    # newline = "" is important
+    f.write(mesh.export())
+```
+
+### [Renderer, MeshRenderer, SkinnedMeshRenderer]
+ALPHA-VERSION
+
+* ``.export(export_dir)`` - exports the associated mesh, materials, and textures into the given directory
+
+The mesh and materials will be in the Wavefront formats.
+
+```python
+mesh_renderer : Renderer
+export_dir: str
+
+mesh_renderer.export(export_dir)
 ```
