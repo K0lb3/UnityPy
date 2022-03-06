@@ -64,7 +64,7 @@ class Environment:
         for basepath in splits:
             # merge data
             data = io.BytesIO()
-            for i in range(1, 999):
+            for i in range(0, 999):
                 item = f"{basepath}.split{i}"
                 if os.path.exists(item):
                     with open(item, "rb") as f:
