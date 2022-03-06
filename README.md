@@ -313,7 +313,7 @@ with open(f"{mesh.name}.obj", "wt", newline = "") as f:
     f.write(mesh.export())
 ```
 
-### [Renderer, MeshRenderer, SkinnedMeshRenderer]
+### Renderer, MeshRenderer, SkinnedMeshRenderer
 ALPHA-VERSION
 
 * ``.export(export_dir)`` - exports the associated mesh, materials, and textures into the given directory
@@ -324,5 +324,9 @@ The mesh and materials will be in the Wavefront formats.
 mesh_renderer : Renderer
 export_dir: str
 
+if mesh_renderer.m_GameObject:
+    # get the name of the model
+    game_object = mesh_renderer.m_GameObject.read()
+    export_dir = os.path.join(export_dir, game_object.name)
 mesh_renderer.export(export_dir)
 ```

@@ -1,5 +1,6 @@
 import os
 from ..classes import Renderer, SkinnedMeshRenderer, Material, Texture2D
+from ..enums import ClassIDType
 from .MeshExporter import export_mesh_obj
 
 
@@ -9,12 +10,14 @@ def get_mesh(meshR: Renderer):
             return meshR.m_Mesh.read()
     else:
         m_GameObject = meshR.m_GameObject.read()
-        if m_GameObject.m_MeshFilter:
-            return m_GameObject.m_MeshFilter.m_Mesh.read()
+        for component in m_GameObject.m_Components:
+            if component.type == ClassIDType.MeshFilter:
+                return component.read().m_Mesh.read()
     return None
 
 
 def export_mesh_renderer(obj: Renderer, export_dir: str) -> None:
+    os.makedirs(export_dir, exist_ok=True)
     meshR = obj.read()
     mesh = get_mesh(meshR)
     if not mesh:
