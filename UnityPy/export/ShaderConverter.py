@@ -478,6 +478,7 @@ class ShaderSubProgram:
         #201708220 - Unity 2017.3, Unity 2017.4 & Unity 2018.1
         #201802150 - Unity 2018.2 & Unity 2018.3
         #201806140 - Unity 2019.1~2020.1
+        #202012090 - Unity 2021.2
 
         self.m_Version = reader.read_int()
         self.m_ProgramType = ShaderGpuProgramType(reader.read_int())
@@ -492,7 +493,7 @@ class ShaderSubProgram:
         for i in range(m_KeywordSize):
             self.m_Keywords.append(reader.read_aligned_string())
 
-        if self.m_Version >= 201806140:
+        if 201806140 <= self.m_Version < 202012090:
             m_LocalKeywordsSize = reader.read_int()
             self.m_LocalKeywords = []
 
