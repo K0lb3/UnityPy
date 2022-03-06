@@ -558,7 +558,7 @@ class ShaderSubProgram:
                 ShaderGpuProgramType.kShaderGpuProgramMetalVS,
                 ShaderGpuProgramType.kShaderGpuProgramMetalFS
             ]:
-                reader = EndianBinaryReader(self.m_ProgramCode)
+                reader = EndianBinaryReader(self.m_ProgramCode, endian = "<")
                 fourCC = reader.read_u_int()
                 if fourCC == 0xf00dcafe:
                     offset = reader.read_int()
