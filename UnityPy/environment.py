@@ -69,7 +69,7 @@ class Environment:
                 if os.path.exists(item):
                     with open(item, "rb") as f:
                         data.write(f.read())
-                else:
+                elif i:
                     break
             self.files[self.reduce_path(basepath)] = self.load_file(data)
 
@@ -159,12 +159,12 @@ class Environment:
         for basepath in splits:
             # merge data
             data = io.BytesIO()
-            for i in range(1, 999):
+            for i in range(0, 999):
                 item = f"{basepath}.split{i}"
                 if item in z.namelist():
                     with z.open(item) as f:
                         data.write(f.read())
-                else:
+                elif i:
                     break
             *path, name = basepath.split("/")
             cur = self
