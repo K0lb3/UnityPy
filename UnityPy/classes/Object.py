@@ -116,7 +116,7 @@ class Object(object):
             if name == "type_tree":
                 return self.type_tree
         elif name == "read":
-            return lambda : self
+            return lambda: self
         return getattr(self.type_tree, name)
 
     def get(self, key, default=None):
@@ -124,6 +124,12 @@ class Object(object):
 
     def __repr__(self):
         return "<%s %s>" % (self.__class__.__name__, self.name)
+
+    def __hash__(self):
+        return hash(self.path_id)
+
+    def __eq__(self, other):
+        return self.path_id == other.path_id
 
 
 class NodeHelper:
