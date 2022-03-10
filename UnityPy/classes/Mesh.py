@@ -801,7 +801,7 @@ class Mesh(NamedObject):
             topology = m_SubMesh.topology
             if topology == GfxPrimitiveType.kPrimitiveTriangles:
                 m_Indices.extend(
-                    m_IndexBuffer[firstIndex : firstIndex + indexCount * 3]
+                    m_IndexBuffer[firstIndex : firstIndex + indexCount - indexCount % 3]
                 )
 
             elif (
