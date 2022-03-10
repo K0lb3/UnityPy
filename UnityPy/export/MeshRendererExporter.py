@@ -10,9 +10,8 @@ def get_mesh(meshR: Renderer):
             return meshR.m_Mesh.read()
     else:
         m_GameObject = meshR.m_GameObject.read()
-        for component in m_GameObject.m_Components:
-            if component.type == ClassIDType.MeshFilter:
-                return component.read().m_Mesh.read()
+        if m_GameObject.m_MeshFilter:
+            return m_GameObject.m_MeshFilter.read().m_Mesh.read()
     return None
 
 

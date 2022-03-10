@@ -6,6 +6,7 @@ from ..enums import FileType, ClassIDType
 import os
 from .. import environment
 
+
 def save_ptr(obj, writer: EndianBinaryWriter):
     if isinstance(obj, PPtr):
         writer.write_int(obj.file_id)
@@ -16,7 +17,9 @@ def save_ptr(obj, writer: EndianBinaryWriter):
     else:
         writer.write_long(obj.path_id)
 
+
 cached_managers = dict()
+
 
 class PPtr:
     def __init__(self, reader: ObjectReader):
@@ -43,7 +46,7 @@ class PPtr:
                 external_name = self.assets_file.externals[self.file_id - 1].name
                 # try to find it in the already registered cabs
                 manager = environment.get_cab(external_name)
-                
+
                 if not manager:
                     # guess we have to try to find it as file then
                     path = environment.path
@@ -53,7 +56,9 @@ class PPtr:
                         for root, dirs, files in os.walk(path):
                             for name in files:
                                 if name in possible_names:
-                                    manager = environment.load_file(os.path.join(root, name))
+                                    manager = environment.load_file(
+                                        os.path.join(root, name)
+                                    )
                                     break
                             else:
                                 # else is reached if the previous loop didn't break
@@ -75,16 +80,24 @@ class PPtr:
 
         return self._obj
 
-    def __getattr__(self, key):
+    @property
+    def type(self):
         obj = self.get_obj()
         if obj is None:
-            if key == "type":
-                return ClassIDType.UnknownType
-            raise AttributeError(key)
+            return ClassIDType.UnknownType
+        return obj.type
+
+    def __getattr__(self, key):
+        obj = self.get_obj()
         return getattr(obj, key)
 
     def __repr__(self):
-        return "<%s %s>" % (self.__class__.__name__, self._obj.__class__.__repr__(self.get_obj()) if self.get_obj() else "Not Found")
+        return "<%s %s>" % (
+            self.__class__.__name__,
+            self._obj.__class__.__repr__(self.get_obj())
+            if self.get_obj()
+            else "Not Found",
+        )
 
     def __bool__(self):
         return True if self.get_obj() else False
