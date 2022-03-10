@@ -1,10 +1,15 @@
+from dataclasses import dataclass
 from math import sqrt
 
 
+kEpsilon = 0.00001
+
+
+@dataclass
 class Vector3:
-    X: float
-    Y: float
-    Z: float
+    X: float = 0.0
+    Y: float = 0.0
+    Z: float = 0.0
 
     def __init__(self, *args):
         if len(args) == 3 or len(args) == 1 and isinstance(args[0], (tuple, list)):
@@ -13,162 +18,82 @@ class Vector3:
             # dirty patch for Vector4
             self.__dict__ = args[0].__dict__
 
-    def length(self) -> float:
-        return sqrt(self.X ** 2 + self.Y ** 2 + self.Z ** 2)
+    def __getitem__(self, index):
+        return (self.X, self.Y, self.Z)[index]
+
+    def __setitem__(self, index, value):
+        if index == 0:
+            self.X = value
+        elif index == 1:
+            self.Y = value
+        elif index == 2:
+            self.Z = value
+        else:
+            raise IndexError("Index out of range")
+
+    def __hash__(self):
+        return self.X.__hash__() ^ (self.Y.__hash__() << 2) ^ (self.Z.__hash__() >> 2)
+
+    def __eq__(self, other):
+        if isinstance(other, Vector3):
+            return self.X == other.X and self.Y == other.Y and self.Z == other.Z
+        else:
+            return False
 
     def normalize(self):
         length = self.length()
+        if length > kEpsilon:
+            invNorm = 1.0 / length
+            self.X *= invNorm
+            self.Y *= invNorm
+            self.Z *= invNorm
+        else:
+            X = 0
+            Y = 0
+            Z = 0
 
-        invNorm = 1.0 / length
-        self.X *= invNorm
-        self.Y *= invNorm
-        self.Z *= invNorm
+    def Normalize(self):
+        self.normalize()
 
+    def length(self):
+        return sqrt(self.LengthSquared())
 
-"""
-using System;
-using System.Runtime.InteropServices;
+    def Length(self):
+        return self.length()
 
-namespace AssetStudio
-{
-	[StructLayout(LayoutKind.Sequential, Pack = 4)]
-	public struct Vector3 : IEquatable<Vector3>
-	{
-		public float X;
-		public float Y;
-		public float Z;
+    def LengthSquared(self):
+        return self.X ** 2 + self.Y ** 2 + self.Y ** 2
 
-		public Vector3(float x, float y, float z)
-		{
-			X = x;
-			Y = y;
-			Z = z;
-		}
+    @staticmethod
+    def Zero():
+        return Vector3(0, 0, 0)
 
-		public float this[int index]
-		{
-			get
-			{
-				switch (index)
-				{
-					case 0: return X;
-					case 1: return Y;
-					case 2: return Z;
-					default: throw new ArgumentOutOfRangeException(nameof(index), "Invalid Vector3 index!");
-				}
-			}
+    @staticmethod
+    def One():
+        return Vector3(1, 1, 1)
 
-			set
-			{
-				switch (index)
-				{
-					case 0: X = value; break;
-					case 1: Y = value; break;
-					case 2: Z = value; break;
-					default: throw new ArgumentOutOfRangeException(nameof(index), "Invalid Vector3 index!");
-				}
-			}
-		}
+    def __add__(a, b):
+        return Vector3(a.X + b.X, a.Y + b.Y, a.Z + b.Z)
 
-		public override int GetHashCode()
-		{
-			return X.GetHashCode() ^ (Y.GetHashCode() << 2) ^ (Z.GetHashCode() >> 2);
-		}
+    def __sub__(a, b):
+        return Vector3(a.X - b.X, a.Y - b.Y, a.Z - b.Z)
 
-		public override bool Equals(object other)
-		{
-			if (!(other is Vector3))
-				return false;
-			return Equals((Vector3)other);
-		}
+    def __mul__(a, d):
+        return Vector3(a.X * d, a.Y * d, a.Z * d)
 
-		public bool Equals(Vector3 other)
-		{
-			return X.Equals(other.X) && Y.Equals(other.Y) && Z.Equals(other.Z);
-		}
+    def __div__(a, d):
+        return Vector3(a.X / d, a.Y / d, a.Z / d)
 
-		public void Normalize()
-		{
-			var length = Length();
-			if (length > kEpsilon)
-			{
-				var invNorm = 1.0f / length;
-				X *= invNorm;
-				Y *= invNorm;
-				Z *= invNorm;
-			}
-			else
-			{
-				X = 0;
-				Y = 0;
-				Z = 0;
-			}
-		}
+    def __eq__(lhs, rhs):
+        return (lhs - rhs).LengthSquared() < kEpsilon
 
-		public float Length()
-		{
-			return (float)Math.Sqrt(LengthSquared());
-		}
+    def __ne__(lhs, rhs):
+        return not (lhs == rhs)
 
-		public float LengthSquared()
-		{
-			return X * X + Y * Y + Z * Z;
-		}
+    def Vector2(self):
+        from .Vector2 import Vector2
+        return Vector2(self.X, self.Y)
 
-		public static Vector3 Zero => new Vector3();
-
-		public static Vector3 operator +(Vector3 a, Vector3 b)
-		{
-			return new Vector3(a.X + b.X, a.Y + b.Y, a.Z + b.Z);
-		}
-
-		public static Vector3 operator -(Vector3 a, Vector3 b)
-		{
-			return new Vector3(a.X - b.X, a.Y - b.Y, a.Z - b.Z);
-		}
-
-		public static Vector3 operator -(Vector3 a)
-		{
-			return new Vector3(-a.X, -a.Y, -a.Z);
-		}
-
-		public static Vector3 operator *(Vector3 a, float d)
-		{
-			return new Vector3(a.X * d, a.Y * d, a.Z * d);
-		}
-
-		public static Vector3 operator *(float d, Vector3 a)
-		{
-			return new Vector3(a.X * d, a.Y * d, a.Z * d);
-		}
-
-		public static Vector3 operator /(Vector3 a, float d)
-		{
-			return new Vector3(a.X / d, a.Y / d, a.Z / d);
-		}
-
-		public static bool operator ==(Vector3 lhs, Vector3 rhs)
-		{
-			return (lhs - rhs).LengthSquared() < kEpsilon * kEpsilon;
-		}
-
-		public static bool operator !=(Vector3 lhs, Vector3 rhs)
-		{
-			return !(lhs == rhs);
-		}
-
-		public static implicit operator Vector2(Vector3 v)
-		{
-			return new Vector2(v.X, v.Y);
-		}
-
-		public static implicit operator Vector4(Vector3 v)
-		{
-			return new Vector4(v.X, v.Y, v.Z, 0.0F);
-		}
-
-		private const float kEpsilon = 0.00001F;
-	}
-}
-
-"""
+    def Vector4(self):
+        from .Vector4 import Vector4
+        return Vector4(self.X, self.Y, self.Z, 0.0)

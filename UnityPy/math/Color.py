@@ -7,7 +7,7 @@ class Color:
     B: float
     A: float
 
-    def __init__(self, r: float, g: float, b: float, a: float):
+    def __init__(self, r: float = 0.0, g: float = 0.0, b: float = 0.0, a: float = 0.0):
         self.R = r
         self.G = g
         self.B = b
