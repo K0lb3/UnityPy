@@ -3,7 +3,6 @@ import io
 import os
 from zipfile import ZipFile
 import re
-
 from . import files
 from .files import File
 from .enums import FileType
@@ -22,7 +21,7 @@ class Environment:
     def __init__(self, *args):
         self.files = {}
         self.cabs = {}
-        self.path = "."
+        self.path = None
         self.out_path = os.path.join(os.getcwd(), "output")
 
         if args:
@@ -43,6 +42,9 @@ class Environment:
 
         if len(self.files) == 1:
             self.file = list(self.files.values())[0]
+        
+        if self.path == "":
+            self.path = os.getcwd()
 
     def load_files(self, files: list):
         """Loads all files (list) into the AssetsManager and merges .split files for common usage."""

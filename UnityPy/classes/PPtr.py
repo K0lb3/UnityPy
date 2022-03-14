@@ -18,9 +18,6 @@ def save_ptr(obj, writer: EndianBinaryWriter):
         writer.write_long(obj.path_id)
 
 
-cached_managers = dict()
-
-
 class PPtr:
     def __init__(self, reader: ObjectReader):
         self._version = reader.version2
@@ -43,14 +40,14 @@ class PPtr:
         elif self.file_id > 0 and self.file_id - 1 < len(self.assets_file.externals):
             if self.index == -2:
                 environment = self.assets_file.environment
-                external_name = self.assets_file.externals[self.file_id - 1].name
+                external_name = self.external_name
                 # try to find it in the already registered cabs
                 manager = environment.get_cab(external_name)
 
                 if not manager:
                     # guess we have to try to find it as file then
                     path = environment.path
-                    if path:
+                    if path is not None:
                         basename = os.path.basename(external_name)
                         possible_names = [basename, basename.lower(), basename.upper()]
                         for root, dirs, files in os.walk(path):
@@ -59,24 +56,18 @@ class PPtr:
                                     manager = environment.load_file(
                                         os.path.join(root, name)
                                     )
+                                    environment.register_cab(name, manager)
                                     break
                             else:
                                 # else is reached if the previous loop didn't break
                                 continue
                             break
-                        print(external_name, "not found")
-                # else:
-                #     if external_name not in cached_managers:
-                #         typ, reader = ImportHelper.check_file_type(external_name)
-                #         if typ == FileType.AssetsFile:
-                #             cached_managers[external_name] = files.SerializedFile(reader)
-                #     if external_name in cached_managers:
-                #         manager = cached_managers[external_name]
 
         if manager and self.path_id in manager.objects:
             self._obj = manager.objects[self.path_id]
         else:
             self._obj = None
+            print(external_name, "not found")
 
         return self._obj
 
@@ -86,6 +77,10 @@ class PPtr:
         if obj is None:
             return ClassIDType.UnknownType
         return obj.type
+
+    @property
+    def external_name(self):
+        return self.assets_file.externals[self.file_id - 1].name
 
     def __getattr__(self, key):
         obj = self.get_obj()
