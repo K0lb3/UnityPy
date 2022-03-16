@@ -62,12 +62,19 @@ class PPtr:
                                 # else is reached if the previous loop didn't break
                                 continue
                             break
-
         if manager and self.path_id in manager.objects:
             self._obj = manager.objects[self.path_id]
         else:
             self._obj = None
-            print(external_name, "not found")
+            if self.external_name:
+                print(f"Couldn't find dependency {self.external_name}")
+                print("You can try to load it manually to the environment in advance")
+                print("for Web-&BundleFiles: env.load_file(dependency)")
+                print(
+                    "for SerializedFiles: env.register_cab(depdency_basename, env.load_file(dependency)"
+                )
+            else:
+                print(f"Couldn't find referenced object with path_id {self.path_id}")
 
         return self._obj
 
@@ -80,7 +87,8 @@ class PPtr:
 
     @property
     def external_name(self):
-        return self.assets_file.externals[self.file_id - 1].name
+        if self.file_id > 0 and self.file_id - 1 < len(self.assets_file.externals):
+            return self.assets_file.externals[self.file_id - 1].name
 
     def __getattr__(self, key):
         obj = self.get_obj()
