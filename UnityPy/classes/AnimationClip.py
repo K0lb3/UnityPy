@@ -7,6 +7,11 @@ from ..enums import ClassIDType
 from ..math import Quaternion, Vector3
 from ..streams import EndianBinaryReader
 
+try:
+    from UnityPy import UnityPyBoost
+except ImportError:
+    UnityPyBoost = None
+
 
 def uint(num):
     if num < 0 or num > 4294967295:
@@ -76,6 +81,19 @@ class PackedFloatVector:
         start: int = 0,
         numChunks: int = -1,
     ):
+        if UnityPyBoost:
+            return UnityPyBoost.unpack_floats(
+                self.m_NumItems,
+                self.m_Range,
+                self.m_Start,
+                bytes(self.m_Data),
+                self.m_BitSize,
+                itemCountInChunk,
+                chunkStride,
+                start,
+                numChunks,
+            )
+
         bitPos: int = self.m_BitSize * start
         indexPos: int = bitPos // 8
         bitPos %= 8
@@ -103,7 +121,6 @@ class PackedFloatVector:
                 x &= uint((1 << self.m_BitSize) - 1)  # (uint)(1 << m_BitSize) - 1u
                 denomi = scale * ((1 << self.m_BitSize) - 1)
                 data.append((x / denomi if denomi else float("inf")) + self.m_Start)
-
         return data
 
 
@@ -129,6 +146,11 @@ class PackedIntVector:
         writer.align_stream()
 
     def UnpackInts(self):
+        if UnityPyBoost:
+            return UnityPyBoost.unpack_ints(
+                self.m_NumItems, bytes(self.m_Data), self.m_BitSize
+            )
+
         data = [0] * self.m_NumItems
         indexPos = 0
         bitPos = 0
