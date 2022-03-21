@@ -977,16 +977,6 @@ class MeshHelper:
 
     @staticmethod
     def BytesToFloatArray(inputBytes, size, vformat: "VertexFormat") -> List[float]:
-        # return [
-        #     inputBytes[i] / 255.0
-        #     if size == 1
-        #     else struct.unpack(">e", inputBytes[i * 2 : i * 2 + 2])[0]
-        #     if size == 2
-        #     else struct.unpack(">f", inputBytes[i * 4 : i * 4 + 4])[0]
-        #     if size == 4
-        #     else 0
-        #     for i in range(len(inputBytes) // size)
-        # ]
         if vformat == VertexFormat.kVertexFormatFloat:
             return struct.unpack(f">{'f'*(len(inputBytes)//4)}", inputBytes)
         elif vformat == VertexFormat.kVertexFormatFloat16:
@@ -1011,9 +1001,9 @@ class MeshHelper:
         if size == 1:
             return [x for x in inputBytes]
         elif size == 2:
-            return [x for x in struct.unpack(">H" * (len(inputBytes) // 2), inputBytes)]
+            return [x for x in struct.unpack(">h" * (len(inputBytes) // 2), inputBytes)]
         elif size == 4:
-            return [x for x in struct.unpack(">I" * (len(inputBytes) // 4), inputBytes)]
+            return [x for x in struct.unpack(">i" * (len(inputBytes) // 4), inputBytes)]
 
     @staticmethod
     def ToVertexFormat(format: int, version: List[int]) -> "VertexFormat":
