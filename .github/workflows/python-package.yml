@@ -13,7 +13,7 @@ jobs:
     timeout-minutes: 30
 
     runs-on: ${{ matrix.os }}
-    name: ${{ matrix.os }}
+    name: ${{ matrix.os }} - ${{ matrix.cp }}
 
     steps:
     - uses: actions/checkout@v2
@@ -44,6 +44,18 @@ jobs:
         CIBW_REPAIR_WHEEL_COMMAND: '' # Disable auditwheel
         CIBW_TEST_REQUIRES: pytest
         CIBW_TEST_COMMAND: pytest -v -s {package}/tests
+
+    - name: Rename Linux wheels to ManyLinux
+      if: runner.os == 'Linux'
+      uses: jannekem/run-python-script-action@v1
+      with:
+        script: |
+          import os
+          wheeldir = "./wheelhouse"
+          for f in os.listdir(wheeldir):
+              fp = os.path.join(wheeldir, f)
+              print(fp,"->",fp.replace("linux", "manylinux2014"))
+              os.rename(fp, fp.replace("linux", "manylinux2014"))
 
     - name: Publish wheels to PyPI
       if: success() && github.event_name == 'push' && env.TWINE_PASSWORD != ''
