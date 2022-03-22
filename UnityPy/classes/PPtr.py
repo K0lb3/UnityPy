@@ -73,7 +73,7 @@ class PPtr:
                 print(
                     "for SerializedFiles: env.register_cab(depdency_basename, env.load_file(dependency)"
                 )
-            else:
+            elif self.path_id:
                 print(f"Couldn't find referenced object with path_id {self.path_id}")
 
         return self._obj
