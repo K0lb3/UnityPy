@@ -1,4 +1,3 @@
-from tkinter.messagebox import NO
 from .EditorExtension import EditorExtension
 from .PPtr import PPtr
 from ..enums import ClassIDType
