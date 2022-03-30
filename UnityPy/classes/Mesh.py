@@ -1062,7 +1062,7 @@ class VertexChannelFormat(IntEnum):
     kChannelFormatUInt32 = 4
 
 
-class VertexFormat(IntEnum):
+class VertexFormat2017(IntEnum):
     kVertexFormatFloat = 0
     kVertexFormatFloat16 = 1
     kVertexFormatColor = 2
@@ -1078,7 +1078,7 @@ class VertexFormat(IntEnum):
     kVertexFormatSInt32 = 12
 
 
-class VertexFormat2017(IntEnum):
+class VertexFormat(IntEnum):
     kVertexFormatFloat = 0
     kVertexFormatFloat16 = 1
     kVertexFormatUNorm8 = 2
