@@ -189,7 +189,9 @@ class VertexData:
                     if m_Channel.dimension > 0:
                         chnMask |= 1 << chn  # Shift 1UInt << chn
                         stride += m_Channel.dimension * MeshHelper.GetFormatSize(
-                            self.reader.version, m_Channel.format
+                            MeshHelper.ToVertexFormat(
+                                m_Channel.format, self.reader.version
+                            )
                         )
             self.m_Streams[s] = StreamInfo(
                 channelMask=chnMask,
@@ -233,7 +235,7 @@ class VertexData:
                         m_Channel.format = 0  # kChannelFormatFloat
                         m_Channel.dimension = 4
                     offset += m_Channel.dimension * MeshHelper.GetFormatSize(
-                        self.reader.version, m_Channel.format
+                        MeshHelper.ToVertexFormat(m_Channel.format, self.reader.version)
                     )
 
 
@@ -537,7 +539,7 @@ class Mesh(NamedObject):
                         m_Channel.dimension = 4
 
                     componentByteSize = MeshHelper.GetFormatSize(
-                        version, m_Channel.format
+                        MeshHelper.ToVertexFormat(m_Channel.format, self.reader.version)
                     )
                     swap = self.reader.endian == "<" and componentByteSize > 1
 
@@ -900,70 +902,28 @@ class Mesh(NamedObject):
 
 class MeshHelper:
     @staticmethod
-    def GetFormatSize(version, format: int) -> int:
-        if version[0] < 2017:
-            if format == VertexChannelFormat.kChannelFormatFloat:
-                return 4
-            elif format == VertexChannelFormat.kChannelFormatFloat16:
-                return 2
-            elif format == VertexChannelFormat.kChannelFormatColor:  # in 4.x is size 4
-                return 1
-            elif format == VertexChannelFormat.kChannelFormatByte:
-                return 1
-            elif format == VertexChannelFormat.kChannelFormatUInt32:  # in 5.x
-                return 4
-        elif version[0] < 2019:
-            if format == VertexFormat.kVertexFormatFloat:
-                return 4
-            elif format == VertexFormat.kVertexFormatFloat16:
-                return 2
-            elif format == VertexFormat.kVertexFormatColor:
-                return 1
-            elif format == VertexFormat.kVertexFormatUNorm8:
-                return 1
-            elif format == VertexFormat.kVertexFormatSNorm8:
-                return 1
-            elif format == VertexFormat.kVertexFormatUNorm16:
-                return 2
-            elif format == VertexFormat.kVertexFormatSNorm16:
-                return 2
-            elif format == VertexFormat.kVertexFormatUInt8:
-                return 1
-            elif format == VertexFormat.kVertexFormatSInt8:
-                return 1
-            elif format == VertexFormat.kVertexFormatUInt16:
-                return 2
-            elif format == VertexFormat.kVertexFormatSInt16:
-                return 2
-            elif format == VertexFormat.kVertexFormatUInt32:
-                return 4
-            elif format == VertexFormat.kVertexFormatSInt32:
-                return 4
-        else:
-            if format == VertexFormat2017.kVertexFormatFloat:
-                return 4
-            elif format == VertexFormat2017.kVertexFormatFloat16:
-                return 2
-            elif format == VertexFormat2017.kVertexFormatUNorm8:
-                return 1
-            elif format == VertexFormat2017.kVertexFormatSNorm8:
-                return 1
-            elif format == VertexFormat2017.kVertexFormatUNorm16:
-                return 2
-            elif format == VertexFormat2017.kVertexFormatSNorm16:
-                return 2
-            elif format == VertexFormat2017.kVertexFormatUInt8:
-                return 1
-            elif format == VertexFormat2017.kVertexFormatSInt8:
-                return 1
-            elif format == VertexFormat2017.kVertexFormatUInt16:
-                return 2
-            elif format == VertexFormat2017.kVertexFormatSInt16:
-                return 2
-            elif format == VertexFormat2017.kVertexFormatUInt32:
-                return 4
-            elif format == VertexFormat2017.kVertexFormatSInt32:
-                return 4
+    def GetFormatSize(format: int) -> int:
+        if format in [
+            VertexFormat.kVertexFormatFloat,
+            VertexFormat.kVertexFormatUInt32,
+            VertexFormat.kVertexFormatSInt32,
+        ]:
+            return 4
+        elif format in [
+            VertexFormat.kVertexFormatFloat16,
+            VertexFormat.kVertexFormatUNorm16,
+            VertexFormat.kVertexFormatSNorm16,
+            VertexFormat.kVertexFormatUInt16,
+            VertexFormat.kVertexFormatSInt16,
+        ]:
+            return 2
+        elif format in [
+            VertexFormat.kVertexFormatUNorm8,
+            VertexFormat.kVertexFormatSNorm8,
+            VertexFormat.kVertexFormatUInt8,
+            VertexFormat.kVertexFormatSInt8,
+        ]:
+            return 1
         raise ValueError(format)
 
     @staticmethod
@@ -1001,9 +961,13 @@ class MeshHelper:
         if size == 1:
             return [x for x in inputBytes]
         elif size == 2:
-            return [x for x in struct.unpack(">h" * (len(inputBytes) // 2), inputBytes)]
+            return [
+                x for x in struct.unpack(f">{'h'*(len(inputBytes)//2)}", inputBytes)
+            ]
         elif size == 4:
-            return [x for x in struct.unpack(">i" * (len(inputBytes) // 4), inputBytes)]
+            return [
+                x for x in struct.unpack(f">{'i'*(len(inputBytes)//4)}", inputBytes)
+            ]
 
     @staticmethod
     def ToVertexFormat(format: int, version: List[int]) -> "VertexFormat":
