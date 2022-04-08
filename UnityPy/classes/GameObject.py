@@ -37,7 +37,7 @@ class GameObject(EditorExtension):
                 self.m_Animator = component
             elif component.type == ClassIDType.Animation:
                 self.m_Animation = component
-            elif component.type == ClassIDType.Transform:
+            elif component.type in [ClassIDType.Transform, ClassIDType.RectTransform]:
                 self.m_Transform = component
             elif component.type == ClassIDType.MeshRenderer:
                 self.m_MeshRenderer = component
