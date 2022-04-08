@@ -29,13 +29,11 @@ def load_fmod_library():
             arch = "x64"
     elif system == "Linux":
         # Raspberry Pi and Linux on arm projects
-        if "arm" in machine:
+        if "arm" in machine or "aarch" in machine:
             if arch == "32bit":
-                arch = "armhf" if machine.endswith("l") else "arm"
+                arch = "arm"
             elif arch == "64bit":
-                # Raise an exception for now; Once it gets supported by FMOD we can just modify the code here
-                _dll = False
-                raise NotImplementedError("ARM64 not supported by FMOD.\nUse a 32bit python version.")
+                arch = "arm64"
         elif arch == "32bit":
             arch = "x86"
         elif arch == "64bit":
@@ -86,7 +84,16 @@ def dump_samples(clip):
     # init system
     # system = pyfmodex.System()
     sys_ptr = c_void_p()
-    ckresult(_dll.FMOD_System_Create(byref(sys_ptr)))
+
+    # During creation, the 2.01 and older creation sequece will be tried first, when that fails on 2.02 or newer, the new will be used with a provided `header_version` or a library default.
+    try:
+        ckresult(_dll.FMOD_System_Create(byref(sys_ptr)))
+    except FmodError as exc:
+        if exc.result is not RESULT.HEADER_MISMATCH:
+            raise
+        header_version = 0x20200
+        ckresult(_dll.FMOD_System_Create(byref(sys_ptr), header_version))
+
     # system.init(1, INIT_FLAGS.NORMAL, None)
     ckresult(_dll.FMOD_System_Init(sys_ptr, clip.m_Channels, None, None))
 
