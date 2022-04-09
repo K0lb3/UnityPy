@@ -27,6 +27,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip wheel setuptools
         pip install --upgrade twine
+        pip install -U lz4 brotli Pillow texture2ddecoder etcpak tabulate
 
     - name: Set up QEMU
       if: runner.os == 'Linux'
