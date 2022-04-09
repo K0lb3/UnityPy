@@ -57,10 +57,12 @@ jobs:
               print(fp,"->",fp.replace("linux", "manylinux2014"))
               os.rename(fp, fp.replace("linux", "manylinux2014"))
 
-    - name: Publish wheels to PyPI
+    - name: Publish to PyPI
       if: success() && github.event_name == 'push' && env.TWINE_PASSWORD != ''
       env:
         TWINE_USERNAME: __token__
         TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
       run: |
         twine upload ./wheelhouse/*.whl --skip-existing
+        twine upload ./dist/*.tar.gz --skip-existing
+  
