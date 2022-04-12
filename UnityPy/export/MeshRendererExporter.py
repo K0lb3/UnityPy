@@ -11,7 +11,9 @@ def get_mesh(meshR: Renderer):
     else:
         m_GameObject = meshR.m_GameObject.read()
         if m_GameObject.m_MeshFilter:
-            return m_GameObject.m_MeshFilter.read().m_Mesh.read()
+            filter = m_GameObject.m_MeshFilter.read()
+            if filter.m_Mesh:
+                return filter.m_Mesh.read()
     return None
 
 
@@ -40,13 +42,13 @@ def export_mesh_renderer(obj: Renderer, export_dir: str) -> None:
             material_names.append(None)
             continue
         materials.append(export_material(mat))
-        material_names.append(mat.m_Name)
+        material_names.append(mat.name)
         # save material textures
         for key, texEnv in mat.m_SavedProperties.m_TexEnvs.items():
             if not texEnv.m_Texture:
                 continue
             tex = texEnv.m_Texture.read()
-            texName = f"{tex.m_Name if tex.m_Name else key}.png"
+            texName = f"{tex.name if tex.name else key}.png"
             tex.read().image.save(os.path.join(export_dir, texName))
 
     # save .obj
@@ -83,7 +85,7 @@ def export_material(mat: Material) -> str:
     transparency = floats.get("_Transparency", 0.0)
 
     sb = []
-    sb.append(f"newmtl {mat.m_Name}")
+    sb.append(f"newmtl {mat.name}")
     # Ka r g b
     # defines the ambient color of the material to be (r,g,b). The default is (0.2,0.2,0.2);
     sb.append(f"Ka {ambient[0]:.4f} {ambient[1]:.4f} {ambient[2]:.4f}")
@@ -111,7 +113,7 @@ def export_material(mat: Material) -> str:
         if not texEnv.m_Texture:
             continue
         tex = texEnv.m_Texture.read()
-        texName = f"{tex.m_Name if tex.m_Name else key}.png"
+        texName = f"{tex.name if tex.name else key}.png"
         if key == "_MainTex":
             sb.append(f"map_Kd {texName}")
         elif key == "_BumpMap":
