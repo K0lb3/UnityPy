@@ -33,12 +33,13 @@ def export_mesh_renderer(obj: Renderer, export_dir: str) -> None:
     materials = []
     material_names = []
     for i, submesh in enumerate(mesh.m_SubMeshes):
-        mat = None
-        if i - firstSubMesh < len(meshR.m_Materials):
-            matPtr = meshR.m_Materials[i - firstSubMesh]
-            if matPtr:
-                mat = matPtr.read()
-        if not mat:
+        mat_index = i - firstSubMesh
+        if mat_index < 0 or mat_index >= len(meshR.m_Materials):
+            continue
+        matPtr = meshR.m_Materials[i - firstSubMesh]
+        if matPtr:
+            mat = matPtr.read()
+        else:
             material_names.append(None)
             continue
         materials.append(export_material(mat))
