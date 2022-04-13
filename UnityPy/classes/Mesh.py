@@ -107,7 +107,7 @@ class ChannelInfo:
         self.stream = reader.read_byte()
         self.offset = reader.read_byte()
         self.format = reader.read_byte()
-        self.dimension = reader.read_byte()
+        self.dimension = reader.read_byte() & 0xF
 
     def save(self, writer):
         writer.write_byte(self.stream)
