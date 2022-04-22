@@ -7,6 +7,10 @@ from ..enums import BuildTarget, ClassIDType, CommonString
 from ..streams import EndianBinaryReader, EndianBinaryWriter
 from ..helpers.TypeTreeHelper import TypeTreeNode
 
+from .. import config
+# only print the version warning once
+VERSION_WARNED = False
+
 RECURSION_LIMIT = sys.getrecursionlimit()
 
 
@@ -290,6 +294,12 @@ class SerializedFile(File.File):
             # weird case, but apparently can happen?
             # check "cant read Texture2D by 2020.3.13 f1 AssetBundle #77" for details
             string_version = self.parent.version_engine
+            if string_version == "0.0.0":
+                global VERSION_WARNED
+                if not VERSION_WARNED:
+                    print(f"Warning: 0.0.0 version found, defaulting to UnityPy.config.FALLBACK_UNITY_VERSION\n{config.FALLBACK_UNITY_VERSION}")
+                    VERSION_WARNED = True
+                string_version = config.FALLBACK_UNITY_VERSION
         build_type = re.findall(r"([^\d.])", string_version)
         self.build_type = BuildType(build_type[0] if build_type else "")
         version_split = re.split(r"\D", string_version)
