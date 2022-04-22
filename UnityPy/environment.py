@@ -10,7 +10,7 @@ from .helpers import ImportHelper
 from .streams import EndianBinaryReader
 from .files import SerializedFile
 
-reSplitFile = re.compile(r"^(.+)\.split(\d+)$")
+reSplit = re.compile(r"(.+/(\w+?\.split))\d+")
 
 
 class Environment:
@@ -42,7 +42,7 @@ class Environment:
 
         if len(self.files) == 1:
             self.file = list(self.files.values())[0]
-        
+
         if self.path == "":
             self.path = os.getcwd()
 
@@ -137,44 +137,33 @@ class Environment:
             buffer = value
 
         z = ZipFile(buffer)
-        splits = []
-        for path in z.namelist():
-            splitMatch = reSplitFile.match(path)
-            if reSplitFile.match(path):
-                name = splitMatch[1]
-                if name not in splits:
-                    splits[name] = []
-                continue
+        split_files = []
+        namelist = z.namelist()
+        for path in namelist:
+            splitMatch = reSplit.match(path)
+            if splitMatch:
+                data = []
+                basepath, basename = splitMatch.groups()
 
-            stream = z.open(path)
-            if stream._orig_file_size == 0:
-                continue
-            *path, name = path.split("/")
-            cur = self
-            for d in path:
-                if d not in cur.files:
-                    cur.files[d] = files.File(self)
-                cur = cur.files[d]
-            cur.files[name] = self.load_file(stream, cur)
+                if basepath in split_files:
+                    continue
 
-        # merge splits
-        for basepath in splits:
-            # merge data
-            data = io.BytesIO()
-            for i in range(0, 999):
-                item = f"{basepath}.split{i}"
-                if item in z.namelist():
-                    with z.open(item) as f:
-                        data.write(f.read())
-                elif i:
-                    break
-            *path, name = basepath.split("/")
-            cur = self
-            for d in path:
-                if d not in cur.files:
-                    cur.files[d] = files.File(self)
-                cur = cur.files[d]
-            cur.files[name] = self.load_file(data, cur)
+                split_files.append(basepath)
+                data = []
+                for i in range(0, 999):
+                    item = f"{basepath}.split{i}"
+                    if item in namelist:
+                        with z.open(item) as f:
+                            data.append(f.read())
+                    elif i:
+                        break
+                data = b"".join(data)
+
+                self.files[basepath] = self.cabs[basename] = self.load_file(data, self)
+            else:
+                self.files[path] = self.cabs[os.path.basename(path)] = self.load_file(
+                    z.open(path).read(), self
+                )
 
         z.close()
 
