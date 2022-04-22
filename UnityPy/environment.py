@@ -10,7 +10,7 @@ from .helpers import ImportHelper
 from .streams import EndianBinaryReader
 from .files import SerializedFile
 
-reSplit = re.compile(r"(.+/(\w+?\.split))\d+")
+reSplit = re.compile(r"(.+[/\\](\w+?\.split))\d+")
 
 
 class Environment:
@@ -50,33 +50,32 @@ class Environment:
         """Loads all files (list) into the AssetsManager and merges .split files for common usage."""
         # filter split files
         i = 0
-        splits = []
-        while i < len(files):
-            path = files[i]
-            splitMatch = reSplitFile.match(path)
-            if reSplitFile.match(path):
-                name = splitMatch[1]
-                if name not in splits:
-                    splits.append(name)
-                files.remove(path)
+        split_files = []
+        for path in files:
+            splitMatch = reSplit.match(path)
+            if splitMatch:
+                data = []
+                basepath, basename = splitMatch.groups()
+
+                if basepath in split_files:
+                    continue
+
+                split_files.append(basepath)
+                data = []
+                for i in range(0, 999):
+                    item = f"{basepath}.split{i}"
+                    if item in files:
+                        with open(item, "rb") as f:
+                            data.append(f.read())
+                    elif i:
+                        break
+                data = b"".join(data)
+
+                self.files[basepath] = self.load_file(data, self, basename)
             else:
-                i += 1
-
-        # merge splits
-        for basepath in splits:
-            # merge data
-            data = io.BytesIO()
-            for i in range(0, 999):
-                item = f"{basepath}.split{i}"
-                if os.path.exists(item):
-                    with open(item, "rb") as f:
-                        data.write(f.read())
-                elif i:
-                    break
-            self.files[self.reduce_path(basepath)] = self.load_file(data)
-
-        # load all other files
-        self.load(files)
+                self.files[path] = self.cabs[os.path.basename(path)] = self.load_file(
+                    open(path, "rb").read(), self, path
+                )
 
     def load_folder(self, path: str):
         """Loads all files in the given path and its subdirs into the AssetsManager."""
@@ -95,24 +94,30 @@ class Environment:
         """Loads all files into the AssetsManager."""
         self.files.update(
             {
-                self.reduce_path(f): self.load_file(open(f, "rb"))
+                self.reduce_path(f): self.load_file(open(f, "rb"), self, f)
                 for f in files
                 if os.path.exists(f)
             }
         )
 
-    def load_file(self, stream, parent=None):
+    def load_file(self, stream, parent=None, name: str = None):
         if not parent:
             parent = self
         typ, reader = ImportHelper.check_file_type(stream)
         try:
-            stream_name = getattr(
-                stream,
-                "name",
-                str(stream.__hash__()) if hasattr(stream, "__hash__") else "",
+            stream_name = (
+                name
+                if name
+                else getattr(
+                    stream,
+                    "name",
+                    str(stream.__hash__()) if hasattr(stream, "__hash__") else "",
+                )
             )
             if typ == FileType.AssetsFile:
-                return files.SerializedFile(reader, parent, name=stream_name)
+                f = files.SerializedFile(reader, parent, name=stream_name)
+                self.register_cab(stream_name, f)
+                return f
             elif typ == FileType.BundleFile:
                 return files.BundleFile(reader, parent, name=stream_name)
             elif typ == FileType.WebFile:
@@ -120,7 +125,9 @@ class Environment:
             elif typ == FileType.ZIP:
                 self.load_zip_file(stream)
             elif typ == FileType.ResourceFile:
-                return EndianBinaryReader(stream)
+                f = EndianBinaryReader(stream)
+                self.register_cab(stream_name, f)
+                return f
         except Exception as e:
             # just to be sure
             # cuz the SerializedFile detection isn't perfect
@@ -226,7 +233,7 @@ class Environment:
         return getattr(self, key, default)
 
     def register_cab(self, name: str, item: object) -> None:
-        self.cabs[name.lower()] = item
+        self.cabs[os.path.basename(name.lower())] = item
 
     def get_cab(self, name: str) -> object:
-        return self.cabs.get(name.lower(), None)
+        return self.cabs.get(os.path.basename(name.lower()), None)
