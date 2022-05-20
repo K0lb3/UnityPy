@@ -25,7 +25,7 @@ PyObject *unpack_vertexdata(PyObject *self, PyObject *args)
     // define vars
     int componentByteSize;
     uint32_t m_VertexCount;
-    char swap;
+    uint8_t swap;
     // char format;
     uint8_t *vertexData; // m_VertexData.m_DataSize
     uint32_t m_StreamOffset;
@@ -68,7 +68,7 @@ PyObject *unpack_vertexdata(PyObject *self, PyObject *args)
             uint16_t *componentUints = (uint16_t *)componentBytes;
             for (uint32_t i = 0; i < componentBytesLength; i += 2)
             {
-                *componentUints = bswap16(*componentUints);
+                *componentUints++ = bswap16(*componentUints);
             }
         }
         else if (componentByteSize == 4)
