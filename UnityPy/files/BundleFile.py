@@ -132,13 +132,20 @@ class BundleFile(File.File):
         # def read_blocks(reader : EndianBinaryReader, blocksStream):
         def decompress_block(blockInfo):
             switch = blockInfo.flags & 0x3F  # kStorageBlockCompressionTypeMask
+            
+            # fix based on https://github.com/Perfare/AssetStudio/pull/981
+            compressed_data = reader.read_bytes(blockInfo.compressedSize)
+            offset = reNot0.search(compressed_data).regs[0][0]
+            if offset:
+                compressed_data = compressed_data[offset:]
+            
             if switch == 1:  # LZMA
                 return CompressionHelper.decompress_lzma(
-                    reader.read_bytes(blockInfo.compressedSize)
+                    compressed_data
                 )
             elif switch in [2, 3]:  # LZ4, LZ4HC
                 return CompressionHelper.decompress_lz4(
-                    reader.read_bytes(blockInfo.compressedSize),
+                    compressed_data,
                     blockInfo.uncompressedSize,
                 )
             # elif switch == 4: #LZHAM:
