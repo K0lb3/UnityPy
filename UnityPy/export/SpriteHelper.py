@@ -7,7 +7,7 @@ from ..enums import ClassIDType, SpritePackingMode, SpritePackingRotation
 from ..streams import EndianBinaryReader
 
 
-def get_image(sprite, texture, alpha_texture) -> Image:
+def get_image(sprite, texture, alpha_texture) -> Image.Image:
     if (
         alpha_texture
         and getattr(alpha_texture, "type", ClassIDType.UnknownType)
@@ -29,7 +29,7 @@ def get_image(sprite, texture, alpha_texture) -> Image:
     return sprite.assets_file._cache[cache_id]
 
 
-def get_image_from_sprite(m_Sprite) -> Image:
+def get_image_from_sprite(m_Sprite) -> Image.Image:
     atlas = None
     if getattr(m_Sprite, "m_SpriteAtlas", None):
         atlas = m_Sprite.m_SpriteAtlas.read()
