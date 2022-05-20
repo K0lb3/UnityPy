@@ -8,7 +8,7 @@ setup(
     name="UnityPyBoost",
     description="TODO",
     author="K0lb3",
-    version="0.0.2",
+    version="0.0.3",
     ext_modules=[
         Extension(
             "UnityPyBoost",
