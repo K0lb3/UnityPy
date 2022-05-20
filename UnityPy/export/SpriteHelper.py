@@ -7,7 +7,7 @@ from ..enums import ClassIDType, SpritePackingMode, SpritePackingRotation
 from ..streams import EndianBinaryReader
 
 
-def get_image(sprite, texture, alpha_texture) -> Image.Image:
+def get_image(sprite, texture, alpha_texture) -> Image:
     if (
         alpha_texture
         and getattr(alpha_texture, "type", ClassIDType.UnknownType)
@@ -29,11 +29,11 @@ def get_image(sprite, texture, alpha_texture) -> Image.Image:
     return sprite.assets_file._cache[cache_id]
 
 
-def get_image_from_sprite(m_Sprite) -> Image.Image:
+def get_image_from_sprite(m_Sprite) -> Image:
     atlas = None
-    if m_Sprite.m_SpriteAtlas:
+    if getattr(m_Sprite, "m_SpriteAtlas", None):
         atlas = m_Sprite.m_SpriteAtlas.read()
-    elif m_Sprite.m_AtlasTags:
+    elif getattr(m_Sprite, "m_AtlasTags", None):
         # looks like the direct pointer is empty, let's try to find the Atlas via its name
         for obj in m_Sprite.assets_file.objects.values():
             if obj.type == ClassIDType.SpriteAtlas:
@@ -110,7 +110,7 @@ def get_triangles(m_Sprite):
     points = []
     if hasattr(m_RD, "vertices"):  # 5.6 down
         vertices = [v.pos for v in m_RD.vertices]
-        points = [vertices[index] for index in range(m_RD.indices)]
+        points = [vertices[index] for index in m_RD.indices]
     else:  # 5.6 and up
         m_Channel = m_RD.m_VertexData.m_Channels[0]  # kShaderChannelVertex
         m_Stream = m_RD.m_VertexData.m_Streams[m_Channel.stream]
