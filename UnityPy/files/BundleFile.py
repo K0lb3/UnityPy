@@ -1,9 +1,10 @@
 ﻿from . import File
 from ..helpers import CompressionHelper
 from ..streams import EndianBinaryReader, EndianBinaryWriter
-
+import re
 from collections import namedtuple
 
+reNot0 = re.compile(b"[^\x00]")
 BlockInfo = namedtuple("BlockInfo", "uncompressedSize compressedSize flags")
 DirectoryInfoFS = namedtuple("DirectoryInfoFS", "offset size flags path")
 
