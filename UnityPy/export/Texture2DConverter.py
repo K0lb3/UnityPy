@@ -9,7 +9,7 @@ from ..enums import TextureFormat, BuildTarget
 TF = TextureFormat
 
 
-def image_to_texture2d(img: Image, target_texture_format: TF, flip: bool = True):
+def image_to_texture2d(img: Image.Image, target_texture_format: TF, flip: bool = True):
     if flip:
         img = img.transpose(Image.FLIP_TOP_BOTTOM)
 
@@ -76,7 +76,7 @@ def image_to_texture2d(img: Image, target_texture_format: TF, flip: bool = True)
     return enc_img, tex_format
 
 
-def get_image_from_texture2d(texture_2d, flip=True) -> Image:
+def get_image_from_texture2d(texture_2d, flip=True) -> Image.Image:
     """converts the given texture into PIL.Image
 
     :param texture_2d: texture to be converterd
@@ -153,7 +153,7 @@ def pillow(
     codec: str,
     args,
     swap: tuple = None,
-) -> Image:
+) -> Image.Image:
     img = (
         Image.frombytes(mode, (width, height), image_data, codec, args)
         if width
@@ -165,7 +165,7 @@ def pillow(
     return img
 
 
-def atc(image_data: bytes, width: int, height: int, alpha: bool) -> Image:
+def atc(image_data: bytes, width: int, height: int, alpha: bool) -> Image.Image:
     if alpha:
         image_data = texture2ddecoder.decode_atc_rgba8(image_data, width, height)
     else:
@@ -174,7 +174,7 @@ def atc(image_data: bytes, width: int, height: int, alpha: bool) -> Image:
     return Image.frombytes("RGBA", (width, height), image_data, "raw", "BGRA")
 
 
-def astc(image_data: bytes, width: int, height: int, block_size: tuple) -> Image:
+def astc(image_data: bytes, width: int, height: int, block_size: tuple) -> Image.Image:
     image_data = texture2ddecoder.decode_astc(image_data, width, height, *block_size)
     return Image.frombytes("RGBA", (width, height), image_data, "raw", "BGRA")
 
@@ -219,7 +219,7 @@ def half(
     codec: str,
     args,
     swap: tuple = None,
-) -> Image:
+) -> Image.Image:
     # convert half-float to int8
     stream = BytesIO(image_data)
     image_data = bytes(
