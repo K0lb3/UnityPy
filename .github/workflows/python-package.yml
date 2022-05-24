@@ -27,7 +27,6 @@ jobs:
       run: |
         python -m pip install --upgrade pip wheel setuptools
         pip install --upgrade twine
-        pip install -U lz4 brotli Pillow texture2ddecoder etcpak tabulate
 
     - name: Set up QEMU
       if: runner.os == 'Linux'
@@ -39,7 +38,6 @@ jobs:
       uses: pypa/cibuildwheel@v2.3.1
       env:
         CIBW_ARCHS_LINUX: auto aarch64
-        CIBW_BEFORE_BUILD: pip install -U lz4 brotli Pillow texture2ddecoder etcpak tabulate
         CIBW_BUILD: |
           ${{ matrix.cp }}-manylinux_x86_64 ${{ matrix.cp }}-manylinux_i686 ${{ matrix.cp }}-manylinux_aarch64 ${{ matrix.cp }}-win_amd64 ${{ matrix.cp }}-win32 ${{ matrix.cp }}-macosx_x86_64
         CIBW_REPAIR_WHEEL_COMMAND: '' # Disable auditwheel
