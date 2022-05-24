@@ -1,12 +1,16 @@
 from setuptools import setup, Extension, find_packages
-from UnityPy import __version__ as version
-
-with open("README.md", "r") as fh:
-    long_description = fh.read()
-
 import os
+import re
 
-local = "./UnityPyBoost"
+INSTALL_DIR = os.path.dirname(os.path.realpath(__file__))
+UNITYPYBOOST_DIR = os.path.join(INSTALL_DIR, "UnityPyBoost")
+
+version = None
+with open(os.path.join(INSTALL_DIR, "UnityPy", "__init__.py"), "rt") as f:
+    version = re.search(r'__version__ = "([^"]+)"', f.read()).group(1)
+
+with open(os.path.join(INSTALL_DIR, "README.md"), "rt") as fh:
+    long_description = fh.read()
 
 setup(
     name="UnityPy",
@@ -58,9 +62,13 @@ setup(
     ext_modules=[
         Extension(
             "UnityPy.UnityPyBoost",
-            [os.path.join(local, f) for f in os.listdir(local) if f.endswith(".c")],
+            [
+                f"UnityPyBoost/{f}"
+                for f in os.listdir(UNITYPYBOOST_DIR)
+                if f.endswith(".c")
+            ],
             language="c",
-            include_dirs=[local],
+            include_dirs=[UNITYPYBOOST_DIR],
         )
     ],
 )
