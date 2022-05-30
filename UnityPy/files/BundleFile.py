@@ -94,16 +94,9 @@ class BundleFile(File.File):
         else:  # 0x40 kArchiveBlocksAndDirectoryInfoCombined
             blocksInfoBytes = reader.read_bytes(compressedSize)
 
-        switch = self._data_flags & 0x3F
-
-        if switch == 1:  # LZMA
-            blocksInfoBytes = CompressionHelper.decompress_lzma(blocksInfoBytes)
-        elif switch in [2, 3]:  # LZ4, LZ4HC
-            blocksInfoBytes = CompressionHelper.decompress_lz4(
-                blocksInfoBytes, uncompressedSize
-            )
-        # elif switch == 4: #LZHAM:
-
+        blocksInfoBytes = decompress_data(
+            blocksInfoBytes, uncompressedSize, self._data_flags
+        )
         blocksInfoReader = EndianBinaryReader(blocksInfoBytes, offset=start)
 
         uncompressedDataHash = blocksInfoReader.read_bytes(16)
@@ -129,24 +122,6 @@ class BundleFile(File.File):
             for _ in range(nodesCount)
         ]
 
-        # def read_blocks(reader : EndianBinaryReader, blocksStream):
-        def decompress_block(blockInfo):
-            switch = blockInfo.flags & 0x3F  # kStorageBlockCompressionTypeMask
-
-            # fix based on https://github.com/Perfare/AssetStudio/pull/981
-            compressed_data = reader.read_bytes(blockInfo.compressedSize)
-
-            if switch == 1:  # LZMA
-                return CompressionHelper.decompress_lzma(compressed_data)
-            elif switch in [2, 3]:  # LZ4, LZ4HC
-                return CompressionHelper.decompress_lz4(
-                    compressed_data,
-                    blockInfo.uncompressedSize,
-                )
-            # elif switch == 4: #LZHAM:
-            else:  # no compression
-                return reader.read_bytes(blockInfo.uncompressedSize)
-
         if m_BlocksInfo:
             self._block_info_flags = m_BlocksInfo[0].flags
 
@@ -157,7 +132,14 @@ class BundleFile(File.File):
         reader.Position += padding
 
         blocksReader = EndianBinaryReader(
-            b"".join(decompress_block(blockInfo) for blockInfo in m_BlocksInfo),
+            b"".join(
+                decompress_data(
+                    reader.read_bytes(blockInfo.compressedSize),
+                    blockInfo.uncompressedSize,
+                    blockInfo.flags,
+                )
+                for blockInfo in m_BlocksInfo
+            ),
             offset=(blocksInfoReader.real_offset()),
         )
 
@@ -365,3 +347,32 @@ class BundleFile(File.File):
         else:
             writer.write(block_data)
             writer.write(file_data)
+
+
+def decompress_data(
+    compressed_data: bytes, uncompressed_size: int, flags: int
+) -> bytes:
+    """
+    Parameters
+    ----------
+    compressed_data : bytes
+        The compressed data.
+    uncompressed_size : int
+        The uncompressed size of the data.
+    flags : int
+        The flags of the data.
+
+    Returns
+    -------
+    bytes
+        The decompressed data."""
+    switch = flags & 0x3F
+
+    if switch == 1:  # LZMA
+        return CompressionHelper.decompress_lzma(compressed_data)
+    elif switch in [2, 3]:  # LZ4, LZ4HC
+        return CompressionHelper.decompress_lz4(compressed_data, uncompressed_size)
+    elif switch == 4:  # LZHAM
+        raise NotImplementedError("LZHAM decompression not implemented")
+    else:
+        return compressed_data
