@@ -1,10 +1,9 @@
-﻿from . import File
+from . import File
 from ..helpers import CompressionHelper
 from ..streams import EndianBinaryReader, EndianBinaryWriter
 import re
 from collections import namedtuple
 
-reNot0 = re.compile(b"[^\x00]")
 BlockInfo = namedtuple("BlockInfo", "uncompressedSize compressedSize flags")
 DirectoryInfoFS = namedtuple("DirectoryInfoFS", "offset size flags path")
 
@@ -16,7 +15,7 @@ class BundleFile(File.File):
     version_engine: str
     version_player: str
 
-    def __init__(self, reader: EndianBinaryReader, parent: File, name: str=None):
+    def __init__(self, reader: EndianBinaryReader, parent: File, name: str = None):
         super().__init__(parent=parent, name=name)
         signature = self.signature = reader.read_string_to_null()
         self.version = reader.read_u_int()
@@ -87,11 +86,11 @@ class BundleFile(File.File):
         if self.version >= 7:
             reader.align_stream(16)
 
-        _position = reader.Position
+        start = reader.Position
         if self._data_flags & 0x80 != 0:  # kArchiveBlocksInfoAtTheEnd
             reader.Position = reader.Length - compressedSize
             blocksInfoBytes = reader.read_bytes(compressedSize)
-            reader.Position = _position
+            reader.Position = start
         else:  # 0x40 kArchiveBlocksAndDirectoryInfoCombined
             blocksInfoBytes = reader.read_bytes(compressedSize)
 
@@ -105,7 +104,7 @@ class BundleFile(File.File):
             )
         # elif switch == 4: #LZHAM:
 
-        blocksInfoReader = EndianBinaryReader(blocksInfoBytes, offset=_position)
+        blocksInfoReader = EndianBinaryReader(blocksInfoBytes, offset=start)
 
         uncompressedDataHash = blocksInfoReader.read_bytes(16)
         blocksInfoCount = blocksInfoReader.read_int()
@@ -133,17 +132,12 @@ class BundleFile(File.File):
         # def read_blocks(reader : EndianBinaryReader, blocksStream):
         def decompress_block(blockInfo):
             switch = blockInfo.flags & 0x3F  # kStorageBlockCompressionTypeMask
-            
+
             # fix based on https://github.com/Perfare/AssetStudio/pull/981
             compressed_data = reader.read_bytes(blockInfo.compressedSize)
-            offset = reNot0.search(compressed_data).regs[0][0]
-            if offset:
-                compressed_data = compressed_data[offset:]
-            
+
             if switch == 1:  # LZMA
-                return CompressionHelper.decompress_lzma(
-                    compressed_data
-                )
+                return CompressionHelper.decompress_lzma(compressed_data)
             elif switch in [2, 3]:  # LZ4, LZ4HC
                 return CompressionHelper.decompress_lz4(
                     compressed_data,
@@ -156,25 +150,30 @@ class BundleFile(File.File):
         if m_BlocksInfo:
             self._block_info_flags = m_BlocksInfo[0].flags
 
+        compressed_block_size = sum(
+            blockInfo.compressedSize for blockInfo in m_BlocksInfo
+        )
+        padding = reader.Length - start - compressedSize - compressed_block_size
+        reader.Position += padding
+
         blocksReader = EndianBinaryReader(
             b"".join(decompress_block(blockInfo) for blockInfo in m_BlocksInfo),
-            offset=(blocksInfoReader.real_offset())
+            offset=(blocksInfoReader.real_offset()),
         )
 
         return m_DirectoryInfo, blocksReader
 
-
     def save(self, packer=None):
         """
-            Rewrites the BundleFile and returns it as bytes object.
+        Rewrites the BundleFile and returns it as bytes object.
 
-            packer:
-                can be either one of the following strings
-                or tuple consisting of (block_info_flag, data_flag)
-                allowed strings:
-                    none - no compression, default, safest bet
-                    lz4 - lz4 compression
-                    original - uses the original flags
+        packer:
+            can be either one of the following strings
+            or tuple consisting of (block_info_flag, data_flag)
+            allowed strings:
+                none - no compression, default, safest bet
+                lz4 - lz4 compression
+                original - uses the original flags
         """
         # file_header
         #     signature    (string_to_null)
@@ -197,7 +196,11 @@ class BundleFile(File.File):
             if not packer or packer == "none":
                 self.save_fs(writer, 64, 64)
             elif packer == "original":
-                self.save_fs(writer, block_info_flag=self._block_info_flags, data_flag=self._data_flags)
+                self.save_fs(
+                    writer,
+                    block_info_flag=self._block_info_flags,
+                    data_flag=self._data_flags,
+                )
             elif packer == "lz4":
                 self.save_fs(writer, block_info_flag=194, data_flag=2)
             elif isinstance(packer, tuple):
@@ -206,7 +209,7 @@ class BundleFile(File.File):
                 raise NotImplemented("UnityFS - Packer:", packer)
         return writer.bytes
 
-    def save_fs(self, writer: EndianBinaryWriter, block_info_flag : int, data_flag : int):
+    def save_fs(self, writer: EndianBinaryWriter, block_info_flag: int, data_flag: int):
         # header
         # compressed blockinfo (block details & directionary)
         # compressed assets
@@ -262,7 +265,9 @@ class BundleFile(File.File):
                 name,
                 f.flags,
                 data_writer.write_bytes(
-                    f.bytes if isinstance(f, (EndianBinaryReader, EndianBinaryWriter)) else f.save()
+                    f.bytes
+                    if isinstance(f, (EndianBinaryReader, EndianBinaryWriter))
+                    else f.save()
                 ),
             )
             for name, f in self.files.items()
