@@ -368,7 +368,7 @@ class SerializedFile(File.File):
         )
 
         if not config.SERIALIZED_FILE_PARSE_TYPETREE:
-            return
+            return string_buffer_reader.bytes
 
         type_tree = [None] * number_of_nodes
         for i, raw_node in enumerate(node_struct.iter_unpack(struct_data)):
