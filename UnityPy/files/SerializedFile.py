@@ -1,17 +1,17 @@
 ﻿import os
 import re
-import sys
 
 from . import File, ObjectReader
 from ..enums import BuildTarget, ClassIDType, CommonString
 from ..streams import EndianBinaryReader, EndianBinaryWriter
 from ..helpers.TypeTreeHelper import TypeTreeNode
 
+from struct import Struct
+
 from .. import config
+
 # only print the version warning once
 VERSION_WARNED = False
-
-RECURSION_LIMIT = sys.getrecursionlimit()
 
 
 class SerializedFileHeader:
@@ -23,10 +23,12 @@ class SerializedFileHeader:
     reserved: bytes
 
     def __init__(self, reader: EndianBinaryReader):
-        self.metadata_size = reader.read_u_int()
-        self.file_size = reader.read_u_int()
-        self.version = reader.read_u_int()
-        self.data_offset = reader.read_u_int()
+        (
+            self.metadata_size,
+            self.file_size,
+            self.version,
+            self.data_offset,
+        ) = reader.read_u_int_array(4)
 
 
 class LocalSerializedObjectIdentifier:  # script type
@@ -121,11 +123,11 @@ class SerializedType:
             self.old_type_hash = reader.read_bytes(16)  # Hash128
 
         if serialized_file._enable_type_tree:
-            type_tree = []
+            type_tree = None
             if version >= 12 or version == 10:
-                self.string_data = serialized_file.read_type_tree_blob(type_tree)
+                type_tree, self.string_data = serialized_file.read_type_tree_blob()
             else:
-                serialized_file.read_type_tree(type_tree)
+                type_tree = serialized_file.read_type_tree()
 
             if version >= 21:
                 self.type_dependencies = reader.read_int_array()
@@ -297,7 +299,9 @@ class SerializedFile(File.File):
             if string_version == "0.0.0":
                 global VERSION_WARNED
                 if not VERSION_WARNED:
-                    print(f"Warning: 0.0.0 version found, defaulting to UnityPy.config.FALLBACK_UNITY_VERSION\n{config.FALLBACK_UNITY_VERSION}")
+                    print(
+                        f"Warning: 0.0.0 version found, defaulting to UnityPy.config.FALLBACK_UNITY_VERSION\n{config.FALLBACK_UNITY_VERSION}"
+                    )
                     VERSION_WARNED = True
                 string_version = config.FALLBACK_UNITY_VERSION
         build_type = re.findall(r"([^\d.])", string_version)
@@ -305,7 +309,8 @@ class SerializedFile(File.File):
         version_split = re.split(r"\D", string_version)
         self.version = tuple(int(x) for x in version_split)
 
-    def read_type_tree(self, type_tree):
+    def read_type_tree(self):
+        type_tree = []
         level_stack = [[0, 1]]
         while level_stack:
             level, count = level_stack[-1]
@@ -336,32 +341,41 @@ class SerializedFile(File.File):
                 level_stack.append([level + 1, children_count])
         return type_tree
 
-    def read_type_tree_blob(self, type_tree):
+    def read_type_tree_blob(self):
         reader = self.reader
         number_of_nodes = self.reader.read_int()
         string_buffer_size = self.reader.read_int()
 
-        for _ in range(number_of_nodes):
-            node = TypeTreeNode()
-            type_tree.append(node)
-            node.version = reader.read_u_short()
-            node.level = reader.read_byte()
-            node.is_array = reader.read_boolean()
-            node.type_str_offset = reader.read_u_int()
-            node.name_str_offset = reader.read_u_int()
-            node.byte_size = reader.read_int()
-            node.index = reader.read_int()
-            node.meta_flag = reader.read_int()
+        type = f"{reader.endian}hb?IIiii"
+        keys = [
+            "version",
+            "level",
+            "is_array",
+            "type_str_offset",
+            "name_str_offset",
+            "byte_size",
+            "index",
+            "meta_flag",
+        ]
+        if self.header.version >= 19:
+            type += "Q"
+            keys.append("ref_type_hash")
 
-            if self.header.version >= 19:
-                node.ref_type_hash = reader.read_u_long()
-
+        node_struct = Struct(type)
+        struct_data = reader.read(node_struct.size * number_of_nodes)
         string_buffer_reader = EndianBinaryReader(
             reader.read(string_buffer_size), reader.endian
         )
-        for node in type_tree:
+
+        if not config.SERIALIZED_FILE_PARSE_TYPETREE:
+            return
+
+        type_tree = [None] * number_of_nodes
+        for i, raw_node in enumerate(node_struct.iter_unpack(struct_data)):
+            node = TypeTreeNode(zip(keys, raw_node))
             node.type = read_string(string_buffer_reader, node.type_str_offset)
             node.name = read_string(string_buffer_reader, node.name_str_offset)
+            type_tree[i] = node
 
         return string_buffer_reader.bytes
 
@@ -374,7 +388,7 @@ class SerializedFile(File.File):
             self.parent, (File.BundleFile.BundleFile, File.WebFile.WebFile)
         ):
             return None
-        
+
         cab = self.parent.get_writeable_cab(name)
         cab.path = f"archive:/{self.name}/{name}"
         if not any(cab.path == x.path for x in self.externals):
@@ -602,8 +616,4 @@ def read_string(string_buffer_reader: EndianBinaryReader, value: int) -> str:
         return string_buffer_reader.read_string_to_null()
 
     offset = value & 0x7FFFFFFF
-    if offset in CommonString:
-        return CommonString[offset]
-
-    return str(offset)
-
+    return CommonString.get(offset, str(offset))

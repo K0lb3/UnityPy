@@ -53,7 +53,10 @@ def check_file_type(input_) -> Union[FileType, EndianBinaryReader]:
     if reader.Length < 20:
         return FileType.ResourceFile, reader
 
-    signature = reader.read_string_to_null(20)
+    try:
+        signature = reader.read_string_to_null(20)
+    except ValueError:
+        signature = ""
     reader.Position = 0
     if signature in [
         "UnityWeb",
