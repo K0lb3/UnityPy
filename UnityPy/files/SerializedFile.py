@@ -123,16 +123,13 @@ class SerializedType:
             self.old_type_hash = reader.read_bytes(16)  # Hash128
 
         if serialized_file._enable_type_tree:
-            type_tree = None
             if version >= 12 or version == 10:
-                type_tree, self.string_data = serialized_file.read_type_tree_blob()
+                self.nodes, self.string_data = serialized_file.read_type_tree_blob()
             else:
-                type_tree = serialized_file.read_type_tree()
+                self.nodes = serialized_file.read_type_tree()
 
             if version >= 21:
                 self.type_dependencies = reader.read_int_array()
-
-            self.nodes = type_tree
 
     def write(self, serialized_file, writer):
         version = serialized_file.header.version
@@ -239,6 +236,8 @@ class SerializedFile(File.File):
         # ReadTypes
         type_count = reader.read_int()
         self.types = [SerializedType(reader, self) for _ in range(type_count)]
+        if config.SERIALIZED_FILE_PARSE_TYPETREE is False:
+            self._enable_type_tree = False
 
         self.big_id_enabled = 0
         if 7 <= header.version < 14:
@@ -368,7 +367,7 @@ class SerializedFile(File.File):
         )
 
         if not config.SERIALIZED_FILE_PARSE_TYPETREE:
-            return string_buffer_reader.bytes
+            return [], string_buffer_reader.bytes
 
         type_tree = [None] * number_of_nodes
         for i, raw_node in enumerate(node_struct.iter_unpack(struct_data)):
