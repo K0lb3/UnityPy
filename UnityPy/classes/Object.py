@@ -129,7 +129,11 @@ class Object(object):
         return hash(self.path_id)
 
     def __eq__(self, other):
-        return self.path_id == other.path_id
+        if isinstance(other, Object):
+            return self.path_id == other.path_id
+        elif isinstance(other, int):
+            return self.path_id == other
+        return False
 
 
 class NodeHelper:
