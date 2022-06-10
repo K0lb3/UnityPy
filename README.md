@@ -7,7 +7,7 @@
 
 A Unity asset extractor for Python based on [AssetStudio](https://github.com/Perfare/AssetStudio).
 
-Next to extraction it also supports editing Unity assets.
+Next to extraction, it also supports editing Unity assets.
 So far following obj types can be edited:
   - Texture2D
   - Sprite(indirectly via linked Texture2D)
@@ -19,13 +19,14 @@ feel free to join the [UnityPy Discord](https://discord.gg/C6txv7M).
 
 
 If you're making an income by using UnityPy,
-please donate a small part of it to a charitable cause of your choice or sponsor this project with a small amount.
+please donate a small part of it to a charitable cause or sponsor this project with a small amount.
 
 
 1. [Installation](#installation)
 2. [Example](#example)
 3. [Important Classes](#important-classes)
 4. [Important Object Types](#important-object-types)
+5. [Credits](#credits)
 
 ## Installation
 
@@ -101,25 +102,25 @@ def unpack_all_assets(source_folder : str, destination_folder : str):
 You probably have to read [Important Classes](#important-classes)
 and [Important Object Types](#important-object-types) to understand how it works.
 
-People who have slightly advanced python skills should take a look at [UnityPy/tools/extractor.py](UnityPy/tools/extractor.py) for a more advanced example.
-It can also be used as the general template or simply as an importable tool.
+People with slightly advanced python skills should look at [UnityPy/tools/extractor.py](UnityPy/tools/extractor.py) for a more advanced example.
+It can also be used as a general template or as an importable tool.
 
 
 ## Important Classes
 
 ### [Environment](UnityPy/environment.py)
 
-Environment loads and parses the files that are given to it.
+Environment loads and parses the given files.
 It can be initialized via:
 
 * a file path - apk files can be loaded as well
 * a folder path - loads all files in that folder (bad idea for folders with a lot of files)
-* a stream - e.g. io.BytesIO, file stream,...
+* a stream - e.g., io.BytesIO, file stream,...
 * a bytes object - will be loaded into a stream
 
-UnityPy can detect itself if the file is a WebFile, BundleFile, Asset, or APK itself.
+UnityPy can detect if the file is a WebFile, BundleFile, Asset, or APK.
 
-The unpacked assets will be loaded into ``.files``, which is a dict consisting of ``asset-name : asset``.
+The unpacked assets will be loaded into ``.files``, a dict consisting of ``asset-name : asset``.
 
 All objects of the loaded assets can be easily accessed via ``.objects``,
 which itself is a simple recursive iterator.
@@ -153,13 +154,13 @@ One of these objects can be an AssetBundle, which contains a file path for some 
 
 All objects can be found in the ``.objects`` dict - ``{ID : object}``.
 
-The objects which have a file path can be found in the ``.container`` dict - ``{path : object}``.
+The objects with a file path can be found in the ``.container`` dict - ``{path : object}``.
 
 ### [Object](UnityPy/files/ObjectReader.py)
 
-Objects contain the *actual* files which, e.g. textures, text files, meshes, settings, ...
+Objects contain the *actual* files, e.g., textures, text files, meshes, settings, ...
 
-To acquire the actual data of an object it has to be read first, this happens via the ``.read()`` function. This isn't done automatically to save time because only a small part of the objects are of interest. Serialized objects can be set with raw data using ``.set_raw_data(data)`` or modified with ``.save()`` function if supported.
+To acquire the actual data of an object it has to be read first. This happens via the ``.read()`` function. This isn't done automatically to save time because only a small part of the objects are of interest. Serialized objects can be set with raw data using ``.set_raw_data(data)`` or modified with ``.save()`` function, if supported.
 
 ## Important Object Types
 
@@ -190,7 +191,7 @@ for obj in env.objects:
 ### [Sprite](UnityPy/classes/Sprite.py)
 
 Sprites are part of a texture and can have a separate alpha-image as well.
-Unlike most other extractors (including AssetStudio) UnityPy merges those two images by itself.
+Unlike most other extractors (including AssetStudio), UnityPy merges those two images by itself.
 
 * ``.name``
 * ``.image`` - converts the merged texture part into a ``PIL.Image``
@@ -233,8 +234,8 @@ for obj in env.objects:
 ### [MonoBehaviour](UnityPy/classes/MonoBehaviour.py)
 
 MonoBehaviour assets are usually used to save the class instances with their values.
-If a type tree exists it can be used to read the whole data,
-but if it doesn't, then it is usually necessary to investigate the class that loads the specific MonoBehaviour to extract the data.
+If a type tree exists, it can be used to read the whole data,
+but if it doesn't exist, then it is usually necessary to investigate the class that loads the specific MonoBehaviour to extract the data.
 ([example](examples/CustomMonoBehaviour/get_scriptable_texture.py))
 
 * ``.name``
@@ -304,7 +305,7 @@ if obj.type.name == "Font":
 
 * ``.export()`` - mesh exported as .obj (str)
 
-The mesh is converted into a Wavefront .obj file.
+The mesh will be converted to the Wavefront .obj file format.
 
 ```python
 mesh : Mesh
@@ -330,3 +331,15 @@ if mesh_renderer.m_GameObject:
     export_dir = os.path.join(export_dir, game_object.name)
 mesh_renderer.export(export_dir)
 ```
+
+## Credits
+
+First of all,
+thanks a lot to all contributors of UnityPy and all of its users.
+
+Also,
+many thanks to:
+
+- [Perfare](https://github.com/Perfare] for creating and maintaining
+- every contributor of [AssetStudio](https://github.com/Perfare/AssetStudio)
+- [ds5678](https://github.com/ds5678) for the [TypeTreeDumps](https://github.com/AssetRipper/TypeTreeDumps) and the [custom minimal Tpk format](https://github.com/AssetRipper/Tpk)
