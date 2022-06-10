@@ -1,8 +1,10 @@
 from ..enums import ClassIDType
 from . import SerializedFile
 from .. import classes
+from ..classes.Object import NodeHelper
 from ..streams import EndianBinaryReader, EndianBinaryWriter
 from ..helpers import TypeTreeHelper
+from ..helpers.Tpk import get_typetree_nodes
 
 
 class ObjectReader:
@@ -58,10 +60,12 @@ class ObjectReader:
             self.class_id = reader.read_u_short()
             if types:
                 self.serialized_type = (
-                    x for x in types if x.class_id == self.type_id).__next__()
+                    x for x in types if x.class_id == self.type_id
+                ).__next__()
             else:
                 self.serialized_type = SerializedFile.SerializedType(
-                    reader, self.assets_file)
+                    reader, self.assets_file
+                )
         else:
             typ = types[self.type_id]
             self.serialized_type = typ
@@ -80,7 +84,9 @@ class ObjectReader:
         if header.version == 15 or header.version == 16:
             self.stripped = reader.read_byte()
 
-    def write(self, header, writer: EndianBinaryWriter, data_writer: EndianBinaryWriter):
+    def write(
+        self, header, writer: EndianBinaryWriter, data_writer: EndianBinaryWriter
+    ):
         if self.assets_file.big_id_enabled:
             writer.write_long(self.path_id)
         elif header.version < 14:
@@ -150,20 +156,18 @@ class ObjectReader:
         self.reader.Position = self.byte_start
 
     def read(self):
-        try:
-            obj = getattr(classes, self.type.name, classes.Object)(self)
-        except Exception as e:
-            raise e
-        # TODO: only specific exceptions here?
-        except:
-            # HACK: in case the parsing via the class fails this solution
-            #       uses the type tree to set the variables and then changes the class
-            obj = classes.Object(self)
-            obj.__class__ = getattr(classes, self.type.name, classes.Object)
-            for key, val in obj.__dict__.items():
-                if " " in key:
-                    obj.__dict__[key.replace(" ", "_")] = val
-                    delattr(obj, key)
+        cls = getattr(classes, self.type.name, None)
+
+        obj = None
+        if cls:
+            try:
+                obj = cls(self)
+            except Exception as e:
+                print(e)
+        if not obj:
+            typetree = self.read_typetree()
+            if typetree:
+                obj = NodeHelper(typetree, self.assets_file)
         self._read_until = self.reader.Position
         return obj
 
@@ -189,8 +193,7 @@ class ObjectReader:
         if nodes:
             TypeTreeHelper.read_typetree_str(sb, nodes, self)
         elif getattr(self.serialized_type, "nodes", None):
-            TypeTreeHelper.read_typetree_str(
-                sb, self.serialized_type.nodes, self)
+            TypeTreeHelper.read_typetree_str(sb, self.serialized_type.nodes, self)
             return "".join(sb)
         return ""
 
@@ -205,18 +208,22 @@ class ObjectReader:
         if nodes:
             tree = TypeTreeHelper.read_typetree(nodes, self)
         elif self.serialized_type.nodes:
-            tree = TypeTreeHelper.read_typetree(
-                self.serialized_type.nodes, self)
+            tree = TypeTreeHelper.read_typetree(self.serialized_type.nodes, self)
+        else:
+            nodes = get_typetree_nodes(self.class_id, self.version)
+            if nodes:
+                tree = TypeTreeHelper.read_typetree(nodes, self)
         return tree
 
-    def save_typetree(self, tree: dict, nodes: list = None, writer: EndianBinaryWriter = None):
+    def save_typetree(
+        self, tree: dict, nodes: list = None, writer: EndianBinaryWriter = None
+    ):
         if not writer:
             writer = EndianBinaryWriter(endian=self.reader.endian)
         if nodes:
             TypeTreeHelper.write_typetree(tree, nodes, writer)
         elif self.serialized_type.nodes:
-            TypeTreeHelper.write_typetree(
-                tree, self.serialized_type.nodes, writer)
+            TypeTreeHelper.write_typetree(tree, self.serialized_type.nodes, writer)
         else:
             raise ValueError("There are no TypeTree nodes for this object.")
         data = writer.bytes
@@ -234,4 +241,3 @@ class ObjectReader:
         self.data = data
         if self.assets_file:
             self.assets_file.mark_changed()
-
