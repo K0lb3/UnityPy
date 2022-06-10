@@ -6,6 +6,20 @@ from ..exceptions import TypeTreeError as TypeTreeError
 
 
 class TypeTreeNode(object):
+    __slots__ = (
+        "type",
+        "name",
+        "byte_size",
+        "index",
+        "is_array",
+        "version",
+        "meta_flag",
+        "level",
+        "type_str_offset",
+        "name_str_offset",
+        "type",
+        "name",
+    )
     type: str
     name: str
     byte_size: int
@@ -16,10 +30,15 @@ class TypeTreeNode(object):
     level: int
     type_str_offset: int
     name_str_offset: int
+    type: str
+    name: str
 
-    def __init__(self, data: dict = None):
+    def __init__(self, data: dict = None, **kwargs):
+        if not data and kwargs:
+            data = kwargs
         if data:
-            self.__dict__.update(data)
+            for key, val in data.items():
+                setattr(self, key, val)
 
     def __repr__(self):
         return f"<TypeTreeNode({self.level} {self.type} {self.name})>"
@@ -28,15 +47,15 @@ class TypeTreeNode(object):
 def node_dict_to_class(nodes: List[dict]) -> List[TypeTreeNode]:
     """Converts all dict-type nodes into TypeTreeNodes
 
-        Parameters
-        ----------
-        nodes : List[dict]
-            nodes/nodes of the typetree as dict
+    Parameters
+    ----------
+    nodes : List[dict]
+        nodes/nodes of the typetree as dict
 
-        Returns
-        -------
-        List[TypeTreeNode]
-            a list of TypeTreeNode-type nodes
+    Returns
+    -------
+    List[TypeTreeNode]
+        a list of TypeTreeNode-type nodes
     """
     return [TypeTreeNode(node) for node in nodes]
 
@@ -44,15 +63,15 @@ def node_dict_to_class(nodes: List[dict]) -> List[TypeTreeNode]:
 def check_nodes(nodes: List[Union[dict, TypeTreeNode]]) -> List[TypeTreeNode]:
     """Checks the type of the nodes and converts them if necessary.
 
-        Parameters
-        ----------
-        nodes : List[Union[dict, TypeTreeNode]]
-            nodes/nodes of the typetree as dict or TypeTreeNode
+    Parameters
+    ----------
+    nodes : List[Union[dict, TypeTreeNode]]
+        nodes/nodes of the typetree as dict or TypeTreeNode
 
-        Returns
-        -------
-        List[TypeTreeNode]
-            a list of TypeTreeNode-type nodes
+    Returns
+    -------
+    List[TypeTreeNode]
+        a list of TypeTreeNode-type nodes
     """
     if isinstance(nodes, list):
         if len(nodes) == 0:
@@ -91,17 +110,17 @@ Example TypeTree:
 def get_nodes(nodes: List[TypeTreeNode], index: int) -> list:
     """Copies all nodes above the level of the node at the set index.
 
-        Parameters
-        ----------
-        nodes : list
-            nodes/nodes of the typetree
-        index : int
-            index of the node
+    Parameters
+    ----------
+    nodes : list
+        nodes/nodes of the typetree
+    index : int
+        index of the node
 
-        Returns
-        -------
-        list
-            A list of nodes
+    Returns
+    -------
+    list
+        A list of nodes
     """
     nodes2 = [nodes[index]]
     level = nodes[index].level
@@ -117,17 +136,17 @@ def read_typetree(
 ) -> dict:
     """Reads the typetree of the object contained in the reader via the node list.
 
-        Parameters
-        ----------
-        nodes : list
-            List of nodes/nodes
-        reader : EndianBinaryReader
-            Reader of the object to be parsed
+    Parameters
+    ----------
+    nodes : list
+        List of nodes/nodes
+    reader : EndianBinaryReader
+        Reader of the object to be parsed
 
-        Returns
-        -------
-        dict
-            The parsed typtree
+    Returns
+    -------
+    dict
+        The parsed typtree
     """
     # reader.reset()
     nodes = check_nodes(nodes)
@@ -224,19 +243,19 @@ def read_typetree_str(
 ) -> list:
     """Reads the typetree of the object contained in the reader via the node list and dumps it as string.
 
-        Parameters
-        ----------
-        sb : list
-            StringBuilder - a list used to build the string dump, should be empty
-        nodes : list
-            List of nodes/nodes
-        reader : EndianBinaryReader
-            Reader of the object to be parsed
+    Parameters
+    ----------
+    sb : list
+        StringBuilder - a list used to build the string dump, should be empty
+    nodes : list
+        List of nodes/nodes
+    reader : EndianBinaryReader
+        Reader of the object to be parsed
 
-        Returns
-        -------
-        list
-            The sb given as input
+    Returns
+    -------
+    list
+        The sb given as input
     """
     # reader.reset()
     nodes = check_nodes(nodes)
@@ -370,15 +389,15 @@ def read_value_str(
 def dump_typetree(nodes: List[TypeTreeNode]) -> str:
     """Dumps the structure of the given nodes.
 
-        Parameters
-        ----------
-        nodes : list
-            List of nodes/nodes
+    Parameters
+    ----------
+    nodes : list
+        List of nodes/nodes
 
-        Returns
-        -------
-        str
-            The dumped structure
+    Returns
+    -------
+    str
+        The dumped structure
     """
     field_names = ["level", "type", "name", "meta_flag"]
     rows = [[getattr(x, key) for key in field_names] for x in nodes]
@@ -390,19 +409,19 @@ def write_typetree(
 ) -> EndianBinaryWriter:
     """Writes the data of the object via the given typetree of the object into the writer.
 
-        Parameters
-        ----------
-        obj : dict
-            Object to be saved
-        nodes : list
-            List of nodes/nodes
-        writer : EndianBinaryWriter
-            Writer of the object to be saved
+    Parameters
+    ----------
+    obj : dict
+        Object to be saved
+    nodes : list
+        List of nodes/nodes
+    writer : EndianBinaryWriter
+        Writer of the object to be saved
 
-        Returns
-        -------
-        EndianBinaryWriter
-            The writer that was used to save the data of the given object.
+    Returns
+    -------
+    EndianBinaryWriter
+        The writer that was used to save the data of the given object.
     """
     if not writer:
         writer = EndianBinaryWriter()
@@ -488,4 +507,3 @@ def write_value(
 
     if align:
         writer.align_stream()
-
