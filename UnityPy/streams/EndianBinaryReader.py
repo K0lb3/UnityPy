@@ -3,7 +3,7 @@ import sys
 from struct import Struct, unpack
 import re
 from typing import List, Union
-from io import BytesIO
+from io import BytesIO, BufferedIOBase
 
 reNot0 = re.compile(b"(.*?)\x00")
 
@@ -22,9 +22,9 @@ TYPE_PARAM_SIZE_LIST = [
     ("half", "e", 2),
     ("float", "f", 4),
     ("double", "d", 8),
-    ("vec2", "2f", 8),
-    ("vec3", "3f", 12),
-    ("vec4", "4f", 16),
+    ("vector2", "2f", 8),
+    ("vector3", "3f", 12),
+    ("vector4", "4f", 16),
 ]
 
 LOCALS = locals()
@@ -34,7 +34,6 @@ for endian_s, endian_l in (("<", "little"), (">", "big")):
         LOCALS[f"unpack_{endian_l}_{typ}_from"] = Struct(
             f"{endian_s}{param}"
         ).unpack_from
-unpack_little_vec2 = Struct(f"<ff").unpack
 
 
 class EndianBinaryReader:
@@ -45,14 +44,20 @@ class EndianBinaryReader:
 
     def __new__(
         cls,
-        item: Union[bytes, bytearray, memoryview, BytesIO],
+        item: Union[bytes, bytearray, memoryview, BytesIO, str],
         endian: str = ">",
         offset: int = 0,
     ):
         if isinstance(item, (bytes, bytearray, memoryview)):
             obj = super(EndianBinaryReader, cls).__new__(EndianBinaryReader_Memoryview)
-        else:
+        elif isinstance(item, BufferedIOBase):
             obj = super(EndianBinaryReader, cls).__new__(EndianBinaryReader_Streamable)
+        elif isinstance(item, str):
+            item = open(item, "rb")
+            obj = super(EndianBinaryReader, cls).__new__(EndianBinaryReader_Streamable)
+        elif isinstance(item, EndianBinaryReader):
+            item = item.stream if isinstance(item, EndianBinaryReader_Streamable) else item.view
+            return EndianBinaryReader(item, endian, offset)
         obj.__init__(item, endian)
         return obj
 
@@ -331,6 +336,21 @@ class EndianBinaryReader_Memoryview_LittleEndian(EndianBinaryReader_Memoryview):
         self.Position += 8
         return ret
 
+    def read_vector2(self):
+        (x, y) = unpack_little_vector2_from(self.view, self.Position)
+        self.Position += 8
+        return Vector2(x, y)
+
+    def read_vector3(self):
+        (x, y, z) = unpack_little_vector3_from(self.view, self.Position)
+        self.Position += 12
+        return Vector3(x, y, z)
+
+    def read_vector4(self):
+        (x, y, z, w) = unpack_little_vector4_from(self.view, self.Position)
+        self.Position += 16
+        return Vector4(x, y, z, w)
+
 
 class EndianBinaryReader_Memoryview_BigEndian(EndianBinaryReader_Memoryview):
     def read_u_short(self):
@@ -377,6 +397,21 @@ class EndianBinaryReader_Memoryview_BigEndian(EndianBinaryReader_Memoryview):
         (ret,) = unpack_big_double_from(self.view, self.Position)
         self.Position += 8
         return ret
+
+    def read_vector2(self):
+        (x, y) = unpack_big_vector2_from(self.view, self.Position)
+        self.Position += 8
+        return Vector2(x, y)
+
+    def read_vector3(self):
+        (x, y, z) = unpack_big_vector3_from(self.view, self.Position)
+        self.Position += 12
+        return Vector3(x, y, z)
+
+    def read_vector4(self):
+        (x, y, z, w) = unpack_big_vector4_from(self.view, self.Position)
+        self.Position += 16
+        return Vector4(x, y, z, w)
 
 
 class EndianBinaryReader_Streamable(EndianBinaryReader):
@@ -463,6 +498,15 @@ class EndianBinaryReader_Streamable_LittleEndian(EndianBinaryReader_Streamable):
     def read_double(self):
         return unpack_little_double(self.read(8))[0]
 
+    def read_vector2(self):
+        return Vector2(*unpack_little_vector2(self.read(8)))
+
+    def read_vector3(self):
+        return Vector3(*unpack_little_vector3(self.read(12)))
+
+    def read_vector4(self):
+        return Vector4(*unpack_little_vector4(self.read(16)))
+
 
 class EndianBinaryReader_Streamable_BigEndian(EndianBinaryReader_Streamable):
     def read_u_short(self):
@@ -491,3 +535,12 @@ class EndianBinaryReader_Streamable_BigEndian(EndianBinaryReader_Streamable):
 
     def read_double(self):
         return unpack_big_double(self.read(8))[0]
+
+    def read_vector2(self):
+        return Vector2(*unpack_big_vector2(self.read(8)))
+
+    def read_vector3(self):
+        return Vector3(*unpack_big_vector3(self.read(12)))
+
+    def read_vector4(self):
+        return Vector4(*unpack_big_vector4(self.read(16)))
