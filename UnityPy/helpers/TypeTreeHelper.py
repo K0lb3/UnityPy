@@ -1,4 +1,4 @@
-﻿from typing import Any, Dict, List, Union
+﻿from typing import Any, Dict, List, Union, Iterable, Tuple
 from UnityPy.streams import EndianBinaryReader, EndianBinaryWriter
 from ctypes import c_uint32
 import tabulate
@@ -19,6 +19,7 @@ class TypeTreeNode(object):
         "name_str_offset",
         "type",
         "name",
+        "ref_type_hash",
     )
     type: str
     name: str
@@ -32,13 +33,18 @@ class TypeTreeNode(object):
     name_str_offset: int
     type: str
     name: str
+    ref_type_hash: str
 
-    def __init__(self, data: dict = None, **kwargs):
-        if not data and kwargs:
-            data = kwargs
-        if data:
-            for key, val in data.items():
-                setattr(self, key, val)
+    def __init__(self, data: Union[dict, Iterable[Tuple]] = None, **kwargs):
+        if isinstance(data, dict):
+            items = data.items()
+        elif kwargs:
+            items = kwargs.items()
+        else:
+            items = data
+
+        for key, val in items:
+            setattr(self, key, val)
 
     def __repr__(self):
         return f"<TypeTreeNode({self.level} {self.type} {self.name})>"
