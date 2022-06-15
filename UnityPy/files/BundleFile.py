@@ -125,11 +125,8 @@ class BundleFile(File.File):
         if m_BlocksInfo:
             self._block_info_flags = m_BlocksInfo[0].flags
 
-        compressed_block_size = sum(
-            blockInfo.compressedSize for blockInfo in m_BlocksInfo
-        )
-        padding = reader.Length - start - compressedSize - compressed_block_size
-        reader.Position += padding
+        if self._data_flags & 0x200:
+            reader.align_stream(16)
 
         blocksReader = EndianBinaryReader(
             b"".join(
@@ -241,6 +238,8 @@ class BundleFile(File.File):
 
         # file list & file data
         # prep nodes and build up block data
+        writer_start_pos = writer.Position
+
         data_writer = EndianBinaryWriter()
         files = [
             (
@@ -315,17 +314,9 @@ class BundleFile(File.File):
         compressed_block_data_size = len(block_data)
 
         # write the header info
-        ## file size
-        writer.write_long(
-            writer.Length
-            + 8
-            + 4
-            + 4
-            + 4
-            + (8 if self.version >= 7 else 0)
-            + compressed_block_data_size
-            + compressed_data_size
-        )
+        ## file size - 0 for now, will be set at the end
+        writer_header_pos = writer.Position
+        writer.write_long(0)
         # compressed blockInfoBytes size
         writer.write_u_int(compressed_block_data_size)
         # uncompressed size
@@ -342,11 +333,21 @@ class BundleFile(File.File):
             writer.align_stream(16)
 
         if (block_info_flag & 0x80) != 0:  # at end of file
+            if data_flag & 0x200:
+                writer.align_stream(16)
             writer.write(file_data)
             writer.write(block_data)
         else:
             writer.write(block_data)
+            if data_flag & 0x200:
+                writer.align_stream(16)
             writer.write(file_data)
+        
+        writer_end_pos = writer.Position
+        writer.Position = writer_header_pos
+        # correct file size
+        writer.write_long(writer_end_pos - writer_start_pos)
+        writer.Position = writer_end_pos
 
 
 def decompress_data(
