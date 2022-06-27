@@ -47,11 +47,7 @@ class Object(object):
         return self.reader.dump_typetree_structure()
 
     def read_typetree(self, nodes: list = None) -> dict:
-        try:
-            tree = self.reader.read_typetree(nodes)
-        except TypeTreeError as e:
-            print("Failed to read TypeTree:\n", e)
-            return {}
+        tree = self.reader.read_typetree(nodes)
         self.type_tree = NodeHelper(tree, self.assets_file)
         return tree
 

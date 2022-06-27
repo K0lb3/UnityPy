@@ -1,10 +1,12 @@
 from ..enums import ClassIDType
+
 from . import SerializedFile
 from .. import classes
 from ..classes.Object import NodeHelper
 from ..streams import EndianBinaryReader, EndianBinaryWriter
 from ..helpers import TypeTreeHelper
 from ..helpers.Tpk import get_typetree_nodes
+from ..exceptions import TypeTreeError
 
 
 class ObjectReader:
@@ -198,34 +200,27 @@ class ObjectReader:
         return ""
 
     def dump_typetree_structure(self) -> str:
-        if getattr(self.serialized_type, "nodes", None):
-            return TypeTreeHelper.dump_typetree(self.serialized_type.nodes)
-        return ""
+        return TypeTreeHelper.dump_typetree(self.get_typetree_nodes())
+
+    def get_typetree_nodes(self, nodes: list = None) -> list:
+        if not nodes:
+            nodes = self.serialized_type.nodes
+        if not nodes:
+            nodes = get_typetree_nodes(self.class_id, self.version)
+        if not nodes:
+            raise TypeTreeError("There are no TypeTree nodes for this object.")
+        return nodes
 
     def read_typetree(self, nodes: list = None) -> dict:
         self.reset()
-        tree = {}
-        if nodes:
-            tree = TypeTreeHelper.read_typetree(nodes, self)
-        elif self.serialized_type.nodes:
-            tree = TypeTreeHelper.read_typetree(self.serialized_type.nodes, self)
-        else:
-            nodes = get_typetree_nodes(self.class_id, self.version)
-            if nodes:
-                tree = TypeTreeHelper.read_typetree(nodes, self)
-        return tree
+        nodes = self.get_typetree_nodes(nodes)
+        return TypeTreeHelper.read_typetree(nodes, self)
 
     def save_typetree(
         self, tree: dict, nodes: list = None, writer: EndianBinaryWriter = None
     ):
-        if not writer:
-            writer = EndianBinaryWriter(endian=self.reader.endian)
-        if nodes:
-            TypeTreeHelper.write_typetree(tree, nodes, writer)
-        elif self.serialized_type.nodes:
-            TypeTreeHelper.write_typetree(tree, self.serialized_type.nodes, writer)
-        else:
-            raise ValueError("There are no TypeTree nodes for this object.")
+        nodes = self.get_typetree_nodes(nodes)
+        TypeTreeHelper.write_typetree(tree, nodes, writer)
         data = writer.bytes
         self.set_raw_data(data)
         return data
