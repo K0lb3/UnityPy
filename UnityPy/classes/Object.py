@@ -52,9 +52,6 @@ class Object(object):
         return tree
 
     def save_typetree(self, nodes: list = None, writer: EndianBinaryWriter = None):
-        if not writer:
-            writer = EndianBinaryWriter(endian=self.reader.endian)
-
         def class_to_dict(value):
             if isinstance(value, list):
                 return [class_to_dict(val) for val in value]

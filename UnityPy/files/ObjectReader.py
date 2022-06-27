@@ -220,7 +220,9 @@ class ObjectReader:
         self, tree: dict, nodes: list = None, writer: EndianBinaryWriter = None
     ):
         nodes = self.get_typetree_nodes(nodes)
-        TypeTreeHelper.write_typetree(tree, nodes, writer)
+        if not writer:
+            writer = EndianBinaryWriter(endian=self.reader.endian)
+        writer = TypeTreeHelper.write_typetree(tree, nodes, writer)
         data = writer.bytes
         self.set_raw_data(data)
         return data
