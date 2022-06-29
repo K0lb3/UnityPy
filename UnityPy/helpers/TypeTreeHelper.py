@@ -20,6 +20,7 @@ class TypeTreeNode(object):
         "type",
         "name",
         "ref_type_hash",
+        "variable_count",
     )
     type: str
     name: str
@@ -34,6 +35,7 @@ class TypeTreeNode(object):
     type: str
     name: str
     ref_type_hash: str
+    variable_count: int
 
     def __init__(self, data: Union[dict, Iterable[Tuple]] = None, **kwargs):
         if isinstance(data, dict):
@@ -48,6 +50,12 @@ class TypeTreeNode(object):
 
     def __repr__(self):
         return f"<TypeTreeNode({self.level} {self.type} {self.name})>"
+
+
+try:
+    from ..UnityPyBoost import TypeTreeNode, read_typetree as read_typetree_c
+except:
+    read_typetree_c = None
 
 
 def node_dict_to_class(nodes: List[dict]) -> List[TypeTreeNode]:
@@ -128,13 +136,11 @@ def get_nodes(nodes: List[TypeTreeNode], index: int) -> list:
     list
         A list of nodes
     """
-    nodes2 = [nodes[index]]
     level = nodes[index].level
-    for node in nodes[index + 1 :]:
+    for i, node in enumerate(nodes[index + 1 :], index + 1):
         if node.level <= level:
-            return nodes2
-        nodes2.append(node)
-    return nodes2
+            return nodes[index:i]
+    return nodes[index:]
 
 
 def read_typetree(
@@ -154,8 +160,12 @@ def read_typetree(
     dict
         The parsed typtree
     """
-    # reader.reset()
+    reader.reset()
+
     nodes = check_nodes(nodes)
+
+    if read_typetree_c:
+        return read_typetree_c(nodes, reader.read_bytes(reader.byte_size))
 
     obj = {}
     i = c_uint32(1)

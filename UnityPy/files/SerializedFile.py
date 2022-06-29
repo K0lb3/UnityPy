@@ -369,11 +369,14 @@ class SerializedFile(File.File):
         if not config.SERIALIZED_FILE_PARSE_TYPETREE:
             return [], string_buffer_reader.bytes
 
-        type_tree = [None] * number_of_nodes
-        for i, raw_node in enumerate(node_struct.iter_unpack(struct_data)):
-            type_tree[i] = node = TypeTreeNode(zip(keys, raw_node))
-            node.type = read_string(string_buffer_reader, node.type_str_offset)
-            node.name = read_string(string_buffer_reader, node.name_str_offset)
+        type_tree = [
+            TypeTreeNode(
+                **dict(zip(keys, raw_node)),
+                type=read_string(string_buffer_reader, raw_node[3]),
+                name=read_string(string_buffer_reader, raw_node[4]),
+            )
+            for i, raw_node in enumerate(node_struct.iter_unpack(struct_data))
+        ]
 
         return type_tree, string_buffer_reader.bytes
 
@@ -414,6 +417,7 @@ class SerializedFile(File.File):
         header = self.header
         meta_writer = EndianBinaryWriter(endian=header.endian)
         data_writer = EndianBinaryWriter(endian=header.endian)
+
         if header.version >= 7:
             meta_writer.write_string_to_null(self.unity_version)
 

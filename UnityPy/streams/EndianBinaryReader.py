@@ -284,7 +284,10 @@ class EndianBinaryReader_Memoryview(EndianBinaryReader):
     def read_string_to_null(self, max_length=32767) -> str:
         match = reNot0.search(self.view, self.Position, self.Position + max_length)
         if not match:
-            raise ValueError("Unterminated string")
+            if self.Position + max_length >= self.Length:
+                raise Exception("String not terminated")
+            else:
+                return bytes(self.read_bytes(max_length)).decode("utf8", "surrogateescape")
         ret = match[1].decode("utf8", "surrogateescape")
         self.Position = match.end()
         return ret

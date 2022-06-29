@@ -3,6 +3,7 @@
 #include <Python.h>
 #include "AnimationClip.h"
 #include "Mesh.h"
+#include "TypeTreeHelper.h"
 
 /* Mesh.py */
 
@@ -19,6 +20,10 @@ static struct PyMethodDef method_table[] = {
      (PyCFunction)unpack_vertexdata,
      METH_VARARGS,
      "replacement for VertexData to ComponentData in Mesh.ReadVertexData"},
+    {"read_typetree",
+     (PyCFunction)read_typetree,
+     METH_VARARGS,
+     "replacement for TypeTreeHelper.read_typetree"},     
     {NULL,
      NULL,
      0,
@@ -41,5 +46,7 @@ static PyModuleDef UnityPyBoost_module = {
 // The module init function
 PyMODINIT_FUNC PyInit_UnityPyBoost(void)
 {
-    return PyModule_Create(&UnityPyBoost_module);
+    PyObject* module = PyModule_Create(&UnityPyBoost_module);
+    add_typetreenode_to_module(module);
+    return module;
 }
