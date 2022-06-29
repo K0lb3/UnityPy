@@ -62,6 +62,210 @@ static inline void align4(Reader *reader)
 #define HASH_TypelessData 1242572536
 #define HASH_map 193499011
 
+typedef PyObject *(*read_type)(Reader *);
+
+static inline PyObject *read_bool(Reader *reader)
+{
+    return PyBool_FromLong(*(char *)reader->data++);
+}
+
+static inline PyObject *read_SInt8(Reader *reader)
+{
+    return PyLong_FromLong(*(signed char *)reader->data++);
+}
+static inline PyObject *read_UInt8(Reader *reader)
+{
+    return PyLong_FromUnsignedLong(*(unsigned char *)reader->data++);
+}
+static inline PyObject *read_SInt16(Reader *reader)
+{
+    PyObject *ret = NULL;
+    if (reader->swap)
+    {
+        ret = PyLong_FromLong((signed short)bswap16(*(unsigned short *)reader->data));
+    }
+    else
+    {
+        ret = PyLong_FromLong(*(signed short *)(reader->data));
+    }
+    reader->data += 2;
+    return ret;
+}
+static inline PyObject *read_UInt16(Reader *reader)
+{
+    PyObject *ret = NULL;
+    if (reader->swap)
+    {
+        ret = PyLong_FromUnsignedLong((unsigned short)bswap16(*(unsigned short *)reader->data));
+    }
+    else
+    {
+        ret = PyLong_FromUnsignedLong(*(unsigned short *)(reader->data));
+    }
+    reader->data += 2;
+    return ret;
+}
+static inline PyObject *read_SInt32(Reader *reader)
+{
+    PyObject *ret = NULL;
+    if (reader->swap)
+    {
+        ret = PyLong_FromLong((signed int)bswap32(*(unsigned int *)reader->data));
+    }
+    else
+    {
+        ret = PyLong_FromLong(*(signed int *)(reader->data));
+    }
+    reader->data += 4;
+    return ret;
+}
+static inline PyObject *read_UInt32(Reader *reader)
+{
+    PyObject *ret = NULL;
+    if (reader->swap)
+    {
+        ret = PyLong_FromUnsignedLong((unsigned int)bswap32(*(unsigned int *)reader->data));
+    }
+    else
+    {
+        ret = PyLong_FromUnsignedLong(*(unsigned int *)(reader->data));
+    }
+    reader->data += 4;
+    return ret;
+}
+static inline PyObject *read_SInt64(Reader *reader)
+{
+    PyObject *ret = NULL;
+    if (reader->swap)
+    {
+        ret = PyLong_FromLongLong((signed long long)bswap64(*(unsigned long long *)reader->data));
+    }
+    else
+    {
+        ret = PyLong_FromLongLong(*(signed long long *)(reader->data));
+    }
+    reader->data += 8;
+    return ret;
+}
+static inline PyObject *read_UInt64(Reader *reader)
+{
+    PyObject *ret = NULL;
+    if (reader->swap)
+    {
+        ret = PyLong_FromUnsignedLongLong((unsigned long long)bswap64(*(unsigned long long *)reader->data));
+    }
+    else
+    {
+        ret = PyLong_FromUnsignedLongLong(*(unsigned long long *)(reader->data));
+    }
+    reader->data += 8;
+    return ret;
+}
+static inline PyObject *read_float(Reader *reader)
+{
+    PyObject *ret = NULL;
+    if (reader->swap)
+    {
+        ret = PyFloat_FromDouble((float)bswap32(*(unsigned int *)reader->data));
+    }
+    else
+    {
+        ret = PyFloat_FromDouble(*(float *)(reader->data));
+    }
+    reader->data += 4;
+    return ret;
+}
+static inline PyObject *read_double(Reader *reader)
+{
+    PyObject *ret = NULL;
+    if (reader->swap)
+    {
+        ret = PyFloat_FromDouble((double)bswap64(*(unsigned long long *)reader->data));
+    }
+    else
+    {
+        ret = PyFloat_FromDouble(*(double *)(reader->data));
+    }
+    reader->data += 8;
+    return ret;
+}
+
+static inline int read_length(Reader *reader)
+{
+    int length = *(int *)reader->data;
+    reader->data += 4;
+    if (reader->swap)
+    {
+        length = bswap32(length);
+    }
+    return length;
+}
+static inline PyObject *read_string(Reader *reader)
+{
+    int length = read_length(reader);
+    PyObject *str = PyUnicode_DecodeUTF8(reader->data, length, SURROGATEESCAPE);
+    reader->data += length;
+    return str;
+}
+
+static inline PyObject *read_TypelessData(Reader *reader)
+{
+    int length = read_length(reader);
+    // value = PyBytes_FromStringAndSize(reader->data, len_td);
+    // TODO - copy permission from parent node
+    PyObject *value = PyMemoryView_FromMemory(reader->data, length, PyBUF_READ);
+    reader->data += length;
+    // Py_buffer *view = (Py_buffer *)PyMemoryView_GET_BUFFER(value);
+    // view->obj = reader->obj;
+    return value;
+}
+
+static inline read_type getReadFunction(int hash_value, int *index)
+{
+    switch (hash_value)
+    {
+    case HASH_SInt8:
+        return read_SInt8;
+    case HASH_UInt8:
+    case HASH_char:
+        return read_UInt8;
+    case HASH_SInt16:
+    case HASH_short:
+        return read_SInt16;
+    case HASH_UInt16:
+    case HASH_unsigned_short:
+        return read_UInt16;
+    case HASH_SInt32:
+    case HASH_int:
+        return read_SInt32;
+    case HASH_UInt32:
+    case HASH_unsigned_int:
+    case HASH_TypePtr: // Type*
+        return read_UInt32;
+    case HASH_SInt64:
+    case HASH_long_long:
+        return read_SInt64;
+    case HASH_UInt64:
+    case HASH_unsigned_long_long:
+    case HASH_FileSize:
+        return read_UInt64;
+    case HASH_float:
+        return read_float;
+    case HASH_double:
+        return read_double;
+    case HASH_bool:
+        return read_bool;
+    case HASH_string:
+        *index += 3;
+        return read_string;
+    case HASH_TypelessData:
+        *index += 2;
+        return read_TypelessData;
+    default:
+        return NULL;
+    }
+}
+
 static PyObject *getSubNodes(PyObject *nodes, int *index)
 {
     PyObject *result = NULL;
@@ -101,6 +305,20 @@ static inline int PyList_SetItem_Safe(PyObject *list, int i, PyObject *value)
     return ret;
 }
 
+static inline void initReadFuncOrNodes(PyObject *nodes, int *index, PyObject **subnodes, read_type *func, char *subalign)
+{
+    TypeTreeNodeObject *node = (TypeTreeNodeObject *)PyList_GetItem(nodes, *index);
+    *func = getReadFunction(hash_str(node->type), index);
+    if (*func == NULL)
+    {
+        *subnodes = getSubNodes(nodes, index);
+    }
+    else
+    {
+        *subalign = ((node->meta_flag & kAlignBytesFlag) | (node->meta_flag & kAnyChildUsesAlignBytesFlag)) ? 1 : 0;
+    }
+}
+
 PyObject *TypeTreeHelper_ReadValueVector(PyObject *nodes, Reader *reader, int *index);
 
 static PyObject *TypeTreeHelper_ReadValue(PyObject *nodes, Reader *reader, int *index)
@@ -112,190 +330,93 @@ static PyObject *TypeTreeHelper_ReadValue(PyObject *nodes, Reader *reader, int *
     }
     TypeTreeNodeObject *node = (TypeTreeNodeObject *)PyList_GetItem(nodes, *index);
     PyObject *value = NULL;
-    char align = (node->meta_flag & kAlignBytesFlag) ? 1 : 0;
+    int sub_index = 0;
+
+    char align = ((node->meta_flag & kAlignBytesFlag) | (node->meta_flag & kAnyChildUsesAlignBytesFlag)) ? 1 : 0;
     // printf("RVa: %d\t%lld\t%s\t%s\t%d\t%d\n", *index, (reader->data - reader->dataStart), node->name, node->type, align, node->meta_flag);
-    switch (hash_str(node->type))
+
+    int hash_value = hash_str(node->type);
+    read_type func = getReadFunction(hash_value, index);
+    if (func)
     {
-    case HASH_SInt8:
-        value = PyLong_FromLong((int)*reader->data++);
-        break;
-    case HASH_UInt8:
-    case HASH_char:
-        value = PyLong_FromUnsignedLong((unsigned int)*(unsigned char *)reader->data++);
-        break;
-    case HASH_SInt16:
-    case HASH_short:
-        short value_s = *(short *)reader->data;
-        reader->data += 2;
-        if (reader->swap)
-            value_s = (short)bswap16((unsigned short)value_s);
-        value = PyLong_FromLong(value_s);
-        break;
-    case HASH_UInt16:
-    case HASH_unsigned_short:
-        unsigned short value_us = *(unsigned short *)reader->data;
-        reader->data += 2;
-        if (reader->swap)
-            value_us = bswap16(value_us);
-        value = PyLong_FromUnsignedLong(value_us);
-        break;
-    case HASH_SInt32:
-    case HASH_int:
-        int value_i = *(int *)reader->data;
-        reader->data += 4;
-        if (reader->swap)
-            value_i = (int)bswap32((unsigned int)value_i);
-        value = PyLong_FromLong(value_i);
-        break;
-    case HASH_UInt32:
-    case HASH_unsigned_int:
-    case HASH_TypePtr: // Type*
-        unsigned int value_ui = *(unsigned int *)reader->data;
-        reader->data += 4;
-        if (reader->swap)
-            value_ui = bswap32(value_ui);
-        value = PyLong_FromUnsignedLong(value_ui);
-        break;
-    case HASH_SInt64:
-    case HASH_long_long:
-        long long value_ll = *(long long *)reader->data;
-        reader->data += 8;
-        if (reader->swap)
-            value_ll = (long long)bswap64((unsigned long long)value_ll);
-        value = PyLong_FromLongLong(value_ll);
-        break;
-    case HASH_UInt64:
-    case HASH_unsigned_long_long:
-    case HASH_FileSize:
-        unsigned long long value_ull = *(unsigned long long *)reader->data;
-        reader->data += 8;
-        if (reader->swap)
-            value_ull = bswap64(value_ull);
-        value = PyLong_FromUnsignedLongLong(value_ull);
-        break;
-    case HASH_float:
-        float value_f = *(float *)reader->data;
-        reader->data += 4;
-        if (reader->swap)
-            value_f = (float)bswap32((unsigned int)value_f);
-        value = PyFloat_FromDouble(value_f);
-        break;
-    case HASH_double:
-        double value_d = *(double *)reader->data;
-        reader->data += 8;
-        if (reader->swap)
-            value_d = (double)bswap64((unsigned long long)value_d);
-        value = PyFloat_FromDouble(value_d);
-        break;
-    case HASH_bool:
-        value = PyBool_FromLong((int)*reader->data++);
-        break;
-    case HASH_string:
-        int len_s = *(int *)reader->data;
-        reader->data += 4;
-
-        if (reader->swap)
-            len_s = (int)bswap32((unsigned int)len_s);
-
-        value = PyUnicode_DecodeUTF8(reader->data, len_s, SURROGATEESCAPE);
-        reader->data += len_s;
-        if (node->meta_flag & kAnyChildUsesAlignBytesFlag)
-            align = 1;
-        *index += 3;
-        break;
-    case HASH_TypelessData:
-        int len_td = *(int *)reader->data;
-        reader->data += 4;
-
-        if (reader->swap)
-            len_td = (int)bswap32((unsigned int)len_td);
-
-        if (len_td)
+        value = func(reader);
+    }
+    else
+    {
+        if (hash_value == HASH_map)
         {
-            // value = PyBytes_FromStringAndSize(reader->data, len_td);
-            // TODO - copy permission from parent node
-            value = PyMemoryView_FromMemory(reader->data, len_td, PyBUF_READ);
-            reader->data += len_td;
-            // Py_buffer *view = (Py_buffer *)PyMemoryView_GET_BUFFER(value);
-            // view->obj = reader->obj;
+            int size = read_length(reader);
+
+            *index += 4; // skip self, Array, size, pair
+            PyObject *first_nodes = NULL;
+            read_type first_func = NULL;
+            char firstalign = 0;
+            initReadFuncOrNodes(nodes, index, &first_nodes, &first_func, &firstalign);
+            *index += 1; // move to start of second
+            PyObject *second_nodes = NULL;
+            read_type second_func = NULL;
+            char secondalign = 0;
+            initReadFuncOrNodes(nodes, index, &second_nodes, &second_func, &secondalign);
+
+            value = PyList_New(size);
+            PyObject *first;
+            PyObject *second;
+            for (int i = 0; i < size; i++)
+            {
+                sub_index = 0;
+                first = (first_func) ? first_func(reader) : TypeTreeHelper_ReadValue(first_nodes, reader, &sub_index);
+                if (firstalign)
+                    align4(reader);
+                sub_index = 0;
+                second = (second_func) ? second_func(reader) : TypeTreeHelper_ReadValue(second_nodes, reader, &sub_index);
+                if (secondalign)
+                    align4(reader);
+                PyList_SetItem(value, i, PyTuple_Pack(2, first, second));
+                Py_XDECREF(first);
+                Py_XDECREF(second);
+            }
+            Py_XDECREF(first_nodes);
+            Py_XDECREF(second_nodes);
         }
         else
         {
-            value = PyBytes_FromStringAndSize(NULL, 0);
-        }
-        *index += 2;
-        break;
-    case HASH_map:
-        if (node->meta_flag & kAnyChildUsesAlignBytesFlag)
-            align = 1;
-        int size = (int)*(int *)reader->data;
-        reader->data += 4;
-
-        if (reader->swap)
-            size = (int)bswap32((unsigned int)size);
-
-        *index += 4; // skip self, Array, size, pair
-        PyObject *first_nodes = getSubNodes(nodes, index);
-        *index += 1; // move to start of second
-        PyObject *second_nodes = getSubNodes(nodes, index);
-
-        int sub_index;
-        value = PyList_New(size);
-        for (int i = 0; i < size; i++)
-        {
-            sub_index = 0;
-            PyObject *first = TypeTreeHelper_ReadValue(first_nodes, reader, &sub_index);
-            sub_index = 0;
-            PyObject *second = TypeTreeHelper_ReadValue(second_nodes, reader, &sub_index);
-            PyList_SetItem(value, i, PyTuple_Pack(2, first, second));
-            Py_XDECREF(first);
-            Py_XDECREF(second);
-        }
-        break;
-        Py_XDECREF(first_nodes);
-        Py_XDECREF(second_nodes);
-
-    default:
-        // Vector
-        TypeTreeNodeObject *node2 = (TypeTreeNodeObject *)PyList_GetItem(nodes, *index + 1);
-        if (strcmp(node2->type, "Array") == 0)
-        {
-            if (node->meta_flag & kAnyChildUsesAlignBytesFlag)
-                align = 1;
-            *index += 3; // skip self, Array, size
-            PyObject *vector_nodes = getSubNodes(nodes, index);
-            int size = (int)*(int *)reader->data;
-
-            if (reader->swap)
-                size = (int)bswap32((unsigned int)size);
-
-            reader->data += 4;
-            value = PyList_New(size);
-            for (int i = 0; i < size; i++)
+            TypeTreeNodeObject *node2 = (TypeTreeNodeObject *)PyList_GetItem(nodes, *index + 1);
+            if (strcmp(node2->type, "Array") == 0)
             {
-                int sub_index = 0;
-                PyObject *vector_value = TypeTreeHelper_ReadValue(vector_nodes, reader, &sub_index);
-                PyList_SetItem_Safe(value, i, vector_value);
+                *index += 3; // skip self, Array, size
+                PyObject *vector_nodes = NULL;
+                read_type vector_func = NULL;
+                char subalign = 0;
+                initReadFuncOrNodes(nodes, index, &vector_nodes, &vector_func, &subalign);
+
+                int size = read_length(reader);
+                value = PyList_New(size);
+                for (int i = 0; i < size; i++)
+                {
+                    // printf("i: %d - pos: %d\n", i, reader->data - reader->dataStart);
+                    int sub_index = 0;
+                    PyObject *vector_value = (vector_func) ? vector_func(reader) : TypeTreeHelper_ReadValue(vector_nodes, reader, &sub_index);
+                    if (subalign)
+                        align4(reader);
+                    PyList_SetItem_Safe(value, i, vector_value);
+                }
+                Py_XDECREF(vector_nodes);
             }
-            Py_XDECREF(vector_nodes);
-            // int vector_index = 0;
-            // value = TypeTreeHelper_ReadValueVector(vector_nodes, reader, &vector_index);
-        }
-        else // Class
-        {
-            PyObject *cls_nodes = getSubNodes(nodes, index);
-            int j = 1;
-            value = PyDict_New();
-            char *j_name = NULL;
-            while (j < PyList_Size(cls_nodes))
+            else // Class
             {
-                j_name = ((TypeTreeNodeObject *)PyList_GetItem(cls_nodes, j))->name;
-                PyDict_SetItemString_Safe(value, j_name, TypeTreeHelper_ReadValue(cls_nodes, reader, &j));
-                j++;
+                PyObject *cls_nodes = getSubNodes(nodes, index);
+                int j = 1;
+                value = PyDict_New();
+                char *j_name = NULL;
+                while (j < PyList_Size(cls_nodes))
+                {
+                    j_name = ((TypeTreeNodeObject *)PyList_GetItem(cls_nodes, j))->name;
+                    PyDict_SetItemString_Safe(value, j_name, TypeTreeHelper_ReadValue(cls_nodes, reader, &j));
+                    j++;
+                }
+                Py_XDECREF(cls_nodes);
             }
-            Py_XDECREF(cls_nodes);
         }
-        break;
     }
 
     if (align)
@@ -366,205 +487,6 @@ static PyObject *TypeTreeHelper_ReadTypeTree(PyObject *nodes, PyObject *buf, cha
     return result;
 }
 
-// PyObject *TypeTreeHelper_ReadValueVector(PyObject *nodes, Reader *reader, int *index)
-// {
-//     if (*index >= PyList_Size(nodes))
-//     {
-//         PyErr_SetString(PyExc_RuntimeError, "index out of range");
-//         return NULL;
-//     }
-//     TypeTreeNodeObject *node = PyList_GetItem(nodes, *index);
-//     char align = (node->meta_flag & kAlignBytesFlag) ? 1 : 0;
-
-//     printf("RVe: %d\t%lld\t%s\t%s\t%d\t%d\n", *index, (reader->data - reader->dataStart), node->name, node->type, align, node->meta_flag);
-
-//     int vector_size = *(int *)reader->data;
-//     reader->data += 4;
-
-//     PyObject *list = PyList_New(vector_size);
-
-//     switch (hash_str(node->type))
-//     {
-//     case HASH_SInt8:
-//         for (int i = 0; i < vector_size; i++)
-//         {
-//             PyList_SetItem(list, i, PyLong_FromLong((int)*reader->data++));
-//         }
-//         break;
-//     case HASH_UInt8:
-//     case HASH_char:
-//         for (int i = 0; i < vector_size; i++)
-//         {
-//             PyList_SetItem(list, i, PyLong_FromUnsignedLong((unsigned int)*(unsigned char *)reader->data++));
-//         }
-//         break;
-//     case HASH_SInt16:
-//     case HASH_short:
-//         short *raw_list_s = (short *)reader->data;
-//         for (int i = 0; i < vector_size; i++)
-//         {
-//             PyList_SetItem(list, i, PyLong_FromLong((int)*raw_list_s++));
-//         }
-//         reader->data = (char *)raw_list_s;
-//         break;
-//     case HASH_UInt16:
-//     case HASH_unsigned_short:
-//         unsigned short *raw_list_us = (unsigned short *)reader->data;
-//         for (int i = 0; i < vector_size; i++)
-//         {
-//             PyList_SetItem(list, i, PyLong_FromUnsignedLong((unsigned int)*raw_list_us++));
-//         }
-//         reader->data = (char *)raw_list_us;
-//         break;
-//     case HASH_SInt32:
-//     case HASH_int:
-//         int *raw_list_i = (int *)reader->data;
-//         for (int i = 0; i < vector_size; i++)
-//         {
-//             PyList_SetItem(list, i, PyLong_FromLong(*raw_list_i++));
-//         }
-//         reader->data = (char *)raw_list_i;
-//         break;
-//     case HASH_UInt32:
-//     case HASH_unsigned_int:
-//     case HASH_TypePtr:
-//         unsigned int *raw_list_ui = (unsigned int *)reader->data;
-//         for (int i = 0; i < vector_size; i++)
-//         {
-//             PyList_SetItem(list, i, PyLong_FromUnsignedLong(*raw_list_ui++));
-//         }
-//         reader->data = (char *)raw_list_ui;
-//         break;
-//     case HASH_SInt64:
-//     case HASH_long_long:
-//         long long *raw_list_l = (long long *)reader->data;
-//         for (int i = 0; i < vector_size; i++)
-//         {
-//             PyList_SetItem(list, i, PyLong_FromLongLong(*raw_list_l++));
-//         }
-//         reader->data = (char *)raw_list_l;
-//         break;
-//     case HASH_UInt64:
-//     case HASH_unsigned_long_long:
-//     case HASH_FileSize:
-//         unsigned long long *raw_list_ul = (unsigned long long *)reader->data;
-//         for (int i = 0; i < vector_size; i++)
-//         {
-//             PyList_SetItem(list, i, PyLong_FromUnsignedLongLong(*raw_list_ul++));
-//         }
-//         reader->data = (char *)raw_list_ul;
-//         break;
-//     case HASH_float:
-//         float *raw_list_f = (float *)reader->data;
-//         for (int i = 0; i < vector_size; i++)
-//         {
-//             PyList_SetItem(list, i, PyFloat_FromDouble((double)*raw_list_f++));
-//         }
-//         reader->data = (char *)raw_list_f;
-//         break;
-//     case HASH_double:
-//         double *raw_list_d = (double *)reader->data;
-//         for (int i = 0; i < vector_size; i++)
-//         {
-//             PyList_SetItem(list, i, PyFloat_FromDouble(*raw_list_d++));
-//         }
-//         reader->data = (char *)raw_list_d;
-//         break;
-//     case HASH_bool:
-//         for (int i = 0; i < vector_size; i++)
-//         {
-//             PyList_SetItem(list, i, PyBool_FromLong((int)*reader->data++));
-//         }
-//         break;
-//     case HASH_string:
-//         for (int i = 0; i < vector_size; i++)
-//         {
-//             int str_len = *(int *)reader->data;
-//             reader->data += 4;
-//             PyList_SetItem(list, i, PyUnicode_FromStringAndSize(reader->data, str_len));
-//             reader->data += str_len;
-//             if (align) align4(reader);
-//         }
-//         index += 3;
-//         break;
-//     case HASH_TypelessData:
-//         for (int i = 0; i < vector_size; i++)
-//         {
-//             int str_len = *(int *)reader->data;
-//             reader->data += 4;
-//             PyList_SetItem(list, i, PyBytes_FromStringAndSize(reader->data, str_len));
-//             reader->data += str_len;
-//             if (align) align4(reader);
-
-//         }
-//         index += 2;
-//         break;
-//     case HASH_map:
-//         if (node->meta_flag && kAnyChildUsesAlignBytesFlag)
-//             align = 1;
-//         *index += 4; // skip self, Array, size, pair
-//         PyObject *first_nodes = getSubNodes(nodes, index);
-//         *index += 1; // move to start of second
-//         PyObject *second_nodes = getSubNodes(nodes, index);
-//         int sub_index = 0;
-//         for (int i = 0; i < vector_size; i++)
-//         {
-//             int size = (int)*(int *)reader->data;
-//             reader->data += 4;
-//             PyObject* item = PyList_New(size);
-//             for (int j = 0; j < size; j++)
-//             {
-//                 sub_index = 0;
-//                 PyObject* first = TypeTreeHelper_ReadValue(first_nodes, reader, &sub_index);
-//                 sub_index = 0;
-//                 PyObject* second = TypeTreeHelper_ReadValue(second_nodes, reader, &sub_index);
-//                 PyList_SetItem(item, j, PyTuple_Pack(2, first, second));
-//             }
-//             PyList_SetItem(list, i, item);
-//             if (align) align4(reader);
-//         }
-//         break;
-//     default:
-//         TypeTreeNodeObject *node2 = (TypeTreeNodeObject*) PyList_GetItem(nodes, *index + 1);
-//         if (strcmp(node2->type, "Array") == 0)
-//         {
-//             if (node->meta_flag && kAnyChildUsesAlignBytesFlag)
-//                 align = 1;
-//             *index += 3; // skip self, Array, size
-//             PyObject *vector_nodes = getSubNodes(nodes, index);
-
-//             int sub_index = 0;
-//             for (int i = 0; i < sub_index; i++){
-//                 sub_index = 0;
-//                 PyObject* item = TypeTreeHelper_ReadValueVector(vector_nodes, reader, &sub_index);
-//                 PyList_SetItem(list, i, item);
-//                 if (align) align4(reader);
-//             }
-//         }
-//         else // Class
-//         {
-//             PyObject *cls_nodes = getSubNodes(nodes, index);
-//             for (int i = 0; i < vector_size; i++)
-//             {
-//                 int j = 1;
-//                 PyObject *value = PyDict_New();
-//                 while (j < PyList_Size(cls_nodes))
-//                 {
-//                     PyDict_SetItemString(value, ((TypeTreeNodeObject*)PyList_GetItem(cls_nodes, j))->name, TypeTreeHelper_ReadValue(cls_nodes, reader, &j));
-//                     j++;
-//                 }
-//                 PyList_SetItem(list, i, value);
-//                 if (align) align4(reader);
-//             }
-//         }
-//         break;
-//     }
-
-//     if (align) align4(reader);
-//     return list;
-// }
-
-
 PyObject *read_typetree(PyObject *self, PyObject *args)
 {
     PyObject *nodes = PyTuple_GetItem(args, 0);
@@ -576,13 +498,13 @@ PyObject *read_typetree(PyObject *self, PyObject *args)
     {
         PyErr_SetString(PyExc_TypeError,
                         "The endian attribute value must be a string");
-        return -1;
+        return NULL;
     }
     if (PyUnicode_GET_SIZE(swap_obj) != 1)
     {
         PyErr_SetString(PyExc_TypeError,
                         "The endian attribute value must be a string of size 1");
-        return -1;
+        return NULL;
     }
     char endian = *PyUnicode_AS_DATA(swap_obj);
     switch (endian)
@@ -602,7 +524,7 @@ PyObject *read_typetree(PyObject *self, PyObject *args)
     {
         PyErr_SetString(PyExc_TypeError,
                         "The endian attribute value must be one of '>', '<', '=', '|'");
-        return -1;
+        return NULL;
     }
     }
     return TypeTreeHelper_ReadTypeTree(nodes, buf, swap);
