@@ -1,5 +1,5 @@
 ﻿from typing import Any, Dict, List, Union, Iterable, Tuple
-from UnityPy.streams import EndianBinaryReader, EndianBinaryWriter
+from ..streams import EndianBinaryReader, EndianBinaryWriter
 from ctypes import c_uint32
 import tabulate
 from ..exceptions import TypeTreeError as TypeTreeError
@@ -165,7 +165,9 @@ def read_typetree(
     nodes = check_nodes(nodes)
 
     if read_typetree_c:
-        return read_typetree_c(nodes, reader.read_bytes(reader.byte_size))
+        return read_typetree_c(
+            nodes, reader.read_bytes(reader.byte_size), reader.endian
+        )
 
     obj = {}
     i = c_uint32(1)

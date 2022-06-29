@@ -5,6 +5,7 @@
 #include "TypeTreeHelper.h"
 #include <stdio.h>
 #include <string.h>
+#include "endian.h"
 
 typedef struct
 {
@@ -124,43 +125,67 @@ static PyObject *TypeTreeHelper_ReadValue(PyObject *nodes, Reader *reader, int *
         break;
     case HASH_SInt16:
     case HASH_short:
-        value = PyLong_FromLong((int)*(short *)reader->data);
+        short value_s = *(short *)reader->data;
         reader->data += 2;
+        if (reader->swap)
+            value_s = (short)bswap16((unsigned short)value_s);
+        value = PyLong_FromLong(value_s);
         break;
     case HASH_UInt16:
     case HASH_unsigned_short:
-        value = PyLong_FromUnsignedLong((unsigned int)*(unsigned short *)reader->data);
+        unsigned short value_us = *(unsigned short *)reader->data;
         reader->data += 2;
+        if (reader->swap)
+            value_us = bswap16(value_us);
+        value = PyLong_FromUnsignedLong(value_us);
         break;
     case HASH_SInt32:
     case HASH_int:
-        value = PyLong_FromLong(*(int *)reader->data);
+        int value_i = *(int *)reader->data;
         reader->data += 4;
+        if (reader->swap)
+            value_i = (int)bswap32((unsigned int)value_i);
+        value = PyLong_FromLong(value_i);
         break;
     case HASH_UInt32:
     case HASH_unsigned_int:
     case HASH_TypePtr: // Type*
-        value = PyLong_FromUnsignedLong(*(unsigned int *)reader->data);
+        unsigned int value_ui = *(unsigned int *)reader->data;
         reader->data += 4;
+        if (reader->swap)
+            value_ui = bswap32(value_ui);
+        value = PyLong_FromUnsignedLong(value_ui);
         break;
     case HASH_SInt64:
     case HASH_long_long:
-        value = PyLong_FromLongLong(*(long long *)reader->data);
+        long long value_ll = *(long long *)reader->data;
         reader->data += 8;
+        if (reader->swap)
+            value_ll = (long long)bswap64((unsigned long long)value_ll);
+        value = PyLong_FromLongLong(value_ll);
         break;
     case HASH_UInt64:
     case HASH_unsigned_long_long:
     case HASH_FileSize:
-        value = PyLong_FromUnsignedLongLong(*(unsigned long long *)reader->data);
+        unsigned long long value_ull = *(unsigned long long *)reader->data;
         reader->data += 8;
+        if (reader->swap)
+            value_ull = bswap64(value_ull);
+        value = PyLong_FromUnsignedLongLong(value_ull);
         break;
     case HASH_float:
-        value = PyFloat_FromDouble((double)*(float *)reader->data);
+        float value_f = *(float *)reader->data;
         reader->data += 4;
+        if (reader->swap)
+            value_f = (float)bswap32((unsigned int)value_f);
+        value = PyFloat_FromDouble(value_f);
         break;
     case HASH_double:
-        value = PyFloat_FromDouble(*(double *)reader->data);
+        double value_d = *(double *)reader->data;
         reader->data += 8;
+        if (reader->swap)
+            value_d = (double)bswap64((unsigned long long)value_d);
+        value = PyFloat_FromDouble(value_d);
         break;
     case HASH_bool:
         value = PyBool_FromLong((int)*reader->data++);
@@ -168,6 +193,10 @@ static PyObject *TypeTreeHelper_ReadValue(PyObject *nodes, Reader *reader, int *
     case HASH_string:
         int len_s = *(int *)reader->data;
         reader->data += 4;
+
+        if (reader->swap)
+            len_s = (int)bswap32((unsigned int)len_s);
+
         value = PyUnicode_DecodeUTF8(reader->data, len_s, SURROGATEESCAPE);
         reader->data += len_s;
         if (node->meta_flag & kAnyChildUsesAlignBytesFlag)
@@ -177,6 +206,10 @@ static PyObject *TypeTreeHelper_ReadValue(PyObject *nodes, Reader *reader, int *
     case HASH_TypelessData:
         int len_td = *(int *)reader->data;
         reader->data += 4;
+
+        if (reader->swap)
+            len_td = (int)bswap32((unsigned int)len_td);
+
         if (len_td)
         {
             // value = PyBytes_FromStringAndSize(reader->data, len_td);
@@ -197,6 +230,9 @@ static PyObject *TypeTreeHelper_ReadValue(PyObject *nodes, Reader *reader, int *
             align = 1;
         int size = (int)*(int *)reader->data;
         reader->data += 4;
+
+        if (reader->swap)
+            size = (int)bswap32((unsigned int)size);
 
         *index += 4; // skip self, Array, size, pair
         PyObject *first_nodes = getSubNodes(nodes, index);
@@ -229,6 +265,10 @@ static PyObject *TypeTreeHelper_ReadValue(PyObject *nodes, Reader *reader, int *
             *index += 3; // skip self, Array, size
             PyObject *vector_nodes = getSubNodes(nodes, index);
             int size = (int)*(int *)reader->data;
+
+            if (reader->swap)
+                size = (int)bswap32((unsigned int)size);
+
             reader->data += 4;
             value = PyList_New(size);
             for (int i = 0; i < size; i++)
@@ -263,7 +303,7 @@ static PyObject *TypeTreeHelper_ReadValue(PyObject *nodes, Reader *reader, int *
     return value;
 }
 
-static PyObject *TypeTreeHelper_ReadTypeTree(PyObject *nodes, PyObject *buf)
+static PyObject *TypeTreeHelper_ReadTypeTree(PyObject *nodes, PyObject *buf, char swap)
 {
     Py_buffer view;
     if (Py_TYPE(buf)->tp_as_buffer && Py_TYPE(buf)->tp_as_buffer->bf_releasebuffer)
@@ -293,7 +333,7 @@ static PyObject *TypeTreeHelper_ReadTypeTree(PyObject *nodes, PyObject *buf)
         .data = (char *)view.buf,
         .dataStart = (char *)view.buf,
         .dataEnd = (char *)view.buf + view.len,
-        .swap = 0,
+        .swap = swap,
         .obj = buf};
 
     PyBuffer_Release(&view);
@@ -524,11 +564,48 @@ static PyObject *TypeTreeHelper_ReadTypeTree(PyObject *nodes, PyObject *buf)
 //     return list;
 // }
 
+
 PyObject *read_typetree(PyObject *self, PyObject *args)
 {
     PyObject *nodes = PyTuple_GetItem(args, 0);
     PyObject *buf = PyTuple_GetItem(args, 1);
-    return TypeTreeHelper_ReadTypeTree(nodes, buf);
+    PyObject *swap_obj = PyTuple_GetItem(args, 2);
+    char swap = 0;
+
+    if (!PyUnicode_Check(swap_obj))
+    {
+        PyErr_SetString(PyExc_TypeError,
+                        "The endian attribute value must be a string");
+        return -1;
+    }
+    if (PyUnicode_GET_SIZE(swap_obj) != 1)
+    {
+        PyErr_SetString(PyExc_TypeError,
+                        "The endian attribute value must be a string of size 1");
+        return -1;
+    }
+    char endian = *PyUnicode_AS_DATA(swap_obj);
+    switch (endian)
+    {
+    case '<':
+        if (IS_LITTLE_ENDIAN == 0)
+            swap = 1;
+        break;
+    case '>':
+        if (IS_LITTLE_ENDIAN == 1)
+            swap = 1;
+        break;
+    case '=':
+    case '|':
+        break;
+    default:
+    {
+        PyErr_SetString(PyExc_TypeError,
+                        "The endian attribute value must be one of '>', '<', '=', '|'");
+        return -1;
+    }
+    }
+    return TypeTreeHelper_ReadTypeTree(nodes, buf, swap);
 }
 
 static void
