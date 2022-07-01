@@ -25,13 +25,13 @@ class BundleFile(File.File):
         if signature == "UnityArchive":
             raise NotImplemented("BundleFile - UnityArchive")
         elif signature in ["UnityWeb", "UnityRaw"]:
-            m_DirectoryInfo, blocksReader = self.read_web_raw(reader)
+            blocksReader = self.read_web_raw(reader)
         elif signature == "UnityFS":
-            m_DirectoryInfo, blocksReader = self.read_fs(reader)
+            blocksReader = self.read_fs(reader)
         else:
             raise NotImplemented(f"Unknown Bundle signature: {signature}")
 
-        self.read_files(blocksReader, m_DirectoryInfo)
+        self.read_files(blocksReader, self.m_DirectoryInfo)
 
     def read_web_raw(self, reader: EndianBinaryReader):
         # def read_header_and_blocks_info(self, reader:EndianBinaryReader):
@@ -63,7 +63,7 @@ class BundleFile(File.File):
 
         blocksReader = EndianBinaryReader(uncompressedBytes, offset=headerSize)
         nodesCount = blocksReader.read_int()
-        m_DirectoryInfo = [
+        self.m_DirectoryInfo = [
             File.DirectoryInfo(
                 blocksReader.read_string_to_null(),  # path
                 blocksReader.read_u_int(),  # offset
@@ -72,7 +72,7 @@ class BundleFile(File.File):
             for _ in range(nodesCount)
         ]
 
-        return m_DirectoryInfo, blocksReader
+        return blocksReader
 
     def read_fs(self, reader: EndianBinaryReader):
         version = self.version
@@ -102,7 +102,7 @@ class BundleFile(File.File):
         uncompressedDataHash = blocksInfoReader.read_bytes(16)
         blocksInfoCount = blocksInfoReader.read_int()
 
-        m_BlocksInfo = [
+        self.m_BlocksInfo = [
             BlockInfo(
                 blocksInfoReader.read_u_int(),  # uncompressedSize
                 blocksInfoReader.read_u_int(),  # compressedSize
@@ -112,7 +112,7 @@ class BundleFile(File.File):
         ]
 
         nodesCount = blocksInfoReader.read_int()
-        m_DirectoryInfo = [
+        self.m_DirectoryInfo = [
             DirectoryInfoFS(
                 blocksInfoReader.read_long(),  # offset
                 blocksInfoReader.read_long(),  # size
@@ -122,8 +122,8 @@ class BundleFile(File.File):
             for _ in range(nodesCount)
         ]
 
-        if m_BlocksInfo:
-            self._block_info_flags = m_BlocksInfo[0].flags
+        if self.m_BlocksInfo:
+            self._block_info_flags = self.m_BlocksInfo[0].flags
 
         if self._data_flags & 0x200:
             reader.align_stream(16)
@@ -135,12 +135,12 @@ class BundleFile(File.File):
                     blockInfo.uncompressedSize,
                     blockInfo.flags,
                 )
-                for blockInfo in m_BlocksInfo
+                for blockInfo in self.m_BlocksInfo
             ),
             offset=(blocksInfoReader.real_offset()),
         )
 
-        return m_DirectoryInfo, blocksReader
+        return blocksReader
 
     def save(self, packer=None):
         """
