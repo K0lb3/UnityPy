@@ -71,7 +71,7 @@ def node_dict_to_class(nodes: List[dict]) -> List[TypeTreeNode]:
     List[TypeTreeNode]
         a list of TypeTreeNode-type nodes
     """
-    return [TypeTreeNode(node) for node in nodes]
+    return [TypeTreeNode(**node) for node in nodes]
 
 
 def check_nodes(nodes: List[Union[dict, TypeTreeNode]]) -> List[TypeTreeNode]:

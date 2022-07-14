@@ -48,6 +48,15 @@ python setup.py install
 
 Visual C++ Redistributable is required for the brotli dependency.
 
+### Crash without warning/error
+
+The C-implementation of the typetree reader can directly crash python.
+In case this happens, the usage of the C-typetree reader can be disabled by adding these two lines to your main file.
+
+```python
+from UnityPy.helpers import TypeTreeHelper
+TypeTreeHelper.read_typetree_c = False
+```
 
 ## Example
 
