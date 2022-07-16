@@ -261,7 +261,7 @@ for obj in env.objects:
         if obj.serialized_type.nodes:
             # save decoded data
             tree = obj.read_typetree()
-            fp = os.path.join(extract_dir, f"{data.name}.json")
+            fp = os.path.join(extract_dir, f"{tree['m_Name']}.json")
             with open(fp, "wt", encoding = "utf8") as f:
                 json.dump(tree, f, ensure_ascii = False, indent = 4)
         else:
@@ -277,7 +277,8 @@ for obj in env.objects:
             # apply modifications to the data within the tree
             obj.save_typetree(tree)
         else:
-            with open(replace_dir, data.name) as f:
+            data = obj.read()
+            with open(os.path.join(replace_dir, data.name)) as f:
                 data.save(raw_data = f.read())
 ```
 
