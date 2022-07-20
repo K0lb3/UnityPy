@@ -58,7 +58,7 @@ except:
     read_typetree_c = None
 
 
-def node_dict_to_class(nodes: List[dict]) -> List[TypeTreeNode]:
+def node_dict_to_node_cls(nodes: List[dict]) -> List[TypeTreeNode]:
     """Converts all dict-type nodes into TypeTreeNodes
 
     Parameters
@@ -71,7 +71,14 @@ def node_dict_to_class(nodes: List[dict]) -> List[TypeTreeNode]:
     List[TypeTreeNode]
         a list of TypeTreeNode-type nodes
     """
-    return [TypeTreeNode(**node) for node in nodes]
+    # check keys - fix m_Name from TypeTreeGenerator or other sources
+    if next(iter(nodes[0])).startswith("m_"):
+        return [
+            TypeTreeNode(**{key[2:].lower(): val for key, val in node.items()})
+            for node in nodes
+        ]
+    else:
+        return [TypeTreeNode(**node) for node in nodes]
 
 
 def check_nodes(nodes: List[Union[dict, TypeTreeNode]]) -> List[TypeTreeNode]:
@@ -93,7 +100,7 @@ def check_nodes(nodes: List[Union[dict, TypeTreeNode]]) -> List[TypeTreeNode]:
         if isinstance(nodes[0], TypeTreeNode):
             return nodes
         elif isinstance(nodes[0], dict):
-            return node_dict_to_class(nodes)
+            return node_dict_to_node_cls(nodes)
     raise ValueError(
         f"nodes must be a list of dict or TypeTreeNode elements, but received {type(nodes)} - {type(nodes[0]) if isinstance(nodes, list) else ''}"
     )
