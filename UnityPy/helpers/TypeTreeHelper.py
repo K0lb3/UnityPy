@@ -4,6 +4,7 @@ from ctypes import c_uint32
 import tabulate
 from ..exceptions import TypeTreeError as TypeTreeError
 
+kAlignBytes = 0x4000
 
 class TypeTreeNode(object):
     __slots__ = (
@@ -176,17 +177,12 @@ def read_typetree(
             nodes, reader.read_bytes(reader.byte_size), reader.endian
         )
 
-    obj = {}
-    i = c_uint32(1)
-    while i.value < len(nodes):
-        node = nodes[i.value]
-        obj[node.name] = read_value(nodes, reader, i)
-        i.value += 1
+    obj = read_value(nodes, reader, c_uint32(0))
 
-    readed = reader.Position - reader.byte_start
-    if readed != reader.byte_size:
+    read = reader.Position - reader.byte_start
+    if read != reader.byte_size:
         raise TypeTreeError(
-            f"Error while read type, read {readed} bytes but expected {reader.byte_size} bytes",
+            f"Error while read type, read {read} bytes but expected {reader.byte_size} bytes",
             nodes,
         )
 
@@ -196,7 +192,7 @@ def read_typetree(
 def read_value(nodes: List[TypeTreeNode], reader: EndianBinaryReader, i: c_uint32):
     node = nodes[i.value]
     typ = node.type
-    align = (node.meta_flag & 0x4000) != 0
+    align = (node.meta_flag & kAlignBytes) != 0
 
     if typ == "SInt8":
         value = reader.read_byte()
@@ -224,7 +220,7 @@ def read_value(nodes: List[TypeTreeNode], reader: EndianBinaryReader, i: c_uint3
         value = reader.read_aligned_string()
         i.value += 3  # Array, Size, Data(typ)
     elif typ == "map":  # map == MultiDict
-        if (nodes[i.value + 1].meta_flag & 0x4000) != 0:
+        if (nodes[i.value + 1].meta_flag & kAlignBytes) != 0:
             align = True
         map_ = get_nodes(nodes, i.value)
         i.value += len(map_) - 1
@@ -242,7 +238,7 @@ def read_value(nodes: List[TypeTreeNode], reader: EndianBinaryReader, i: c_uint3
     else:
         # Vector
         if i.value < len(nodes) - 1 and nodes[i.value + 1].type == "Array":
-            if (nodes[i.value + 1].meta_flag & 0x4000) != 0:
+            if (nodes[i.value + 1].meta_flag & kAlignBytes) != 0:
                 align = True
             vector = get_nodes(nodes, i.value)
             i.value += len(vector) - 1
@@ -305,7 +301,7 @@ def read_value_str(
 ) -> list:
     node = nodes[i.value]
     typ = node.type
-    align = (node.meta_flag & 0x4000) != 0
+    align = (node.meta_flag & kAlignBytes) != 0
     append = True
 
     if typ == "SInt8":
@@ -340,7 +336,7 @@ def read_value_str(
             )
         )
     elif typ == "map":
-        if (nodes[i.value + 1].meta_flag & 0x4000) != 0:
+        if (nodes[i.value + 1].meta_flag & kAlignBytes) != 0:
             align = True
         map_ = get_nodes(nodes, i.value)
         i.value += len(map_) - 1
@@ -370,7 +366,7 @@ def read_value_str(
     else:
         # Vector
         if i.value < len(nodes) - 1 and nodes[i.value + 1].type == "Array":
-            if (nodes[i.value + 1].meta_flag & 0x4000) != 0:
+            if (nodes[i.value + 1].meta_flag & kAlignBytes) != 0:
                 align = True
             vector = get_nodes(nodes, i.value)
             i.value += len(vector) - 1
@@ -466,7 +462,7 @@ def write_value(
 ):
     node = nodes[i.value]
     typ = node.type
-    align = (node.meta_flag & 0x4000) != 0
+    align = (node.meta_flag & kAlignBytes) != 0
 
     if typ == "SInt8":
         writer.write_byte(value)
@@ -494,7 +490,7 @@ def write_value(
         writer.write_aligned_string(value)
         i.value += 3  # Array, Size, Data(typ)
     elif typ == "map":
-        if (nodes[i.value + 1].meta_flag & 0x4000) != 0:
+        if (nodes[i.value + 1].meta_flag & kAlignBytes) != 0:
             align = True
         map_ = get_nodes(nodes, i.value)
         i.value += len(map_) - 1
@@ -514,7 +510,7 @@ def write_value(
     else:
         # Vector
         if i.value < len(nodes) - 1 and nodes[i.value + 1].type == "Array":
-            if (nodes[i.value + 1].meta_flag & 0x4000) != 0:
+            if (nodes[i.value + 1].meta_flag & kAlignBytes) != 0:
                 align = True
             vector = get_nodes(nodes, i.value)
             i.value += len(vector) - 1
