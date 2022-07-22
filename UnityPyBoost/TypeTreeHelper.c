@@ -18,6 +18,7 @@ typedef struct
 
 #define kAlignBytesFlag 1 << 14
 #define kAnyChildUsesAlignBytesFlag 1 << 15
+
 static char SURROGATEESCAPE[] = "surrogateescape";
 
 static inline uint32_t hash_str(const char *str)
@@ -27,15 +28,6 @@ static inline uint32_t hash_str(const char *str)
     while ((c = *str++))
         hash = ((hash << 5) + hash) + c;
     return hash;
-}
-
-static inline void align4(Reader *reader)
-{
-    char mod = (reader->data - reader->dataStart) % 4;
-    if (mod != 0)
-    {
-        reader->data += 4 - mod;
-    }
 }
 
 #define HASH_SInt8 235330747
@@ -64,12 +56,37 @@ static inline void align4(Reader *reader)
 
 typedef PyObject *(*read_type)(Reader *);
 
-#define CHECK_LENGTH(reader, length)                          \
-    if (reader->data + length > reader->dataEnd)              \
-    {                                                         \
-        PyErr_SetString(PyExc_ValueError, "Not enough data"); \
-        return NULL;                                          \
+#define CHECK_LENGTH(reader, length)                                                                                                                                                                                                      \
+    if (reader->data + length > reader->dataEnd)                                                                                                                                                                                          \
+    {                                                                                                                                                                                                                                     \
+        PyErr_Format(PyExc_ValueError, "Can't read %d bytes at position %d of %d\nError occured at %s:%d:%s", length, (int)(reader->data - reader->dataStart), (int)(reader->dataEnd - reader->dataStart), __FILE__, __LINE__, __func__); \
+        return NULL;                                                                                                                                                                                                                      \
     }
+
+static inline void initReadFuncOrNodes(PyObject *nodes, int *index, PyObject **subnodes, read_type *func, char *subalign)
+{
+    TypeTreeNodeObject *node = (TypeTreeNodeObject *)PyList_GetItem(nodes, *index);
+    uint32_t hash = hash_str(node->type);
+    *func = getReadFunction(hash, index);
+    if (*func == NULL)
+    {
+        *subnodes = getSubNodes(nodes, index);
+    }
+    else
+    {
+        *subalign = (node->meta_flag & kAlignBytesFlag) ? 1 : 0;
+    }
+}
+
+
+static inline void align4(Reader *reader)
+{
+    char mod = (reader->data - reader->dataStart) % 4;
+    if (mod != 0)
+    {
+        reader->data += 4 - mod;
+    }
+}
 
 static inline PyObject *read_bool(Reader *reader)
 {
@@ -235,6 +252,8 @@ static inline PyObject *read_string(Reader *reader)
     CHECK_LENGTH(reader, length);
     PyObject *str = PyUnicode_DecodeUTF8(reader->data, length, SURROGATEESCAPE);
     reader->data += length;
+    // align
+    align4(reader);
     return str;
 }
 
@@ -333,20 +352,6 @@ static inline int PyList_SetItem_Safe(PyObject *list, int i, PyObject *value)
     return ret;
 }
 
-static inline void initReadFuncOrNodes(PyObject *nodes, int *index, PyObject **subnodes, read_type *func, char *subalign)
-{
-    TypeTreeNodeObject *node = (TypeTreeNodeObject *)PyList_GetItem(nodes, *index);
-    *func = getReadFunction(hash_str(node->type), index);
-    if (*func == NULL)
-    {
-        *subnodes = getSubNodes(nodes, index);
-    }
-    else
-    {
-        *subalign = ((node->meta_flag & kAlignBytesFlag) | (node->meta_flag & kAnyChildUsesAlignBytesFlag)) ? 1 : 0;
-    }
-}
-
 PyObject *TypeTreeHelper_ReadValueVector(PyObject *nodes, Reader *reader, int *index);
 
 static PyObject *TypeTreeHelper_ReadValue(PyObject *nodes, Reader *reader, int *index)
@@ -360,7 +365,7 @@ static PyObject *TypeTreeHelper_ReadValue(PyObject *nodes, Reader *reader, int *
     PyObject *value = NULL;
     int sub_index = 0;
 
-    char align = ((node->meta_flag & kAlignBytesFlag) | (node->meta_flag & kAnyChildUsesAlignBytesFlag)) ? 1 : 0;
+    char align = (node->meta_flag & kAlignBytesFlag) ? 1 : 0;
     // printf("RVa: %d\t%lld\t%s\t%s\t%d\t%d\n", *index, (reader->data - reader->dataStart), node->name, node->type, align, node->meta_flag);
 
     int hash_value = hash_str(node->type);
@@ -373,6 +378,10 @@ static PyObject *TypeTreeHelper_ReadValue(PyObject *nodes, Reader *reader, int *
     {
         if (hash_value == HASH_map)
         {
+            TypeTreeNodeObject *node2 = (TypeTreeNodeObject *)PyList_GetItem(nodes, *index + 1);
+            if (node2->meta_flag & kAlignBytesFlag)
+                align = 1;
+
             CHECK_LENGTH(reader, 4);
             int size = read_length(reader);
 
@@ -423,7 +432,7 @@ static PyObject *TypeTreeHelper_ReadValue(PyObject *nodes, Reader *reader, int *
             TypeTreeNodeObject *node2 = (TypeTreeNodeObject *)PyList_GetItem(nodes, *index + 1);
             if (strcmp(node2->type, "Array") == 0)
             {
-                if (node->meta_flag & kAlignBytesFlag)
+                if (node2->meta_flag & kAlignBytesFlag)
                     align = 1;
                 *index += 3; // skip self, Array, size
                 PyObject *vector_nodes = NULL;
@@ -435,7 +444,6 @@ static PyObject *TypeTreeHelper_ReadValue(PyObject *nodes, Reader *reader, int *
                 value = PyList_New(size);
                 for (int i = 0; i < size; i++)
                 {
-                    // printf("i: %d - pos: %d\n", i, reader->data - reader->dataStart);
                     int sub_index = 0;
                     PyObject *vector_value = (vector_func) ? vector_func(reader) : TypeTreeHelper_ReadValue(vector_nodes, reader, &sub_index);
                     if (vector_value == NULL)
