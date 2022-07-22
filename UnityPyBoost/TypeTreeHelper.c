@@ -64,21 +64,34 @@ static inline void align4(Reader *reader)
 
 typedef PyObject *(*read_type)(Reader *);
 
+#define CHECK_LENGTH(reader, length)                          \
+    if (reader->data + length > reader->dataEnd)              \
+    {                                                         \
+        PyErr_SetString(PyExc_ValueError, "Not enough data"); \
+        return NULL;                                          \
+    }
+
 static inline PyObject *read_bool(Reader *reader)
 {
+    CHECK_LENGTH(reader, 1);
     return PyBool_FromLong(*(char *)reader->data++);
 }
 
 static inline PyObject *read_SInt8(Reader *reader)
 {
+    CHECK_LENGTH(reader, 1);
     return PyLong_FromLong(*(signed char *)reader->data++);
 }
+
 static inline PyObject *read_UInt8(Reader *reader)
 {
+    CHECK_LENGTH(reader, 1);
     return PyLong_FromUnsignedLong(*(unsigned char *)reader->data++);
 }
+
 static inline PyObject *read_SInt16(Reader *reader)
 {
+    CHECK_LENGTH(reader, 2);
     PyObject *ret = NULL;
     if (reader->swap)
     {
@@ -91,8 +104,10 @@ static inline PyObject *read_SInt16(Reader *reader)
     reader->data += 2;
     return ret;
 }
+
 static inline PyObject *read_UInt16(Reader *reader)
 {
+    CHECK_LENGTH(reader, 2);
     PyObject *ret = NULL;
     if (reader->swap)
     {
@@ -105,8 +120,10 @@ static inline PyObject *read_UInt16(Reader *reader)
     reader->data += 2;
     return ret;
 }
+
 static inline PyObject *read_SInt32(Reader *reader)
 {
+    CHECK_LENGTH(reader, 4);
     PyObject *ret = NULL;
     if (reader->swap)
     {
@@ -119,8 +136,10 @@ static inline PyObject *read_SInt32(Reader *reader)
     reader->data += 4;
     return ret;
 }
+
 static inline PyObject *read_UInt32(Reader *reader)
 {
+    CHECK_LENGTH(reader, 4);
     PyObject *ret = NULL;
     if (reader->swap)
     {
@@ -133,8 +152,10 @@ static inline PyObject *read_UInt32(Reader *reader)
     reader->data += 4;
     return ret;
 }
+
 static inline PyObject *read_SInt64(Reader *reader)
 {
+    CHECK_LENGTH(reader, 8);
     PyObject *ret = NULL;
     if (reader->swap)
     {
@@ -147,8 +168,10 @@ static inline PyObject *read_SInt64(Reader *reader)
     reader->data += 8;
     return ret;
 }
+
 static inline PyObject *read_UInt64(Reader *reader)
 {
+    CHECK_LENGTH(reader, 8);
     PyObject *ret = NULL;
     if (reader->swap)
     {
@@ -161,8 +184,10 @@ static inline PyObject *read_UInt64(Reader *reader)
     reader->data += 8;
     return ret;
 }
+
 static inline PyObject *read_float(Reader *reader)
 {
+    CHECK_LENGTH(reader, 4);
     PyObject *ret = NULL;
     if (reader->swap)
     {
@@ -175,8 +200,10 @@ static inline PyObject *read_float(Reader *reader)
     reader->data += 4;
     return ret;
 }
+
 static inline PyObject *read_double(Reader *reader)
 {
+    CHECK_LENGTH(reader, 8);
     PyObject *ret = NULL;
     if (reader->swap)
     {
@@ -200,9 +227,12 @@ static inline int read_length(Reader *reader)
     }
     return length;
 }
+
 static inline PyObject *read_string(Reader *reader)
 {
+    CHECK_LENGTH(reader, 4);
     int length = read_length(reader);
+    CHECK_LENGTH(reader, length);
     PyObject *str = PyUnicode_DecodeUTF8(reader->data, length, SURROGATEESCAPE);
     reader->data += length;
     return str;
@@ -210,13 +240,11 @@ static inline PyObject *read_string(Reader *reader)
 
 static inline PyObject *read_TypelessData(Reader *reader)
 {
+    CHECK_LENGTH(reader, 4);
     int length = read_length(reader);
-    // value = PyBytes_FromStringAndSize(reader->data, len_td);
-    // TODO - copy permission from parent node
+    CHECK_LENGTH(reader, length);
     PyObject *value = PyMemoryView_FromMemory(reader->data, length, PyBUF_READ);
     reader->data += length;
-    // Py_buffer *view = (Py_buffer *)PyMemoryView_GET_BUFFER(value);
-    // view->obj = reader->obj;
     return value;
 }
 
@@ -345,6 +373,7 @@ static PyObject *TypeTreeHelper_ReadValue(PyObject *nodes, Reader *reader, int *
     {
         if (hash_value == HASH_map)
         {
+            CHECK_LENGTH(reader, 4);
             int size = read_length(reader);
 
             *index += 4; // skip self, Array, size, pair
@@ -365,10 +394,21 @@ static PyObject *TypeTreeHelper_ReadValue(PyObject *nodes, Reader *reader, int *
             {
                 sub_index = 0;
                 first = (first_func) ? first_func(reader) : TypeTreeHelper_ReadValue(first_nodes, reader, &sub_index);
+                if (first == NULL)
+                {
+                    Py_XDECREF(value);
+                    return NULL;
+                }
                 if (firstalign)
                     align4(reader);
                 sub_index = 0;
                 second = (second_func) ? second_func(reader) : TypeTreeHelper_ReadValue(second_nodes, reader, &sub_index);
+                if (second == NULL)
+                {
+                    Py_XDECREF(first);
+                    Py_XDECREF(second);
+                    return NULL;
+                }
                 if (secondalign)
                     align4(reader);
                 PyList_SetItem(value, i, PyTuple_Pack(2, first, second));
@@ -383,6 +423,8 @@ static PyObject *TypeTreeHelper_ReadValue(PyObject *nodes, Reader *reader, int *
             TypeTreeNodeObject *node2 = (TypeTreeNodeObject *)PyList_GetItem(nodes, *index + 1);
             if (strcmp(node2->type, "Array") == 0)
             {
+                if (node->meta_flag & kAlignBytesFlag)
+                    align = 1;
                 *index += 3; // skip self, Array, size
                 PyObject *vector_nodes = NULL;
                 read_type vector_func = NULL;
@@ -396,6 +438,11 @@ static PyObject *TypeTreeHelper_ReadValue(PyObject *nodes, Reader *reader, int *
                     // printf("i: %d - pos: %d\n", i, reader->data - reader->dataStart);
                     int sub_index = 0;
                     PyObject *vector_value = (vector_func) ? vector_func(reader) : TypeTreeHelper_ReadValue(vector_nodes, reader, &sub_index);
+                    if (vector_value == NULL)
+                    {
+                        Py_XDECREF(value);
+                        return NULL;
+                    }
                     if (subalign)
                         align4(reader);
                     PyList_SetItem_Safe(value, i, vector_value);
@@ -411,7 +458,13 @@ static PyObject *TypeTreeHelper_ReadValue(PyObject *nodes, Reader *reader, int *
                 while (j < PyList_Size(cls_nodes))
                 {
                     j_name = ((TypeTreeNodeObject *)PyList_GetItem(cls_nodes, j))->name;
-                    PyDict_SetItemString_Safe(value, j_name, TypeTreeHelper_ReadValue(cls_nodes, reader, &j));
+                    PyObject *j_value = TypeTreeHelper_ReadValue(cls_nodes, reader, &j);
+                    if (j_value == NULL)
+                    {
+                        Py_XDECREF(value);
+                        return NULL;
+                    }
+                    PyDict_SetItemString_Safe(value, j_name, j_value);
                     j++;
                 }
                 Py_XDECREF(cls_nodes);
@@ -459,28 +512,8 @@ static PyObject *TypeTreeHelper_ReadTypeTree(PyObject *nodes, PyObject *buf, cha
 
     PyBuffer_Release(&view);
 
-    PyObject *result = PyDict_New();
-    if (result == NULL)
-    {
-        Py_DECREF(buf);
-        return NULL;
-    }
-
-    int index = 1;
-    int count = PyList_Size(nodes);
-    while (index < count)
-    {
-        TypeTreeNodeObject *node = (TypeTreeNodeObject *)PyList_GetItem(nodes, index);
-        PyObject *value = TypeTreeHelper_ReadValue(nodes, &reader, &index);
-        if (value == NULL)
-        {
-            Py_XDECREF(result);
-            Py_XDECREF(buf);
-            return NULL;
-        }
-        PyDict_SetItemString_Safe(result, node->name, value);
-        index++;
-    }
+    int index = 0;
+    PyObject *result = TypeTreeHelper_ReadValue(nodes, &reader, &index);
 
     Py_DECREF(buf);
 
