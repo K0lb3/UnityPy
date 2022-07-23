@@ -15,20 +15,10 @@ typedef struct
     char swap;
     PyObject *obj;
 } Reader;
+typedef PyObject *(*read_type)(Reader *);
 
 #define kAlignBytesFlag 1 << 14
 #define kAnyChildUsesAlignBytesFlag 1 << 15
-
-static char SURROGATEESCAPE[] = "surrogateescape";
-
-static inline uint32_t hash_str(const char *str)
-{
-    unsigned int hash = 5381;
-    int c;
-    while ((c = *str++))
-        hash = ((hash << 5) + hash) + c;
-    return hash;
-}
 
 #define HASH_SInt8 235330747
 #define HASH_UInt8 237702589
@@ -54,14 +44,50 @@ static inline uint32_t hash_str(const char *str)
 #define HASH_TypelessData 1242572536
 #define HASH_map 193499011
 
-typedef PyObject *(*read_type)(Reader *);
-
 #define CHECK_LENGTH(reader, length)                                                                                                                                                                                                      \
     if (reader->data + length > reader->dataEnd)                                                                                                                                                                                          \
     {                                                                                                                                                                                                                                     \
         PyErr_Format(PyExc_ValueError, "Can't read %d bytes at position %d of %d\nError occured at %s:%d:%s", length, (int)(reader->data - reader->dataStart), (int)(reader->dataEnd - reader->dataStart), __FILE__, __LINE__, __func__); \
         return NULL;                                                                                                                                                                                                                      \
     }
+
+static char SURROGATEESCAPE[] = "surrogateescape";
+
+/* function signatures */
+static int read_length(Reader *reader);
+static PyObject *read_SInt8(Reader *reader);
+static PyObject *read_UInt8(Reader *reader);
+static PyObject *read_SInt16(Reader *reader);
+static PyObject *read_UInt16(Reader *reader);
+static PyObject *read_SInt32(Reader *reader);
+static PyObject *read_UInt32(Reader *reader);
+static PyObject *read_SInt64(Reader *reader);
+static PyObject *read_UInt64(Reader *reader);
+static PyObject *read_float(Reader *reader);
+static PyObject *read_double(Reader *reader);
+static PyObject *read_bool(Reader *reader);
+static PyObject *read_string(Reader *reader);
+static PyObject *read_TypelessData(Reader *reader);
+
+static uint32_t hash_string(const char *str);
+
+static read_type getReadFunction(int hash_value, int* index);
+static PyObject* getSubNodes(PyObject* nodes, int* index);
+
+static PyObject *TypeTreeHelper_ReadValue(PyObject *nodes, Reader *reader, int *index);
+static PyObject *TypeTreeHelper_ReadValueVector(PyObject *nodes, Reader *reader, int *index);
+
+PyObject *read_typetree(PyObject *self, PyObject *args);
+
+/* implementation */
+static inline uint32_t hash_str(const char *str)
+{
+    unsigned int hash = 5381;
+    int c;
+    while ((c = *str++))
+        hash = ((hash << 5) + hash) + c;
+    return hash;
+}
 
 static inline void initReadFuncOrNodes(PyObject *nodes, int *index, PyObject **subnodes, read_type *func, char *subalign)
 {
@@ -352,7 +378,7 @@ static inline int PyList_SetItem_Safe(PyObject *list, int i, PyObject *value)
     return ret;
 }
 
-PyObject *TypeTreeHelper_ReadValueVector(PyObject *nodes, Reader *reader, int *index);
+
 
 static PyObject *TypeTreeHelper_ReadValue(PyObject *nodes, Reader *reader, int *index)
 {
@@ -541,13 +567,13 @@ PyObject *read_typetree(PyObject *self, PyObject *args)
                         "The endian attribute value must be a string");
         return NULL;
     }
-    if (PyUnicode_GET_SIZE(swap_obj) != 1)
+    if (PyUnicode_GET_LENGTH(swap_obj) != 1)
     {
         PyErr_SetString(PyExc_TypeError,
                         "The endian attribute value must be a string of size 1");
         return NULL;
     }
-    char endian = *PyUnicode_AS_DATA(swap_obj);
+    char endian = *(char*)PyUnicode_DATA(swap_obj);
     switch (endian)
     {
     case '<':

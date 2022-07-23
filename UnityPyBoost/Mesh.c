@@ -45,7 +45,6 @@ PyObject *unpack_vertexdata(PyObject *self, PyObject *args)
     uint32_t maxVertexDataAccess = (m_VertexCount - 1) * m_StreamStride + m_ChannelOffset + m_StreamOffset + componentByteSize * (m_ChannelDimension - 1) + componentByteSize;
     if (maxVertexDataAccess > vertexDataSize)
     {
-        printf("maxVertexDataAccess: %d, vertexDataSize: %d\n", maxVertexDataAccess, vertexDataSize);
         PyErr_SetString(PyExc_ValueError, "Vertex data access out of bounds");
         return NULL;
     }
