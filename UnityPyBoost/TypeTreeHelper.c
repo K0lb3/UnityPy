@@ -92,7 +92,7 @@ static inline uint32_t hash_str(const char *str)
 static inline void initReadFuncOrNodes(PyObject *nodes, int *index, PyObject **subnodes, read_type *func, char *subalign)
 {
     TypeTreeNodeObject *node = (TypeTreeNodeObject *)PyList_GetItem(nodes, *index);
-    uint32_t hash = hash_str(node->type);
+    uint32_t hash = hash_str(node->m_Type);
     *func = getReadFunction(hash, index);
     if (*func == NULL)
     {
@@ -100,7 +100,7 @@ static inline void initReadFuncOrNodes(PyObject *nodes, int *index, PyObject **s
     }
     else
     {
-        *subalign = (node->meta_flag & kAlignBytesFlag) ? 1 : 0;
+        *subalign = (node->m_MetaFlag & kAlignBytesFlag) ? 1 : 0;
     }
 }
 
@@ -343,10 +343,10 @@ static PyObject *getSubNodes(PyObject *nodes, int *index)
 {
     PyObject *result = NULL;
     TypeTreeNodeObject *node = (TypeTreeNodeObject *)PyList_GetItem(nodes, *index);
-    unsigned short level = node->level;
+    unsigned short level = node->m_Level;
     for (int i = *index + 1; i < PyList_Size(nodes); i++)
     {
-        if (((TypeTreeNodeObject *)PyList_GetItem(nodes, i))->level <= level)
+        if (((TypeTreeNodeObject *)PyList_GetItem(nodes, i))->m_Level <= level)
         {
             result = PyList_GetSlice(nodes, *index, i);
             *index = i - 1;
@@ -391,10 +391,10 @@ static PyObject *TypeTreeHelper_ReadValue(PyObject *nodes, Reader *reader, int *
     PyObject *value = NULL;
     int sub_index = 0;
 
-    char align = (node->meta_flag & kAlignBytesFlag) ? 1 : 0;
-    // printf("RVa: %d\t%lld\t%s\t%s\t%d\t%d\n", *index, (reader->data - reader->dataStart), node->name, node->type, align, node->meta_flag);
+    char align = (node->m_MetaFlag & kAlignBytesFlag) ? 1 : 0;
+    // printf("RVa: %d\t%lld\t%s\t%s\t%d\t%d\n", *index, (reader->data - reader->dataStart), node->m_Name, node->m_Type, align, node->m_MetaFlag);
 
-    int hash_value = hash_str(node->type);
+    int hash_value = hash_str(node->m_Type);
     read_type func = getReadFunction(hash_value, index);
     if (func)
     {
@@ -405,7 +405,7 @@ static PyObject *TypeTreeHelper_ReadValue(PyObject *nodes, Reader *reader, int *
         if (hash_value == HASH_map)
         {
             TypeTreeNodeObject *node2 = (TypeTreeNodeObject *)PyList_GetItem(nodes, *index + 1);
-            if (node2->meta_flag & kAlignBytesFlag)
+            if (node2->m_MetaFlag & kAlignBytesFlag)
                 align = 1;
 
             CHECK_LENGTH(reader, 4);
@@ -456,9 +456,9 @@ static PyObject *TypeTreeHelper_ReadValue(PyObject *nodes, Reader *reader, int *
         else
         {
             TypeTreeNodeObject *node2 = (TypeTreeNodeObject *)PyList_GetItem(nodes, *index + 1);
-            if (strcmp(node2->type, "Array") == 0)
+            if (strcmp(node2->m_Type, "Array") == 0)
             {
-                if (node2->meta_flag & kAlignBytesFlag)
+                if (node2->m_MetaFlag & kAlignBytesFlag)
                     align = 1;
                 *index += 3; // skip self, Array, size
                 PyObject *vector_nodes = NULL;
@@ -491,7 +491,7 @@ static PyObject *TypeTreeHelper_ReadValue(PyObject *nodes, Reader *reader, int *
                 char *j_name = NULL;
                 while (j < PyList_Size(cls_nodes))
                 {
-                    j_name = ((TypeTreeNodeObject *)PyList_GetItem(cls_nodes, j))->name;
+                    j_name = ((TypeTreeNodeObject *)PyList_GetItem(cls_nodes, j))->m_Name;
                     PyObject *j_value = TypeTreeHelper_ReadValue(cls_nodes, reader, &j);
                     if (j_value == NULL)
                     {
@@ -600,8 +600,8 @@ PyObject *read_typetree(PyObject *self, PyObject *args)
 static void
 TypeTreeNode_dealloc(TypeTreeNodeObject *self)
 {
-    PyMem_Free(self->name);
-    PyMem_Free(self->type);
+    PyMem_Free(self->m_Name);
+    PyMem_Free(self->m_Type);
     // for (unsigned short i = 0; i < self->children_count; i++)
     // {
     //     Py_DECREF((PyObject*)self->children[i]);
@@ -617,22 +617,22 @@ TypeTreeNode_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     self = (TypeTreeNodeObject *)type->tp_alloc(type, 0);
     if (self != NULL)
     {
-        self->version = 0;
-        self->level = 0;
-        self->is_array = 0;
-        self->byte_size = 0;
-        self->index = 0;
-        self->meta_flag = 0;
-        self->type = NULL;
-        self->name = NULL;
-        // self->type[0] = '\0';
-        // self->name[0] = '\0';
+        self->m_Version = 0;
+        self->m_Level = 0;
+        self->m_IsArray = 0;
+        self->m_ByteSize = 0;
+        self->m_Index = 0;
+        self->m_MetaFlag = 0;
+        self->m_Type = NULL;
+        self->m_Name = NULL;
+        // self->m_Type[0] = '\0';
+        // self->m_Name[0] = '\0';
         // self->children_count = 0;
         // self->children = NULL;
-        self->type_str_offset = 0;
-        self->name_str_offset = 0;
-        self->ref_type_hash = 0;
-        self->variable_count = 0;
+        self->m_TypeStrOffset = 0;
+        self->m_NameStrOffset = 0;
+        self->m_RefTypeHash = 0;
+        self->m_VariableCount = 0;
     }
     return (PyObject *)self;
 }
@@ -641,18 +641,18 @@ static int
 TypeTreeNode_init(TypeTreeNodeObject *self, PyObject *args, PyObject *kwds)
 {
     static char *kwlist[] = {
-        "name",            // char*
-        "type",            // char*
-        "level",           // uint8
-        "meta_flag",       // int32
-        "version",         // int16
-        "is_array",        // char
-        "byte_size",       // int
-        "index",           // int
-        "type_str_offset", // unsigned int
-        "name_str_offset", // unsigned int
-        "ref_type_hash",   // unsigned long long
-        "variable_count",  // int
+        "m_Name",           // char*
+        "m_Type",           // char*
+        "m_Level",          // uint8
+        "m_MetaFlag",       // int32
+        "m_Version",        // int16
+        "m_IsArray",        // char
+        "m_ByteSize",       // int
+        "m_Index",          // int
+        "m_TypeStrOffset",  // unsigned int
+        "m_NameStrOffset",  // unsigned int
+        "m_RefTypeHash",    // unsigned long long
+        "m_VariableCount",  // int
         NULL};
     const char *type = NULL;
     const char *name = NULL;
@@ -663,43 +663,43 @@ TypeTreeNode_init(TypeTreeNodeObject *self, PyObject *args, PyObject *kwds)
             kwlist,
             &name,
             &type,
-            &self->level,
-            &self->meta_flag,
-            &self->version,
-            &self->is_array,
-            &self->byte_size,
-            &self->index,
-            &self->type_str_offset,
-            &self->name_str_offset,
-            &self->ref_type_hash,
-            &self->variable_count))
+            &self->m_Level,
+            &self->m_MetaFlag,
+            &self->m_Version,
+            &self->m_IsArray,
+            &self->m_ByteSize,
+            &self->m_Index,
+            &self->m_TypeStrOffset,
+            &self->m_NameStrOffset,
+            &self->m_RefTypeHash,
+            &self->m_VariableCount))
         return -1;
     if (type != NULL)
     {
-        self->type = PyMem_Malloc(strlen(type) + 1);
-        strcpy(self->type, type);
+        self->m_Type = PyMem_Malloc(strlen(type) + 1);
+        strcpy(self->m_Type, type);
     }
     if (name != NULL)
     {
-        self->name = PyMem_Malloc(strlen(name) + 1);
-        strcpy(self->name, name);
+        self->m_Name = PyMem_Malloc(strlen(name) + 1);
+        strcpy(self->m_Name, name);
     }
     return 0;
 };
 
 static PyMemberDef TypeTreeNode_members[] = {
-    {"type", T_STRING, offsetof(TypeTreeNodeObject, type), 0, ""},
-    {"name", T_STRING, offsetof(TypeTreeNodeObject, name), 0, ""},
-    {"byte_size", T_INT, offsetof(TypeTreeNodeObject, byte_size), 0, ""},
-    {"index", T_INT, offsetof(TypeTreeNodeObject, index), 0, ""},
-    {"is_array", T_BOOL, offsetof(TypeTreeNodeObject, is_array), 0, ""},
-    {"version", T_SHORT, offsetof(TypeTreeNodeObject, version), 0, ""},
-    {"meta_flag", T_INT, offsetof(TypeTreeNodeObject, meta_flag), 0, ""},
-    {"level", T_UBYTE, offsetof(TypeTreeNodeObject, level), 0, ""},
-    {"type_str_offset", T_UINT, offsetof(TypeTreeNodeObject, type_str_offset), 0, ""},
-    {"name_str_offset", T_UINT, offsetof(TypeTreeNodeObject, name_str_offset), 0, ""},
-    {"ref_type_hash", T_ULONGLONG, offsetof(TypeTreeNodeObject, ref_type_hash), 0, ""},
-    {"variable_count", T_INT, offsetof(TypeTreeNodeObject, variable_count), 0, ""},
+    {"m_Type", T_STRING, offsetof(TypeTreeNodeObject, m_Type), 0, ""},
+    {"m_Name", T_STRING, offsetof(TypeTreeNodeObject, m_Name), 0, ""},
+    {"m_ByteSize", T_INT, offsetof(TypeTreeNodeObject, m_ByteSize), 0, ""},
+    {"m_Index", T_INT, offsetof(TypeTreeNodeObject, m_Index), 0, ""},
+    {"m_IsArray", T_BOOL, offsetof(TypeTreeNodeObject, m_IsArray), 0, ""},
+    {"m_Version", T_SHORT, offsetof(TypeTreeNodeObject, m_Version), 0, ""},
+    {"m_MetaFlag", T_INT, offsetof(TypeTreeNodeObject, m_MetaFlag), 0, ""},
+    {"m_Level", T_UBYTE, offsetof(TypeTreeNodeObject, m_Level), 0, ""},
+    {"m_TypeStrOffset", T_UINT, offsetof(TypeTreeNodeObject, m_TypeStrOffset), 0, ""},
+    {"m_NameStrOffset", T_UINT, offsetof(TypeTreeNodeObject, m_NameStrOffset), 0, ""},
+    {"m_RefTypeHash", T_ULONGLONG, offsetof(TypeTreeNodeObject, m_RefTypeHash), 0, ""},
+    {"m_VariableCount", T_INT, offsetof(TypeTreeNodeObject, m_VariableCount), 0, ""},
     {NULL} /* Sentinel */
 };
 
@@ -707,26 +707,11 @@ static PyObject *
 TypeTreeNode_repr(PyObject *self)
 {
     TypeTreeNodeObject *node = (TypeTreeNodeObject *)self;
-    char *type = node->type;
-    char *name = node->name;
-    char *type_str = "";
-    char *name_str = "";
-    if (type != NULL)
-    {
-        type_str = PyMem_Malloc(strlen(type) + 1);
-        strcpy(type_str, type);
-    }
-    if (name != NULL)
-    {
-        name_str = PyMem_Malloc(strlen(name) + 1);
-        strcpy(name_str, name);
-    }
-    char buf[1024];
-    memset(buf, 0, 1024);
-    sprintf(buf, "TypeTreeNode(type=%s, name=%s, byte_size=%d, index=%d, is_array=%d, version=%d, meta_flag=%d, level=%d, type_str_offset=%d, name_str_offset=%d, ref_type_hash=%llu, variable_count=%d)", type_str, name_str, node->byte_size, node->index, node->is_array, node->version, node->meta_flag, node->level, node->type_str_offset, node->name_str_offset, node->ref_type_hash, node->variable_count);
-    PyMem_Free(type_str);
-    PyMem_Free(name_str);
-    return PyUnicode_FromString(buf);
+    return PyUnicode_Format(
+        PyUnicode_FromString("<TypeTreeNode %d %s %s>"),
+        node->m_Level,
+        node->m_Type,
+        node->m_Name);
 }
 
 // PyTypeObject TypeTreeNodeType;

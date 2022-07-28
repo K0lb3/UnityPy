@@ -6,37 +6,34 @@ from ..exceptions import TypeTreeError as TypeTreeError
 
 kAlignBytes = 0x4000
 
+
 class TypeTreeNode(object):
     __slots__ = (
-        "type",
-        "name",
-        "byte_size",
-        "index",
-        "is_array",
-        "version",
-        "meta_flag",
-        "level",
-        "type_str_offset",
-        "name_str_offset",
-        "type",
-        "name",
-        "ref_type_hash",
-        "variable_count",
+        "m_Version",
+        "m_Level",
+        "m_IsArray",
+        "m_ByteSize",
+        "m_Index",
+        "m_MetaFlag",
+        "m_Type",
+        "m_Name",
+        "m_TypeStrOffset",
+        "m_NameStrOffset",
+        "m_RefTypeHash",
+        "m_VariableCount",
     )
-    type: str
-    name: str
-    byte_size: int
-    index: int
-    is_array: int
-    version: int
-    meta_flag: int
-    level: int
-    type_str_offset: int
-    name_str_offset: int
-    type: str
-    name: str
-    ref_type_hash: str
-    variable_count: int
+    m_Type: str
+    m_Name: str
+    m_ByteSize: int
+    m_Index: int
+    m_Version: int
+    m_MetaFlag: int
+    m_Level: int
+    m_TypeStrOffset: int
+    m_NameStrOffset: int
+    m_RefTypeHash: str
+    m_IsArray: int
+    m_VariableCount: int
 
     def __init__(self, data: Union[dict, Iterable[Tuple]] = None, **kwargs):
         if isinstance(data, dict):
@@ -50,7 +47,7 @@ class TypeTreeNode(object):
             setattr(self, key, val)
 
     def __repr__(self):
-        return f"<TypeTreeNode({self.level} {self.type} {self.name})>"
+        return f"<TypeTreeNode({self.m_Level} {self.m_Type} {self.m_Name})>"
 
 
 try:
@@ -72,14 +69,19 @@ def node_dict_to_node_cls(nodes: List[dict]) -> List[TypeTreeNode]:
     List[TypeTreeNode]
         a list of TypeTreeNode-type nodes
     """
-    # check keys - fix m_Name from TypeTreeGenerator or other sources
-    if next(iter(nodes[0])).startswith("m_"):
+    # legacy support
+    if not next(iter(nodes[0])).starts_with("m_"):
         return [
-            TypeTreeNode(**{key[2:].lower(): val for key, val in node.items()})
-            for node in nodes
+            TypeTreeNode(
+                m_Name=x["name"],
+                m_Type=x["type"],
+                m_Level=x["level"],
+                m_MetaFlag=x["meta_flag"],
+            )
+            for x in nodes
         ]
-    else:
-        return [TypeTreeNode(**node) for node in nodes]
+
+    return [TypeTreeNode(**node) for node in nodes]
 
 
 def check_nodes(nodes: List[Union[dict, TypeTreeNode]]) -> List[TypeTreeNode]:
@@ -107,28 +109,6 @@ def check_nodes(nodes: List[Union[dict, TypeTreeNode]]) -> List[TypeTreeNode]:
     )
 
 
-"""
-Example Nodes:
-[{
-    "level": 0,
-    "type": "MonoBehaviour",
-    "name": "Base",
-    "meta_flag": 0
-},
-{
-    "level": 1,
-    "type": "int",
-    "name": "m_SomeNode",
-    "meta_flag": 0
-}]
-
-Example TypeTree:
-{
-    "m_SomeNode": 1
-}
-"""
-
-
 def get_nodes(nodes: List[TypeTreeNode], index: int) -> list:
     """Copies all nodes above the level of the node at the set index.
 
@@ -144,9 +124,9 @@ def get_nodes(nodes: List[TypeTreeNode], index: int) -> list:
     list
         A list of nodes
     """
-    level = nodes[index].level
+    level = nodes[index].m_Level
     for i, node in enumerate(nodes[index + 1 :], index + 1):
-        if node.level <= level:
+        if node.m_Level <= level:
             return nodes[index:i]
     return nodes[index:]
 
@@ -191,8 +171,8 @@ def read_typetree(
 
 def read_value(nodes: List[TypeTreeNode], reader: EndianBinaryReader, i: c_uint32):
     node = nodes[i.value]
-    typ = node.type
-    align = (node.meta_flag & kAlignBytes) != 0
+    typ = node.m_Type
+    align = (node.m_MetaFlag & kAlignBytes) != 0
 
     if typ == "SInt8":
         value = reader.read_byte()
@@ -220,7 +200,7 @@ def read_value(nodes: List[TypeTreeNode], reader: EndianBinaryReader, i: c_uint3
         value = reader.read_aligned_string()
         i.value += 3  # Array, Size, Data(typ)
     elif typ == "map":  # map == MultiDict
-        if (nodes[i.value + 1].meta_flag & kAlignBytes) != 0:
+        if (nodes[i.value + 1].m_MetaFlag & kAlignBytes) != 0:
             align = True
         map_ = get_nodes(nodes, i.value)
         i.value += len(map_) - 1
@@ -237,8 +217,8 @@ def read_value(nodes: List[TypeTreeNode], reader: EndianBinaryReader, i: c_uint3
         i.value += 2  # Size == int, Data(typ) == char/uint8
     else:
         # Vector
-        if i.value < len(nodes) - 1 and nodes[i.value + 1].type == "Array":
-            if (nodes[i.value + 1].meta_flag & kAlignBytes) != 0:
+        if i.value < len(nodes) - 1 and nodes[i.value + 1].m_Type == "Array":
+            if (nodes[i.value + 1].m_MetaFlag & kAlignBytes) != 0:
                 align = True
             vector = get_nodes(nodes, i.value)
             i.value += len(vector) - 1
@@ -300,8 +280,8 @@ def read_value_str(
     sb: List[str], nodes: List[TypeTreeNode], reader: EndianBinaryReader, i: c_uint32
 ) -> list:
     node = nodes[i.value]
-    typ = node.type
-    align = (node.meta_flag & kAlignBytes) != 0
+    typ = node.m_Type
+    align = (node.m_MetaFlag & kAlignBytes) != 0
     append = True
 
     if typ == "SInt8":
@@ -332,11 +312,11 @@ def read_value_str(
         append = False
         sb.append(
             '{0}{1} {2} = "{3}"\r\n'.format(
-                "\t" * node.level, node.type, node.name, value
+                "\t" * node.m_Level, node.m_Type, node.m_Name, value
             )
         )
     elif typ == "map":
-        if (nodes[i.value + 1].meta_flag & kAlignBytes) != 0:
+        if (nodes[i.value + 1].m_MetaFlag & kAlignBytes) != 0:
             align = True
         map_ = get_nodes(nodes, i.value)
         i.value += len(map_) - 1
@@ -344,14 +324,20 @@ def read_value_str(
         second = get_nodes(map_, 4 + len(first))
         size = reader.read_int()
         append = False
-        sb.append("{0}{1} {2}\r\n".format("\t" * node.level, node.type, node.name))
-        sb.append("{0}{1} {2}\r\n".format("\t" * (node.level + 1), "Array", "Array"))
         sb.append(
-            "{0}{1} {2} = {3}\r\n".format("\t" * (node.level + 1), "int", "size", size)
+            "{0}{1} {2}\r\n".format("\t" * node.m_Level, node.m_Type, node.m_Name)
+        )
+        sb.append("{0}{1} {2}\r\n".format("\t" * (node.m_Level + 1), "Array", "Array"))
+        sb.append(
+            "{0}{1} {2} = {3}\r\n".format(
+                "\t" * (node.m_Level + 1), "int", "size", size
+            )
         )
         for j in range(size):
-            sb.append("{0}[{1}]\r\n".format("\t" * (node.level + 2), j))
-            sb.append("{0}{1} {2}\r\n".format("\t" * (node.level + 2), "pair", "data"))
+            sb.append("{0}[{1}]\r\n".format("\t" * (node.m_Level + 2), j))
+            sb.append(
+                "{0}{1} {2}\r\n".format("\t" * (node.m_Level + 2), "pair", "data")
+            )
             read_value_str(sb, first, reader, c_uint32(0))
             read_value_str(sb, second, reader, c_uint32(0))
     elif typ == "TypelessData":
@@ -359,30 +345,36 @@ def read_value_str(
         value = reader.read_bytes(size)
         i.value += 2  # Size == int, Data(typ) == char/uint8
         append = False
-        sb.append("{0}{1} {2}\r\n".format("\t" * node.level, node.type, node.name))
-        sb.append("{0}{1} {2} = {3}\r\n".format("\t" * node.level, "int", "size", size))
+        sb.append(
+            "{0}{1} {2}\r\n".format("\t" * node.m_Level, node.m_Type, node.m_Name)
+        )
+        sb.append(
+            "{0}{1} {2} = {3}\r\n".format("\t" * node.m_Level, "int", "size", size)
+        )
         # sb.append("{0}{1} {2} = {3}\r\n".format(
         #    "\t" * node.level, "UInt8", "data", base64.b64encode(value)))
     else:
         # Vector
-        if i.value < len(nodes) - 1 and nodes[i.value + 1].type == "Array":
-            if (nodes[i.value + 1].meta_flag & kAlignBytes) != 0:
+        if i.value < len(nodes) - 1 and nodes[i.value + 1].m_Type == "Array":
+            if (nodes[i.value + 1].m_MetaFlag & kAlignBytes) != 0:
                 align = True
             vector = get_nodes(nodes, i.value)
             i.value += len(vector) - 1
             size = reader.read_int()
             append = False
-            sb.append("{0}{1} {2}\r\n".format("\t" * node.level, node.type, node.name))
             sb.append(
-                "{0}{1} {2}\r\n".format("\t" * (node.level + 1), "Array", "Array")
+                "{0}{1} {2}\r\n".format("\t" * node.m_Level, node.m_Type, node.m_Name)
+            )
+            sb.append(
+                "{0}{1} {2}\r\n".format("\t" * (node.m_Level + 1), "Array", "Array")
             )
             sb.append(
                 "{0}{1} {2} = {3}\r\n".format(
-                    "\t" * (node.level + 1), "int", "size", size
+                    "\t" * (node.m_Level + 1), "int", "size", size
                 )
             )
             for j in range(size):
-                sb.append("{0}[{1}]\r\n".format("\t" * (node.level + 2), j))
+                sb.append("{0}[{1}]\r\n".format("\t" * (node.m_Level + 2), j))
                 read_value_str(sb, vector, reader, c_uint32(3))
 
         else:  # Class
@@ -390,7 +382,9 @@ def read_value_str(
             i.value += len(clz) - 1
             j = c_uint32(1)
             append = False
-            sb.append("{0}{1} {2}\r\n".format("\t" * node.level, node.type, node.name))
+            sb.append(
+                "{0}{1} {2}\r\n".format("\t" * node.m_Level, node.m_Type, node.m_Name)
+            )
             while j.value < len(clz):
                 read_value_str(sb, clz, reader, j)
                 j.value += 1
@@ -398,7 +392,7 @@ def read_value_str(
     if append:
         sb.append(
             "{0}{1} {2} = {3}\r\n".format(
-                "\t" * node.level, node.type, node.name, value
+                "\t" * node.m_Level, node.m_Type, node.m_Name, value
             )
         )
 
@@ -420,7 +414,7 @@ def dump_typetree(nodes: List[TypeTreeNode]) -> str:
     str
         The dumped structure
     """
-    field_names = ["level", "type", "name", "meta_flag"]
+    field_names = ["m_Level", "m_Type", "m_Name", "m_MetaFlag"]
     rows = [[getattr(x, key) for key in field_names] for x in nodes]
     return tabulate.tabulate(rows, headers=field_names)
 
@@ -451,7 +445,7 @@ def write_typetree(
 
     i = c_uint32(1)
     while i.value < len(nodes):
-        value = obj[nodes[i.value].name]
+        value = obj[nodes[i.value].m_Name]
         write_value(value, nodes, writer, i)
         i.value += 1
     return writer
@@ -461,8 +455,8 @@ def write_value(
     value: Any, nodes: List[TypeTreeNode], writer: EndianBinaryWriter, i: c_uint32
 ):
     node = nodes[i.value]
-    typ = node.type
-    align = (node.meta_flag & kAlignBytes) != 0
+    typ = node.m_Type
+    align = (node.m_MetaFlag & kAlignBytes) != 0
 
     if typ == "SInt8":
         writer.write_byte(value)
@@ -490,7 +484,7 @@ def write_value(
         writer.write_aligned_string(value)
         i.value += 3  # Array, Size, Data(typ)
     elif typ == "map":
-        if (nodes[i.value + 1].meta_flag & kAlignBytes) != 0:
+        if (nodes[i.value + 1].m_MetaFlag & kAlignBytes) != 0:
             align = True
         map_ = get_nodes(nodes, i.value)
         i.value += len(map_) - 1
@@ -509,8 +503,8 @@ def write_value(
         i.value += 2  # Size == int, Data(typ) == char/uint8
     else:
         # Vector
-        if i.value < len(nodes) - 1 and nodes[i.value + 1].type == "Array":
-            if (nodes[i.value + 1].meta_flag & kAlignBytes) != 0:
+        if i.value < len(nodes) - 1 and nodes[i.value + 1].m_Type == "Array":
+            if (nodes[i.value + 1].m_MetaFlag & kAlignBytes) != 0:
                 align = True
             vector = get_nodes(nodes, i.value)
             i.value += len(vector) - 1

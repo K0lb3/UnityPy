@@ -320,20 +320,20 @@ class SerializedFile(File.File):
 
             type_tree_node = TypeTreeNode()
             type_tree.append(type_tree_node)
-            type_tree_node.level = level
-            type_tree_node.type = self.reader.read_string_to_null()
-            type_tree_node.name = self.reader.read_string_to_null()
-            type_tree_node.byte_size = self.reader.read_int()
+            type_tree_node.m_Level = level
+            type_tree_node.m_Type = self.reader.read_string_to_null()
+            type_tree_node.m_Name = self.reader.read_string_to_null()
+            type_tree_node.m_ByteSize = self.reader.read_int()
             if self.header.version == 2:
-                type_tree_node.variable_count = self.reader.read_int()
+                type_tree_node.m_VariableCount = self.reader.read_int()
 
             if self.header.version != 3:
-                type_tree_node.index = self.reader.read_int()
+                type_tree_node.m_Index = self.reader.read_int()
 
-            type_tree_node.is_array = self.reader.read_int()
-            type_tree_node.version = self.reader.read_int()
+            type_tree_node.m_IsArray = self.reader.read_int()
+            type_tree_node.m_Version = self.reader.read_int()
             if self.header.version != 3:
-                type_tree_node.meta_flag = self.reader.read_int()
+                type_tree_node.m_MetaFlag = self.reader.read_int()
 
             children_count = self.reader.read_int()
             if children_count:
@@ -347,18 +347,18 @@ class SerializedFile(File.File):
 
         type = f"{reader.endian}hb?IIiii"
         keys = [
-            "version",
-            "level",
-            "is_array",
-            "type_str_offset",
-            "name_str_offset",
-            "byte_size",
-            "index",
-            "meta_flag",
+            "m_Version",
+            "m_Level",
+            "m_IsArray",
+            "m_TypeStrOffset",
+            "m_NameStrOffset",
+            "m_ByteSize",
+            "m_Index",
+            "m_MetaFlag",
         ]
         if self.header.version >= 19:
             type += "Q"
-            keys.append("ref_type_hash")
+            keys.append("m_RefTypeHash")
 
         node_struct = Struct(type)
         struct_data = reader.read(node_struct.size * number_of_nodes)
@@ -372,8 +372,8 @@ class SerializedFile(File.File):
         type_tree = [
             TypeTreeNode(
                 **dict(zip(keys, raw_node)),
-                type=read_string(string_buffer_reader, raw_node[3]),
-                name=read_string(string_buffer_reader, raw_node[4]),
+                m_Type=read_string(string_buffer_reader, raw_node[3]),
+                m_Name=read_string(string_buffer_reader, raw_node[4]),
             )
             for i, raw_node in enumerate(node_struct.iter_unpack(struct_data))
         ]
@@ -542,26 +542,26 @@ class SerializedFile(File.File):
 
     def save_type_tree(self, nodes: list, writer: EndianBinaryWriter):
         for i, node in nodes:
-            writer.write_string_to_null(node.type)
-            writer.write_string_to_null(node.name)
+            writer.write_string_to_null(node.m_Type)
+            writer.write_string_to_null(node.m_Name)
             writer.write_int(node.byte_size)
             if self.header.version == 2:
-                writer.write_int(node.variable_count)
+                writer.write_int(node.m_VariableCount)
 
             if self.header.version != 3:
-                writer.write_int(node.index)
+                writer.write_int(node.m_Index)
 
-            writer.write_int(node.is_array)
-            writer.write_int(node.version)
+            writer.write_int(node.m_IsArray)
+            writer.write_int(node.m_Version)
             if self.header.version != 3:
-                writer.write_int(node.meta_flag)
+                writer.write_int(node.m_MetaFlag)
 
             # calc children count
             children_count = 0
             for node2 in nodes[i + 1 :]:
-                if node2.level == node.level:
+                if node2.m_Level == node.m_Level:
                     break
-                if node2.level == node.level - 1:
+                if node2.m_Level == node.m_Level - 1:
                     children_count += 1
             writer.write_int(children_count)
 
@@ -585,24 +585,24 @@ class SerializedFile(File.File):
         # nodes
         for i, node in enumerate(nodes):
             # version
-            writer.write_u_short(node.version)
+            writer.write_u_short(node.m_Version)
             # level
-            writer.write_byte(node.level)
+            writer.write_byte(node.m_Level)
             # is array
-            writer.write_boolean(node.is_array)
+            writer.write_boolean(node.m_IsArray)
             # type str offfset
             writer.write_u_int(strings_values[i][0])
             # name str offset
             writer.write_u_int(strings_values[i][1])
             # byte size
-            writer.write_int(node.byte_size)
+            writer.write_int(node.m_ByteSize)
             # index
-            writer.write_int(node.index)
+            writer.write_int(node.m_index)
             # meta flag
-            writer.write_int(node.meta_flag)
+            writer.write_int(node.m_MetaFlag)
             # ref hash
             if self.header.version > 19:
-                writer.write_u_long(node.ref_type_hash)
+                writer.write_u_long(node.m_RefTypeHash)
 
         # string buffer
         writer.write(string_buffer.bytes)

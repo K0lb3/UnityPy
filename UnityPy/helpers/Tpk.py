@@ -46,13 +46,13 @@ def generate_flat_nodes(class_info: TpkUnityClass) -> List[TypeTreeNode]:
         node: TpkUnityNode = NODES[node_id]
         nodes.append(
             TypeTreeNode(
-                byte_size=node.ByteSize,
-                index=index,
-                version=node.Version,
-                meta_flag=node.MetaFlag,
-                level=level,
-                type=TPKTYPETREE.StringBuffer.Strings[node.TypeName],
-                name=TPKTYPETREE.StringBuffer.Strings[node.Name],
+                m_ByteSize=node.ByteSize,
+                m_Index=index,
+                m_Version=node.Version,
+                m_MetaFlag=node.MetaFlag,
+                m_Level=level,
+                m_Type=TPKTYPETREE.StringBuffer.Strings[node.TypeName],
+                m_Name=TPKTYPETREE.StringBuffer.Strings[node.Name],
             )
         )
         stack = [(node_id, level + 1) for node_id in node.SubNodes] + stack
