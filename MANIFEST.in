@@ -1,4 +1,0 @@
-include UnityPy/*
-recursive-include UnityPyBoost *.c *.h
-recursive-include UnityPy/lib *.dll *.lib *.so *.dylib
-recursive-include UnityPy/resources *
