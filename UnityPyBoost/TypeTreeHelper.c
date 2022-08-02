@@ -71,8 +71,8 @@ static PyObject *read_TypelessData(Reader *reader);
 
 static uint32_t hash_string(const char *str);
 
-static read_type getReadFunction(int hash_value, int* index);
-static PyObject* getSubNodes(PyObject* nodes, int* index);
+static read_type getReadFunction(int hash_value, int *index);
+static PyObject *getSubNodes(PyObject *nodes, int *index);
 
 static PyObject *TypeTreeHelper_ReadValue(PyObject *nodes, Reader *reader, int *index);
 static PyObject *TypeTreeHelper_ReadValueVector(PyObject *nodes, Reader *reader, int *index);
@@ -103,7 +103,6 @@ static inline void initReadFuncOrNodes(PyObject *nodes, int *index, PyObject **s
         *subalign = (node->m_MetaFlag & kAlignBytesFlag) ? 1 : 0;
     }
 }
-
 
 static inline void align4(Reader *reader)
 {
@@ -378,8 +377,6 @@ static inline int PyList_SetItem_Safe(PyObject *list, int i, PyObject *value)
     return ret;
 }
 
-
-
 static PyObject *TypeTreeHelper_ReadValue(PyObject *nodes, Reader *reader, int *index)
 {
     if (*index >= PyList_Size(nodes))
@@ -573,7 +570,7 @@ PyObject *read_typetree(PyObject *self, PyObject *args)
                         "The endian attribute value must be a string of size 1");
         return NULL;
     }
-    char endian = *(char*)PyUnicode_DATA(swap_obj);
+    char endian = *(char *)PyUnicode_DATA(swap_obj);
     switch (endian)
     {
     case '<':
@@ -641,18 +638,18 @@ static int
 TypeTreeNode_init(TypeTreeNodeObject *self, PyObject *args, PyObject *kwds)
 {
     static char *kwlist[] = {
-        "m_Name",           // char*
-        "m_Type",           // char*
-        "m_Level",          // uint8
-        "m_MetaFlag",       // int32
-        "m_Version",        // int16
-        "m_IsArray",        // char
-        "m_ByteSize",       // int
-        "m_Index",          // int
-        "m_TypeStrOffset",  // unsigned int
-        "m_NameStrOffset",  // unsigned int
-        "m_RefTypeHash",    // unsigned long long
-        "m_VariableCount",  // int
+        "m_Name",          // char*
+        "m_Type",          // char*
+        "m_Level",         // uint8
+        "m_MetaFlag",      // int32
+        "m_Version",       // int16
+        "m_IsArray",       // char
+        "m_ByteSize",      // int
+        "m_Index",         // int
+        "m_TypeStrOffset", // unsigned int
+        "m_NameStrOffset", // unsigned int
+        "m_RefTypeHash",   // unsigned long long
+        "m_VariableCount", // int
         NULL};
     const char *type = NULL;
     const char *name = NULL;
@@ -708,10 +705,11 @@ TypeTreeNode_repr(PyObject *self)
 {
     TypeTreeNodeObject *node = (TypeTreeNodeObject *)self;
     return PyUnicode_Format(
-        PyUnicode_FromString("<TypeTreeNode %d %s %s>"),
+        "<TypeTreeNode %d %s %s>",
         node->m_Level,
         node->m_Type,
-        node->m_Name);
+        node->m_Name
+    );
 }
 
 // PyTypeObject TypeTreeNodeType;
