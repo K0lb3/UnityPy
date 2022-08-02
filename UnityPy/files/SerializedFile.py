@@ -574,7 +574,7 @@ class SerializedFile(File.File):
         string_buffer = EndianBinaryWriter()
         string_buffer.write(str_data)
         strings_values = [
-            (node.type_str_offset, node.name_str_offset) for node in nodes
+            (node.m_TypeStrOffset, node.m_NameStrOffset) for node in nodes
         ]
 
         # number of nodes
@@ -597,7 +597,7 @@ class SerializedFile(File.File):
             # byte size
             writer.write_int(node.m_ByteSize)
             # index
-            writer.write_int(node.m_index)
+            writer.write_int(node.m_Index)
             # meta flag
             writer.write_int(node.m_MetaFlag)
             # ref hash
