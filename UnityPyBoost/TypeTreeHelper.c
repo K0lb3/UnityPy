@@ -704,7 +704,7 @@ static PyObject *
 TypeTreeNode_repr(PyObject *self)
 {
     TypeTreeNodeObject *node = (TypeTreeNodeObject *)self;
-    return PyUnicode_Format(
+    return PyUnicode_FromFormat(
         "<TypeTreeNode %d %s %s>",
         node->m_Level,
         node->m_Type,
