@@ -75,9 +75,8 @@ class BundleFile(File.File):
         return m_DirectoryInfo, blocksReader
 
     def read_fs(self, reader: EndianBinaryReader):
-        version = self.version
         size = reader.read_long()
-
+        
         # header
         compressedSize = reader.read_u_int()
         uncompressedSize = reader.read_u_int()
@@ -238,8 +237,6 @@ class BundleFile(File.File):
 
         # file list & file data
         # prep nodes and build up block data
-        writer_start_pos = writer.Position
-
         data_writer = EndianBinaryWriter()
         files = [
             (
@@ -346,7 +343,7 @@ class BundleFile(File.File):
         writer_end_pos = writer.Position
         writer.Position = writer_header_pos
         # correct file size
-        writer.write_long(writer_end_pos - writer_start_pos)
+        writer.write_long(writer_end_pos)
         writer.Position = writer_end_pos
 
 
