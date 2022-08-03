@@ -57,6 +57,10 @@ def test_mesh():
                 data = data.encode('utf8').replace(b'\r', b'')
             assert data == wanted
 
+def test_read_typetree():
+    env = UnityPy.load(SAMPLES)
+    for obj in env.objects:
+        obj.read_typetree()
 
 if __name__ == "__main__":
     for x in list(locals()):
