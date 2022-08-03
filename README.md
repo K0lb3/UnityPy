@@ -18,18 +18,20 @@ If you need advice or if you want to talk about (game) data-mining,
 feel free to join the [UnityPy Discord](https://discord.gg/C6txv7M).
 
 
-If you're making an income by using UnityPy,
-please donate a small part of it to a charitable cause or sponsor this project with a small amount.
+If you're using UnityPy a commercial project,
+a donation to a charitable cause or a sponsorship of this project is expected.
 
 
-As UnityPy is still in active development breaking changes can happen.
+**As UnityPy is still in active development breaking changes can happen.**
 Those changes are usually limited to minor versions (x.y) and not to patch versions (x.y.z).
 So in case that you don't want to actively maintain your project,
 make sure to make a note of the used UnityPy version in your README or add a check in your code.
+e.g.
 ```python
 if UnityPy.__version__ == '1.9.6':
     raise ImportError("Invalid Unity version detected. Please use version 1.9.6")
 ```
+
 
 
 1. [Installation](#installation)
