@@ -350,6 +350,5 @@ thanks a lot to all contributors of UnityPy and all of its users.
 Also,
 many thanks to:
 
-- [Perfare](https://github.com/Perfare) for creating and maintaining
-- every contributor of [AssetStudio](https://github.com/Perfare/AssetStudio)
+- [Perfare](https://github.com/Perfare) for creating and maintaining and every contributor of [AssetStudio](https://github.com/Perfare/AssetStudio)
 - [ds5678](https://github.com/ds5678) for the [TypeTreeDumps](https://github.com/AssetRipper/TypeTreeDumps) and the [custom minimal Tpk format](https://github.com/AssetRipper/Tpk)
