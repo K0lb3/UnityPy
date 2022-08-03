@@ -70,7 +70,7 @@ def node_dict_to_node_cls(nodes: List[dict]) -> List[TypeTreeNode]:
         a list of TypeTreeNode-type nodes
     """
     # legacy support
-    if not next(iter(nodes[0])).starts_with("m_"):
+    if not next(iter(nodes[0])).startswith("m_"):
         return [
             TypeTreeNode(
                 m_Name=x["name"],
