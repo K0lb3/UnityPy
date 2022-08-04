@@ -1,0 +1,73 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "UnityPy"
+authors = [{ name = "Rudolf Kolbe", email = "rkolbe96@gmail.com" }]
+description = "A Unity extraction and patching package"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.6"
+keywords = [
+    "python",
+    "unity",
+    "unity-asset",
+    "python3",
+    "data-minig",
+    "unitypack",
+    "assetstudio",
+    "unity-asset-extractor",
+]
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Intended Audience :: Developers",
+    "Development Status :: 5 - Production/Stable",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.6",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Games/Entertainment",
+    "Topic :: Multimedia :: Graphics",
+]
+dependencies = [
+    # block compression/decompression
+    "lz4",    # BundleFile block compression
+    "brotli", # WebFile compression
+    # Texture & Sprite handling
+    "Pillow",
+    "texture2ddecoder", # texture decompression
+    "etcpak",           # ETC & DXT compression
+    # raw typetree dumping
+    "tabulate",
+]
+dynamic = ["version"]
+
+[project.urls]
+"Homepage" = "https://github.com/K0lb3/UnityPy"
+"Bug Tracker" = "https://github.com/K0lb3/UnityPy/issues"
+
+[tool.hatch.version]
+# path to the file containing the version number
+path = "UnityPy/__init__.py"
+
+[tool.hatch.build.targets.sdist]
+# include all files required to build the package
+only-include = ["UnityPy", "UnityPyBoost", "tests", "build_hook.py"]
+# exclude prebuild files
+exclude = ["UnityPy/UnityPyBoost*"]
+
+[tool.hatch.build.targets.wheel]
+# UnityPyBoost will be compiled by the hook and added to UnityPy
+# therefore UnityPyBoost and hook_build aren't needed
+only-include = ["UnityPy", "tests"]
+# exclude all prebuild files and all FMOD libs
+# the fmod lib for the target platform is force included via the hook
+exclude = ["UnityPy/lib/FMOD", "UnityPy/UnityPyBoost*"]
+
+[tool.hatch.build.targets.wheel.hooks.custom]
+path = "build_hook.py"
