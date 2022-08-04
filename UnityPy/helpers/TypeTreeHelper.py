@@ -231,7 +231,7 @@ def read_value(nodes: List[TypeTreeNode], reader: EndianBinaryReader, i: c_uint3
             j = c_uint32(1)
             while j.value < len(clz):
                 clz_node = clz[j.value]
-                value[clz_node.name] = read_value(clz, reader, j)
+                value[clz_node.m_Name] = read_value(clz, reader, j)
                 j.value += 1
 
     if align:
