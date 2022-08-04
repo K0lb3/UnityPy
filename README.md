@@ -44,14 +44,18 @@ if UnityPy.__version__ == '1.9.6':
 
 **Python 3.6.0 or higher is required**
 
+via pypi
+
 ```cmd
 pip install UnityPy
 ```
 
-or download/clone the git and use
+from source
 
 ```cmd
-python setup.py install
+git clone https://github.com/K0lb3/UnityPy.git
+cd UnityPy
+python -m pip install .
 ```
 
 ### Notes
