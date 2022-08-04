@@ -516,7 +516,7 @@ def write_value(
             i.value += len(clz) - 1
             j = c_uint32(1)
             while j.value < len(clz):
-                val = value[clz[j.value].name]
+                val = value[clz[j.value].m_Name]
                 write_value(val, clz, writer, j)
                 j.value += 1
 
