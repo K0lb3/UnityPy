@@ -52,16 +52,13 @@ def get_fmod_library():
 setup(
     name="UnityPy",
     packages=find_packages(),
-    #include_package_data=True,
+    # include_package_data=True,
     package_data={
         "UnityPy": [
             get_fmod_library(),
             "resources/uncompressed.tpk",
-            "*.c",
-            "*.h",
-            "*.cpp",
-            "*.hpp",
-        ]
+        ],
+        "": ["*.c", "*.h"],
     },
     version=version,
     author="K0lb3",
