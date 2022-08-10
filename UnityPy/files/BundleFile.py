@@ -280,6 +280,8 @@ class BundleFile(File.File):
         block_writer.write_u_short(block_info_flag)
 
         # file block info
+        if not data_flag & 0x40:
+            raise NotImplementedError("UnityPy always writes DirectoryInfo, so data_flag must include 0x40")
         # file count
         block_writer.write_int(len(files))
         offset = 0
@@ -318,7 +320,7 @@ class BundleFile(File.File):
         writer.write_u_int(compressed_block_data_size)
         # uncompressed size
         writer.write_u_int(uncompressed_block_data_size)
-        # compression flag
+        # compression and file layout flag
         writer.write_u_int(data_flag)
 
         if self.version >= 7:
