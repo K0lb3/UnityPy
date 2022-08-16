@@ -176,18 +176,18 @@ class BundleFile(File.File):
             elif packer == "original":
                 self.save_fs(
                     writer,
-                    block_info_flag=self._block_info_flags,
                     data_flag=self._data_flags,
+                    block_info_flag=self._block_info_flags,
                 )
             elif packer == "lz4":
-                self.save_fs(writer, block_info_flag=194, data_flag=2)
+                self.save_fs(writer, data_flag=194, block_info_flag=2)
             elif isinstance(packer, tuple):
                 self.save_fs(writer, *packer)
             else:
                 raise NotImplemented("UnityFS - Packer:", packer)
         return writer.bytes
 
-    def save_fs(self, writer: EndianBinaryWriter, block_info_flag: int, data_flag: int):
+    def save_fs(self, writer: EndianBinaryWriter, data_flag: int, block_info_flag: int):
         # header
         # compressed blockinfo (block details & directionary)
         # compressed assets
@@ -256,7 +256,7 @@ class BundleFile(File.File):
         uncompressed_data_size = len(file_data)
 
         # compress the data
-        switch = data_flag & 0x3F
+        switch = block_info_flag & 0x3F
         if switch == 1:  # LZMA
             file_data = CompressionHelper.compress_lzma(file_data)
         elif switch in [2, 3]:  # LZ4, LZ4HC
@@ -277,9 +277,11 @@ class BundleFile(File.File):
         # compressed size
         block_writer.write_u_int(compressed_data_size)
         # flag
-        block_writer.write_u_short(data_flag)
+        block_writer.write_u_short(block_info_flag)
 
         # file block info
+        if not data_flag & 0x40:
+            raise NotImplementedError("UnityPy always writes DirectoryInfo, so data_flag must include 0x40")
         # file count
         block_writer.write_int(len(files))
         offset = 0
@@ -300,7 +302,7 @@ class BundleFile(File.File):
 
         uncompressed_block_data_size = len(block_data)
 
-        switch = block_info_flag & 0x3F
+        switch = data_flag & 0x3F
         if switch == 1:  # LZMA
             block_data = CompressionHelper.compress_lzma(block_data)
         elif switch in [2, 3]:  # LZ4, LZ4HC
@@ -318,8 +320,8 @@ class BundleFile(File.File):
         writer.write_u_int(compressed_block_data_size)
         # uncompressed size
         writer.write_u_int(uncompressed_block_data_size)
-        # compression flag
-        writer.write_u_int(block_info_flag)
+        # compression and file layout flag
+        writer.write_u_int(data_flag)
 
         if self.version >= 7:
             # UnityFS\x00 - 8
@@ -329,7 +331,7 @@ class BundleFile(File.File):
             # sum : 28 -> +8 alignment
             writer.align_stream(16)
 
-        if (block_info_flag & 0x80) != 0:  # at end of file
+        if data_flag & 0x80:  # at end of file
             if data_flag & 0x200:
                 writer.align_stream(16)
             writer.write(file_data)
