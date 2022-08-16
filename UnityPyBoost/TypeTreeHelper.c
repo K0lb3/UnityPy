@@ -5,7 +5,7 @@
 #include "TypeTreeHelper.h"
 #include <stdio.h>
 #include <string.h>
-#include "endian.h"
+#include "swap.h"
 
 typedef struct
 {
