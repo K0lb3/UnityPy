@@ -89,11 +89,11 @@ class BuildType:
         self.build_type = build_type
 
     @property
-    def is_alpha(self):
+    def IsAlpha(self):
         return self.build_type == "a"
 
     @property
-    def is_path(self):
+    def IsPatch(self):
         return self.build_type == "p"
 
 

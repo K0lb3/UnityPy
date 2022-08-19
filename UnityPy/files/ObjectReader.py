@@ -157,7 +157,7 @@ class ObjectReader:
     def reset(self):
         self.reader.Position = self.byte_start
 
-    def read(self):
+    def read(self, return_typetree_on_error: bool=True):
         cls = getattr(classes, self.type.name, None)
 
         obj = None
@@ -165,7 +165,12 @@ class ObjectReader:
             try:
                 obj = cls(self)
             except Exception as e:
-                print(e)
+                if return_typetree_on_error:
+                    print(f"Error during the parsing of object {self.path_id}")
+                    print(e)
+                    print("Returning the typetree")
+                else:
+                    raise e
         if not obj:
             typetree = self.read_typetree()
             if typetree:
