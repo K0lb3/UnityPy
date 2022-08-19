@@ -38,7 +38,7 @@ class Object(object):
     def has_struct_member(self, name: str) -> bool:
         nodes = self.reader.get_typetree_nodes()
         return any(
-            node.name == name for node in nodes
+            node.m_Name == name for node in nodes
         )
 
     def dump_typetree(self, nodes: list = None) -> str:
