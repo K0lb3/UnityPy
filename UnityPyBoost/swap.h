@@ -1,3 +1,6 @@
+// check if the system is little endian
+#define IS_LITTLE_ENDIAN (*(unsigned char *)&(unsigned short){1})
+
 // set swap funcions (source: old version of nodejs/src/node_buffer.cc)
 #if defined(__GNUC__) || defined(__clang__)
 #define bswap16(x) __builtin_bswap16(x)
