@@ -22,6 +22,8 @@ typedef struct TypeTreeNodeObject{
     unsigned long long m_RefTypeHash;
     // UnityRaw - versin = 2
     int m_VariableCount;
+    // helper fields
+    unsigned int typehash;
 } TypeTreeNodeObject;
 
 int add_typetreenode_to_module(PyObject *m);

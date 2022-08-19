@@ -318,19 +318,21 @@ class SerializedFile(File.File):
             else:
                 level_stack[-1][1] -= 1
 
-            type_tree_node = TypeTreeNode()
+            type_tree_node = TypeTreeNode(
+                m_Level = level,
+                m_Type = self.reader.read_string_to_null(),
+                m_Name = self.reader.read_string_to_null(),
+                m_ByteSize = self.reader.read_int()
+            )
+            
             type_tree.append(type_tree_node)
-            type_tree_node.m_Level = level
-            type_tree_node.m_Type = self.reader.read_string_to_null()
-            type_tree_node.m_Name = self.reader.read_string_to_null()
-            type_tree_node.m_ByteSize = self.reader.read_int()
             if self.header.version == 2:
                 type_tree_node.m_VariableCount = self.reader.read_int()
 
             if self.header.version != 3:
                 type_tree_node.m_Index = self.reader.read_int()
 
-            type_tree_node.m_IsArray = self.reader.read_int()
+            type_tree_node.m_IsArray = bool(self.reader.read_int())
             type_tree_node.m_Version = self.reader.read_int()
             if self.header.version != 3:
                 type_tree_node.m_MetaFlag = self.reader.read_int()
