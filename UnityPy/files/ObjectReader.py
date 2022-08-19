@@ -35,6 +35,7 @@ class ObjectReader:
         header = assets_file.header
         types = assets_file.types
 
+        # AssetStudio ObjectInfo init
         if assets_file.big_id_enabled:
             self.path_id = reader.read_long()
         elif header.version < 14:
@@ -58,16 +59,14 @@ class ObjectReader:
         self.byte_size = reader.read_u_int()
 
         self.type_id = reader.read_int()
+
         if header.version < 16:
             self.class_id = reader.read_u_short()
-            if types:
-                self.serialized_type = (
-                    x for x in types if x.class_id == self.type_id
-                ).__next__()
-            else:
-                self.serialized_type = SerializedFile.SerializedType(
-                    reader, self.assets_file
-                )
+            self.serialized_type = None
+            for typ in types:
+                if typ.class_id == self.type_id:
+                    self.serialized_type = typ
+                    break
         else:
             typ = types[self.type_id]
             self.serialized_type = typ
@@ -197,18 +196,18 @@ class ObjectReader:
     def dump_typetree(self, nodes: list = None) -> str:
         self.reset()
         sb = []
-        if nodes:
-            TypeTreeHelper.read_typetree_str(sb, nodes, self)
-        elif getattr(self.serialized_type, "nodes", None):
-            TypeTreeHelper.read_typetree_str(sb, self.serialized_type.nodes, self)
-            return "".join(sb)
-        return ""
+        nodes = self.get_typetree(nodes)
+        TypeTreeHelper.read_typetree_str(sb, nodes, self)
+        return "".join(sb)
 
     def dump_typetree_structure(self) -> str:
         return TypeTreeHelper.dump_typetree(self.get_typetree_nodes())
 
     def get_typetree_nodes(self, nodes: list = None) -> list:
-        if not nodes:
+        if nodes:
+            return nodes
+        
+        if self.serialized_type:
             nodes = self.serialized_type.nodes
         if not nodes:
             nodes = get_typetree_nodes(self.class_id, self.version)

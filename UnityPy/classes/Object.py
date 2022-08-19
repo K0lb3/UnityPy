@@ -36,8 +36,9 @@ class Object(object):
             self.read_typetree()
 
     def has_struct_member(self, name: str) -> bool:
-        return self.serialized_type.m_Nodes and any(
-            [x.name == name for x in self.serialized_type.m_Nodes]
+        nodes = self.reader.get_typetree_nodes()
+        return any(
+            node.name == name for node in nodes
         )
 
     def dump_typetree(self, nodes: list = None) -> str:
@@ -84,14 +85,10 @@ class Object(object):
         if intern_call:
             if self.platform == BuildTarget.NoTarget:
                 writer.write_u_int(self._object_hide_flags)
-        elif self.serialized_type.nodes:
+        else:
             # save for objects WITHOUT specific save function
             # so we have to use the typetree if it exists
             self.save_typetree()
-        else:
-            raise NotImplementedError(
-                "There is no save function for this obj.type nor has it any typetree nodes that could be used."
-            )
 
     def _save(self, writer):
         # the reader is actually an ObjectReader,
