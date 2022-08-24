@@ -44,19 +44,6 @@ jobs:
         CIBW_TEST_REQUIRES: pytest
         CIBW_TEST_COMMAND: pytest -v -s {package}/tests
 
-    - name: Rename Linux wheels to ManyLinux
-      if: runner.os == 'Linux'
-      uses: jannekem/run-python-script-action@v1
-      with:
-        script: |
-          import os
-          wheeldir = "./wheelhouse"
-          print(os.listdir(wheeldir))
-          for f in os.listdir(wheeldir):
-              fp = os.path.join(wheeldir, f)
-              print(fp,"->",fp.replace("linux", "manylinux2014"))
-              os.rename(fp, fp.replace("linux", "manylinux2014"))
-
     - name: Publish to PyPI
       if: success() && github.event_name == 'push' && env.TWINE_PASSWORD != '' && github.ref == 'refs/heads/master'
       env:
