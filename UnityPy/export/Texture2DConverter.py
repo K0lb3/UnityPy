@@ -254,7 +254,7 @@ CONV_TABLE = {
 (  TF.YUY2,                                                                                     ),
 (  TF.RGB9e5Float,                                                                              ),
 (  TF.BC4,                 pillow,  "L",     "bcn",       4                                     ),
-(  TF.BC5,                 pillow,  "RGBA",  "bcn",       5                                     ),
+(  TF.BC5,                 pillow,  "RGB",   "bcn",       5                                     ),
 (  TF.BC6H,                pillow,  "RGBA",  "bcn",       6                                     ),
 (  TF.BC7,                 pillow,  "RGBA",  "bcn",       7                                     ),
 (  TF.DXT1Crunched,        pillow,  "RGBA",  "bcn",       1                                     ),
