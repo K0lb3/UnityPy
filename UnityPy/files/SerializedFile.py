@@ -1,4 +1,5 @@
-﻿import os
+﻿from collections import defaultdict
+import os
 import re
 
 from . import File, ObjectReader
@@ -196,7 +197,7 @@ class SerializedFile(File.File):
         self._container = {}
 
         self.objects = {}
-        self.container_ = {}
+        self.container_ = defaultdict(list)
         # used to speed up mass asset extraction
         # some assets refer to each other, so by keeping the result
         # of specific assets cached the extraction can be speed up by a lot.
@@ -277,11 +278,12 @@ class SerializedFile(File.File):
         for obj in self.objects.values():
             if obj.type == ClassIDType.AssetBundle:
                 data = obj.read()
-                for container, asset_info in data.m_Container.items():
-                    asset = asset_info.asset
-                    self.container_[container] = asset
-                    if hasattr(asset, "path_id"):
-                        self._container[asset.path_id] = container
+                for container, assets_info in data.m_Container.items():
+                    for asset_info in assets_info:
+                        asset = asset_info.asset
+                        self.container_[container].append(asset)
+                        if hasattr(asset, "path_id"):
+                            self._container[asset.path_id] = container
         # if environment is not None:
         #    environment.container = {**environment.container, **self.container}
 

@@ -11,24 +11,25 @@ def main():
     src = os.path.join(root, "522608825")
     e = UnityPy.load(src)
     # iterate over all localisation assets
-    for cont, obj in e.container.items():
-        # read the asset data
-        data = obj.read()
-        # get the localisation data
-        script = json.loads(bytes(data.script)) # bytes wrapper to handle memoryview
-        if hasattr(script, "infos"):
-            continue
-        print(data.name)
-        # translate the localisation
-        for entry in script["infos"]:
-            entry["value"] = translate(entry["value"])
-        # overwrite the original
-        data.script = json.dumps(
-            script, 
-            ensure_ascii=False, indent=4
-        ).encode("utf8")
-        # apply the changes
-        data.save()
+    for cont, objs in e.container.items():
+        for obj in objs:
+            # read the asset data
+            data = obj.read()
+            # get the localisation data
+            script = json.loads(bytes(data.script)) # bytes wrapper to handle memoryview
+            if hasattr(script, "infos"):
+                continue
+            print(data.name)
+            # translate the localisation
+            for entry in script["infos"]:
+                entry["value"] = translate(entry["value"])
+            # overwrite the original
+            data.script = json.dumps(
+                script, 
+                ensure_ascii=False, indent=4
+            ).encode("utf8")
+            # apply the changes
+            data.save()
     
     # save the modified Bundle as file
     with open(os.path.join(root, "522608825_patched"), "wb") as f:
