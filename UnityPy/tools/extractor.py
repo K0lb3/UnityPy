@@ -18,6 +18,7 @@ from UnityPy.classes import (
 from UnityPy.enums.ClassIDType import ClassIDType
 from typing import Union, List, Dict
 from pathlib import Path
+from collections.abc import Callable
 
 
 def export_obj(
@@ -26,6 +27,7 @@ def export_obj(
     append_name: bool = False,
     append_path_id: bool = False,
     export_unknown_as_typetree: bool = False,
+    asset_filter: Callable[[Object], bool] = None,
 ) -> List[int]:
     """Exports the given object to the given filepath.
 
@@ -35,6 +37,7 @@ def export_obj(
         append_name (bool, optional): Decides if the obj name will be appended to the filepath. Defaults to False.
         append_path_id (bool, optional): Decides if the obj name will be appended to the filepath. Defaults to False.
         export_unknown_as_typetree (bool, optional): If set, then unimplemented objects will be exported via their typetree or dumped as bin. Defaults to False.
+        asset_filter (func(Object)->bool, optional): Determines whether to export an object. Defaults to all objects.
 
     Returns:
         list: a list of exported object path_ids
@@ -49,6 +52,10 @@ def export_obj(
 
     # set filepath
     obj = obj.read()
+
+    # a filter that returned True during an earlier extract_assets check can return False now with more info from read()
+    if asset_filter and not asset_filter(obj):
+        return []
 
     if append_name:
         fp = os.path.join(fp, obj.name if obj.name else type_name)
@@ -69,8 +76,9 @@ def extract_assets(
     ignore_first_container_dirs: int = 0,
     append_path_id: bool = False,
     export_unknown_as_typetree: bool = False,
+    asset_filter: Callable[[Object], bool] = None,
 ) -> List[int]:
-    """Extracts all assets from the given source.
+    """Extracts some or all assets from the given source.
 
     Args:
         src (Union[Path, BytesIO, bytes, bytearray]): [description]
@@ -79,6 +87,7 @@ def extract_assets(
         ignore_first_container_dirs (int, optional): [description]. Defaults to 0.
         append_path_id (bool, optional): [description]. Defaults to False.
         export_unknown_as_typetree (bool, optional): [description]. Defaults to False.
+        asset_filter (func(object)->bool, optional): Determines whether to export an object. Defaults to all objects.
 
     Returns:
         List[int]: [description]
@@ -98,34 +107,37 @@ def extract_assets(
     if use_container:
         container = sorted(env.container, lambda x: defaulted_export_index(x[1].type))
         for obj_path, obj in container:
-            # the check of the various sub directories is required to avoid // in the path
-            obj_dest = os.path.join(
-                dst,
-                *(x for x in obj_path.split("/")[:ignore_first_container_dirs] if x),
-            )
-            os.makedirs(os.path.dirname(obj_dest), exist_ok=True)
-            exported.extend(
-                export_obj(
-                    obj,
-                    obj_dest,
-                    append_path_id=append_path_id,
-                    export_unknown_as_typetree=export_unknown_as_typetree,
+            # The filter here can only access metadata. The same filter may produce a different result later in extract_obj after obj.read()
+            if (not asset_filter) or asset_filter(obj):
+                # the check of the various sub directories is required to avoid // in the path
+                obj_dest = os.path.join(
+                    dst,
+                    *(x for x in obj_path.split("/")[:ignore_first_container_dirs] if x),
                 )
-            )
-
-    else:
-        objects = sorted(env.objects, lambda x: defaulted_export_index(x.type))
-        for obj in objects:
-            if obj.path_id not in exported:
+                os.makedirs(os.path.dirname(obj_dest), exist_ok=True)
                 exported.extend(
                     export_obj(
                         obj,
-                        dst,
-                        append_name=True,
+                        obj_dest,
                         append_path_id=append_path_id,
                         export_unknown_as_typetree=export_unknown_as_typetree,
                     )
                 )
+
+    else:
+        objects = sorted(env.objects, lambda x: defaulted_export_index(x.type))
+        for obj in objects:
+            if (not asset_filter) or asset_filter(obj):
+                if obj.path_id not in exported:
+                    exported.extend(
+                        export_obj(
+                            obj,
+                            dst,
+                            append_name=True,
+                            append_path_id=append_path_id,
+                            export_unknown_as_typetree=export_unknown_as_typetree,
+                        )
+                    )
 
     return exported
 
