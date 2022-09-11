@@ -69,6 +69,7 @@ def extract_assets(
     ignore_first_container_dirs: int = 0,
     append_path_id: bool = False,
     export_unknown_as_typetree: bool = False,
+    multiple_objects_per_container: bool = False,
 ) -> List[int]:
     """Extracts all assets from the given source.
 
@@ -96,7 +97,7 @@ def extract_assets(
             return 999
 
     if use_container:
-        container = sorted([(path,obj) for path, objs in env.container.items() for obj in objs],lambda x: defaulted_export_index(x[1].type))
+        container = sorted([(path,obj) for path, objs in env.listContainer.items() for obj in objs] if multiple_objects_per_container else env.container,lambda x: defaulted_export_index(x[1].type))
         for obj_path, obj in container:
             # the check of the various sub directories is required to avoid // in the path
             obj_dest = os.path.join(

@@ -179,7 +179,7 @@ One of these objects can be an AssetBundle, which contains a file path for some 
 
 All objects can be found in the ``.objects`` dict - ``{ID : object}``.
 
-The objects with a file path can be found in the ``.container`` dict - ``{path : [object]}``.
+The objects with a file path can be found in the ``.container`` dict - ``{path : object}`` or ``.listContainer`` dict - ``{path : [object]}``.
 
 ### [Object](UnityPy/files/ObjectReader.py)
 
