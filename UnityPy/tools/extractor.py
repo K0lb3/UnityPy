@@ -92,11 +92,11 @@ def extract_assets(
     def defaulted_export_index(type: ClassIDType):
         try:
             return export_types_keys.index(type)
-        except IndexError:
+        except (IndexError, ValueError):
             return 999
 
     if use_container:
-        container = sorted(env.container, lambda x: defaulted_export_index(x[1].type))
+        container = sorted(env.container, key=lambda x: defaulted_export_index(x[1].type))
         for obj_path, obj in container:
             # the check of the various sub directories is required to avoid // in the path
             obj_dest = os.path.join(
@@ -114,7 +114,7 @@ def extract_assets(
             )
 
     else:
-        objects = sorted(env.objects, lambda x: defaulted_export_index(x.type))
+        objects = sorted(env.objects, key=lambda x: defaulted_export_index(x.type))
         for obj in objects:
             if obj.path_id not in exported:
                 exported.extend(
