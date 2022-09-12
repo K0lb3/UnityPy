@@ -33,7 +33,7 @@ def export_obj(
         obj (Object, PPtr): A valid Unity object or a reference to one.
         fp (Path): A valid filepath where the object should be exported to.
         append_name (bool, optional): Decides if the obj name will be appended to the filepath. Defaults to False.
-        append_path_id (bool, optional): Decides if the obj name will be appended to the filepath. Defaults to False.
+        append_path_id (bool, optional): Decides if the obj path id will be appended to the filepath. Defaults to False.
         export_unknown_as_typetree (bool, optional): If set, then unimplemented objects will be exported via their typetree or dumped as bin. Defaults to False.
 
     Returns:
