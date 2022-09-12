@@ -189,13 +189,13 @@ class Environment:
         }
 
     @property
-    def listContainer(self) -> Dict[str, List[ObjectReader]]:
+    def list_container(self) -> Dict[str, List[ObjectReader]]:
         """Returns a dictionary of lists of all objects in the Environment."""
         return {
             path: objs
             for f in self.files.values()
             if isinstance(f, File)
-            for path, objs in f.listContainer.items()
+            for path, objs in f.list_container.items()
         }
 
     @property

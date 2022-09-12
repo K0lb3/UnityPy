@@ -135,12 +135,12 @@ class File(object):
             for path, obj in f.container.items()
         }
     @property
-    def listContainer(self):
+    def list_container(self):
         return {
             path: objs
             for f in self.files.values()
             if isinstance(f, File)
-            for path, objs in f.listContainer.items()
+            for path, objs in f.list_container.items()
         }
 
     def get(self, key, default=None):

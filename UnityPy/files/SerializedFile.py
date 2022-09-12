@@ -169,7 +169,7 @@ class SerializedFile(File.File):
     _container: dict
     objects: dict
     container_: dict
-    listContainer_: dict
+    list_container_: dict
     _cache: dict
     header: SerializedFileHeader
 
@@ -199,7 +199,7 @@ class SerializedFile(File.File):
 
         self.objects = {}
         self.container_ = {}
-        self.listContainer_ = defaultdict(list)
+        self.list_container_ = defaultdict(list)
         # used to speed up mass asset extraction
         # some assets refer to each other, so by keeping the result
         # of specific assets cached the extraction can be speed up by a lot.
@@ -283,10 +283,10 @@ class SerializedFile(File.File):
                 for container, asset_info in data.m_Container.items():
                     asset = asset_info.asset
                     self.container_[container] = asset
-                for container, assets_info in data.listContainer.items():
+                for container, assets_info in data.list_container.items():
                     for asset_info in assets_info:
                         asset = asset_info.asset
-                        self.listContainer_[container].append(asset)
+                        self.list_container_[container].append(asset)
                         if hasattr(asset, "path_id"):
                             self._container[asset.path_id] = container
         # if environment is not None:
@@ -297,8 +297,8 @@ class SerializedFile(File.File):
         return self.container_
     
     @property
-    def listContainer(self):
-        return self.listContainer_
+    def list_container(self):
+        return self.list_container_
 
     def set_version(self, string_version):
         self.unity_version = string_version

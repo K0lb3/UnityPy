@@ -97,7 +97,7 @@ def extract_assets(
             return 999
 
     if use_container:
-        container = sorted([(path,obj) for path, objs in env.listContainer.items() for obj in objs] if multiple_objects_per_container else env.container, key=lambda x: defaulted_export_index(x[1].type))
+        container = sorted([(path,obj) for path, objs in env.list_container.items() for obj in objs] if multiple_objects_per_container else env.container, key=lambda x: defaulted_export_index(x[1].type))
         for obj_path, obj in container:
             # the check of the various sub directories is required to avoid // in the path
             obj_dest = os.path.join(

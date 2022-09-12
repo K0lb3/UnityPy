@@ -9,19 +9,19 @@ class ResourceManager(Object):
         super().__init__(reader)
         m_ContainerSize = reader.read_int()
         self.m_Container = {}
-        self.listContainer = defaultdict(list)
+        self.list_container = defaultdict(list)
         for _ in range(m_ContainerSize):
             key = reader.read_aligned_string()
             self.m_Container[key] = PPtr(reader)
-            self.listContainer[key].append(PPtr(reader))
+            self.list_container[key].append(PPtr(reader))
 
-    def save(self, writer: EndianBinaryWriter = None, multipleObjectsPerContainer: bool = False):
+    def save(self, writer: EndianBinaryWriter = None, multiple_objects_per_container: bool = False):
         if not writer:
             writer = EndianBinaryWriter(endian=self.reader.endian)
         super().save(writer, intern_call=True)
-        if multipleObjectsPerContainer:
-            writer.write_int(sum([len(vals) for vals in self.listContainer.values()]))
-            for key, vals in self.listContainer.items():
+        if multiple_objects_per_container:
+            writer.write_int(sum([len(vals) for vals in self.list_container.values()]))
+            for key, vals in self.list_container.items():
                 for val in vals:
                     writer.write_aligned_string(key)
                     save_ptr(val, writer)
