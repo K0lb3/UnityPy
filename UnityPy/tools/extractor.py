@@ -33,7 +33,7 @@ def export_obj(
         obj (Object, PPtr): A valid Unity object or a reference to one.
         fp (Path): A valid filepath where the object should be exported to.
         append_name (bool, optional): Decides if the obj name will be appended to the filepath. Defaults to False.
-        append_path_id (bool, optional): Decides if the obj name will be appended to the filepath. Defaults to False.
+        append_path_id (bool, optional): Decides if the obj path id will be appended to the filepath. Defaults to False.
         export_unknown_as_typetree (bool, optional): If set, then unimplemented objects will be exported via their typetree or dumped as bin. Defaults to False.
 
     Returns:
@@ -93,11 +93,11 @@ def extract_assets(
     def defaulted_export_index(type: ClassIDType):
         try:
             return export_types_keys.index(type)
-        except IndexError:
+        except (IndexError, ValueError):
             return 999
 
     if use_container:
-        container = sorted([(path,obj) for path, objs in env.listContainer.items() for obj in objs] if multiple_objects_per_container else env.container,lambda x: defaulted_export_index(x[1].type))
+        container = sorted([(path,obj) for path, objs in env.listContainer.items() for obj in objs] if multiple_objects_per_container else env.container, key=lambda x: defaulted_export_index(x[1].type))
         for obj_path, obj in container:
             # the check of the various sub directories is required to avoid // in the path
             obj_dest = os.path.join(
@@ -115,7 +115,7 @@ def extract_assets(
             )
 
     else:
-        objects = sorted(env.objects, lambda x: defaulted_export_index(x.type))
+        objects = sorted(env.objects, key=lambda x: defaulted_export_index(x.type))
         for obj in objects:
             if obj.path_id not in exported:
                 exported.extend(

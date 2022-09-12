@@ -28,8 +28,8 @@ So in case that you don't want to actively maintain your project,
 make sure to make a note of the used UnityPy version in your README or add a check in your code.
 e.g.
 ```python
-if UnityPy.__version__ == '1.9.6':
-    raise ImportError("Invalid Unity version detected. Please use version 1.9.6")
+if UnityPy.__version__ != '1.9.6':
+    raise ImportError("Invalid UnityPy version detected. Please use version 1.9.6")
 ```
 
 
