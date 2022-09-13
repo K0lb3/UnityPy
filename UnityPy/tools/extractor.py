@@ -41,11 +41,12 @@ def export_obj(
     """
     # figure out export function
     type_name = obj.type.name
-    export_func = getattr(EXPORT_TYPES, type_name)
-    if export_unknown_as_typetree:
-        export_func = exportMonoBehaviour
-    else:
-        return []
+    export_func = EXPORT_TYPES[getattr(ClassIDType,type_name)]
+    if not export_func:
+        if export_unknown_as_typetree:
+            export_func = exportMonoBehaviour
+        else:
+            return []
 
     # set filepath
     obj = obj.read()
