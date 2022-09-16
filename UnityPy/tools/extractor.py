@@ -40,18 +40,18 @@ def export_obj(
         list: a list of exported object path_ids
     """
     # figure out export function
-    type_name = obj.type.name
-    export_func = getattr(EXPORT_TYPES, type_name)
-    if export_unknown_as_typetree:
-        export_func = exportMonoBehaviour
-    else:
-        return []
+    export_func = EXPORT_TYPES.get(obj.type)
+    if not export_func:
+        if export_unknown_as_typetree:
+            export_func = exportMonoBehaviour
+        else:
+            return []
 
     # set filepath
     obj = obj.read()
 
     if append_name:
-        fp = os.path.join(fp, obj.name if obj.name else type_name)
+        fp = os.path.join(fp, obj.name if obj.name else obj.type.name)
 
     fp, extension = os.path.splitext(fp)
 
