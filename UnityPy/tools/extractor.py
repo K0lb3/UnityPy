@@ -108,36 +108,38 @@ def extract_assets(
         container = sorted(env.container, lambda x: defaulted_export_index(x[1].type))
         for obj_path, obj in container:
             # The filter here can only access metadata. The same filter may produce a different result later in extract_obj after obj.read()
-            if (not asset_filter) or asset_filter(obj):
-                # the check of the various sub directories is required to avoid // in the path
-                obj_dest = os.path.join(
-                    dst,
-                    *(x for x in obj_path.split("/")[:ignore_first_container_dirs] if x),
+            if asset_filter is not None and not asset_filter(obj):
+                continue
+            # the check of the various sub directories is required to avoid // in the path
+            obj_dest = os.path.join(
+                dst,
+                *(x for x in obj_path.split("/")[:ignore_first_container_dirs] if x),
+            )
+            os.makedirs(os.path.dirname(obj_dest), exist_ok=True)
+            exported.extend(
+                export_obj(
+                    obj,
+                    obj_dest,
+                    append_path_id=append_path_id,
+                    export_unknown_as_typetree=export_unknown_as_typetree,
                 )
-                os.makedirs(os.path.dirname(obj_dest), exist_ok=True)
-                exported.extend(
-                    export_obj(
-                        obj,
-                        obj_dest,
-                        append_path_id=append_path_id,
-                        export_unknown_as_typetree=export_unknown_as_typetree,
-                    )
-                )
+            )
 
     else:
         objects = sorted(env.objects, lambda x: defaulted_export_index(x.type))
         for obj in objects:
-            if (not asset_filter) or asset_filter(obj):
-                if obj.path_id not in exported:
-                    exported.extend(
-                        export_obj(
-                            obj,
-                            dst,
-                            append_name=True,
-                            append_path_id=append_path_id,
-                            export_unknown_as_typetree=export_unknown_as_typetree,
-                        )
+            if asset_filter is not None and not asset_filter(obj):
+                continue
+            if obj.path_id not in exported:
+                exported.extend(
+                    export_obj(
+                        obj,
+                        dst,
+                        append_name=True,
+                        append_path_id=append_path_id,
+                        export_unknown_as_typetree=export_unknown_as_typetree,
                     )
+                )
 
     return exported
 
