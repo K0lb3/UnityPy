@@ -187,6 +187,7 @@ def exporShader(obj: Shader, fp: str, extension=".txt") -> List[int]:
 def exportMonoBehaviour(
     obj: Union[MonoBehaviour, Object], fp: str, extension: str = ""
 ) -> List[int]:
+    export = None
     # TODO - add generic way to add external typetrees
     if obj.serialized_type and obj.serialized_type.nodes:
         extension = ".json"
