@@ -122,6 +122,7 @@ def extract_assets(
                     obj_dest,
                     append_path_id=append_path_id,
                     export_unknown_as_typetree=export_unknown_as_typetree,
+                    asset_filter=asset_filter,
                 )
             )
 
@@ -138,6 +139,7 @@ def extract_assets(
                         append_name=True,
                         append_path_id=append_path_id,
                         export_unknown_as_typetree=export_unknown_as_typetree,
+                        asset_filter=asset_filter,
                     )
                 )
 
