@@ -18,6 +18,7 @@ from UnityPy.classes import (
 from UnityPy.enums.ClassIDType import ClassIDType
 from typing import Union, List, Dict
 from pathlib import Path
+from collections.abc import Callable
 
 
 def export_obj(
@@ -26,6 +27,7 @@ def export_obj(
     append_name: bool = False,
     append_path_id: bool = False,
     export_unknown_as_typetree: bool = False,
+    asset_filter: Callable[[Object], bool] = None,
 ) -> List[int]:
     """Exports the given object to the given filepath.
 
@@ -35,23 +37,28 @@ def export_obj(
         append_name (bool, optional): Decides if the obj name will be appended to the filepath. Defaults to False.
         append_path_id (bool, optional): Decides if the obj path id will be appended to the filepath. Defaults to False.
         export_unknown_as_typetree (bool, optional): If set, then unimplemented objects will be exported via their typetree or dumped as bin. Defaults to False.
+        asset_filter (func(Object)->bool, optional): Determines whether to export an object. Defaults to all objects.
 
     Returns:
         list: a list of exported object path_ids
     """
     # figure out export function
-    type_name = obj.type.name
-    export_func = getattr(EXPORT_TYPES, type_name)
-    if export_unknown_as_typetree:
-        export_func = exportMonoBehaviour
-    else:
-        return []
+    export_func = EXPORT_TYPES.get(obj.type)
+    if not export_func:
+        if export_unknown_as_typetree:
+            export_func = exportMonoBehaviour
+        else:
+            return []
 
     # set filepath
     obj = obj.read()
 
+    # a filter that returned True during an earlier extract_assets check can return False now with more info from read()
+    if asset_filter and not asset_filter(obj):
+        return []
+
     if append_name:
-        fp = os.path.join(fp, obj.name if obj.name else type_name)
+        fp = os.path.join(fp, obj.name if obj.name else obj.type.name)
 
     fp, extension = os.path.splitext(fp)
 
@@ -70,8 +77,9 @@ def extract_assets(
     append_path_id: bool = False,
     export_unknown_as_typetree: bool = False,
     multiple_objects_per_container: bool = False,
+    asset_filter: Callable[[Object], bool] = None,
 ) -> List[int]:
-    """Extracts all assets from the given source.
+    """Extracts some or all assets from the given source.
 
     Args:
         src (Union[Path, BytesIO, bytes, bytearray]): [description]
@@ -80,6 +88,7 @@ def extract_assets(
         ignore_first_container_dirs (int, optional): [description]. Defaults to 0.
         append_path_id (bool, optional): [description]. Defaults to False.
         export_unknown_as_typetree (bool, optional): [description]. Defaults to False.
+        asset_filter (func(object)->bool, optional): Determines whether to export an object. Defaults to all objects.
 
     Returns:
         List[int]: [description]
@@ -99,6 +108,9 @@ def extract_assets(
     if use_container:
         container = sorted([(path,obj) for path, objs in env.list_container.items() for obj in objs] if multiple_objects_per_container else env.container, key=lambda x: defaulted_export_index(x[1].type))
         for obj_path, obj in container:
+            # The filter here can only access metadata. The same filter may produce a different result later in extract_obj after obj.read()
+            if asset_filter is not None and not asset_filter(obj):
+                continue
             # the check of the various sub directories is required to avoid // in the path
             obj_dest = os.path.join(
                 dst,
@@ -111,12 +123,15 @@ def extract_assets(
                     obj_dest,
                     append_path_id=append_path_id,
                     export_unknown_as_typetree=export_unknown_as_typetree,
+                    asset_filter=asset_filter,
                 )
             )
 
     else:
         objects = sorted(env.objects, key=lambda x: defaulted_export_index(x.type))
         for obj in objects:
+            if asset_filter is not None and not asset_filter(obj):
+                continue
             if obj.path_id not in exported:
                 exported.extend(
                     export_obj(
@@ -125,6 +140,7 @@ def extract_assets(
                         append_name=True,
                         append_path_id=append_path_id,
                         export_unknown_as_typetree=export_unknown_as_typetree,
+                        asset_filter=asset_filter,
                     )
                 )
 
@@ -174,6 +190,7 @@ def exporShader(obj: Shader, fp: str, extension=".txt") -> List[int]:
 def exportMonoBehaviour(
     obj: Union[MonoBehaviour, Object], fp: str, extension: str = ""
 ) -> List[int]:
+    export = None
     # TODO - add generic way to add external typetrees
     if obj.serialized_type and obj.serialized_type.nodes:
         extension = ".json"
