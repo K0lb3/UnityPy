@@ -88,6 +88,7 @@ def extract_assets(
         ignore_first_container_dirs (int, optional): [description]. Defaults to 0.
         append_path_id (bool, optional): [description]. Defaults to False.
         export_unknown_as_typetree (bool, optional): [description]. Defaults to False.
+        multiple_objects_per_container (bool, optional): Export multiple objects per container path. Has no effect if use_container is False. Overrides append_path_id (when use_container is True). Defaults to False.
         asset_filter (func(object)->bool, optional): Determines whether to export an object. Defaults to all objects.
 
     Returns:
