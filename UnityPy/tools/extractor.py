@@ -121,7 +121,7 @@ def extract_assets(
                 export_obj(
                     obj,
                     obj_dest,
-                    append_path_id=append_path_id,
+                    append_path_id=append_path_id or multiple_objects_per_container,
                     export_unknown_as_typetree=export_unknown_as_typetree,
                     asset_filter=asset_filter,
                 )
