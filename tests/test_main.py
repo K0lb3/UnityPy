@@ -22,7 +22,7 @@ def test_texture2d():
     for f in os.listdir(SAMPLES):
         env = UnityPy.load(os.path.join(SAMPLES, f))
         for obj in env.objects:
-            if obj.type == "Texture2D":
+            if obj.type.name == "Texture2D":
                 data = obj.read()
                 data.image.save("test.png")
                 data.image = data.image.transpose(Image.ROTATE_90)
@@ -33,14 +33,14 @@ def test_sprite():
     for f in os.listdir(SAMPLES):
         env = UnityPy.load(os.path.join(SAMPLES, f))
         for obj in env.objects:
-            if obj.type == "Sprite":
+            if obj.type.name == "Sprite":
                 obj.read().image.save("test.png")
 
 
 def test_audioclip():
     env = UnityPy.load(os.path.join(SAMPLES, "char_118_yuki.ab"))
     for obj in env.objects:
-        if obj.type == "AudioClip":
+        if obj.type.name == "AudioClip":
             clip = obj.read()
             assert len(clip.samples) == 1
 
@@ -50,7 +50,7 @@ def test_mesh():
     with open(os.path.join(SAMPLES, "xinzexi_2_n_tex_mesh"), "rb") as f:
         wanted = f.read().replace(b"\r", b"")
     for obj in env.objects:
-        if obj.type == "Mesh":
+        if obj.type.name == "Mesh":
             mesh = obj.read()
             data = mesh.export()
             if isinstance(data, str):
