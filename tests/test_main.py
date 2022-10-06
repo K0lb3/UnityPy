@@ -40,7 +40,10 @@ def test_sprite():
 def test_audioclip():
     # as not platforms are supported by FMOD
     # we have to check if the platform is supported first
-    UnityPy.export.AudioClipConverter.import_pyfmodex()
+    try:
+        UnityPy.export.AudioClipConverter.import_pyfmodex()
+    except NotImplementedError:
+        return
     if UnityPy.export.AudioClipConverter.pyfmodex is False:
         return
     env = UnityPy.load(os.path.join(SAMPLES, "char_118_yuki.ab"))
