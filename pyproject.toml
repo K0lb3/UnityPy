@@ -44,6 +44,8 @@ dependencies = [
     "etcpak",           # ETC & DXT compression
     # raw typetree dumping
     "tabulate",
+    # audio extraction
+    "pyfmodex",
 ]
 dynamic = ["version"]
 
