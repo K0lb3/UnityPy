@@ -1,4 +1,5 @@
 import os
+
 import UnityPy
 from PIL import Image
 
@@ -43,6 +44,12 @@ def test_audioclip():
     try:
         UnityPy.export.AudioClipConverter.import_pyfmodex()
     except NotImplementedError:
+        return
+    except OSError:
+        # cibuildwheel doesn't copy the .so files
+        # so we have to skip the test on it
+        print("Failed to load the fmod lib for your system.")
+        print("Skipping the audioclip test.")
         return
     if UnityPy.export.AudioClipConverter.pyfmodex is False:
         return
