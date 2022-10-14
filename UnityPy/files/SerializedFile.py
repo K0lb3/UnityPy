@@ -319,12 +319,12 @@ class SerializedFile(File.File):
                 level_stack[-1][1] -= 1
 
             type_tree_node = TypeTreeNode(
-                m_Level = level,
-                m_Type = self.reader.read_string_to_null(),
-                m_Name = self.reader.read_string_to_null(),
-                m_ByteSize = self.reader.read_int()
+                m_Level=level,
+                m_Type=self.reader.read_string_to_null(),
+                m_Name=self.reader.read_string_to_null(),
+                m_ByteSize=self.reader.read_int(),
             )
-            
+
             type_tree.append(type_tree_node)
             if self.header.version == 2:
                 type_tree_node.m_VariableCount = self.reader.read_int()
@@ -560,7 +560,7 @@ class SerializedFile(File.File):
 
             # calc children count
             children_count = 0
-            for node2 in nodes[i + 1 :]:
+            for node2 in nodes[i + 1:]:
                 if node2.m_Level == node.m_Level:
                     break
                 if node2.m_Level == node.m_Level - 1:

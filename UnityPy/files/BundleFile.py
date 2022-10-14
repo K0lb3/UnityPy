@@ -1,8 +1,11 @@
-from . import File
-from ..helpers import CompressionHelper
-from ..streams import EndianBinaryReader, EndianBinaryWriter
-import re
 from collections import namedtuple
+
+from . import File
+from ..helpers import CN_Encryption, CompressionHelper
+from ..streams import EndianBinaryReader, EndianBinaryWriter
+
+from .. import config
+
 
 BlockInfo = namedtuple("BlockInfo", "uncompressedSize compressedSize flags")
 DirectoryInfoFS = namedtuple("DirectoryInfoFS", "offset size flags path")
@@ -23,13 +26,13 @@ class BundleFile(File.File):
         self.version_engine = reader.read_string_to_null()
 
         if signature == "UnityArchive":
-            raise NotImplemented("BundleFile - UnityArchive")
+            raise NotImplementedError("BundleFile - UnityArchive")
         elif signature in ["UnityWeb", "UnityRaw"]:
             m_DirectoryInfo, blocksReader = self.read_web_raw(reader)
         elif signature == "UnityFS":
             m_DirectoryInfo, blocksReader = self.read_fs(reader)
         else:
-            raise NotImplemented(f"Unknown Bundle signature: {signature}")
+            raise NotImplementedError(f"Unknown Bundle signature: {signature}")
 
         self.read_files(blocksReader, m_DirectoryInfo)
 
@@ -76,7 +79,7 @@ class BundleFile(File.File):
 
     def read_fs(self, reader: EndianBinaryReader):
         size = reader.read_long()
-        
+
         # header
         compressedSize = reader.read_u_int()
         uncompressedSize = reader.read_u_int()
@@ -91,9 +94,11 @@ class BundleFile(File.File):
             blocksInfoBytes = reader.read_bytes(compressedSize)
             reader.Position = start
         else:  # 0x40 kArchiveBlocksAndDirectoryInfoCombined
+            if config.USE_CN_ENCRYPTION:
+                self.pgr = CN_Encryption.CN_Encryption(reader)
             blocksInfoBytes = reader.read_bytes(compressedSize)
 
-        blocksInfoBytes = decompress_data(
+        blocksInfoBytes = self.decompress_data(
             blocksInfoBytes, uncompressedSize, self._data_flags
         )
         blocksInfoReader = EndianBinaryReader(blocksInfoBytes, offset=start)
@@ -125,16 +130,25 @@ class BundleFile(File.File):
             self._block_info_flags = m_BlocksInfo[0].flags
 
         if self._data_flags & 0x200:
-            reader.align_stream(16)
+            # should be aligned to 16 bytes
+            # but it's not always the case with this flag,
+            # so we have to check the data
+            align_data = reader.read_bytes(16)
+            if align_data != b"\x00" * 16:
+                reader.Position -= 16
+                while reader.read_byte() == 0:
+                    pass
+                reader.Position -= 1
 
         blocksReader = EndianBinaryReader(
             b"".join(
-                decompress_data(
+                self.decompress_data(
                     reader.read_bytes(blockInfo.compressedSize),
                     blockInfo.uncompressedSize,
                     blockInfo.flags,
+                    i,
                 )
-                for blockInfo in m_BlocksInfo
+                for i, blockInfo in enumerate(m_BlocksInfo)
             ),
             offset=(blocksInfoReader.real_offset()),
         )
@@ -166,9 +180,11 @@ class BundleFile(File.File):
         writer.write_string_to_null(self.version_engine)
 
         if self.signature == "UnityArchive":
-            raise NotImplemented("BundleFile - UnityArchive")
+            raise NotImplementedError("BundleFile - UnityArchive")
         elif self.signature in ["UnityWeb", "UnityRaw"]:
-            raise NotImplemented("Saving Unity Web and Raw bundles isn't supported yet")
+            raise NotImplementedError(
+                "Saving Unity Web and Raw bundles isn't supported yet"
+            )
             # self.save_web_raw(writer)
         elif self.signature == "UnityFS":
             if not packer or packer == "none":
@@ -184,7 +200,7 @@ class BundleFile(File.File):
             elif isinstance(packer, tuple):
                 self.save_fs(writer, *packer)
             else:
-                raise NotImplemented("UnityFS - Packer:", packer)
+                raise NotImplementedError("UnityFS - Packer:", packer)
         return writer.bytes
 
     def save_fs(self, writer: EndianBinaryWriter, data_flag: int, block_info_flag: int):
@@ -281,7 +297,9 @@ class BundleFile(File.File):
 
         # file block info
         if not data_flag & 0x40:
-            raise NotImplementedError("UnityPy always writes DirectoryInfo, so data_flag must include 0x40")
+            raise NotImplementedError(
+                "UnityPy always writes DirectoryInfo, so data_flag must include 0x40"
+            )
         # file count
         block_writer.write_int(len(files))
         offset = 0
@@ -341,38 +359,39 @@ class BundleFile(File.File):
             if data_flag & 0x200:
                 writer.align_stream(16)
             writer.write(file_data)
-        
+
         writer_end_pos = writer.Position
         writer.Position = writer_header_pos
         # correct file size
         writer.write_long(writer_end_pos)
         writer.Position = writer_end_pos
 
+    def decompress_data(
+        self, compressed_data: bytes, uncompressed_size: int, flags: int, index: int = 0
+    ) -> bytes:
+        """
+        Parameters
+        ----------
+        compressed_data : bytes
+            The compressed data.
+        uncompressed_size : int
+            The uncompressed size of the data.
+        flags : int
+            The flags of the data.
 
-def decompress_data(
-    compressed_data: bytes, uncompressed_size: int, flags: int
-) -> bytes:
-    """
-    Parameters
-    ----------
-    compressed_data : bytes
-        The compressed data.
-    uncompressed_size : int
-        The uncompressed size of the data.
-    flags : int
-        The flags of the data.
+        Returns
+        -------
+        bytes
+            The decompressed data."""
+        switch = flags & 0x3F
 
-    Returns
-    -------
-    bytes
-        The decompressed data."""
-    switch = flags & 0x3F
-
-    if switch == 1:  # LZMA
-        return CompressionHelper.decompress_lzma(compressed_data)
-    elif switch in [2, 3]:  # LZ4, LZ4HC
-        return CompressionHelper.decompress_lz4(compressed_data, uncompressed_size)
-    elif switch == 4:  # LZHAM
-        raise NotImplementedError("LZHAM decompression not implemented")
-    else:
-        return compressed_data
+        if switch == 1:  # LZMA
+            return CompressionHelper.decompress_lzma(compressed_data)
+        elif switch in [2, 3]:  # LZ4, LZ4HC
+            if config.USE_CN_ENCRYPTION and flags & 0x100:
+                compressed_data = self.pgr.decrypt_block(compressed_data, index)
+            return CompressionHelper.decompress_lz4(compressed_data, uncompressed_size)
+        elif switch == 4:  # LZHAM
+            raise NotImplementedError("LZHAM decompression not implemented")
+        else:
+            return compressed_data
