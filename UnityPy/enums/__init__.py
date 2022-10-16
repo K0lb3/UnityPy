@@ -1,5 +1,6 @@
 from .Audio import AudioType, AudioCompressionFormat, AUDIO_TYPE_EXTEMSION
 from .BuildTarget import BuildTarget
+from .BundleFile import ArchiveFlags, ArchiveFlagsOld, CompressionFlags
 from .ClassIDType import ClassIDType
 from .FileType import FileType
 from .TextureFormat import TextureFormat

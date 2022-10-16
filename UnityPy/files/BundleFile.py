@@ -1,7 +1,11 @@
+# TODO: implement encryption for saving files
 from collections import namedtuple
+import re
+from typing import Tuple
 
 from . import File
-from ..helpers import CN_Encryption, CompressionHelper
+from ..enums import ArchiveFlags, ArchiveFlagsOld, CompressionFlags
+from ..helpers import ArchiveStorageManager, CompressionHelper
 from ..streams import EndianBinaryReader, EndianBinaryWriter
 
 from .. import config
@@ -9,6 +13,7 @@ from .. import config
 
 BlockInfo = namedtuple("BlockInfo", "uncompressedSize compressedSize flags")
 DirectoryInfoFS = namedtuple("DirectoryInfoFS", "offset size flags path")
+reVersion = re.compile(r"(\d+)\.(\d+)\.(\d+)\w.+")
 
 
 class BundleFile(File.File):
@@ -17,6 +22,8 @@ class BundleFile(File.File):
     signature: str
     version_engine: str
     version_player: str
+    dataflags: Tuple[ArchiveFlags, ArchiveFlagsOld]
+    decryptor: ArchiveStorageManager.ArchiveStorageDecryptor = None
 
     def __init__(self, reader: EndianBinaryReader, parent: File, name: str = None):
         super().__init__(parent=parent, name=name)
@@ -83,23 +90,40 @@ class BundleFile(File.File):
         # header
         compressedSize = reader.read_u_int()
         uncompressedSize = reader.read_u_int()
-        self._data_flags = reader.read_u_int()
+        self.dataflags = reader.read_u_int()
+
+        version = tuple(map(int, reVersion.match(self.version_engine).groups()))
+        # https://issuetracker.unity3d.com/issues/files-within-assetbundles-do-not-start-on-aligned-boundaries-breaking-patching-on-nintendo-switch
+        # Unity CN introduced encryption before the alignment fix was introduced.
+        # Unity CN used the same flag for the encryption as later on the alignment fix,
+        # so we have to check the version to determine the correct flag set.
+        if (
+            version < (2020,)
+            or (version[0] == 2020 and version < (2020, 3, 34))
+            or (version[0] == 2021 and version < (2021, 3, 2))
+            or (version[0] == 2022 and version < (2022, 1, 1))
+        ):
+            self.dataflags = ArchiveFlagsOld(self.dataflags)
+        else:
+            self.dataflags = ArchiveFlags(self.dataflags)
 
         if self.version >= 7:
             reader.align_stream(16)
 
         start = reader.Position
-        if self._data_flags & 0x80 != 0:  # kArchiveBlocksInfoAtTheEnd
+        if (
+            self.dataflags & ArchiveFlags.BlocksInfoAtTheEnd
+        ):  # kArchiveBlocksInfoAtTheEnd
             reader.Position = reader.Length - compressedSize
             blocksInfoBytes = reader.read_bytes(compressedSize)
             reader.Position = start
         else:  # 0x40 kArchiveBlocksAndDirectoryInfoCombined
-            if config.USE_CN_ENCRYPTION:
-                self.pgr = CN_Encryption.CN_Encryption(reader)
+            if self.dataflags & self.dataflags.UsesAssetBundleEncryption:
+                self.decryptor = ArchiveStorageManager.ArchiveStorageDecryptor(reader)
             blocksInfoBytes = reader.read_bytes(compressedSize)
 
         blocksInfoBytes = self.decompress_data(
-            blocksInfoBytes, uncompressedSize, self._data_flags
+            blocksInfoBytes, uncompressedSize, self.dataflags
         )
         blocksInfoReader = EndianBinaryReader(blocksInfoBytes, offset=start)
 
@@ -129,16 +153,11 @@ class BundleFile(File.File):
         if m_BlocksInfo:
             self._block_info_flags = m_BlocksInfo[0].flags
 
-        if self._data_flags & 0x200:
-            # should be aligned to 16 bytes
-            # but it's not always the case with this flag,
-            # so we have to check the data
-            align_data = reader.read_bytes(16)
-            if align_data != b"\x00" * 16:
-                reader.Position -= 16
-                while reader.read_byte() == 0:
-                    pass
-                reader.Position -= 1
+        if (
+            isinstance(self.dataflags, ArchiveFlags)
+            and self.dataflags & ArchiveFlags.BlockInfoNeedPaddingAtStart
+        ):
+            reader.align_stream(16)
 
         blocksReader = EndianBinaryReader(
             b"".join(
@@ -383,15 +402,15 @@ class BundleFile(File.File):
         -------
         bytes
             The decompressed data."""
-        switch = flags & 0x3F
+        comp_flag = flags & ArchiveFlags.CompressionTypeMask
 
-        if switch == 1:  # LZMA
+        if comp_flag == CompressionFlags.LZMA:  # LZMA
             return CompressionHelper.decompress_lzma(compressed_data)
-        elif switch in [2, 3]:  # LZ4, LZ4HC
-            if config.USE_CN_ENCRYPTION and flags & 0x100:
-                compressed_data = self.pgr.decrypt_block(compressed_data, index)
+        elif comp_flag in [CompressionFlags.LZ4, CompressionFlags.LZ4HC]:  # LZ4, LZ4HC
+            if flags & 0x100:
+                compressed_data = self.decryptor.decrypt_block(compressed_data, index)
             return CompressionHelper.decompress_lz4(compressed_data, uncompressed_size)
-        elif switch == 4:  # LZHAM
+        elif comp_flag == CompressionFlags.LZHAM:  # LZHAM
             raise NotImplementedError("LZHAM decompression not implemented")
         else:
             return compressed_data

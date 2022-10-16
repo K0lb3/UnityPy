@@ -1,20 +1,33 @@
-# original: https://github.com/Razmoth/PGRStudio/blob/master/AssetStudio/PGR/PGR.cs
-from typing import List, Tuple
-
-from Crypto.Cipher import AES
+# based on: https://github.com/Razmoth/PGRStudio/blob/master/AssetStudio/PGR/PGR.cs
+from typing import Tuple, Union
 
 from ..streams import EndianBinaryReader
+
+UNITY3D_SIGNATURE = b"#$unity3dchina!@"
+DECRYPT_KEY: bytes = None
+
+
+def set_assetbundle_decrypt_key(key: Union[bytes, str]):
+    if isinstance(key, str):
+        key = key.encode("utf-8", "surrogateescape")
+    if len(key) != 16:
+        raise ValueError(
+            f"AssetBundle Key length is wrong. It should be 16 bytes and now is {len(key)} bytes."
+        )
+    global DECRYPT_KEY
+    DECRYPT_KEY = key
 
 
 def read_vector(reader: EndianBinaryReader) -> Tuple[bytes, bytes]:
     data = reader.read_bytes(0x10)
-    key = reader.read_bytes(0x10)
-    reader.read_byte()
+    key = reader.read_string_to_null().encode("utf-8", "surrogateescape")
 
     return data, key
 
 
 def decrypt_key(key: bytes, data: bytes, keybytes: bytes):
+    from Crypto.Cipher import AES
+
     key = AES.new(keybytes, AES.MODE_ECB).encrypt(key)
     return bytes(x ^ y for x, y in zip(data, key))
 
@@ -27,31 +40,32 @@ def to_uint4_array(source: bytes, offset: int = 0):
     return buffer
 
 
-class CN_Encryption:
-    Version: int = 0
-    Header: str = "#$unity3dchina!@"
-    Keys: List[str] = ["kurokurokurokuro", "y5XPvqLOrCokWRIa"]
-
-    Index: bytes = bytes(0x10)
-    Sub: bytes = bytes(0x10)
+class ArchiveStorageDecryptor:
+    unknown_1: int
+    index: bytes
+    substitute: bytes = bytes(0x10)
 
     def __init__(self, reader: EndianBinaryReader) -> None:
-        value = reader.read_u_int()
+        if DECRYPT_KEY is None:
+            raise LookupError(
+                "The BundleFile is encrypted, but no key was provided!\nYou can set the key via UnityPy.set_assetbundle_decrypt_key(key)"
+            )
+        self.unknown_1 = reader.read_u_int()
 
         # read vector data/key vectors
-        self.data1, self.key1 = read_vector(reader)
-        self.data2, self.key2 = read_vector(reader)
+        self.data, self.key = read_vector(reader)
+        self.data_sig, self.key_sig = read_vector(reader)
 
-        keybytes = self.Keys[self.Version].encode("utf8")
+        signature = decrypt_key(self.key_sig, self.data_sig, DECRYPT_KEY)
+        if signature != UNITY3D_SIGNATURE:
+            raise Exception(f"Invalid signature {signature} != {UNITY3D_SIGNATURE}")
 
-        str = decrypt_key(self.key2, self.data2, keybytes).decode("utf8")
-        if str != self.Header:
-            raise Exception("Invalid Signature !!")
-
-        data = decrypt_key(self.key1, self.data1, keybytes)
+        data = decrypt_key(self.key, self.data, DECRYPT_KEY)
         data = to_uint4_array(data)
-        self.Index = data[:0x10]
-        self.Sub = bytes(data[0x10 + i * 4 + j] for j in range(4) for i in range(4))
+        self.index = data[:0x10]
+        self.substitute = bytes(
+            data[0x10 + i * 4 + j] for j in range(4) for i in range(4)
+        )
 
     def decrypt_block(self, data: bytes, index: int):
         offset = 0
@@ -65,14 +79,14 @@ class CN_Encryption:
 
     def decrypt_byte(self, view: bytearray, offset: int, index: int):
         b = (
-            self.Sub[((index >> 2) & 3) + 4]
-            + self.Sub[index & 3]
-            + self.Sub[((index >> 4) & 3) + 8]
-            + self.Sub[(index % 256 >> 6) + 12]
+            self.substitute[((index >> 2) & 3) + 4]
+            + self.substitute[index & 3]
+            + self.substitute[((index >> 4) & 3) + 8]
+            + self.substitute[(index % 256 >> 6) + 12]
         )
         view[offset] = (
-            (self.Index[view[offset] & 0xF] - b) & 0xF
-            | 0x10 * (self.Index[view[offset] >> 4] - b)
+            (self.index[view[offset] & 0xF] - b) & 0xF
+            | 0x10 * (self.index[view[offset] >> 4] - b)
         ) % 256
         b = view[offset]
         return b, offset + 1, index + 1
