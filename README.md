@@ -1,4 +1,5 @@
 # UnityPy
+
 [![Discord server invite](https://discordapp.com/api/guilds/603359898507673630/embed.png)](https://discord.gg/C6txv7M)
 [![PyPI supported Python versions](https://img.shields.io/pypi/pyversions/UnityPy.svg)](https://pypi.python.org/pypi/UnityPy)
 [![Win/Mac/Linux](https://img.shields.io/badge/platform-windows%20%7C%20macos%20%7C%20linux-informational)]()
@@ -9,30 +10,28 @@ A Unity asset extractor for Python based on [AssetStudio](https://github.com/Per
 
 Next to extraction, it also supports editing Unity assets.
 So far following obj types can be edited:
-  - Texture2D
-  - Sprite(indirectly via linked Texture2D)
-  - TextAsset
-  - MonoBehaviour (and all other types that you have the typetree of)
+
+-   Texture2D
+-   Sprite(indirectly via linked Texture2D)
+-   TextAsset
+-   MonoBehaviour (and all other types that you have the typetree of)
 
 If you need advice or if you want to talk about (game) data-mining,
 feel free to join the [UnityPy Discord](https://discord.gg/C6txv7M).
 
-
 If you're using UnityPy a commercial project,
 a donation to a charitable cause or a sponsorship of this project is expected.
-
 
 **As UnityPy is still in active development breaking changes can happen.**
 Those changes are usually limited to minor versions (x.y) and not to patch versions (x.y.z).
 So in case that you don't want to actively maintain your project,
 make sure to make a note of the used UnityPy version in your README or add a check in your code.
 e.g.
+
 ```python
 if UnityPy.__version__ != '1.9.6':
     raise ImportError("Invalid UnityPy version detected. Please use version 1.9.6")
 ```
-
-
 
 1. [Installation](#installation)
 2. [Example](#example)
@@ -77,7 +76,6 @@ TypeTreeHelper.read_typetree_c = False
 ## Example
 
 The following is a simple example.
-
 
 ```python
 import os
@@ -130,6 +128,10 @@ and [Important Object Types](#important-object-types) to understand how it works
 People with slightly advanced python skills should look at [UnityPy/tools/extractor.py](UnityPy/tools/extractor.py) for a more advanced example.
 It can also be used as a general template or as an importable tool.
 
+### Setting the decryption key for Unity CN's AssetBundle encryption
+
+The chinese version of Unity has its own inbuild option to encrypt AssetBundles/BundleFiles. As it's a feature of Unity itself, and not a game specific protection, it is included in UnityPy as well.
+To enable encryption simply use `UnityPy.set_assetbundle_decrypt_key(key)`, with key being the value that the game that loads the budles passes to `AssetBundle.SetAssetBundleDecryptKey`.
 
 ## Important Classes
 
@@ -138,16 +140,16 @@ It can also be used as a general template or as an importable tool.
 Environment loads and parses the given files.
 It can be initialized via:
 
-* a file path - apk files can be loaded as well
-* a folder path - loads all files in that folder (bad idea for folders with a lot of files)
-* a stream - e.g., io.BytesIO, file stream,...
-* a bytes object - will be loaded into a stream
+-   a file path - apk files can be loaded as well
+-   a folder path - loads all files in that folder (bad idea for folders with a lot of files)
+-   a stream - e.g., io.BytesIO, file stream,...
+-   a bytes object - will be loaded into a stream
 
 UnityPy can detect if the file is a WebFile, BundleFile, Asset, or APK.
 
-The unpacked assets will be loaded into ``.files``, a dict consisting of ``asset-name : asset``.
+The unpacked assets will be loaded into `.files`, a dict consisting of `asset-name : asset`.
 
-All objects of the loaded assets can be easily accessed via ``.objects``,
+All objects of the loaded assets can be easily accessed via `.objects`,
 which itself is a simple recursive iterator.
 
 ```python
@@ -177,15 +179,15 @@ with open(dst, "wb") as f:
 Assets are a container that contains multiple objects.
 One of these objects can be an AssetBundle, which contains a file path for some of the objects in the same asset.
 
-All objects can be found in the ``.objects`` dict - ``{ID : object}``.
+All objects can be found in the `.objects` dict - `{ID : object}`.
 
-The objects with a file path can be found in the ``.container`` dict - ``{path : object}``.
+The objects with a file path can be found in the `.container` dict - `{path : object}`.
 
 ### [Object](UnityPy/files/ObjectReader.py)
 
-Objects contain the *actual* files, e.g., textures, text files, meshes, settings, ...
+Objects contain the _actual_ files, e.g., textures, text files, meshes, settings, ...
 
-To acquire the actual data of an object it has to be read first. This happens via the ``.read()`` function. This isn't done automatically to save time because only a small part of the objects are of interest. Serialized objects can be set with raw data using ``.set_raw_data(data)`` or modified with ``.save()`` function, if supported.
+To acquire the actual data of an object it has to be read first. This happens via the `.read()` function. This isn't done automatically to save time because only a small part of the objects are of interest. Serialized objects can be set with raw data using `.set_raw_data(data)` or modified with `.save()` function, if supported.
 
 ## Important Object Types
 
@@ -193,12 +195,13 @@ All object types can be found in [UnityPy/classes](UnityPy/classes/).
 
 ### [Texture2D](UnityPy/classes/Texture2D.py)
 
-* ``.name``
-* ``.image`` converts the texture into a ``PIL.Image``
-* ``.m_Width`` - texture width (int)
-* ``.m_Height`` - texture height (int)
+-   `.name`
+-   `.image` converts the texture into a `PIL.Image`
+-   `.m_Width` - texture width (int)
+-   `.m_Height` - texture height (int)
 
-__Export__
+**Export**
+
 ```python
 from PIL import Image
 for obj in env.objects:
@@ -218,12 +221,13 @@ for obj in env.objects:
 Sprites are part of a texture and can have a separate alpha-image as well.
 Unlike most other extractors (including AssetStudio), UnityPy merges those two images by itself.
 
-* ``.name``
-* ``.image`` - converts the merged texture part into a ``PIL.Image``
-* ``.m_Width`` - sprite width (int)
-* ``.m_Height`` - sprite height (int)
+-   `.name`
+-   `.image` - converts the merged texture part into a `PIL.Image`
+-   `.m_Width` - sprite width (int)
+-   `.m_Height` - sprite height (int)
 
-__Export__
+**Export**
+
 ```python
 for obj in env.objects:
     if obj.type.name == "Sprite":
@@ -235,13 +239,14 @@ for obj in env.objects:
 
 TextAssets are usually normal text files.
 
-* ``.name``
-* ``.script`` - binary data (bytes)
-* ``.text`` - script decoded via UTF8 (str)
+-   `.name`
+-   `.script` - binary data (bytes)
+-   `.text` - script decoded via UTF8 (str)
 
-Some games save binary data as TextFile, so it's usually better to use ``.script``.
+Some games save binary data as TextFile, so it's usually better to use `.script`.
 
-__Export__
+**Export**
+
 ```python
 for obj in env.objects:
     if obj.type.name == "TextAsset":
@@ -263,11 +268,12 @@ If a type tree exists, it can be used to read the whole data,
 but if it doesn't exist, then it is usually necessary to investigate the class that loads the specific MonoBehaviour to extract the data.
 ([example](examples/CustomMonoBehaviour/get_scriptable_texture.py))
 
-* ``.name``
-* ``.script``
-* ``.raw_data`` - data after the basic initialisation
+-   `.name`
+-   `.script`
+-   `.raw_data` - data after the basic initialisation
 
-__Export__
+**Export**
+
 ```python
 import json
 
@@ -300,7 +306,7 @@ for obj in env.objects:
 
 ### [AudioClip](UnityPy/classes/AudioClip.py)
 
-* ``.samples`` - ``{sample-name : sample-data}``
+-   `.samples` - `{sample-name : sample-data}`
 
 The samples are converted into the .wav format.
 The sample data is a .wav file in bytes.
@@ -326,10 +332,9 @@ if obj.type.name == "Font":
         f.write(font.m_FontData)
 ```
 
-
 ### [Mesh](UnityPy/classes/Mesh.py)
 
-* ``.export()`` - mesh exported as .obj (str)
+-   `.export()` - mesh exported as .obj (str)
 
 The mesh will be converted to the Wavefront .obj file format.
 
@@ -341,9 +346,10 @@ with open(f"{mesh.name}.obj", "wt", newline = "") as f:
 ```
 
 ### Renderer, MeshRenderer, SkinnedMeshRenderer
+
 ALPHA-VERSION
 
-* ``.export(export_dir)`` - exports the associated mesh, materials, and textures into the given directory
+-   `.export(export_dir)` - exports the associated mesh, materials, and textures into the given directory
 
 The mesh and materials will be in the Wavefront formats.
 
@@ -366,6 +372,6 @@ thanks a lot to all contributors of UnityPy and all of its users.
 Also,
 many thanks to:
 
-- [Perfare](https://github.com/Perfare) for creating and maintaining and every contributor of [AssetStudio](https://github.com/Perfare/AssetStudio)
-- [ds5678](https://github.com/ds5678) for the [TypeTreeDumps](https://github.com/AssetRipper/TypeTreeDumps) and the [custom minimal Tpk format](https://github.com/AssetRipper/Tpk)
-- [Razmoth](https://github.com/Razmoth) for figuring out and sharing Unity CN's AssetBundle decryption ([src](https://github.com/Razmoth/PGRStudio)).
+-   [Perfare](https://github.com/Perfare) for creating and maintaining and every contributor of [AssetStudio](https://github.com/Perfare/AssetStudio)
+-   [ds5678](https://github.com/ds5678) for the [TypeTreeDumps](https://github.com/AssetRipper/TypeTreeDumps) and the [custom minimal Tpk format](https://github.com/AssetRipper/Tpk)
+-   [Razmoth](https://github.com/Razmoth) for figuring out and sharing Unity CN's AssetBundle decryption ([src](https://github.com/Razmoth/PGRStudio)).
