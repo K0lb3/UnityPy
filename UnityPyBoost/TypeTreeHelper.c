@@ -613,7 +613,7 @@ TypeTreeNode_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     {
         self->m_Version = 0;
         self->m_Level = 0;
-        self->m_IsArray = 0;
+        self->m_TypeFlags = 0;
         self->m_ByteSize = 0;
         self->m_Index = 0;
         self->m_MetaFlag = 0;
@@ -640,7 +640,7 @@ TypeTreeNode_init(TypeTreeNodeObject *self, PyObject *args, PyObject *kwds)
         "m_Level",         // uint8
         "m_MetaFlag",      // int32
         "m_Version",       // int16
-        "m_IsArray",       // char
+        "m_TypeFlags",       // int32
         "m_ByteSize",      // int
         "m_Index",         // int
         "m_TypeStrOffset", // unsigned int
@@ -653,14 +653,14 @@ TypeTreeNode_init(TypeTreeNodeObject *self, PyObject *args, PyObject *kwds)
     if (!PyArg_ParseTupleAndKeywords(
             args,
             kwds,
-            "|zzbihbiiIIKi",
+            "|zzbihiiiIIKi",
             kwlist,
             &name,
             &type,
             &self->m_Level,
             &self->m_MetaFlag,
             &self->m_Version,
-            &self->m_IsArray,
+            &self->m_TypeFlags,
             &self->m_ByteSize,
             &self->m_Index,
             &self->m_TypeStrOffset,
@@ -732,7 +732,7 @@ static PyMemberDef TypeTreeNode_members[] = {
     //{"m_Name", T_STRING, offsetof(TypeTreeNodeObject, m_Name), 0, ""},
     {"m_ByteSize", T_INT, offsetof(TypeTreeNodeObject, m_ByteSize), 0, ""},
     {"m_Index", T_INT, offsetof(TypeTreeNodeObject, m_Index), 0, ""},
-    {"m_IsArray", T_BOOL, offsetof(TypeTreeNodeObject, m_IsArray), 0, ""},
+    {"m_TypeFlags", T_INT, offsetof(TypeTreeNodeObject, m_TypeFlags), 0, ""},
     {"m_Version", T_SHORT, offsetof(TypeTreeNodeObject, m_Version), 0, ""},
     {"m_MetaFlag", T_INT, offsetof(TypeTreeNodeObject, m_MetaFlag), 0, ""},
     {"m_Level", T_UBYTE, offsetof(TypeTreeNodeObject, m_Level), 0, ""},
