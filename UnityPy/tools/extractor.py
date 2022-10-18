@@ -131,7 +131,7 @@ def extract_assets(
         for obj in objects:
             if asset_filter is not None and not asset_filter(obj):
                 continue
-            if obj.path_id not in exported:
+            if (obj.assets_file, obj.path_id) not in exported:
                 exported.extend(
                     export_obj(
                         obj,
@@ -156,7 +156,7 @@ def exportTextAsset(obj: TextAsset, fp: str, extension: str = ".txt") -> List[in
         extension = ".txt"
     with open(f"{fp}{extension}", "wb") as f:
         f.write(obj.script)
-    return [obj.path_id]
+    return [(obj.assets_file, obj.path_id)]
 
 
 def exportFont(obj: Font, fp: str, extension: str = "") -> List[int]:
@@ -167,7 +167,7 @@ def exportFont(obj: Font, fp: str, extension: str = "") -> List[int]:
             extension = ".otf"
         with open(f"{fp}{extension}", "wb") as f:
             f.write(obj.m_FontData)
-    return [obj.path_id]
+    return [(obj.assets_file, obj.path_id)]
 
 
 def exportMesh(obj: Mesh, fp: str, extension=".obj") -> List[int]:
@@ -175,7 +175,7 @@ def exportMesh(obj: Mesh, fp: str, extension=".obj") -> List[int]:
         extension = ".obj"
     with open(f"{fp}{extension}", "wt", encoding="utf8", newline="") as f:
         f.write(obj.export())
-    return [obj.path_id]
+    return [(obj.assets_file, obj.path_id)]
 
 
 def exporShader(obj: Shader, fp: str, extension=".txt") -> List[int]:
@@ -183,7 +183,7 @@ def exporShader(obj: Shader, fp: str, extension=".txt") -> List[int]:
         extension = ".txt"
     with open(f"{fp}{extension}", "wt", encoding="utf8", newline="") as f:
         f.write(obj.export())
-    return [obj.path_id]
+    return [(obj.assets_file, obj.path_id)]
 
 
 def exportMonoBehaviour(
@@ -224,7 +224,7 @@ def exportMonoBehaviour(
         export = obj.raw_data
     with open(f"{fp}{extension}", "wb") as f:
         f.write(export)
-    return [obj.path_id]
+    return [(obj.assets_file, obj.path_id)]
 
 
 def exportAudioClip(obj: AudioClip, fp: str, extension: str = "") -> List[int]:
@@ -239,18 +239,22 @@ def exportAudioClip(obj: AudioClip, fp: str, extension: str = "") -> List[int]:
         for name, clip_data in samples.items():
             with open(os.path.join(fp, f"{name}.wav"), "wb") as f:
                 f.write(clip_data)
-    return [obj.path_id]
+    return [(obj.assets_file, obj.path_id)]
 
 
 def exportSprite(obj: Sprite, fp: str, extension: str = ".png") -> List[int]:
     if not extension:
         extension = ".png"
     obj.image.save(f"{fp}{extension}")
-    return [
-        obj.path_id,
-        obj.m_RD.texture.path_id,
-        getattr(obj.m_RD.alphaTexture, "path_id", None),
+    exported = [
+        (obj.assets_file, obj.path_id),
+        (obj.m_RD.texture.assets_file, obj.m_RD.texture.path_id),
     ]
+    alpha_assets_file = getattr(obj.m_RD.alphaTexture, "assets_file", None)
+    alpha_path_id = getattr(obj.m_RD.alphaTexture, "path_id", None)
+    if alpha_path_id and alpha_assets_file:
+        exported.append((alpha_assets_file, alpha_path_id))
+    return exported
 
 
 def exportTexture2D(obj: Texture2D, fp: str, extension: str = ".png") -> List[int]:
@@ -259,11 +263,11 @@ def exportTexture2D(obj: Texture2D, fp: str, extension: str = ".png") -> List[in
     if obj.m_Width:
         # textures can be empty
         obj.image.save(f"{fp}{extension}")
-    return [obj.path_id]
+    return [(obj.assets_file, obj.path_id)]
 
 
 def exportGameObject(obj: GameObject, fp: str, extension: str = "") -> List[int]:
-    exported = [obj.path_id]
+    exported = [(obj.assets_file, obj.path_id)]
     refs = crawl_obj(obj)
     if refs:
         os.makedirs(fp, exist_ok=True)
@@ -271,7 +275,7 @@ def exportGameObject(obj: GameObject, fp: str, extension: str = "") -> List[int]
         # Don't export already exported objects a second time
         # and prevent circular calls by excluding other GameObjects.
         # The other GameObjects were already exported in the this call.
-        if ref_id in exported or ref_id.type == ClassIDType.GameObject:
+        if (ref.assets_file, ref_id) in exported or ref.type == ClassIDType.GameObject:
             continue
         try:
             exported.extend(export_obj(ref, fp, True, True))
