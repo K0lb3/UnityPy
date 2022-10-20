@@ -79,6 +79,19 @@ def test_read_typetree():
         obj.read_typetree()
 
 
+def test_save():
+    env = UnityPy.load(SAMPLES)
+    # TODO - check against original
+    # this only makes sure
+    # that the save function still produces a readable file
+    for name, file in env.files.items():
+        if isinstance(file, UnityPy.streams.EndianBinaryReader):
+            continue
+        save1 = file.save()
+        save2 = UnityPy.load(save1).file.save()
+        assert save1 == save2
+
+
 if __name__ == "__main__":
     for x in list(locals()):
         if str(x)[:4] == "test":
