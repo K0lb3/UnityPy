@@ -134,11 +134,11 @@ class SerializedType:
                 if is_ref_type:
                     self.m_ClassName = reader.read_string_to_null()
                     self.m_NameSpace = reader.read_string_to_null()
-                    self.m_AsmName = reader.read_string_to_null()
+                    self.m_AssemblyName = reader.read_string_to_null()
                 else:
                     self.type_dependencies = reader.read_int_array()
 
-    def write(self, serialized_file, writer):
+    def write(self, serialized_file, writer, is_ref_type):
         version = serialized_file.header.version
         writer.write_int(self.class_id)
 
@@ -149,8 +149,10 @@ class SerializedType:
             writer.write_short(self.script_type_index)
 
         if version >= 13:
-            if (version < 16 and self.class_id < 0) or (
-                version >= 16 and self.class_id == 114
+            if (
+                (is_ref_type and self.script_type_index >= 0)
+                or (version < 16 and self.class_id < 0)
+                or (version >= 16 and self.class_id == 114)
             ):
                 writer.write_bytes(self.script_id)  # Hash128
             writer.write_bytes(self.old_type_hash)  # Hash128
@@ -160,6 +162,14 @@ class SerializedType:
                 serialized_file.save_type_tree5(self.nodes, writer, self.string_data)
             else:
                 serialized_file.save_type_tree(self.nodes, writer)
+
+            if version >= 21:
+                if is_ref_type:
+                    writer.write_string_to_null(self.m_ClassName)
+                    writer.write_string_to_null(self.m_NameSpace)
+                    writer.write_string_to_null(self.m_AssemblyName)
+                else:
+                    writer.write_int_array(self.type_dependencies)
 
 
 class SerializedFile(File.File):
@@ -243,8 +253,6 @@ class SerializedFile(File.File):
         # ReadTypes
         type_count = reader.read_int()
         self.types = [SerializedType(reader, self, False) for _ in range(type_count)]
-        if config.SERIALIZED_FILE_PARSE_TYPETREE is False:
-            self._enable_type_tree = False
 
         self.big_id_enabled = 0
         if 7 <= header.version < 14:
@@ -276,6 +284,9 @@ class SerializedFile(File.File):
             self.ref_types = [
                 SerializedType(reader, self, True) for _ in range(ref_type_count)
             ]
+
+        if config.SERIALIZED_FILE_PARSE_TYPETREE is False:
+            self._enable_type_tree = False
 
         if header.version >= 5:
             self.userInformation = reader.read_string_to_null()
@@ -439,7 +450,7 @@ class SerializedFile(File.File):
         # ReadTypes
         meta_writer.write_int(len(self.types))
         for typ in self.types:
-            typ.write(self, meta_writer)
+            typ.write(self, meta_writer, False)
 
         if 7 <= header.version < 14:
             meta_writer.write_int(self.big_id_enabled)
@@ -464,7 +475,7 @@ class SerializedFile(File.File):
         if header.version >= 20:
             meta_writer.write_int(len(self.ref_types))
             for ref_type in self.ref_types:
-                ref_type.write(self, meta_writer)
+                ref_type.write(self, meta_writer, True)
 
         if header.version >= 5:
             meta_writer.write_string_to_null(self.userInformation)
