@@ -11,7 +11,7 @@ class TypeTreeNode(object):
     __slots__ = (
         "m_Version",
         "m_Level",
-        "m_IsArray",
+        "m_TypeFlags",
         "m_ByteSize",
         "m_Index",
         "m_MetaFlag",
@@ -32,7 +32,7 @@ class TypeTreeNode(object):
     m_TypeStrOffset: int
     m_NameStrOffset: int
     m_RefTypeHash: str
-    m_IsArray: int
+    m_TypeFlags: int
     m_VariableCount: int
 
     def __init__(self, data: Union[dict, Iterable[Tuple]] = None, **kwargs):

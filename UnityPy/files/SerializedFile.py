@@ -326,12 +326,12 @@ class SerializedFile(File.File):
                 level_stack[-1][1] -= 1
 
             type_tree_node = TypeTreeNode(
-                m_Level = level,
-                m_Type = self.reader.read_string_to_null(),
-                m_Name = self.reader.read_string_to_null(),
-                m_ByteSize = self.reader.read_int()
+                m_Level=level,
+                m_Type=self.reader.read_string_to_null(),
+                m_Name=self.reader.read_string_to_null(),
+                m_ByteSize=self.reader.read_int(),
             )
-            
+
             type_tree.append(type_tree_node)
             if self.header.version == 2:
                 type_tree_node.m_VariableCount = self.reader.read_int()
@@ -339,7 +339,7 @@ class SerializedFile(File.File):
             if self.header.version != 3:
                 type_tree_node.m_Index = self.reader.read_int()
 
-            type_tree_node.m_IsArray = bool(self.reader.read_int())
+            type_tree_node.m_TypeFlags = self.reader.read_int()
             type_tree_node.m_Version = self.reader.read_int()
             if self.header.version != 3:
                 type_tree_node.m_MetaFlag = self.reader.read_int()
@@ -354,11 +354,11 @@ class SerializedFile(File.File):
         number_of_nodes = self.reader.read_int()
         string_buffer_size = self.reader.read_int()
 
-        type = f"{reader.endian}hb?IIiii"
+        type = f"{reader.endian}hBBIIiii"
         keys = [
             "m_Version",
             "m_Level",
-            "m_IsArray",
+            "m_TypeFlags",
             "m_TypeStrOffset",
             "m_NameStrOffset",
             "m_ByteSize",
@@ -560,7 +560,7 @@ class SerializedFile(File.File):
             if self.header.version != 3:
                 writer.write_int(node.m_Index)
 
-            writer.write_int(node.m_IsArray)
+            writer.write_int(node.m_TypeFlags)
             writer.write_int(node.m_Version)
             if self.header.version != 3:
                 writer.write_int(node.m_MetaFlag)
@@ -598,7 +598,7 @@ class SerializedFile(File.File):
             # level
             writer.write_byte(node.m_Level)
             # is array
-            writer.write_boolean(node.m_IsArray)
+            writer.write_u_byte(node.m_TypeFlags)
             # type str offfset
             writer.write_u_int(strings_values[i][0])
             # name str offset

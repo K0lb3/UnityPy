@@ -7,7 +7,7 @@ typedef struct TypeTreeNodeObject{
     PyObject_HEAD
     short m_Version;
     unsigned char m_Level;
-    char m_IsArray;
+    int m_TypeFlags;
     int m_ByteSize;
     int m_Index;
     int m_MetaFlag;
