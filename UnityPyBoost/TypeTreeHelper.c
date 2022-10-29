@@ -449,6 +449,12 @@ static PyObject *TypeTreeHelper_ReadValue(PyObject *nodes, Reader *reader, int *
         }
         else
         {
+            if (*index+1 >= PyList_Size(nodes))
+            {
+                // end of nodes reached,
+                // so an empty class is returned
+                return PyDict_New();
+            }
             TypeTreeNodeObject *node2 = (TypeTreeNodeObject *)PyList_GetItem(nodes, *index + 1);
             if (strcmp(node2->m_Type, "Array") == 0)
             {
