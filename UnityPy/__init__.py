@@ -1,4 +1,4 @@
-__version__ = "1.9.19"
+__version__ = "1.9.20"
 
 from .environment import Environment
 
