@@ -227,7 +227,7 @@ __Export__
 ```python
 for obj in env.objects:
     if obj.type.name == "Sprite":
-        data = image.read()
+        data = obj.read()
         data.image.save(path)
 ```
 
@@ -246,7 +246,7 @@ __Export__
 for obj in env.objects:
     if obj.type.name == "TextAsset":
         # export asset
-        data = image.read()
+        data = obj.read()
         with open(path, "wb") as f:
             f.write(bytes(data.script))
         # edit asset
