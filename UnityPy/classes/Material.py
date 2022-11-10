@@ -8,7 +8,20 @@ class Material(NamedObject):
         version = self.version
         self.m_Shader = PPtr(reader)  # Shader
 
-        if version >= (5,):  # 5.0 and up
+        if version >= (2021,3): # 2021.3 and up
+            validKeywordSize = reader.read_int()
+            self.m_ValidKeywords = {}
+            for i in range(validKeywordSize):
+                self.m_ValidKeywords[i] = reader.read_aligned_string()
+
+            invalidKeywordSize = reader.read_int()
+            self.m_InvalidKeywords = {}
+            for i in range(invalidKeywordSize):
+                self.m_InvalidKeywords[i] = reader.read_aligned_string()
+
+            self.m_LightmapFlags = reader.read_u_int()
+            
+        elif version >= (5,):  # 5.0 and up
             self.m_ShaderKeywords = reader.read_aligned_string()
             self.m_LightmapFlags = reader.read_u_int()
 
@@ -51,6 +64,13 @@ class UnityPropertySheet:
         for i in range(m_TexEnvsSize):
             key = reader.read_aligned_string()
             self.m_TexEnvs[key] = UnityTexEnv(reader)
+
+        if reader.version >= (2021,): # 2021.1 and up
+            m_IntsSize = reader.read_int()
+            self.m_Ints = {}
+            for i in range(m_IntsSize):
+                key = reader.read_aligned_string()
+                self.m_Ints[key] = reader.read_int()
 
         m_FloatsSize = reader.read_int()
         self.m_Floats = {}
