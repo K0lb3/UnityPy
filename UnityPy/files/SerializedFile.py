@@ -578,7 +578,7 @@ class SerializedFile(File.File):
 
             # calc children count
             children_count = 0
-            for node2 in nodes[i + 1 :]:
+            for node2 in nodes[i + 1:]:
                 if node2.m_Level == node.m_Level:
                     break
                 if node2.m_Level == node.m_Level - 1:

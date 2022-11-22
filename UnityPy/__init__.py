@@ -1,6 +1,7 @@
 __version__ = "1.9.20"
 
 from .environment import Environment
+from .helpers.ArchiveStorageManager import set_assetbundle_decrypt_key
 
 
 def load(*args):
