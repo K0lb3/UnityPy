@@ -9,8 +9,8 @@ class Material(NamedObject):
         self.m_Shader = PPtr(reader)  # Shader
 
         if version >= (2021,3): # 2021.3 and up
-            self.m_ValidKeywords = .read_string_array()
-            self.m_InvalidKeywords = .read_string_array()
+            self.m_ValidKeywords = reader.read_string_array()
+            self.m_InvalidKeywords = reader.read_string_array()
         elif version >= (5,):  # 5.0 and up
             self.m_ShaderKeywords = reader.read_aligned_string()
             self.m_LightmapFlags = reader.read_u_int()
