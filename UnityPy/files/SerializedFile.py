@@ -10,9 +10,6 @@ from struct import Struct
 
 from .. import config
 
-# only print the version warning once
-VERSION_WARNED = False
-
 
 class SerializedFileHeader:
     metadata_size: int
@@ -309,18 +306,12 @@ class SerializedFile(File.File):
 
     def set_version(self, string_version):
         self.unity_version = string_version
-        if string_version == "0.0.0":
+        if not string_version or string_version == "0.0.0":
             # weird case, but apparently can happen?
             # check "cant read Texture2D by 2020.3.13 f1 AssetBundle #77" for details
             string_version = self.parent.version_engine
-            if string_version == "0.0.0":
-                global VERSION_WARNED
-                if not VERSION_WARNED:
-                    print(
-                        f"Warning: 0.0.0 version found, defaulting to UnityPy.config.FALLBACK_UNITY_VERSION\n{config.FALLBACK_UNITY_VERSION}"
-                    )
-                    VERSION_WARNED = True
-                string_version = config.FALLBACK_UNITY_VERSION
+            if not string_version or string_version == "0.0.0":
+                string_version = config.get_fallback_version()
         build_type = re.findall(r"([^\d.])", string_version)
         self.build_type = BuildType(build_type[0] if build_type else "")
         version_split = re.split(r"\D", string_version)
@@ -578,7 +569,7 @@ class SerializedFile(File.File):
 
             # calc children count
             children_count = 0
-            for node2 in nodes[i + 1:]:
+            for node2 in nodes[i + 1 :]:
                 if node2.m_Level == node.m_Level:
                     break
                 if node2.m_Level == node.m_Level - 1:
