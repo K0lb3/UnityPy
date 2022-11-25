@@ -24,11 +24,13 @@ def image_to_texture2d(img: Image.Image, target_texture_format: TF, flip: bool =
         tex_format = TF.DXT5
     # ETC
     elif target_texture_format in [TF.ETC_RGB4, TF.ETC_RGB4Crunched, TF.ETC_RGB4_3DS]:
+        img = assert_rgba(img, target_texture_format)
         r, g, b, a = img.split()
         raw_img = Image.merge("RGBA", (b, g, r, a)).tobytes()
         enc_img = etcpak.compress_to_etc1(raw_img, img.width, img.height)
         tex_format = TF.ETC_RGB4
     elif target_texture_format == TF.ETC2_RGB:
+        img = assert_rgba(img, target_texture_format)
         r, g, b, a = img.split()
         raw_img = Image.merge("RGBA", (b, g, r, a)).tobytes()
         enc_img = etcpak.compress_to_etc2_rgb(raw_img, img.width, img.height)
@@ -37,6 +39,7 @@ def image_to_texture2d(img: Image.Image, target_texture_format: TF, flip: bool =
         target_texture_format in [TF.ETC2_RGBA8, TF.ETC2_RGBA8Crunched, TF.ETC2_RGBA1]
         or "_RGB_" in target_texture_format.name
     ):
+        img = assert_rgba(img, target_texture_format)
         r, g, b, a = img.split()
         raw_img = Image.merge("RGBA", (b, g, r, a)).tobytes()
         enc_img = etcpak.compress_to_etc2_rgba(raw_img, img.width, img.height)
@@ -74,6 +77,15 @@ def image_to_texture2d(img: Image.Image, target_texture_format: TF, flip: bool =
         tex_format = TF.RGBA32
 
     return enc_img, tex_format
+
+
+def assert_rgba(img: Image.Image, target_texture_format: TextureFormat):
+    if img.mode == "RGB":
+        img = img.convert("RGBA")
+    assert (
+        img.mode == "RGBA"
+    ), f"{target_texture_format} compression only supports RGB & RGBA images"  # noqa: E501
+    return img
 
 
 def get_image_from_texture2d(texture_2d, flip=True) -> Image.Image:
