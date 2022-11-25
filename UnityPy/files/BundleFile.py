@@ -10,7 +10,6 @@ from ..streams import EndianBinaryReader, EndianBinaryWriter
 
 from .. import config
 
-
 BlockInfo = namedtuple("BlockInfo", "uncompressedSize compressedSize flags")
 DirectoryInfoFS = namedtuple("DirectoryInfoFS", "offset size flags path")
 reVersion = re.compile(r"(\d+)\.(\d+)\.(\d+)\w.+")
@@ -92,7 +91,7 @@ class BundleFile(File.File):
         uncompressedSize = reader.read_u_int()
         self.dataflags = reader.read_u_int()
 
-        version = tuple(map(int, reVersion.match(self.version_engine).groups()))
+        version = self.get_version_tuple()
         # https://issuetracker.unity3d.com/issues/files-within-assetbundles-do-not-start-on-aligned-boundaries-breaking-patching-on-nintendo-switch
         # Unity CN introduced encryption before the alignment fix was introduced.
         # Unity CN used the same flag for the encryption as later on the alignment fix,
@@ -414,3 +413,10 @@ class BundleFile(File.File):
             raise NotImplementedError("LZHAM decompression not implemented")
         else:
             return compressed_data
+
+    def get_version_tuple(self) -> Tuple[int, int, int]:
+        """Returns the version as a tuple."""
+        version = self.version_engine
+        if not version or version == "0.0.0":
+            version = config.get_fallback_version()
+        return tuple(map(int, reVersion.match(version).groups()))
