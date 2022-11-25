@@ -55,8 +55,8 @@ jobs:
 
             - name: Install dependencies
               run: |
-                  python -m pip install --upgrade pip wheel setuptools hatch
-                  pip install --upgrade twine
+                  python -m pip install --upgrade pip wheel setuptools
+                  python -m pip install --upgrade twine build
 
             - name: Set up QEMU
               if: runner.os == 'Linux'
@@ -81,5 +81,5 @@ jobs:
                   TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
               run: |
                   twine upload ./wheelhouse/*.whl --skip-existing
-                  hatch build -t sdist
+                  python -m build --sdist
                   twine upload ./dist/*.tar.gz --skip-existing
