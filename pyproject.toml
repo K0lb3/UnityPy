@@ -1,6 +1,6 @@
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "UnityPy"
@@ -53,23 +53,5 @@ dynamic = ["version"]
 "Homepage" = "https://github.com/K0lb3/UnityPy"
 "Bug Tracker" = "https://github.com/K0lb3/UnityPy/issues"
 
-[tool.hatch.version]
-# path to the file containing the version number
-path = "UnityPy/__init__.py"
-
-[tool.hatch.build.targets.sdist]
-# include all files required to build the package
-only-include = ["UnityPy", "UnityPyBoost", "tests", "build_hook.py"]
-# exclude prebuild files
-exclude = ["UnityPy/UnityPyBoost*"]
-
-[tool.hatch.build.targets.wheel]
-# UnityPyBoost will be compiled by the hook and added to UnityPy
-# therefore UnityPyBoost and hook_build aren't needed
-only-include = ["UnityPy", "tests"]
-# exclude all prebuild files and all FMOD libs
-# the fmod lib for the target platform is force included via the hook
-exclude = ["UnityPy/lib/FMOD", "UnityPy/UnityPyBoost*"]
-
-[tool.hatch.build.targets.wheel.hooks.custom]
-path = "build_hook.py"
+[tool.setuptools.dynamic]
+version = { attr = "UnityPy.__version__" }
