@@ -702,7 +702,7 @@ TypeTreeNode_setType(TypeTreeNodeObject *self, PyObject *value, void *closure)
     if (!PyUnicode_Check(value))
     {
         PyErr_SetString(PyExc_TypeError, "The type attribute value must be a string");
-        return NULL;
+        return -1;
     }
     PyMem_Free(self->m_Type);
     char *type = PyUnicode_AsUTF8(value);
@@ -724,7 +724,7 @@ TypeTreeNode_setName(TypeTreeNodeObject *self, PyObject *value, void *closure)
     if (!PyUnicode_Check(value))
     {
         PyErr_SetString(PyExc_TypeError, "The name attribute value must be a string");
-        return NULL;
+        return -1;
     }
     PyMem_Free(self->m_Name);
     char *name = PyUnicode_AsUTF8(value);
