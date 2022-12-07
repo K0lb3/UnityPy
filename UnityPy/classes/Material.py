@@ -8,12 +8,11 @@ class Material(NamedObject):
         version = self.version
         self.m_Shader = PPtr(reader)  # Shader
 
-        if version >= (2021,3): # 2021.3 and up
+        if version >= (2021, 3):  # 2021.3 and up
             self.m_ValidKeywords = reader.read_string_array()
             self.m_InvalidKeywords = reader.read_string_array()
         elif version >= (5,):  # 5.0 and up
             self.m_ShaderKeywords = reader.read_aligned_string()
-            self.m_LightmapFlags = reader.read_u_int()
         elif version >= (4, 1):  # 4.x
             self.m_ShaderKeywords = reader.read_string_array()
 
@@ -54,7 +53,7 @@ class UnityPropertySheet:
             for _ in range(reader.read_int())
         }
 
-        if reader.version >= (2021,): # 2021.1 and up
+        if reader.version >= (2021,):  # 2021.1 and up
             self.m_Ints = {
                 reader.read_aligned_string(): reader.read_int()
                 for _ in range(reader.read_int())
