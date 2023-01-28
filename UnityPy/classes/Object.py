@@ -5,7 +5,6 @@ from ..streams import EndianBinaryWriter
 from ..files import ObjectReader
 import types
 from ..exceptions import TypeTreeError as TypeTreeError
-from .. import classes
 
 
 class Object(object):
@@ -26,11 +25,7 @@ class Object(object):
         if self.platform == BuildTarget.NoTarget:
             self._object_hide_flags = reader.read_u_int()
 
-        self.container = (
-            self.assets_file._container[self.path_id]
-            if self.path_id in self.assets_file._container
-            else None
-        )
+        self.container = self.assets_file.container.path_dict.get(self.path_id)
 
         self.reader.reset()
         if type(self) == Object:
@@ -145,6 +140,8 @@ class NodeHelper:
             return super(NodeHelper, cls).__new__(cls)
         elif isinstance(data, list):
             return [NodeHelper(x, assets_file) for x in data]
+        elif isinstance(data, tuple):
+            return tuple(NodeHelper(x, assets_file) for x in data)
         return data
 
     def __getitem__(self, item):
