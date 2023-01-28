@@ -41,10 +41,10 @@ class Object(object):
     def dump_typetree_structure(self) -> str:
         return self.reader.dump_typetree_structure()
 
-    def read_typetree(self, nodes: list = None) -> dict:
+    def read_typetree(self, nodes: list = None, wrap: bool = False) -> dict:
         tree = self.reader.read_typetree(nodes)
         self.type_tree = NodeHelper(tree, self.assets_file)
-        return tree
+        return self.type_tree if wrap else tree
 
     def save_typetree(self, nodes: list = None, writer: EndianBinaryWriter = None):
         def class_to_dict(value):

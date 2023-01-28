@@ -156,7 +156,7 @@ class ObjectReader:
     def reset(self):
         self.reader.Position = self.byte_start
 
-    def read(self, return_typetree_on_error: bool=True):
+    def read(self, return_typetree_on_error: bool = True):
         cls = getattr(classes, self.type.name, None)
 
         obj = None
@@ -171,9 +171,7 @@ class ObjectReader:
                 else:
                     raise e
         if not obj:
-            typetree = self.read_typetree()
-            if typetree:
-                obj = NodeHelper(typetree, self.assets_file)
+            obj = self.read_typetree(wrap=True)
         self._read_until = self.reader.Position
         return obj
 
@@ -206,7 +204,7 @@ class ObjectReader:
     def get_typetree_nodes(self, nodes: list = None) -> list:
         if nodes:
             return nodes
-        
+
         if self.serialized_type:
             nodes = self.serialized_type.nodes
         if not nodes:
@@ -215,10 +213,11 @@ class ObjectReader:
             raise TypeTreeError("There are no TypeTree nodes for this object.")
         return nodes
 
-    def read_typetree(self, nodes: list = None) -> dict:
+    def read_typetree(self, nodes: list = None, wrap: bool = False) -> dict:
         self.reset()
         nodes = self.get_typetree_nodes(nodes)
-        return TypeTreeHelper.read_typetree(nodes, self)
+        res = TypeTreeHelper.read_typetree(nodes, self)
+        return NodeHelper(res, self.assets_file) if wrap else res
 
     def save_typetree(
         self, tree: dict, nodes: list = None, writer: EndianBinaryWriter = None
