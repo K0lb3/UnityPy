@@ -114,7 +114,7 @@ def export_material(mat: Material) -> str:
         if not texEnv.m_Texture:
             continue
         tex = texEnv.m_Texture.read()
-        texName = f"{tex.name if tex.name else key}.png"
+        texName = f"{tex.m_Name if tex.m_Name else key}.png"
         if key == "_MainTex":
             sb.append(f"map_Kd {texName}")
         elif key == "_BumpMap":
