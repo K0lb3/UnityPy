@@ -24,8 +24,10 @@ class BundleFile(File.File):
     dataflags: Tuple[ArchiveFlags, ArchiveFlagsOld]
     decryptor: ArchiveStorageManager.ArchiveStorageDecryptor = None
 
-    def __init__(self, reader: EndianBinaryReader, parent: File, name: str = None):
-        super().__init__(parent=parent, name=name)
+    def __init__(
+        self, reader: EndianBinaryReader, parent: File, name: str = None, **kwargs
+    ):
+        super().__init__(parent=parent, name=name, **kwargs)
         signature = self.signature = reader.read_string_to_null()
         self.version = reader.read_u_int()
         self.version_player = reader.read_string_to_null()
