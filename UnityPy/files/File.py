@@ -72,11 +72,11 @@ class File(object):
         for node in files:
             reader.Position = node.offset
             name = node.path
-            reader = EndianBinaryReader(
+            node_reader = EndianBinaryReader(
                 reader.read(node.size), offset=(reader.BaseOffset + node.offset)
             )
             f = ImportHelper.parse_file(
-                reader, self.parent, name, is_dependency=self.is_dependency
+                node_reader, self.parent, name, is_dependency=self.is_dependency
             )
 
             if isinstance(f, (EndianBinaryReader, SerializedFile.SerializedFile)):
