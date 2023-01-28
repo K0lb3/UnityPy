@@ -47,6 +47,13 @@ class Texture2D(Texture):
 
     @property
     def image_data(self):
+        if not self._image_data and self.m_StreamData is not None:
+            self._image_data = get_resource_data(
+                self.m_StreamData.path,
+                self.assets_file,
+                self.m_StreamData.offset,
+                self.m_StreamData.size,
+            )
         return self._image_data
 
     def reset_streamdata(self):
@@ -166,13 +173,8 @@ class Texture2D(Texture):
         if version >= (5, 3):  # 5.3 and up
             # always read the StreamingInfo for resaving
             self.m_StreamData = StreamingInfo(reader, version)
-            if image_data_size == 0 and self.m_StreamData.path:
-                self._image_data = get_resource_data(
-                    self.m_StreamData.path,
-                    self.assets_file,
-                    self.m_StreamData.offset,
-                    self.m_StreamData.size,
-                )
+            # don't read the data directly,
+            # as we don't want the parser break if the file is missing
 
     def save(self, writer: EndianBinaryWriter = None):
         if writer is None:
