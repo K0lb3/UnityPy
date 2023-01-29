@@ -37,7 +37,8 @@ if UnityPy.__version__ != '1.9.6':
 2. [Example](#example)
 3. [Important Classes](#important-classes)
 4. [Important Object Types](#important-object-types)
-5. [Credits](#credits)
+5. [Custom Fileystem](#custom-filesystem)
+6. [Credits](#credits)
 
 ## Installation
 
@@ -363,6 +364,22 @@ if mesh_renderer.m_GameObject:
     export_dir = os.path.join(export_dir, game_object.name)
 mesh_renderer.export(export_dir)
 ```
+
+## Custom-Filesystem
+
+UnityPy uses [fsspec](https://github.com/fsspec/filesystem_spec) under the hood to manage all filesystem interactions.
+This allows using various different types of filesystems without having to change UnityPy's code.
+It also means that you can use your own custom filesystem to e.g. handle indirection via catalog files, load assets on demand from a server, or decrypt files.
+
+Following methods of the filesystem have to be implemented for using it in UnityPy.
+
+-   sep (not a function, just the seperator as character)
+-   isfile(self, path)
+-   isdir(self, path)
+-   walk(self, path, \*\*kwargs)
+-   exists(self, path, \*\*kwargs)
+-   open(self, path, mode, \*\*kwargs) ("rb" mode required, "wt" required for ModelExporter)
+-   makedirs(self, path, exist_ok=False)
 
 ## Credits
 

@@ -1,4 +1,4 @@
-﻿import os
+﻿from ntpath import basename
 import re
 
 from . import File, ObjectReader
@@ -57,7 +57,7 @@ class FileIdentifier:  # external
 
     @property
     def name(self):
-        return os.path.basename(self.path)
+        return basename(self.path)
 
     def __repr__(self):
         return f"<{self.__class__.__name__}({self.path})>"

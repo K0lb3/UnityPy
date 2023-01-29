@@ -1,15 +1,18 @@
-from typing import List, Callable, Dict, Union
 import io
 import os
 import ntpath
-from zipfile import ZipFile
 import re
-from . import files
-from .files import File, ObjectReader
+from typing import List, Callable, Dict, Union
+from zipfile import ZipFile
+
+from fsspec import AbstractFileSystem
+from fsspec.implementations.local import LocalFileSystem
+
+
+from .files import File, ObjectReader, SerializedFile
 from .enums import FileType
 from .helpers import ImportHelper
 from .streams import EndianBinaryReader
-from .files import SerializedFile
 
 reSplit = re.compile(r"(.*?([^\/\\]+?))\.split\d+")
 
@@ -21,27 +24,27 @@ class Environment:
     local_files: List[str]
     local_files_simple: List[str]
 
-    def __init__(self, *args):
+    def __init__(self, *args, fs: AbstractFileSystem = None):
         self.files = {}
         self.cabs = {}
         self.path = None
-        self.out_path = os.path.join(os.getcwd(), "output")
+        self.fs = fs or LocalFileSystem()
         self.local_files = []
         self.local_files_simple = []
 
         if args:
             for arg in args:
                 if isinstance(arg, str):
-                    if os.path.isfile(arg):
-                        if os.path.splitext(arg)[-1] in [".apk", ".zip"]:
+                    if self.fs.isfile(arg):
+                        if ntpath.splitext(arg)[-1] in [".apk", ".zip"]:
                             self.load_zip_file(arg)
                         else:
-                            self.path = os.path.dirname(arg)
+                            self.path = ntpath.dirname(arg)
                             if reSplit.match(arg):
                                 self.load_files([arg])
                             else:
                                 self.load_file(arg)
-                    elif os.path.isdir(arg):
+                    elif self.fs.isdir(arg):
                         self.path = arg
                         self.load_folder(arg)
                 else:
@@ -62,8 +65,8 @@ class Environment:
         """Loads all files in the given path and its subdirs into the Environment."""
         self.load_files(
             [
-                os.path.join(root, f)
-                for root, dirs, files in os.walk(path)
+                self.fs.sep.join([root, f])
+                for root, dirs, files in self.fs.walk(path)
                 for f in files
             ]
         )
@@ -72,9 +75,9 @@ class Environment:
         """Loads all files into the Environment."""
         self.files.update(
             {
-                os.path.basename(f): self.load_file(open(f, "rb"), self, f)
+                ntpath.basename(f): self.load_file(self.fs.open(f, "rb"), self, f)
                 for f in files
-                if os.path.exists(f)
+                if self.fs.exists(f)
             }
         )
 
@@ -87,6 +90,7 @@ class Environment:
     ):
         if not parent:
             parent = self
+
         if isinstance(file, str):
             split_match = reSplit.match(file)
             if split_match:
@@ -94,8 +98,8 @@ class Environment:
                 file = []
                 for i in range(0, 999):
                     item = f"{basepath}.split{i}"
-                    if item in files:
-                        with open(item, "rb") as f:
+                    if self.fs.exists(item):
+                        with self.fs.open(item, "rb") as f:
                             file.append(f.read())
                     elif i:
                         break
@@ -103,7 +107,7 @@ class Environment:
                 file = b"".join(file)
             else:
                 name = file
-                file = open(file, "rb")
+                file = self.fs.open(file, "rb")
 
         typ, reader = ImportHelper.check_file_type(file)
 
@@ -132,7 +136,7 @@ class Environment:
 
     def load_zip_file(self, value):
         buffer = None
-        if isinstance(value, str) and os.path.exists(value):
+        if isinstance(value, str) and self.fs.exists(value):
             buffer = open(value, "rb")
         elif isinstance(value, (bytes, bytearray)):
             buffer = io.BytesIO(value)
@@ -143,7 +147,7 @@ class Environment:
         self.load_assets(z.namelist(), lambda x: z.open(x, "r"))
         z.close()
 
-    def save(self, pack="none"):
+    def save(self, pack="none", out_path="output"):
         """Saves all changed assets.
         Mark assets as changed using `.mark_changed()`.
         pack = "none" (default) or "lz4"
@@ -151,7 +155,7 @@ class Environment:
         for f in self.files:
             if self.files[f].is_changed:
                 with open(
-                    os.path.join(self.out_path, os.path.basename(f)), "wb"
+                    self.fs.sep.join([out_path, ntpath.basename(f)]), "wb"
                 ) as out:
                     out.write(self.files[f].save(packer=pack))
 
@@ -295,9 +299,9 @@ class Environment:
             return cab
 
         if len(self.local_files) == 0 and self.path:
-            for root, _, files in os.walk(self.path):
+            for root, _, files in self.fs.walk(self.path):
                 for name in files:
-                    self.local_files.append(os.path.join(root, name))
+                    self.local_files.append(self.fs.sep.join([root, name]))
 
         if name in self.local_files:
             fp = name

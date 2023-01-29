@@ -46,6 +46,8 @@ dependencies = [
     "tabulate",
     # audio extraction
     "pyfmodex",
+    # filesystem handling
+    "fsspec",
 ]
 dynamic = ["version"]
 
