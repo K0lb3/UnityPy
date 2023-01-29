@@ -1,9 +1,8 @@
-import io
 import sys
 from struct import Struct, unpack
 import re
 from typing import List, Union
-from io import BytesIO, BufferedIOBase
+from io import BytesIO, BufferedIOBase, IOBase, BufferedReader
 
 reNot0 = re.compile(b"(.*?)\x00")
 
@@ -50,14 +49,29 @@ class EndianBinaryReader:
     ):
         if isinstance(item, (bytes, bytearray, memoryview)):
             obj = super(EndianBinaryReader, cls).__new__(EndianBinaryReader_Memoryview)
-        elif isinstance(item, BufferedIOBase):
+        elif isinstance(item, (IOBase, BufferedIOBase)):
             obj = super(EndianBinaryReader, cls).__new__(EndianBinaryReader_Streamable)
         elif isinstance(item, str):
             item = open(item, "rb")
             obj = super(EndianBinaryReader, cls).__new__(EndianBinaryReader_Streamable)
         elif isinstance(item, EndianBinaryReader):
-            item = item.stream if isinstance(item, EndianBinaryReader_Streamable) else item.view
+            item = (
+                item.stream
+                if isinstance(item, EndianBinaryReader_Streamable)
+                else item.view
+            )
             return EndianBinaryReader(item, endian, offset)
+        elif hasattr(item, "read"):
+            if hasattr(item, "seek") and hasattr(item, "tell"):
+                obj = super(EndianBinaryReader, cls).__new__(
+                    EndianBinaryReader_Streamable
+                )
+            else:
+                item = item.read()
+                obj = super(EndianBinaryReader, cls).__new__(
+                    EndianBinaryReader_Memoryview
+                )
+
         obj.__init__(item, endian)
         return obj
 
@@ -287,7 +301,9 @@ class EndianBinaryReader_Memoryview(EndianBinaryReader):
             if self.Position + max_length >= self.Length:
                 raise Exception("String not terminated")
             else:
-                return bytes(self.read_bytes(max_length)).decode("utf8", "surrogateescape")
+                return bytes(self.read_bytes(max_length)).decode(
+                    "utf8", "surrogateescape"
+                )
         ret = match[1].decode("utf8", "surrogateescape")
         self.Position = match.end()
         return ret
@@ -419,7 +435,7 @@ class EndianBinaryReader_Memoryview_BigEndian(EndianBinaryReader_Memoryview):
 
 class EndianBinaryReader_Streamable(EndianBinaryReader):
     __slots__ = ("stream", "_endian", "BaseOffset")
-    stream: io.BufferedReader
+    stream: BufferedReader
 
     def __init__(self, stream, endian=">", offset=0):
         self._endian = ""
