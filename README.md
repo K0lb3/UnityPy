@@ -374,12 +374,12 @@ It also means that you can use your own custom filesystem to e.g. handle indirec
 Following methods of the filesystem have to be implemented for using it in UnityPy.
 
 -   sep (not a function, just the seperator as character)
--   isfile(self, path)
--   isdir(self, path)
--   walk(self, path, \*\*kwargs)
--   exists(self, path, \*\*kwargs)
--   open(self, path, mode, \*\*kwargs) ("rb" mode required, "wt" required for ModelExporter)
--   makedirs(self, path, exist_ok=False)
+-   isfile(self, path: str) -> bool
+-   isdir(self, path: str) -> bool
+-   exists(self, path: str, \*\*kwargs) -> bool
+-   walk(self, path: str, \*\*kwargs) -> Iterable[List[str], List[str], List[str]]
+-   open(self, path: str, mode: str = "rb", \*\*kwargs) -> file ("rb" mode required, "wt" required for ModelExporter)
+-   makedirs(self, path: str, exist_ok: bool = False) -> bool
 
 ## Credits
 
