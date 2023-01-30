@@ -411,7 +411,7 @@ class BundleFile(File.File):
         if comp_flag == CompressionFlags.LZMA:  # LZMA
             return CompressionHelper.decompress_lzma(compressed_data)
         elif comp_flag in [CompressionFlags.LZ4, CompressionFlags.LZ4HC]:  # LZ4, LZ4HC
-            if flags & 0x100:
+            if self.decryptor is not None and flags & 0x100:
                 compressed_data = self.decryptor.decrypt_block(compressed_data, index)
             return CompressionHelper.decompress_lz4(compressed_data, uncompressed_size)
         elif comp_flag == CompressionFlags.LZHAM:  # LZHAM
