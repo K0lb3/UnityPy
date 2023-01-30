@@ -1,7 +1,7 @@
 # TODO: implement encryption for saving files
 from collections import namedtuple
 import re
-from typing import Tuple
+from typing import Tuple, Union
 
 from . import File
 from ..enums import ArchiveFlags, ArchiveFlagsOld, CompressionFlags
@@ -106,6 +106,9 @@ class BundleFile(File.File):
         else:
             self.dataflags = ArchiveFlags(self.dataflags)
 
+        if self.dataflags & self.dataflags.UsesAssetBundleEncryption:
+            self.decryptor = ArchiveStorageManager.ArchiveStorageDecryptor(reader)
+
         if self.version >= 7:
             reader.align_stream(16)
 
@@ -117,8 +120,6 @@ class BundleFile(File.File):
             blocksInfoBytes = reader.read_bytes(compressedSize)
             reader.Position = start
         else:  # 0x40 kArchiveBlocksAndDirectoryInfoCombined
-            if self.dataflags & self.dataflags.UsesAssetBundleEncryption:
-                self.decryptor = ArchiveStorageManager.ArchiveStorageDecryptor(reader)
             blocksInfoBytes = reader.read_bytes(compressedSize)
 
         blocksInfoBytes = self.decompress_data(
@@ -385,7 +386,11 @@ class BundleFile(File.File):
         writer.Position = writer_end_pos
 
     def decompress_data(
-        self, compressed_data: bytes, uncompressed_size: int, flags: int, index: int = 0
+        self,
+        compressed_data: bytes,
+        uncompressed_size: int,
+        flags: Union[int, ArchiveFlags, ArchiveFlagsOld],
+        index: int = 0,
     ) -> bytes:
         """
         Parameters
@@ -401,7 +406,7 @@ class BundleFile(File.File):
         -------
         bytes
             The decompressed data."""
-        comp_flag = flags & ArchiveFlags.CompressionTypeMask
+        comp_flag = CompressionFlags(flags & ArchiveFlags.CompressionTypeMask)
 
         if comp_flag == CompressionFlags.LZMA:  # LZMA
             return CompressionHelper.decompress_lzma(compressed_data)

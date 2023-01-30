@@ -20,7 +20,8 @@ def set_assetbundle_decrypt_key(key: Union[bytes, str]):
 
 def read_vector(reader: EndianBinaryReader) -> Tuple[bytes, bytes]:
     data = reader.read_bytes(0x10)
-    key = reader.read_string_to_null().encode("utf-8", "surrogateescape")
+    key = reader.read_bytes(0x10)
+    reader.Position += 1
 
     return data, key
 
