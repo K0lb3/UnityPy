@@ -11,7 +11,7 @@ def main():
     src = os.path.join(root, "522608825")
     e = UnityPy.load(src)
     # iterate over all localisation assets
-    for cont, obj in e.container.items():
+    for cont, obj in e.container:
         # read the asset data
         data = obj.read()
         # get the localisation data

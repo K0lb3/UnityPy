@@ -181,7 +181,7 @@ class SerializedFile(File.File):
     externals: list
     _container: dict
     objects: dict
-    container_: dict
+    container_: list
     _cache: dict
     header: SerializedFileHeader
 
@@ -210,7 +210,7 @@ class SerializedFile(File.File):
         self._container = {}
 
         self.objects = {}
-        self.container_ = {}
+        self.container_ = []
         # used to speed up mass asset extraction
         # some assets refer to each other, so by keeping the result
         # of specific assets cached the extraction can be speed up by a lot.
@@ -292,13 +292,13 @@ class SerializedFile(File.File):
         for obj in self.objects.values():
             if obj.type == ClassIDType.AssetBundle:
                 data = obj.read()
-                for container, asset_info in data.m_Container.items():
+                for container, asset_info in data.m_Container:
                     asset = asset_info.asset
-                    self.container_[container] = asset
+                    self.container_.append((container, asset))
                     if hasattr(asset, "path_id"):
                         self._container[asset.path_id] = container
         # if environment is not None:
-        #    environment.container = {**environment.container, **self.container}
+        #    environment.container = [*environment.container, *self.container]
 
     @property
     def container(self):

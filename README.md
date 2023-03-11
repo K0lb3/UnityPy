@@ -109,7 +109,7 @@ def unpack_all_assets(source_folder : str, destination_folder : str):
                     img.save(dest)
 
             # alternative way which keeps the original path
-            for path,obj in env.container.items():
+            for path,obj in env.container:
                 if obj.type.name in ["Texture2D", "Sprite"]:
                     data = obj.read()
                     # create dest based on original path

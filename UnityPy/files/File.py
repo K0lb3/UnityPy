@@ -128,12 +128,12 @@ class File(object):
 
     @property
     def container(self):
-        return {
-            path: obj
+        return [
+            (path, obj)
             for f in self.files.values()
             if isinstance(f, File)
-            for path, obj in f.container.items()
-        }
+            for path, obj in f.container
+        ]
 
     def get(self, key, default=None):
         return getattr(self, key, default)

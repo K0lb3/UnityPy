@@ -106,7 +106,7 @@ def extract_assets(
 
     if use_container:
         container = sorted(
-            env.container.items(), key=lambda x: defaulted_export_index(x[1].type)
+            env.container, key=lambda x: defaulted_export_index(x[1].type)
         )
         for obj_path, obj in container:
             # The filter here can only access metadata. The same filter may produce a different result later in extract_obj after obj.read()

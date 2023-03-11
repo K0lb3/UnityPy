@@ -1,4 +1,4 @@
-from typing import List, Callable, Dict, Union
+from typing import List, Tuple, Callable, Dict, Union
 import io
 import os
 from zipfile import ZipFile
@@ -179,14 +179,14 @@ class Environment:
         return search(self)
 
     @property
-    def container(self) -> Dict[str, ObjectReader]:
-        """Returns a dictionary of all objects in the Environment."""
-        return {
-            path: obj
+    def container(self) -> List[Tuple[str, ObjectReader]]:
+        """Returns a list of all objects in the Environment."""
+        return [
+            (path, obj)
             for f in self.files.values()
             if isinstance(f, File)
-            for path, obj in f.container.items()
-        }
+            for path, obj in f.container
+        ]
 
     @property
     def assets(self) -> list:
