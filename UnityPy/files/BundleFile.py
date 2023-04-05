@@ -23,6 +23,7 @@ class BundleFile(File.File):
     version_player: str
     dataflags: Tuple[ArchiveFlags, ArchiveFlagsOld]
     decryptor: ArchiveStorageManager.ArchiveStorageDecryptor = None
+    _uses_block_alignment: bool = True
 
     def __init__(self, reader: EndianBinaryReader, parent: File, name: str = None):
         super().__init__(parent=parent, name=name)
@@ -109,8 +110,14 @@ class BundleFile(File.File):
         if self.dataflags & self.dataflags.UsesAssetBundleEncryption:
             self.decryptor = ArchiveStorageManager.ArchiveStorageDecryptor(reader)
 
-        if self.version >= 7:
-            reader.align_stream(16)
+        # check if we need to align the reader
+        # - align to 16 bytes and check if all are 0
+        # - if not, reset the reader to the previous position
+        pre_align = reader.Position
+        align_data = reader.read((16 - pre_align % 16) % 16)
+        if any(align_data):
+            reader.Position = pre_align
+            self._uses_block_alignment = False
 
         start = reader.Position
         if (
@@ -360,7 +367,7 @@ class BundleFile(File.File):
         # compression and file layout flag
         writer.write_u_int(data_flag)
 
-        if self.version >= 7:
+        if self._uses_block_alignment:
             # UnityFS\x00 - 8
             # size 8
             # comp sizes 4+4
