@@ -116,7 +116,7 @@ class BundleFile(File.File):
         if self.version >= 7:
             reader.Position = pre_align
             self._uses_block_alignment = True
-        elif self.version_engine >= "2019.4":
+        elif version >= (2019, 4):
             pre_align = reader.Position
             align_data = reader.read((16 - pre_align % 16) % 16)
             if any(align_data):
