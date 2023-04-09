@@ -113,7 +113,10 @@ class BundleFile(File.File):
         # check if we need to align the reader
         # - align to 16 bytes and check if all are 0
         # - if not, reset the reader to the previous position
-        if self.version >= 7 or self.version_engine >= "2019.4":
+        if self.version >= 7:
+            reader.Position = pre_align
+            self._uses_block_alignment = True
+        elif self.version_engine >= "2019.4":
             pre_align = reader.Position
             align_data = reader.read((16 - pre_align % 16) % 16)
             if any(align_data):
