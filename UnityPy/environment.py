@@ -152,12 +152,12 @@ class Environment:
         Mark assets as changed using `.mark_changed()`.
         pack = "none" (default) or "lz4"
         """
-        for f in self.files:
-            if self.files[f].is_changed:
+        for fname, fitem in self.files.items():
+            if getattr(fitem, "is_changed", False):
                 with open(
-                    os.path.join(self.out_path, os.path.basename(f)), "wb"
+                    os.path.join(self.out_path, os.path.basename(fname)), "wb"
                 ) as out:
-                    out.write(self.files[f].save(packer=pack))
+                    out.write(fitem.save(packer=pack))
 
     @property
     def objects(self) -> List[ObjectReader]:
