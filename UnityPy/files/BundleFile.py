@@ -223,7 +223,7 @@ class BundleFile(File.File):
             elif packer == "original":
                 self.save_fs(
                     writer,
-                    data_flag=self._data_flags,
+                    data_flag=self.dataflags,
                     block_info_flag=self._block_info_flags,
                 )
             elif packer == "lz4":
