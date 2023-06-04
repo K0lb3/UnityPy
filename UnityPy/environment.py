@@ -153,7 +153,7 @@ class Environment:
         pack = "none" (default) or "lz4"
         """
         for f in self.files:
-            if self.files[f].is_changed:
+             if hasattr(self.files[f], 'is_changed') and self.files[f].is_changed:
                 with open(
                     os.path.join(self.out_path, os.path.basename(f)), "wb"
                 ) as out:
