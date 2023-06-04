@@ -152,8 +152,8 @@ class Environment:
         Mark assets as changed using `.mark_changed()`.
         pack = "none" (default) or "lz4"
         """
-        for f in self.files:
-             if hasattr(self.files[f], 'is_changed') and self.files[f].is_changed:
+        for fname, fitem in self.files.items():
+            if getattr(fitem, "is_changed", False):
                 with open(
                     os.path.join(self.out_path, os.path.basename(f)), "wb"
                 ) as out:
