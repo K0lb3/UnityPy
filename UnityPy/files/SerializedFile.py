@@ -1,4 +1,4 @@
-﻿import os
+﻿from ntpath import basename
 import re
 
 from . import File, ObjectReader
@@ -57,7 +57,7 @@ class FileIdentifier:  # external
 
     @property
     def name(self):
-        return os.path.basename(self.path)
+        return basename(self.path)
 
     def __repr__(self):
         return f"<{self.__class__.__name__}({self.path})>"
@@ -179,10 +179,10 @@ class SerializedFile(File.File):
     types: list
     script_types: list
     externals: list
-    _container: dict
     objects: dict
-    container_: dict
     _cache: dict
+    assetbundle: "AssetBundle"
+    container: "ContainerHelper"
     header: SerializedFileHeader
 
     @property
@@ -195,8 +195,8 @@ class SerializedFile(File.File):
     def files(self, value):
         self.objects = value
 
-    def __init__(self, reader: EndianBinaryReader, parent=None, name=None):
-        super().__init__(parent=parent, name=name)
+    def __init__(self, reader: EndianBinaryReader, parent=None, name=None, **kwargs):
+        super().__init__(parent=parent, name=name, **kwargs)
         self.reader = reader
 
         self.unity_version = "2.5.0f5"
@@ -207,10 +207,7 @@ class SerializedFile(File.File):
         self.types = []
         self.script_types = []
         self.externals = []
-        self._container = {}
-
         self.objects = {}
-        self.container_ = {}
         # used to speed up mass asset extraction
         # some assets refer to each other, so by keeping the result
         # of specific assets cached the extraction can be speed up by a lot.
@@ -291,18 +288,33 @@ class SerializedFile(File.File):
         # read the asset_bundles to get the containers
         for obj in self.objects.values():
             if obj.type == ClassIDType.AssetBundle:
-                data = obj.read()
-                for container, asset_info in data.m_Container.items():
-                    asset = asset_info.asset
-                    self.container_[container] = asset
-                    if hasattr(asset, "path_id"):
-                        self._container[asset.path_id] = container
-        # if environment is not None:
-        #    environment.container = {**environment.container, **self.container}
+                self.assetbundle = obj.read_typetree(wrap=True)
+                self._container = ContainerHelper(self.assetbundle.m_Container)
+                break
+        else:
+            self.assetbundle = None
+            self._container = ContainerHelper({})
 
     @property
     def container(self):
-        return self.container_
+        return self._container
+
+    def load_dependencies(self, possible_dependencies: list = []):
+        """Load all external dependencies.
+
+        Parameters
+        ----------
+        possible_dependencies : list
+            List of possible dependencies for cases
+            where the target file is not listed as external.
+        """
+        for file_id in self.externals:
+            self.environment.load_file(file_id.path, True)
+        for dependency in possible_dependencies:
+            try:
+                self.environment.load_file(dependency, True)
+            except FileNotFoundError:
+                pass
 
     def set_version(self, string_version):
         self.unity_version = string_version
@@ -630,3 +642,50 @@ def read_string(string_buffer_reader: EndianBinaryReader, value: int) -> str:
 
     offset = value & 0x7FFFFFFF
     return CommonString.get(offset, str(offset))
+
+
+class ContainerHelper:
+    """Helper class to allow multidict containers
+    without breaking compatibility with old versions"""
+
+    def __init__(self, container) -> None:
+        self.container = container
+        # support for getitem
+        self.container_dict = {key: value.asset for key, value in container}
+        self.path_dict = {value.asset.path_id: value.asset for key, value in container}
+
+    def items(self):
+        return ((key, value.asset) for key, value in self.container)
+
+    def keys(self):
+        return list({key for key, value in self.container})
+
+    def values(self):
+        return list({value.asset for key, value in self.container})
+
+    def __getitem__(self, key):
+        return self.container_dict[key]
+
+    def __setitem__(self, key, value):
+        raise NotImplementedError("Assigning to container is not allowed!")
+
+    def __delitem__(self, key):
+        raise NotImplementedError("Deleting from the container is not allowed!")
+
+    def __iter__(self):
+        return iter(self.keys)
+
+    def __len__(self):
+        return len(self.container)
+
+    def __getattr__(self, name: str):
+        return self.container_dict[name]
+
+    def __or__(self, other: "ContainerHelper"):
+        return ContainerHelper(list(set(self.container + other.container)))
+
+    def __str__(self):
+        return f'{{{", ".join(f"{key}: {value}" for key, value in self.items())}}}'
+
+    def __dict__(self):
+        return self.container_dict

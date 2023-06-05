@@ -1,10 +1,6 @@
 from ..files import ObjectReader
 from ..streams import EndianBinaryWriter
-from ..helpers import ImportHelper
-from .. import files
-from ..enums import FileType, ClassIDType
-import os
-from .. import environment
+from ..enums import ClassIDType
 
 
 def save_ptr(obj, writer: EndianBinaryWriter):
@@ -33,7 +29,9 @@ class PPtr:
     def get_obj(self):
         if self._obj != None:
             return self._obj
+
         manager = None
+
         if self.file_id == 0:
             manager = self.assets_file
 
@@ -43,27 +41,13 @@ class PPtr:
                 external_name = self.external_name
                 # try to find it in the already registered cabs
                 manager = environment.get_cab(external_name)
-
+                # not found, load all dependencies and try again
                 if not manager:
-                    # guess we have to try to find it as file then
-                    path = environment.path
-                    if path is not None:
-                        basename = os.path.basename(external_name)
-                        possible_names = [basename, basename.lower(), basename.upper()]
-                        for root, dirs, files in os.walk(path):
-                            for name in files:
-                                if name in possible_names:
-                                    manager = environment.load_file(
-                                        os.path.join(root, name)
-                                    )
-                                    environment.register_cab(name, manager)
-                                    break
-                            else:
-                                # else is reached if the previous loop didn't break
-                                continue
-                            break
-        if manager and self.path_id in manager.objects:
-            self._obj = manager.objects[self.path_id]
+                    self.assets_file.load_dependencies([external_name])
+                    manager = environment.get_cab(external_name)
+
+        if manager is not None:
+            self._obj = manager.objects.get(self.path_id)
         else:
             self._obj = None
             if self.external_name:

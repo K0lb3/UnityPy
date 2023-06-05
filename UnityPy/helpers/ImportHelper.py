@@ -3,6 +3,7 @@ from typing import Union, List
 from .CompressionHelper import BROTLI_MAGIC, GZIP_MAGIC
 from ..enums import FileType
 from ..streams import EndianBinaryReader
+from .. import files
 
 
 def file_name_without_extension(file_name: str) -> str:
@@ -53,7 +54,6 @@ def check_file_type(input_) -> Union[FileType, EndianBinaryReader]:
     if reader.Length < 20:
         return FileType.ResourceFile, reader
 
-    
     signature = reader.read_string_to_null(20)
 
     reader.Position = 0
@@ -119,3 +119,25 @@ def check_file_type(input_) -> Union[FileType, EndianBinaryReader]:
             return FileType.ResourceFile, reader
         else:
             return FileType.AssetsFile, reader
+
+
+def parse_file(
+    reader: EndianBinaryReader,
+    parent,
+    name: str,
+    typ: FileType = None,
+    is_dependency=False,
+):
+    if typ is None:
+        typ, _ = check_file_type(reader)
+    if typ == FileType.AssetsFile and not name.endswith(
+        (".resS", ".resource", ".config", ".xml", ".dat")
+    ):
+        f = files.SerializedFile(reader, parent, name=name, is_dependency=is_dependency)
+    elif typ == FileType.BundleFile:
+        f = files.BundleFile(reader, parent, name=name, is_dependency=is_dependency)
+    elif typ == FileType.WebFile:
+        f = files.WebFile(reader, parent, name=name, is_dependency=is_dependency)
+    else:
+        f = reader
+    return f

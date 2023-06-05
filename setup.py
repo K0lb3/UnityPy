@@ -56,6 +56,7 @@ extra_packages = [
 
 
 setup(
+    name="UnityPy",
     packages=find_packages() + extra_packages,
     package_data={"UnityPy": unitypy_package_data},
     ext_modules=[
