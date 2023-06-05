@@ -1,4 +1,5 @@
 # based on: https://github.com/Razmoth/PGRStudio/blob/master/AssetStudio/PGR/PGR.cs
+import re
 from typing import Tuple, Union
 
 from ..streams import EndianBinaryReader
@@ -20,7 +21,8 @@ def set_assetbundle_decrypt_key(key: Union[bytes, str]):
 
 def read_vector(reader: EndianBinaryReader) -> Tuple[bytes, bytes]:
     data = reader.read_bytes(0x10)
-    key = reader.read_string_to_null().encode("utf-8", "surrogateescape")
+    key = reader.read_bytes(0x10)
+    reader.Position += 1
 
     return data, key
 
@@ -30,6 +32,28 @@ def decrypt_key(key: bytes, data: bytes, keybytes: bytes):
 
     key = AES.new(keybytes, AES.MODE_ECB).encrypt(key)
     return bytes(x ^ y for x, y in zip(data, key))
+
+
+def brute_force_key(
+    fp: str,
+    key_sig: bytes,
+    data_sig: bytes,
+    pattern: re.Pattern = re.compile(rb"(?=(\w{16}))"),
+    verbose: bool = False,
+):
+    with open(fp, "rb") as f:
+        data = f.read()
+
+    matches = pattern.findall(data)
+    for i, key in enumerate(matches):
+        if verbose:
+            print(f"Trying {i + 1}/{len(matches)} - {key}")
+        signature = decrypt_key(key_sig, data_sig, key)
+        if signature == UNITY3D_SIGNATURE:
+            if verbose:
+                print(f"Found key: {key}")
+            return key
+    return None
 
 
 def to_uint4_array(source: bytes, offset: int = 0):
@@ -46,15 +70,24 @@ class ArchiveStorageDecryptor:
     substitute: bytes = bytes(0x10)
 
     def __init__(self, reader: EndianBinaryReader) -> None:
-        if DECRYPT_KEY is None:
-            raise LookupError(
-                "The BundleFile is encrypted, but no key was provided!\nYou can set the key via UnityPy.set_assetbundle_decrypt_key(key)"
-            )
         self.unknown_1 = reader.read_u_int()
 
         # read vector data/key vectors
         self.data, self.key = read_vector(reader)
         self.data_sig, self.key_sig = read_vector(reader)
+
+        if DECRYPT_KEY is None:
+            raise LookupError(
+                "\n".join(
+                    [
+                        "The BundleFile is encrypted, but no key was provided!",
+                        "You can set the key via UnityPy.set_assetbundle_decrypt_key(key).",
+                        "To try brute-forcing the key, use UnityPy.helpers.ArchiveStorageManager.brute_force_key(fp, key_sig, data_sig)",
+                        f"with  key_sig = {self.key_sig}, data_sig = {self.data_sig},"
+                        "and fp being the path to global-metadata.dat or a memory dump.",
+                    ]
+                )
+            )
 
         signature = decrypt_key(self.key_sig, self.data_sig, DECRYPT_KEY)
         if signature != UNITY3D_SIGNATURE:

@@ -1,7 +1,7 @@
 # TODO: implement encryption for saving files
 from collections import namedtuple
 import re
-from typing import Tuple
+from typing import Tuple, Union
 
 from . import File
 from ..enums import ArchiveFlags, ArchiveFlagsOld, CompressionFlags
@@ -23,6 +23,7 @@ class BundleFile(File.File):
     version_player: str
     dataflags: Tuple[ArchiveFlags, ArchiveFlagsOld]
     decryptor: ArchiveStorageManager.ArchiveStorageDecryptor = None
+    _uses_block_alignment: bool = False
 
     def __init__(
         self, reader: EndianBinaryReader, parent: File, name: str = None, **kwargs
@@ -108,8 +109,22 @@ class BundleFile(File.File):
         else:
             self.dataflags = ArchiveFlags(self.dataflags)
 
+        if self.dataflags & self.dataflags.UsesAssetBundleEncryption:
+            self.decryptor = ArchiveStorageManager.ArchiveStorageDecryptor(reader)
+
+        # check if we need to align the reader
+        # - align to 16 bytes and check if all are 0
+        # - if not, reset the reader to the previous position
         if self.version >= 7:
             reader.align_stream(16)
+            self._uses_block_alignment = True
+        elif version >= (2019, 4):
+            pre_align = reader.Position
+            align_data = reader.read((16 - pre_align % 16) % 16)
+            if any(align_data):
+                reader.Position = pre_align
+            else:
+                self._uses_block_alignment = True
 
         start = reader.Position
         if (
@@ -119,8 +134,6 @@ class BundleFile(File.File):
             blocksInfoBytes = reader.read_bytes(compressedSize)
             reader.Position = start
         else:  # 0x40 kArchiveBlocksAndDirectoryInfoCombined
-            if self.dataflags & self.dataflags.UsesAssetBundleEncryption:
-                self.decryptor = ArchiveStorageManager.ArchiveStorageDecryptor(reader)
             blocksInfoBytes = reader.read_bytes(compressedSize)
 
         blocksInfoBytes = self.decompress_data(
@@ -212,7 +225,7 @@ class BundleFile(File.File):
             elif packer == "original":
                 self.save_fs(
                     writer,
-                    data_flag=self._data_flags,
+                    data_flag=self.dataflags,
                     block_info_flag=self._block_info_flags,
                 )
             elif packer == "lz4":
@@ -361,7 +374,7 @@ class BundleFile(File.File):
         # compression and file layout flag
         writer.write_u_int(data_flag)
 
-        if self.version >= 7:
+        if self._uses_block_alignment:
             # UnityFS\x00 - 8
             # size 8
             # comp sizes 4+4
@@ -387,7 +400,11 @@ class BundleFile(File.File):
         writer.Position = writer_end_pos
 
     def decompress_data(
-        self, compressed_data: bytes, uncompressed_size: int, flags: int, index: int = 0
+        self,
+        compressed_data: bytes,
+        uncompressed_size: int,
+        flags: Union[int, ArchiveFlags, ArchiveFlagsOld],
+        index: int = 0,
     ) -> bytes:
         """
         Parameters
@@ -403,12 +420,12 @@ class BundleFile(File.File):
         -------
         bytes
             The decompressed data."""
-        comp_flag = flags & ArchiveFlags.CompressionTypeMask
+        comp_flag = CompressionFlags(flags & ArchiveFlags.CompressionTypeMask)
 
         if comp_flag == CompressionFlags.LZMA:  # LZMA
             return CompressionHelper.decompress_lzma(compressed_data)
         elif comp_flag in [CompressionFlags.LZ4, CompressionFlags.LZ4HC]:  # LZ4, LZ4HC
-            if flags & 0x100:
+            if self.decryptor is not None and flags & 0x100:
                 compressed_data = self.decryptor.decrypt_block(compressed_data, index)
             return CompressionHelper.decompress_lz4(compressed_data, uncompressed_size)
         elif comp_flag == CompressionFlags.LZHAM:  # LZHAM

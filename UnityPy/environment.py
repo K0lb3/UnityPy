@@ -127,12 +127,12 @@ class Environment:
             f = ImportHelper.parse_file(
                 reader, self, name=stream_name, typ=typ, is_dependency=is_dependency
             )
-
+        
         if isinstance(f, (SerializedFile, EndianBinaryReader)):
             self.register_cab(stream_name, f)
 
         self.files[stream_name] = f
-        return f
+
 
     def load_zip_file(self, value):
         buffer = None
@@ -152,12 +152,12 @@ class Environment:
         Mark assets as changed using `.mark_changed()`.
         pack = "none" (default) or "lz4"
         """
-        for f in self.files:
-            if self.files[f].is_changed:
+        for fname, fitem in self.files.items():
+            if getattr(fitem, "is_changed", False):
                 with open(
                     self.fs.sep.join([out_path, ntpath.basename(f)]), "wb"
                 ) as out:
-                    out.write(self.files[f].save(packer=pack))
+                    out.write(fitem.save(packer=pack))
 
     @property
     def objects(self) -> List[ObjectReader]:
