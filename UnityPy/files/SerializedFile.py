@@ -673,7 +673,7 @@ class ContainerHelper:
         raise NotImplementedError("Deleting from the container is not allowed!")
 
     def __iter__(self):
-        return iter(self.keys)
+        return iter(self.keys())
 
     def __len__(self):
         return len(self.container)
