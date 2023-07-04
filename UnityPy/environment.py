@@ -107,6 +107,15 @@ class Environment:
                 file = b"".join(file)
             else:
                 name = file
+                # relative paths are in the asset directory, not the cwd
+                if not os.path.isabs(file):
+                    file = os.path.join(self.path, file)
+                # Unity paths are case insensitive, so we need to find "Resources/Foo.asset" when the record says "resources/foo.asset"
+                if not os.path.exists(file):
+                    file = ImportHelper.find_sensitive_path("/", file)
+                # nonexistent files might be packaging errors or references to Unity's global Library/
+                if file is None:
+                    return
                 file = self.fs.open(file, "rb")
 
         typ, reader = ImportHelper.check_file_type(file)
@@ -155,7 +164,7 @@ class Environment:
         for fname, fitem in self.files.items():
             if getattr(fitem, "is_changed", False):
                 with open(
-                    self.fs.sep.join([out_path, ntpath.basename(f)]), "wb"
+                    self.fs.sep.join([out_path, ntpath.basename(fname)]), "wb"
                 ) as out:
                     out.write(fitem.save(packer=pack))
 
