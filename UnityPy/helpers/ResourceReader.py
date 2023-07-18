@@ -22,12 +22,12 @@ def get_resource_data(*args):
         res_path, assets_file, offset, size = args
         basename = ntpath.basename(res_path)
         name, ext = ntpath.splitext(basename)
-        possible_names = {
+        possible_names = [
             basename,
             f"{name}.resource",
             f"{name}.assets.resS",
             f"{name}.resS",
-        }
+        ]
         environment = assets_file.environment
         reader = None
         for possible_name in possible_names:
