@@ -1,4 +1,5 @@
-﻿import os
+from __future__ import annotations
+import os
 from typing import Union, List
 from .CompressionHelper import BROTLI_MAGIC, GZIP_MAGIC
 from ..enums import FileType
@@ -150,11 +151,7 @@ def find_sensitive_path(dir: str, insensitive_path: str) -> Union[str, None]:
     for part in parts:
         part_lower = part.lower()
         part = next(
-            (
-                name
-                for name in os.listdir(senstive_path)
-                if name.lower() == part_lower
-            ),
+            (name for name in os.listdir(senstive_path) if name.lower() == part_lower),
             None,
         )
         if next is None:
