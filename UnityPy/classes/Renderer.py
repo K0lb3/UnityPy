@@ -86,10 +86,8 @@ class Renderer(Component):
                 self.m_SortingLayer = reader.read_short()
             else:
                 self.m_SortingLayerID = reader.read_u_int()
-
-            # SInt16 m_SortingLayer 5.6 and up
-            self.m_SortingOrder = reader.read_short()
-            reader.align_stream()
+                self.m_SortingOrder = reader.read_short()
+                reader.align_stream()
 
     def export(self, export_dir: str) -> None:
         MeshRendererExporter.export_mesh_renderer(self, export_dir)
