@@ -127,7 +127,7 @@ def parse_file(
     name: str,
     typ: FileType = None,
     is_dependency=False,
-):
+) -> Union[files.File, EndianBinaryReader]:
     if typ is None:
         typ, _ = check_file_type(reader)
     if typ == FileType.AssetsFile and not name.endswith(
@@ -142,19 +142,23 @@ def parse_file(
         f = reader
     return f
 
-## finds the case sensitive path to a file described by a case insensitive path
-# https://stackoverflow.com/a/37708342/13675
-def find_sensitive_path(dir, insensitive_path):
 
-    insensitive_path = insensitive_path.strip(os.path.sep)
+def find_sensitive_path(dir: str, insensitive_path: str) -> Union[str, None]:
+    parts = os.path.split(insensitive_path.strip(os.path.sep))
 
-    parts = insensitive_path.split(os.path.sep)
-    next_name = parts[0]
-    for name in os.listdir(dir):
-        if next_name.lower() == name.lower():
-            improved_path = os.path.join(dir, name)
-            if len(parts) == 1:
-                return improved_path
-            else:
-                return find_sensitive_path(improved_path, os.path.sep.join(parts[1:]))
-    return None
+    senstive_path = dir
+    for part in parts:
+        part_lower = part.lower()
+        part = next(
+            (
+                name
+                for name in os.listdir(senstive_path)
+                if name.lower() == part_lower
+            ),
+            None,
+        )
+        if next is None:
+            return None
+        senstive_path = os.path.join(senstive_path, part)
+
+    return senstive_path
