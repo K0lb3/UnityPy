@@ -1,7 +1,7 @@
 ﻿from ntpath import basename
 import re
 
-from . import File, ObjectReader
+from . import File, ObjectReader, BundleFile
 from ..enums import BuildTarget, ClassIDType, CommonString
 from ..streams import EndianBinaryReader, EndianBinaryWriter
 from ..helpers.TypeTreeHelper import TypeTreeNode
@@ -321,7 +321,8 @@ class SerializedFile(File.File):
         if not string_version or string_version == "0.0.0":
             # weird case, but apparently can happen?
             # check "cant read Texture2D by 2020.3.13 f1 AssetBundle #77" for details
-            string_version = self.parent.version_engine
+            if isinstance(self.parent, BundleFile.BundleFile):
+                string_version = self.parent.version_engine
             if not string_version or string_version == "0.0.0":
                 string_version = config.get_fallback_version()
         build_type = re.findall(r"([^\d.])", string_version)
