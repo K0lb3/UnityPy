@@ -112,7 +112,7 @@ class Environment:
                     file = os.path.join(self.path, file)
                 # Unity paths are case insensitive, so we need to find "Resources/Foo.asset" when the record says "resources/foo.asset"
                 if not os.path.exists(file):
-                    file = ImportHelper.find_sensitive_path("/", file)
+                    file = ImportHelper.find_sensitive_path(self.path, file)
                 # nonexistent files might be packaging errors or references to Unity's global Library/
                 if file is None:
                     return
