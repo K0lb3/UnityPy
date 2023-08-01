@@ -81,11 +81,17 @@ The following is a simple example.
 ```python
 import os
 import UnityPy
+import logging
+from pathlib import Path
 
-def unpack_all_assets(source_folder : str, destination_folder : str):
+logger = logging.getLogger("depackage")
+
+def unpack_all_assets(source_folder: str, destination_folder: str):
     # iterate over all files in source folder
     for root, dirs, files in os.walk(source_folder):
+        print(root, dirs, files)
         for file_name in files:
+            print(file_name)
             # generate file_path
             file_path = os.path.join(root, file_name)
             # load that file via UnityPy.load
@@ -98,29 +104,41 @@ def unpack_all_assets(source_folder : str, destination_folder : str):
                     # parse the object data
                     data = obj.read()
 
-                    # create destination path
-                    dest = os.path.join(destination_folder, data.name)
+                    try:
+                        # create destination path
+                        tmp_dir, _ = os.path.splitext(Path(file_path).name)
+                        dest = os.path.join(destination_folder, tmp_dir, data.name)
 
-                    # make sure that the extension is correct
-                    # you probably only want to do so with images/textures
-                    dest, ext = os.path.splitext(dest)
-                    dest = dest + ".png"
-
-                    img = data.image
-                    img.save(dest)
+                        # make sure that the extension is correct
+                        # you probably only want to do so with images/textures
+                        dest, ext = os.path.splitext(dest)
+                        dest = dest + ".png"
+                        img = data.image
+                        img.save(dest)
+                        logger.info(f"Successfully save image to {dest}")
+                    except:
+                        logger.warning(f"Could not save image to {dest}")
+                        continue
 
             # alternative way which keeps the original path
-            for path,obj in env.container.items():
+            for path, obj in env.container.items():
                 if obj.type.name in ["Texture2D", "Sprite"]:
                     data = obj.read()
-                    # create dest based on original path
-                    dest = os.path.join(destination_folder, *path.split("/"))
-                    # make sure that the dir of that path exists
-                    os.makedirs(os.path.dirname(dest), exist_ok = True)
-                    # correct extension
-                    dest, ext = os.path.splitext(dest)
-                    dest = dest + ".png"
-                    data.image.save(dest)
+                    try:
+                        # create dest based on original path
+                        tmp_dir, _ = os.path.splitext(Path(file_path).name)
+                        dest = os.path.join(destination_folder, tmp_dir, *path.split("/"))
+                        # make sure that the dir of that path exists
+                        os.makedirs(os.path.dirname(dest), exist_ok=True)
+                        # correct extension
+                        dest, ext = os.path.splitext(dest)
+                        dest = dest + ".png"
+                        data.image.save(dest)
+                        logger.info(f"Successfully save image to {dest}")
+                    except:
+                        logger.warning(f"Could not save image to {dest}")
+                        continue
+
 ```
 
 You probably have to read [Important Classes](#important-classes)
