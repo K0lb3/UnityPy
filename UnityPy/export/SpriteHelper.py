@@ -66,10 +66,10 @@ def get_image_from_sprite(m_Sprite) -> Image.Image:
     if settings_raw.packed == 1:
         rotation = settings_raw.packingRotation
         if rotation == SpritePackingRotation.kSPRFlipHorizontal:
-            sprite_image = sprite_image.transpose(Image.FLIP_TOP_BOTTOM)
+            sprite_image = sprite_image.transpose(Image.FLIP_LEFT_RIGHT)
         # spriteImage = RotateFlip(RotateFlipType.RotateNoneFlipX)
         elif rotation == SpritePackingRotation.kSPRFlipVertical:
-            sprite_image = sprite_image.transpose(Image.FLIP_LEFT_RIGHT)
+            sprite_image = sprite_image.transpose(Image.FLIP_TOP_BOTTOM)
         # spriteImage.RotateFlip(RotateFlipType.RotateNoneFlipY)
         elif rotation == SpritePackingRotation.kSPRRotate180:
             sprite_image = sprite_image.transpose(Image.ROTATE_180)
