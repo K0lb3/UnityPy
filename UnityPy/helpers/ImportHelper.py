@@ -1,4 +1,5 @@
-﻿import os
+from __future__ import annotations
+import os
 from typing import Union, List
 from .CompressionHelper import BROTLI_MAGIC, GZIP_MAGIC
 from ..enums import FileType
@@ -127,7 +128,7 @@ def parse_file(
     name: str,
     typ: FileType = None,
     is_dependency=False,
-):
+) -> Union[files.File, EndianBinaryReader]:
     if typ is None:
         typ, _ = check_file_type(reader)
     if typ == FileType.AssetsFile and not name.endswith(
@@ -141,3 +142,20 @@ def parse_file(
     else:
         f = reader
     return f
+
+
+def find_sensitive_path(dir: str, insensitive_path: str) -> Union[str, None]:
+    parts = os.path.split(insensitive_path.strip(os.path.sep))
+
+    senstive_path = dir
+    for part in parts:
+        part_lower = part.lower()
+        part = next(
+            (name for name in os.listdir(senstive_path) if name.lower() == part_lower),
+            None,
+        )
+        if next is None:
+            return None
+        senstive_path = os.path.join(senstive_path, part)
+
+    return senstive_path
