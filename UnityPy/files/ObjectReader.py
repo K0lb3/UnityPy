@@ -139,11 +139,7 @@ class ObjectReader:
 
     @property
     def container(self):
-        return (
-            self.assets_file._container[self.path_id]
-            if self.path_id in self.assets_file._container
-            else None
-        )
+        return self.assets_file._container.path_dict.get(self.path_id)
 
     @property
     def Position(self):
