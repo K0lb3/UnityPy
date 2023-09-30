@@ -16,9 +16,8 @@ from UnityPy.classes import (
     GameObject,
 )
 from UnityPy.enums.ClassIDType import ClassIDType
-from typing import Union, List, Dict
+from typing import Union, List, Dict, Callable
 from pathlib import Path
-from collections.abc import Callable
 
 
 def export_obj(
