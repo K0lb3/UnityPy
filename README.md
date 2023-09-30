@@ -208,7 +208,7 @@ from PIL import Image
 for obj in env.objects:
     if obj.type.name == "Texture2D":
         # export texture
-        data = image.read()
+        data = obj.read()
         data.image.save(path)
         # edit texture
         fp = os.path.join(replace_dir, data.name)
