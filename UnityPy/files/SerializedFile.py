@@ -653,7 +653,7 @@ class ContainerHelper:
         self.container = container
         # support for getitem
         self.container_dict = {key: value.asset for key, value in container}
-        self.path_dict = {value.asset.path_id: value.asset for key, value in container}
+        self.path_dict = {value.asset.path_id: key for key, value in container}
 
     def items(self):
         return ((key, value.asset) for key, value in self.container)
