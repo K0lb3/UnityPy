@@ -154,7 +154,7 @@ def find_sensitive_path(dir: str, insensitive_path: str) -> Union[str, None]:
             (name for name in os.listdir(senstive_path) if name.lower() == part_lower),
             None,
         )
-        if next is None:
+        if part is None:
             return None
         senstive_path = os.path.join(senstive_path, part)
 
