@@ -55,7 +55,7 @@ class Sprite(NamedObject):
                 2020,
                 3,
             ):
-                self.m_Bones = [SpriteBone() for _ in range(m_BonesSize)]
+                self.m_Bones = [SpriteBone(self.reader) for _ in range(m_BonesSize)]
             else:
                 self.m_Bones = [reader.read_vector2_array() for _ in range(m_BonesSize)]
 
@@ -242,13 +242,13 @@ class SpriteBone:
     def __init__(self, reader: EndianBinaryReader) -> None:
         self.name = reader.read_aligned_string()
         self.position = reader.read_vector3()
-        self.rotation = reader.read_vector3()
+        self.rotation = reader.read_quaternion()
         self.length = reader.read_float()
         self.parentId = reader.read_int()
 
     def save(self, writer: EndianBinaryWriter):
         writer.write_aligned_string(self.name)
         writer.write_vector3(self.position)
-        writer.write_vector3(self.rotation)
+        writer.write_quaternion(self.rotation)
         writer.write_float(self.length)
         writer.write_int(self.parentId)
