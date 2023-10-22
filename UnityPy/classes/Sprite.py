@@ -50,14 +50,7 @@ class Sprite(NamedObject):
 
         if version >= (2018,):  # 2018 and up
             m_BonesSize = reader.read_int()
-            # TODO: might occur in earlier 2020 versions - 2020.3.13 reported
-            if version >= (
-                2020,
-                3,
-            ):
-                self.m_Bones = [SpriteBone(self.reader) for _ in range(m_BonesSize)]
-            else:
-                self.m_Bones = [reader.read_vector2_array() for _ in range(m_BonesSize)]
+            self.m_Bones = [SpriteBone(self.reader) for _ in range(m_BonesSize)]
 
     def save(self, writer: EndianBinaryWriter = None):
         if writer is None:
@@ -96,12 +89,8 @@ class Sprite(NamedObject):
 
         if version >= (2018,):  # 2018 and up
             writer.write_int(len(self.m_Bones))
-            if version >= (2020, 3):
-                for bone in self.m_Bones:
-                    bone.save(writer)
-            else:
-                for bone in self.m_Bones:
-                    writer.write_vector2_array(bone)
+            for bone in self.m_Bones:
+                bone.save(writer, version)
 
         self.set_raw_data(writer.bytes)
 
@@ -241,14 +230,28 @@ class SpriteBone:
 
     def __init__(self, reader: EndianBinaryReader) -> None:
         self.name = reader.read_aligned_string()
+
+        if reader.version >= (2021,):
+            self.guid = reader.read_aligned_string()
+
         self.position = reader.read_vector3()
         self.rotation = reader.read_quaternion()
         self.length = reader.read_float()
         self.parentId = reader.read_int()
 
-    def save(self, writer: EndianBinaryWriter):
+        if reader.version >= (2021,):
+            self.color = reader.read_color_uint()
+
+    def save(self, writer: EndianBinaryWriter, version):
         writer.write_aligned_string(self.name)
+
+        if version >= (2021,):
+            writer.write_aligned_string(self.guid)
+
         writer.write_vector3(self.position)
         writer.write_quaternion(self.rotation)
         writer.write_float(self.length)
         writer.write_int(self.parentId)
+
+        if version >= (2021,):
+            writer.write_color_uint(self.color)

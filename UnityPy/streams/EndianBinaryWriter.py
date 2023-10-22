@@ -123,6 +123,12 @@ class EndianBinaryWriter:
         self.write_float(value.width)
         self.write_float(value.height)
 
+    def write_color_uint(self, value: Color):
+        self.write_u_byte(value.R * 255)
+        self.write_u_byte(value.G * 255)
+        self.write_u_byte(value.B * 255)
+        self.write_u_byte(value.A * 255)
+
     def write_color4(self, value: Color):
         self.write_float(value.R)
         self.write_float(value.G)

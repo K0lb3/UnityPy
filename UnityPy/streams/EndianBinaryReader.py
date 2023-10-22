@@ -178,6 +178,14 @@ class EndianBinaryReader:
             self.read_float(), self.read_float(), self.read_float(), self.read_float()
         )
 
+    def read_color_uint(self):
+        r = self.read_u_byte()
+        g = self.read_u_byte()
+        b = self.read_u_byte()
+        a = self.read_u_byte()
+
+        return Color(r / 255.0, g / 255.0, b / 255.0, a / 255.0)
+
     def read_color4(self) -> Color:
         return Color(
             self.read_float(), self.read_float(), self.read_float(), self.read_float()
