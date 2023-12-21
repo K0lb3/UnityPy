@@ -57,25 +57,15 @@ def import_pyfmodex():
 
     # prepare the environment for pyfmodex
     if system == "Windows":
-        # register fmod.dll, so that windll.fmod in pyfmodex can find it
-        ctypes.WinDLL(os.path.join(LIB_PATH, "fmod.dll"))
-        import pyfmodex
+        os.environ["PYFMODEX_DLL_PATH"] = os.path.join(LIB_PATH, "fmod.dll")
     else:
-        # It's a bit more complicated on Linux and Mac
-        # as CDLL doesn't cache the loaded libraries.
-        # So our only option is to hook into the ctypes loader
-        # and add the path to the library there.
-        CDLL = ctypes.CDLL
-
-        def cdll_hook(name, *args, **kwargs):
-            if name.startswith("libfmod"):
-                name = os.path.join(LIB_PATH, name)
-            return CDLL(name, *args, **kwargs)
-
-        ctypes.CDLL = cdll_hook
-        import pyfmodex
-
-        ctypes.CDLL = CDLL
+        ext = "dylib" if system == "Darwin" else "so"
+        os.environ["PYFMODEX_DLL_PATH"] = os.path.join(LIB_PATH, f"libfmod.{ext}")
+        
+        # hotfix ctypes for pyfmodex for non windows
+        ctypes.windll = getattr(ctypes, "windll", None)
+    
+    import pyfmodex
 
 
 def extract_audioclip_samples(audio) -> dict:
@@ -109,7 +99,7 @@ def dump_samples(clip):
     sound = system.create_sound(
         bytes(clip.m_AudioData),
         pyfmodex.flags.MODE.OPENMEMORY,
-        exinfo=pyfmodex.system.CREATESOUNDEXINFO(
+        exinfo=pyfmodex.structure_declarations.CREATESOUNDEXINFO(
             length=clip.m_Size,
             numchannels=clip.m_Channels,
             defaultfrequency=clip.m_Frequency,
@@ -134,7 +124,7 @@ def dump_samples(clip):
 
 def subsound_to_wav(subsound):
     # get sound settings
-    length = subsound.get_length(0x00000004)  # TIMEUNIT.PCMBYTES
+    length = subsound.get_length(pyfmodex.enums.TIMEUNIT.PCMBYTES)
     channels = subsound.format.channels
     bits = subsound.format.bits
     sample_rate = int(subsound.default_frequency)

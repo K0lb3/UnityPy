@@ -292,7 +292,7 @@ class UnityVersion(int):
         return UnityVersion(version.split("."))
 
     @staticmethod
-    def fromList(major: int, minor: int, patch: int, build: int) -> UnityVersion:
+    def fromList(major: int = 0, minor: int = 0, patch: int = 0, build: int = 0) -> UnityVersion:
         return UnityVersion(major << 48 | minor << 32 | patch << 16 | build)
 
     @property
