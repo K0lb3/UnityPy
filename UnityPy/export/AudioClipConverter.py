@@ -73,6 +73,9 @@ def import_pyfmodex():
             return CDLL(name, *args, **kwargs)
 
         ctypes.CDLL = cdll_hook
+
+        # hotfix ctypes for pyfmodex for non windows
+        ctypes.windll = getattr(ctypes, "windll", None)
         import pyfmodex
 
         ctypes.CDLL = CDLL
