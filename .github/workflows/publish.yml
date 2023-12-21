@@ -11,7 +11,6 @@ jobs:
     # `if` required because a workflow run is triggered regardless of
     # the result of the previous workflow (see the documentation page)
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
-    needs: [test]
     strategy:
       fail-fast: false
       matrix:
@@ -48,15 +47,15 @@ jobs:
           CIBW_ARCHS_LINUX: auto aarch64
           CIBW_ARCHS_MACOS: x86_64 arm64 universal2
           CIBW_BUILD: |
-          ${{ matrix.cp }}-manylinux_x86_64
-          ${{ matrix.cp }}-manylinux_i686
-          ${{ matrix.cp }}-manylinux_aarch64
-          ${{ matrix.cp }}-win_amd64
-          ${{ matrix.cp }}-win32
-          ${{ matrix.cp }}-macosx_x86_64
-          ${{ matrix.cp }}-macosx_arm64
-          ${{ matrix.cp }}-macosx_universal2
-          # Disabled repair wheel since the fmob lib is not compatible
+            ${{ matrix.cp }}-manylinux_x86_64
+            ${{ matrix.cp }}-manylinux_i686
+            ${{ matrix.cp }}-manylinux_aarch64
+            ${{ matrix.cp }}-win_amd64
+            ${{ matrix.cp }}-win32
+            ${{ matrix.cp }}-macosx_x86_64
+            ${{ matrix.cp }}-macosx_arm64
+            ${{ matrix.cp }}-macosx_universal2
+            # Disabled repair wheel since the fmob lib is not compatible
           CIBW_REPAIR_WHEEL_COMMAND: ""
           CIBW_REPAIR_WHEEL_COMMAND_LINUX: 'mv {wheel} {dest_dir}/"$(basename {wheel} | sed "s/-linux_/-manylinux_2_17_/")"'
           CIBW_TEST_REQUIRES: pytest
