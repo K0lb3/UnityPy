@@ -4,7 +4,7 @@ import re
 from typing import List, Union
 from io import BytesIO, BufferedIOBase, IOBase, BufferedReader
 
-reNot0 = re.compile(b"(.*?)\x00")
+reNot0 = re.compile(b"(.*?)\x00", re.S)
 
 SYS_ENDIAN = "<" if sys.byteorder == "little" else ">"
 
