@@ -33,6 +33,7 @@ jobs:
                   pytest -v -s
 
     release:
+        if: github.ref == 'refs/heads/master'
         needs: [test]
         strategy:
             fail-fast: false
