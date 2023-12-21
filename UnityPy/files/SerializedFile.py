@@ -328,7 +328,7 @@ class SerializedFile(File.File):
         build_type = re.findall(r"([^\d.])", string_version)
         self.build_type = BuildType(build_type[0] if build_type else "")
         version_split = re.split(r"\D", string_version)
-        self.version = tuple(int(x) for x in version_split)
+        self.version = tuple(int(x) for x in version_split[:4])
 
     def read_type_tree(self):
         type_tree = []
