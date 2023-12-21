@@ -46,7 +46,7 @@ dependencies = [
     # raw typetree dumping
     "tabulate",
     # audio extraction
-    "pyfmodex",
+    "pyfmodex >= 0.7.1",
     # filesystem handling
     "fsspec",
 ]
