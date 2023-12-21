@@ -1,4 +1,4 @@
-__version__ = "1.10.6"
+__version__ = "1.10.7"
 
 from .environment import Environment
 from .helpers.ArchiveStorageManager import set_assetbundle_decrypt_key
