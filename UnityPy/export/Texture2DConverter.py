@@ -290,7 +290,7 @@ CONV_TABLE = {
 (  TF.RGB24,               pillow,  "RGB",   "raw",       "RGB"                                 ),
 (  TF.RGBA32,              pillow,  "RGBA",  "raw",       "RGBA"                                ),
 (  TF.ARGB32,              pillow,  "RGBA",  "raw",       "ARGB"                                ),
-(  TF.ARGBFloat,           pillow,  "RGBA",  "raw",       "RGBAF"             (2,1,0,3)         ),
+(  TF.ARGBFloat,           pillow,  "RGBA",  "raw",       "RGBAF",            (2,1,0,3)         ),
 (  TF.RGB565,              pillow,  "RGB",   "raw",       "BGR;16"                              ),
 (  TF.BGR24,               pillow,  "RGB",   "raw",       "BGR"                                 ),
 (  TF.R8,                  pillow,  "RGB",   "raw",       "R"                                   ),
