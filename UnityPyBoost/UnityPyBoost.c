@@ -3,6 +3,7 @@
 #include <Python.h>
 #include "AnimationClip.h"
 #include "Mesh.h"
+#include "TextureSwizzler.h"
 #include "TypeTreeHelper.h"
 
 /* Mesh.py */
@@ -23,7 +24,11 @@ static struct PyMethodDef method_table[] = {
     {"read_typetree",
      (PyCFunction)read_typetree,
      METH_VARARGS,
-     "replacement for TypeTreeHelper.read_typetree"},     
+     "replacement for TypeTreeHelper.read_typetree"},
+    {"switch_deswizzle",
+     (PyCFunction)switch_deswizzle,
+     METH_VARARGS,
+     "replacement for TextureSwizzler.switch_deswizzle"},
     {NULL,
      NULL,
      0,
@@ -46,7 +51,7 @@ static PyModuleDef UnityPyBoost_module = {
 // The module init function
 PyMODINIT_FUNC PyInit_UnityPyBoost(void)
 {
-    PyObject* module = PyModule_Create(&UnityPyBoost_module);
+    PyObject *module = PyModule_Create(&UnityPyBoost_module);
     add_typetreenode_to_module(module);
     return module;
 }

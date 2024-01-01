@@ -5,6 +5,7 @@ from copy import copy
 from io import BytesIO
 import struct
 from ..enums import TextureFormat, BuildTarget
+from ..helpers import TextureSwizzler
 
 TF = TextureFormat
 
@@ -133,8 +134,20 @@ def get_image_from_texture2d(texture_2d, flip=True) -> Image.Image:
         image_data, texture_2d.m_Width, texture_2d.m_Height, *selection[1:]
     )
 
+    if texture_2d.platform == BuildTarget.Switch and getattr(
+        texture_2d, "m_PlatformBlob", None
+    ):
+        gobsPerBlock = TextureSwizzler.get_switch_gobs_per_block(
+            texture_2d.m_PlatformBlob
+        )
+        blockSize = TextureSwizzler.TEXTUREFORMAT_BLOCK_SIZE_MAP[
+            texture_2d.m_TextureFormat
+        ]
+        img = TextureSwizzler.switch_deswizzle(img, blockSize, gobsPerBlock)
+
     if img and flip:
         return img.transpose(Image.FLIP_TOP_BOTTOM)
+
     return img
 
 
@@ -241,6 +254,48 @@ def half(
     return pillow(image_data, width, height, mode, codec, args, swap)
 
 
+RG_PADDING_MAP = {
+    "RGE": 16,
+    "RGF": 32,
+    "RG;16": 16,
+    "RG;16s": 16,
+    "RG;8s": 8,
+}
+
+
+def rg(
+    image_data: bytes, width: int, height: int, mode: str, codec: str, args
+) -> Image.Image:
+    # convert rg to rgb by adding in zeroes
+    padding_size = RG_PADDING_MAP[codec]
+    stream = BytesIO(image_data)
+    padding = bytes(padding_size)
+    rgb_data = b"".join(
+        stream.read(padding_size * 2) + padding
+        for _ in range(image_data / (2 * padding_size))
+    )
+    if codec == "RGE":
+        return half(rgb_data, width, height, mode, "RGB", args)
+    else:
+        return pillow(rgb_data, width, height, mode, codec.replace("RG", "RGB"), args)
+
+
+def rgb9e5float(image_data: bytes, width: int, height: int):
+    rgb = bytearray(width * height * 3)
+    for i, (n,) in enumerate(struct.iter_unpack("<i", image_data)):
+        scale = n >> 27 & 0x1F
+        scalef = 2 ** (scale - 24)
+        scaleb = scalef * 255.0
+        b = (n >> 18 & 0x1FF) * scaleb
+        g = (n >> 9 & 0x1FF) * scaleb
+        r = (n & 0x1FF) * scaleb
+
+        offset = i * 3
+        rgb[offset : offset + 3] = [r, g, b]
+
+    return Image.frombytes("RGB", (width, height), rgb, "raw", "RGB")
+
+
 CONV_TABLE = {
 #  FORMAT                  FUNC     #ARGS.....
 #----------------------- -------- -------- ------------ ----------------- ------------ ----------
@@ -249,32 +304,35 @@ CONV_TABLE = {
 (  TF.RGB24,               pillow,  "RGB",   "raw",       "RGB"                                 ),
 (  TF.RGBA32,              pillow,  "RGBA",  "raw",       "RGBA"                                ),
 (  TF.ARGB32,              pillow,  "RGBA",  "raw",       "ARGB"                                ),
+(  TF.ARGBFloat,           pillow,  "RGBA",  "raw",       "RGBAF",            (2,1,0,3)         ),
 (  TF.RGB565,              pillow,  "RGB",   "raw",       "BGR;16"                              ),
+(  TF.BGR24,               pillow,  "RGB",   "raw",       "BGR"                                 ),
 (  TF.R8,                  pillow,  "RGB",   "raw",       "R"                                   ),
 (  TF.R16,                 pillow,  "RGB",   "raw",       "R;16"                                ),
-(  TF.RG16,                                                                                     ),
+(  TF.RG16,                rg,      "RGB",   "raw",       "RG"                                  ),
 (  TF.DXT1,                pillow,  "RGBA",  "bcn",       1                                     ),
+(  TF.DXT3,                pillow,  "RGBA",  "bcn",       2                                     ),
 (  TF.DXT5,                pillow,  "RGBA",  "bcn",       3                                     ),
 (  TF.RGBA4444,            pillow,  "RGBA",  "raw",       'RGBA;4B',          (3,2,1,0)         ),
 (  TF.BGRA32,              pillow,  "RGBA",  "raw",       "BGRA"                                ),
 (  TF.RHalf,               half,    "R",     "raw",       "R"                                   ),
-(  TF.RGHalf,                                                                                   ),
+(  TF.RGHalf,              rg,      "RGB",   "raw",       "RGE"                                 ),
 (  TF.RGBAHalf,            half,    "RGB",   "raw",       "RGB"                                 ),
 (  TF.RFloat,              pillow,  "RGB",   "raw",       "RF"                                  ),
-(  TF.RGFloat,                                                                                  ),
+(  TF.RGFloat,             rg,      "RGB",   "raw",       "RGF"                                 ),
 (  TF.RGBAFloat,           pillow,  "RGBA",  "raw",       "RGBAF"                               ),
 (  TF.YUY2,                                                                                     ),
-(  TF.RGB9e5Float,                                                                              ),
+(  TF.RGB9e5Float,        rgb9e5float                                                           ),
 (  TF.BC4,                 pillow,  "L",     "bcn",       4                                     ),
 (  TF.BC5,                 pillow,  "RGB",   "bcn",       5                                     ),
 (  TF.BC6H,                pillow,  "RGBA",  "bcn",       6                                     ),
 (  TF.BC7,                 pillow,  "RGBA",  "bcn",       7                                     ),
 (  TF.DXT1Crunched,        pillow,  "RGBA",  "bcn",       1                                     ),
 (  TF.DXT5Crunched,        pillow,  "RGBA",  "bcn",       3                                     ),
-(  TF.PVRTC_RGB2,          pvrtc,   True                                                       ),
+(  TF.PVRTC_RGB2,          pvrtc,   True                                                        ),
 (  TF.PVRTC_RGBA2,         pvrtc,   True                                                        ),
 (  TF.PVRTC_RGB4,          pvrtc,   False                                                       ),
-(  TF.PVRTC_RGBA4,         pvrtc,   False                                                        ),
+(  TF.PVRTC_RGBA4,         pvrtc,   False                                                       ),
 (  TF.ETC_RGB4,            etc,     (1,)                                                        ),
 (  TF.ATC_RGB4,            atc,     False                                                       ),
 (  TF.ATC_RGBA8,           atc,     True                                                        ),
@@ -307,6 +365,17 @@ CONV_TABLE = {
 (  TF.ASTC_HDR_8x8,        astc,    (8,8)                                                       ),
 (  TF.ASTC_HDR_10x10,      astc,    (10,10)                                                     ),
 (  TF.ASTC_HDR_12x12,      astc,    (12,12)                                                     ),
+(  TF.RG32,                rg,      "RGB",   "raw",       "RG;16"                               ),
+(  TF.RGB48,               pillow,  "RGB",   "raw",       "RGB;16"                              ), 
+(  TF.RGBA64,              pillow,  "RGBA",  "raw",       "RGBA;16"                             ), 
+(  TF.R8_SIGNED,           pillow,  "R",     "raw",       "R;8s"                                ), 
+(  TF.RG16_SIGNED,         rg,      "RGB",   "raw",       "RG;8s"                               ),
+(  TF.RGB24_SIGNED,        pillow,  "RGB",   "raw",       "RGB;8s"                              ), 
+(  TF.RGBA32_SIGNED,       pillow,  "RGBA",  "raw",       "RGBA;8s"                             ), 
+(  TF.R16_SIGNED,          pillow,  "R",     "raw",       "R;16s"                               ), 
+(  TF.RG32_SIGNED,         rg,      "RGB",   "raw",       "RG;16s"                              ),
+(  TF.RGB48_SIGNED,        pillow,  "RGB",   "raw",       "RGB;16s"                             ), 
+(  TF.RGBA64_SIGNED,       pillow,  "RGBA",  "raw",       "RGBA;16s"                            ), 
 }
 
 # format conv_table to a dict

@@ -1,6 +1,5 @@
-from setuptools import setup, Extension, find_packages
+from setuptools import setup, Extension
 import os
-import platform
 
 local = os.path.dirname(os.path.abspath(__file__))
 
@@ -12,10 +11,7 @@ setup(
     ext_modules=[
         Extension(
             "UnityPyBoost",
-            [
-                os.path.join(local, f)
-                for f in os.listdir(local) if f.endswith(".c")
-            ],
+            [os.path.join(local, f) for f in os.listdir(local) if f.endswith(".c")],
             language="c",
             include_dirs=[local],
         )
