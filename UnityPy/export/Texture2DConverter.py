@@ -5,6 +5,7 @@ from copy import copy
 from io import BytesIO
 import struct
 from ..enums import TextureFormat, BuildTarget
+from ..helpers import TextureSwizzler
 
 TF = TextureFormat
 
@@ -133,8 +134,20 @@ def get_image_from_texture2d(texture_2d, flip=True) -> Image.Image:
         image_data, texture_2d.m_Width, texture_2d.m_Height, *selection[1:]
     )
 
+    if texture_2d.platform == BuildTarget.Switch and getattr(
+        texture_2d, "m_PlatformBlob", None
+    ):
+        gobsPerBlock = TextureSwizzler.get_switch_gobs_per_block(
+            texture_2d.m_PlatformBlob
+        )
+        blockSize = TextureSwizzler.TEXTUREFORMAT_BLOCK_SIZE_MAP[
+            texture_2d.m_TextureFormat
+        ]
+        img = TextureSwizzler.switch_deswizzle(img, blockSize, gobsPerBlock)
+
     if img and flip:
         return img.transpose(Image.FLIP_TOP_BOTTOM)
+
     return img
 
 
@@ -266,18 +279,19 @@ def rg(
     else:
         return pillow(rgb_data, width, height, mode, codec.replace("RG", "RGB"), args)
 
+
 def rgb9e5float(image_data: bytes, width: int, height: int):
-    rgb = bytearray(width*height*3)
+    rgb = bytearray(width * height * 3)
     for i, (n,) in enumerate(struct.iter_unpack("<i", image_data)):
-        scale = n >> 27 & 0x1f
+        scale = n >> 27 & 0x1F
         scalef = 2 ** (scale - 24)
         scaleb = scalef * 255.0
-        b = (n >> 18 & 0x1ff) * scaleb
-        g = (n >> 9 & 0x1ff) * scaleb
-        r = (n & 0x1ff) * scaleb
-        
-        offset = i*3
-        rgb[offset:offset+3] = [r,g,b]
+        b = (n >> 18 & 0x1FF) * scaleb
+        g = (n >> 9 & 0x1FF) * scaleb
+        r = (n & 0x1FF) * scaleb
+
+        offset = i * 3
+        rgb[offset : offset + 3] = [r, g, b]
 
     return Image.frombytes("RGB", (width, height), rgb, "raw", "RGB")
 
