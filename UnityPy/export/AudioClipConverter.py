@@ -61,10 +61,10 @@ def import_pyfmodex():
     else:
         ext = "dylib" if system == "Darwin" else "so"
         os.environ["PYFMODEX_DLL_PATH"] = os.path.join(LIB_PATH, f"libfmod.{ext}")
-        
+
         # hotfix ctypes for pyfmodex for non windows
         ctypes.windll = getattr(ctypes, "windll", None)
-    
+
     import pyfmodex
 
 
@@ -79,11 +79,13 @@ def extract_audioclip_samples(audio) -> dict:
         # eg. StreamedResource not available
         return {}
 
-    magic = memoryview(audio.m_AudioData)[:4]
-    if magic == b"OggS":
-        return {"%s.ogg" % audio.name: audio.m_AudioData}
-    elif magic == b"RIFF":
-        return {"%s.wav" % audio.name: audio.m_AudioData}
+    magic = memoryview(audio.m_AudioData)[:8]
+    if magic[:4] == b"OggS":
+        return {f"{audio.m_Name}.ogg": audio.m_AudioData}
+    elif magic[:4] == b"RIFF":
+        return {f"{audio.m_Name}.wav": audio.m_AudioData}
+    elif magic[4:8] == b"ftyp":
+        return {f"{audio.m_Name}.m4a": audio.m_AudioData}
     return dump_samples(audio)
 
 
