@@ -552,6 +552,21 @@ class AnimationClipBindingConstant:
         return None
 
 
+class AnimationEvent:
+    def __init__(self, reader):
+        version = reader.version
+        self.time = reader.read_float()
+        self.functionName = reader.read_aligned_string()
+        self.data = reader.read_aligned_string()
+        self.objectReferenceParameter = PPtr(reader)
+        self.floatParameter = reader.read_float()
+
+        if version > (3, ):
+            self.intParameter = reader.read_int()
+
+        self.messageOptions = reader.read_int()
+
+
 class AnimationType(IntEnum):
     kLegacy = (1,)
     kGeneric = (2,)
@@ -609,11 +624,12 @@ class AnimationClip(NamedObject):
         if version >= (4, 3):  # 4.3 and up
             self.m_ClipBindingConstant = AnimationClipBindingConstant(reader)
 
+        if version >= (2018, 3):
+            self.m_HasGenericRootTransform = reader.read_boolean()
+            self.m_HasMotionFloatCurves = reader.read_boolean()
+            reader.align_stream()
 
-# m_HasGenericRootTransform 2018.3
-# m_HasMotionFloatCurves 2018.3
-# numEvents = reader.read_int()
-# self.m_Events = [
-# 	AnimationEvent(reader)
-# 	for _ in range(numEvents)
-# ]
+        numEvents = self.reader.read_int()
+        self.m_Events = [AnimationEvent(self.reader) for _ in range(numEvents)]
+        if version >= (2017, ):
+            reader.align_stream()
