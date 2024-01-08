@@ -63,6 +63,9 @@ python -m pip install .
 #### Windows
 
 Visual C++ Redistributable is required for the brotli dependency.
+In case a new(ish) Python version is used, it can happen that the C-dependencies of UnityPy might not be precompiled for this version.
+In such cases the user either has to report this as issue or follow the steps of [this issue](https://github.com/K0lb3/UnityPy/issues/223) to compile it oneself.
+Another option for the user is downgrading Python to the latest version supported by UnityPy. For this see the python version badge at the top of the README.
 
 ### Crash without warning/error
 
