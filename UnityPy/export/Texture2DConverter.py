@@ -90,13 +90,7 @@ def assert_rgba(img: Image.Image, target_texture_format: TextureFormat):
 
 
 def get_image_from_texture2d(
-    image_data: bytes,
-    width: int,
-    height: int,
-    texture_format: TextureFormat,
-    version: tuple,
-    platform: int,
-    platform_blob: bytes = None,
+    texture_2d: "Texture2D",
     flip=True,
 ) -> Image.Image:
     """converts the given texture into PIL.Image
@@ -108,6 +102,28 @@ def get_image_from_texture2d(
     :return: PIL.Image object
     :rtype: Image
     """
+    return get_image_from_texture2d(
+        texture_2d.image_data,
+        texture_2d.m_Width,
+        texture_2d.m_Height,
+        texture_2d.m_TextureFormat,
+        texture_2d.version,
+        texture_2d.platform,
+        getattr(texture_2d, "m_PlatformBlob", None),
+        flip
+    )
+
+
+def parse_image_data(
+    image_data: bytes,
+    width: int,
+    height: int,
+    texture_format: TextureFormat,
+    version: tuple,
+    platform: int,
+    platform_blob: bytes = None,
+    flip=True,
+) -> Image.Image:
     image_data = copy(bytes(image_data))
     if not image_data:
         raise ValueError("Texture2D has no image data")

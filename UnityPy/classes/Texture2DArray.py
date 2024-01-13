@@ -67,7 +67,7 @@ class Texture2DArray(Texture):
             raise NotImplementedError(
                 f"GraphicsFormat {self.m_Format} not supported yet"
             )
-        return Texture2DConverter.get_image_from_texture2d(
+        return Texture2DConverter.parse_image_data(
             self.image_data,
             self.m_Width,
             self.m_Height,

@@ -10,15 +10,7 @@ from io import BufferedIOBase, RawIOBase, IOBase
 class Texture2D(Texture):
     @property
     def image(self):
-        return Texture2DConverter.get_image_from_texture2d(
-            self.image_data,
-            self.m_Width,
-            self.m_Height,
-            self.m_TextureFormat,
-            self.version,
-            self.platform,
-            getattr(self, "m_PlatformBlob", None),
-        )
+        return Texture2DConverter.get_image_from_texture2d(self)
 
     @image.setter
     def image(self, img):
