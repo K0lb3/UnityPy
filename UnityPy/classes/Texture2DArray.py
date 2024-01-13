@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 
 from .Texture import Texture
 from .Texture2D import StreamingInfo
@@ -61,18 +61,24 @@ class Texture2DArray(Texture):
         return data
 
     @property
-    def image(self) -> Image.Image:
+    def images(self) -> List[Image.Image]:
         texture_format = GRAPHICS_TO_TEXTURE_MAP.get(self.m_Format)
         if not texture_format:
             raise NotImplementedError(
                 f"GraphicsFormat {self.m_Format} not supported yet"
             )
-        return Texture2DConverter.parse_image_data(
-            self.image_data,
-            self.m_Width,
-            self.m_Height,
-            texture_format,
-            self.version,
-            0,
-            None,
-        )
+
+        # calculate the number of textures in the array
+        texture_size = self.m_DataSize // self.m_Depth
+        return [
+            Texture2DConverter.parse_image_data(
+                self.image_data[offset : offset + texture_size],
+                self.m_Width,
+                self.m_Height,
+                texture_format,
+                self.version,
+                0,
+                None,
+            )
+            for offset in range(0, self.m_DataSize, texture_size)
+        ]
