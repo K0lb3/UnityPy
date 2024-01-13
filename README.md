@@ -368,6 +368,27 @@ if mesh_renderer.m_GameObject:
 mesh_renderer.export(export_dir)
 ```
 
+### [Texture2DArray](UnityPy/classes/Texture2DArray.py)
+
+WARNING - not well tested
+
+-   `.name`
+-   `.image` converts the texture2darray into a `PIL.Image`
+-   `.m_Width` - texture width (int)
+-   `.m_Height` - texture height (int)
+
+**Export**
+
+```python
+from PIL import Image
+for obj in env.objects:
+    if obj.type.name == "Texture2DArray":
+        # export texture
+        data = obj.read()
+        data.image.save(path)
+        # editing isn't supported yet!
+```
+
 ## Custom-Filesystem
 
 UnityPy uses [fsspec](https://github.com/fsspec/filesystem_spec) under the hood to manage all filesystem interactions.
