@@ -380,12 +380,14 @@ WARNING - not well tested
 **Export**
 
 ```python
+import os
 from PIL import Image
 for obj in env.objects:
     if obj.type.name == "Texture2DArray":
         # export texture
         data = obj.read()
-        data.image.save(path)
+        for i, image in enumerate(data.images):
+            image.save(os.path.join(path, f"{data.m_Name}_{i}.png"))
         # editing isn't supported yet!
 ```
 
