@@ -102,7 +102,7 @@ def get_image_from_texture2d(
     :return: PIL.Image object
     :rtype: Image
     """
-    return get_image_from_texture2d(
+    return parse_image_data(
         texture_2d.image_data,
         texture_2d.m_Width,
         texture_2d.m_Height,
@@ -110,7 +110,7 @@ def get_image_from_texture2d(
         texture_2d.version,
         texture_2d.platform,
         getattr(texture_2d, "m_PlatformBlob", None),
-        flip
+        flip,
     )
 
 
