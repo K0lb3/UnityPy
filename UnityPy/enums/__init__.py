@@ -14,3 +14,4 @@ from .SpritePackingMode import SpritePackingMode
 from .SpritePackingRotation import SpritePackingRotation
 from .TextureDimension import TextureDimension
 from .PassType import PassType
+from .GraphicsFormat import GraphicsFormat

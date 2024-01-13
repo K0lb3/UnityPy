@@ -34,5 +34,6 @@ from .SpriteAtlas import SpriteAtlas
 from .TextAsset import TextAsset
 from .Texture import Texture
 from .Texture2D import Texture2D
+from .Texture2DArray import Texture2DArray
 from .Transform import Transform
 from .VideoClip import VideoClip
