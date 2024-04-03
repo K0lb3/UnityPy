@@ -146,7 +146,7 @@ class Texture2D(Texture):
             self.m_IgnoreMasterTextureLimit = reader.read_boolean()
         if version >= (2022, 2, 0):  # 2022.2.0f1 and up
             self.m_IgnoreMipmapLimit = reader.read_boolean()
-            self.align_stream()
+            reader.align_stream()
             self.m_MipmapLimitGroupName = reader.read_aligned_string()
         if (3,) <= version[:2] <= (5, 4):  # 3.0 - 5.4
             self.m_ReadAllowed = reader.read_boolean()
