@@ -12,7 +12,7 @@ jobs:
     # the result of the previous workflow (see the documentation page)
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         os: ["ubuntu-20.04", "windows-2019", "macos-11"]
         cp: ["cp37", "cp38", "cp39", "cp310", "cp311", "cp312"]
@@ -63,7 +63,6 @@ jobs:
           CIBW_TEST_SKIP: "*-macosx_arm64 *-macosx_universal2:arm64 *-manylinux_i686 *-win32"
 
       - name: Publish to PyPI
-        if: success() && github.event_name == 'push' && env.TWINE_PASSWORD != ''
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
