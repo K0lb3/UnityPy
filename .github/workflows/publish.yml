@@ -63,7 +63,7 @@ jobs:
           CIBW_TEST_SKIP: "*-macosx_arm64 *-macosx_universal2:arm64 *-manylinux_i686 *-win32"
 
       - name: Publish to PyPI
-        if: success() && github.event_name == 'push' && env.TWINE_PASSWORD != '' && github.ref == 'refs/heads/master'
+        if: success() && github.event_name == 'push' && env.TWINE_PASSWORD != ''
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
