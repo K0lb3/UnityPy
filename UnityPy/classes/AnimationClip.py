@@ -519,6 +519,8 @@ class GenericBinding:
             self.typeID = ClassIDType(reader.read_u_short())
         self.customType = reader.read_byte()
         self.isPPtrCurve = reader.read_byte()
+        if version >= (2022, 1):  # 2022.1 and up
+            self.isIntCurve = reader.read_byte()        
         reader.align_stream()
 
 
