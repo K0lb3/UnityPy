@@ -494,6 +494,10 @@ class Mesh(NamedObject):
             m_CollisionVertexCount = reader.read_int()
 
         self.m_MeshUsageFlags = reader.read_int()
+
+        if version >= (2022, 1):  # 2022.1 and up
+            self.m_CookingOptions = reader.read_int()
+        
         if version >= (5,):  # 5.0 and up
             self.m_BakedConvexCollisionMesh = reader.read_bytes(reader.read_int())
             reader.align_stream()
