@@ -219,10 +219,7 @@ class BundleFile(File.File):
         if self.signature == "UnityArchive":
             raise NotImplementedError("BundleFile - UnityArchive")
         elif self.signature in ["UnityWeb", "UnityRaw"]:
-            raise NotImplementedError(
-                "Saving Unity Web and Raw bundles isn't supported yet"
-            )
-            # self.save_web_raw(writer)
+            self.save_web_raw(writer)
         elif self.signature == "UnityFS":
             if not packer or packer == "none":
                 self.save_fs(writer, 64, 64)
@@ -403,6 +400,89 @@ class BundleFile(File.File):
         writer.write_long(writer_end_pos)
         writer.Position = writer_end_pos
 
+
+    def save_web_raw(self, writer: EndianBinaryWriter):
+        # (version >= 4) hash
+        # (version >= 4) crc
+        # minimumStreamedBytes
+        # headerSize
+        # numberOfLevelsToDownloadBeforeStreaming
+        # levelCount
+        # compressedSize * levelCount
+        # uncompressedSize * levelCount
+        # (version >= 2) completeFileSize
+        # (version >= 3) file_info_header_size
+        # compressed assets
+        
+        if self.version > 3:
+            raise NotImplementedError("Saving Unity Web bundles with version > 3 is not supported")
+
+        # Calculate fileInfoHeaderSize for set offsets
+        file_info_header_size = 4  # for nodesCount
+        
+        for file_name in self.files.keys():
+            file_info_header_size += len(file_name.encode()) + 1  # +1 for null terminator
+            file_info_header_size += 4 * 2  # 4 bytes each for offset and size
+        
+        file_info_header_padding_size = 4 - (file_info_header_size % 4) if file_info_header_size % 4 != 0 else 0
+        file_info_header_size += file_info_header_padding_size
+
+        # Prepare directory info
+        directory_info_writer = EndianBinaryWriter()
+        directory_info_writer.write_int(len(self.files))  # nodesCount
+
+        file_content_writer = EndianBinaryWriter()
+        current_offset = file_info_header_size
+        
+        for file_name, f in self.files.items():
+            directory_info_writer.write_string_to_null(file_name)
+            directory_info_writer.write_u_int(current_offset)
+            
+            # Get file content
+            if isinstance(f, (EndianBinaryReader, EndianBinaryWriter)):
+                file_data = f.bytes
+            else:
+                file_data = f.save()
+            
+            file_size = len(file_data)
+            directory_info_writer.write_u_int(file_size)
+            
+            file_content_writer.write_bytes(file_data)
+            current_offset += file_size
+
+        directory_info_writer.write(b'\x00' * file_info_header_padding_size)
+        uncompressed_directory_info = directory_info_writer.bytes
+        uncompressed_file_content = file_content_writer.bytes
+
+        # Combine directory info and file content
+        uncompressed_content = uncompressed_directory_info + uncompressed_file_content
+        compressed_content = CompressionHelper.compress_lzma(uncompressed_content)
+        
+        # Write header
+        header_size = 60 # file_header 28, metadata max 4 * 8
+        writer.write_u_int(header_size + len(compressed_content))  # minimumStreamedBytes (same as completeFileSize)
+        writer.write_u_int(header_size)  # headerSize
+        writer.write_u_int(1)  # numberOfLevelsToDownloadBeforeStreaming (always 1)
+        writer.write_int(1)  # levelCount (always 1)
+
+        writer.write_u_int(len(compressed_content))  # compressedSize
+        writer.write_u_int(len(uncompressed_content))  # uncompressedSize
+
+        if self.version >= 2:
+            writer.write_u_int(header_size + len(compressed_content))  # completeFileSize
+
+        if self.version >= 3:
+            writer.write_u_int(file_info_header_size)  # file_info_header_size
+
+        # Pad header if necessary
+        current_header_size = writer.Position
+        if current_header_size < header_size:
+            writer.write(b'\x00' * (header_size - current_header_size))
+
+        # Write compressed content
+        writer.write(compressed_content)
+
+    
     def decompress_data(
         self,
         compressed_data: bytes,
