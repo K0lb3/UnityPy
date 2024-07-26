@@ -81,6 +81,17 @@ class Environment:
             }
         )
 
+    def _load_split_file(self, basename):
+        file = []
+        for i in range(0, 999):
+            item = f"{basename}.split{i}"
+            if self.fs.exists(item):
+                with self.fs.open(item, "rb") as f:
+                    file.append(f.read())
+            elif i:
+                break
+        return b"".join(file)
+
     def load_file(
         self,
         file: Union[io.IOBase, str],
@@ -95,29 +106,25 @@ class Environment:
             split_match = reSplit.match(file)
             if split_match:
                 basepath, basename = split_match.groups()
-                file = []
-                for i in range(0, 999):
-                    item = f"{basepath}.split{i}"
-                    if self.fs.exists(item):
-                        with self.fs.open(item, "rb") as f:
-                            file.append(f.read())
-                    elif i:
-                        break
                 name = basepath
-                file = b"".join(file)
+                file = self._load_split_file(name)
             else:
                 name = file
                 if not os.path.exists(file):
                     # relative paths are in the asset directory, not the cwd
                     if not os.path.isabs(file):
                         file = os.path.join(self.path, file)
+                    # for dependency loading of split files
+                    if os.path.exists(f"{file}.split0"):
+                        file = self._load_split_file(file)
                     # Unity paths are case insensitive, so we need to find "Resources/Foo.asset" when the record says "resources/foo.asset"
-                    if not os.path.exists(file):
+                    elif not os.path.exists(file):
                         file = ImportHelper.find_sensitive_path(self.path, file)
                     # nonexistent files might be packaging errors or references to Unity's global Library/
                     if file is None:
                         return
-                file = self.fs.open(file, "rb")
+                if type(file) == str:
+                    file = self.fs.open(file, "rb")
 
         typ, reader = ImportHelper.check_file_type(file)
 
@@ -273,15 +280,7 @@ class Environment:
                     continue
 
                 split_files.append(basepath)
-                data = []
-                for i in range(0, 999):
-                    item = f"{basepath}.split{i}"
-                    if item in assets:
-                        with open_f(item) as f:
-                            data.append(f.read())
-                    elif i:
-                        break
-                data = b"".join(data)
+                data = self._load_split_file(basepath)
                 path = basepath
             else:
                 data = open_f(path).read()
