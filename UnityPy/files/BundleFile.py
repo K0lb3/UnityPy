@@ -37,7 +37,7 @@ class BundleFile(File.File):
         if signature == "UnityArchive":
             raise NotImplementedError("BundleFile - UnityArchive")
         elif signature in ["UnityWeb", "UnityRaw"]:
-            m_DirectoryInfo, blocksReader = self.read_web_raw(reader)
+            m_DirectoryInfo, blocksReader = self.read_web_raw(reader, signature == "UnityWeb")
         elif signature == "UnityFS":
             m_DirectoryInfo, blocksReader = self.read_fs(reader)
         else:
@@ -45,7 +45,7 @@ class BundleFile(File.File):
 
         self.read_files(blocksReader, m_DirectoryInfo)
 
-    def read_web_raw(self, reader: EndianBinaryReader):
+    def read_web_raw(self, reader: EndianBinaryReader, is_compressed = True):
         # def read_header_and_blocks_info(self, reader:EndianBinaryReader):
         version = self.version
         if version >= 4:
@@ -71,7 +71,7 @@ class BundleFile(File.File):
 
         uncompressedBytes = CompressionHelper.decompress_lzma(
             reader.read_bytes(compressedSize)
-        )
+        ) if is_compressed else reader.read_bytes(uncompressedSize)
 
         blocksReader = EndianBinaryReader(uncompressedBytes, offset=headerSize)
         nodesCount = blocksReader.read_int()
