@@ -142,12 +142,23 @@ class Texture2D(Texture):
             self.m_IsReadable = reader.read_boolean()  # 2.6 and up
         if version >= (2020,):  # 2020.1 and up
             self.m_IsPreProcessed = reader.read_boolean()
-        if (2019, 3) <= version < (2022, 2, 0):  # 2019.3.0f6 - 2022.2.0a18
+        if (2019, 3) <= version < (2022, 2, 0, 3) or (2023, 1, 0, 1) <= version < (
+            2023,
+            1,
+            0,
+            8,
+        ):  # 2019.3.0f6 - 2022.2.0a18
             self.m_IgnoreMasterTextureLimit = reader.read_boolean()
-        if version >= (2022, 2, 0):  # 2022.2.0f1 and up
+        if (2022, 2, 0, 3) <= version < (2023, 1, 0, 1) or version >= (
+            2023,
+            1,
+            0,
+            8,
+        ):  # 2022.2.0f1 and up
             self.m_IgnoreMipmapLimit = reader.read_boolean()
             reader.align_stream()
             self.m_MipmapLimitGroupName = reader.read_aligned_string()
+
         if (3,) <= version[:2] <= (5, 4):  # 3.0 - 5.4
             self.m_ReadAllowed = reader.read_boolean()
         if version >= (2018, 2):  # 2018.2 and up
@@ -201,12 +212,23 @@ class Texture2D(Texture):
             writer.write_boolean(self.m_IsReadable)  # 2.6 and up
         if version >= (2020,):  # 2020.1 and up
             writer.write_boolean(self.m_IsPreProcessed)
-        if (2019, 3) <= version < (2022, 2, 0):  # 2019.3.0f6 - 2022.2.0a18
+        if (2019, 3) <= version < (2022, 2, 0, 3) or (2023, 1, 0, 1) <= version < (
+            2023,
+            1,
+            0,
+            8,
+        ):  # 2019.3.0f6 - 2022.2.0a18
             writer.write_boolean(self.m_IgnoreMasterTextureLimit)
-        if version >= (2022, 2, 0):  # 2022.2.0f1 and up
+        if (2022, 2, 0, 3) <= version < (2023, 1, 0, 1) or version >= (
+            2023,
+            1,
+            0,
+            8,
+        ):  # 2022.2.0f1 and up
             writer.write_boolean(self.m_IgnoreMipmapLimit)
             writer.align_stream()
             writer.write_aligned_string(self.m_MipmapLimitGroupName)
+        
         if (3,) <= version[:2] <= (5, 4):  # 3.0 - 5.4
             writer.write_boolean(self.m_ReadAllowed)  # 3.0 - 5.4
         if version >= (2018, 2):  # 2018.2 and up
