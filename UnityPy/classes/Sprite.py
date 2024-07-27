@@ -52,6 +52,9 @@ class Sprite(NamedObject):
             m_BonesSize = reader.read_int()
             self.m_Bones = [SpriteBone(self.reader) for _ in range(m_BonesSize)]
 
+        if version >= (2023, 1, 0, 14):
+            self.m_ScriptableObjects = [PPtr(reader) for _ in range(reader.read_int())]
+
     def save(self, writer: EndianBinaryWriter = None):
         if writer is None:
             writer = EndianBinaryWriter(endian=self.reader.endian)
@@ -91,6 +94,11 @@ class Sprite(NamedObject):
             writer.write_int(len(self.m_Bones))
             for bone in self.m_Bones:
                 bone.save(writer, version)
+
+        if version >= (2023, 1, 0, 14):
+            writer.write_int(len(self.m_ScriptableObjects))
+            for obj in self.m_ScriptableObjects:
+                obj.save(writer)
 
         self.set_raw_data(writer.bytes)
 
