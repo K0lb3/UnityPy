@@ -19,24 +19,7 @@ def decompress_lzma(data: bytes) -> bytes:
     :return: uncompressed data
     :rtype: bytes
     """
-    props, dict_size = struct.unpack("<BI", data[:5])
-    lc = props % 9
-    props = props // 9
-    pb = props // 5
-    lp = props % 5
-    dec = lzma.LZMADecompressor(
-        format=lzma.FORMAT_RAW,
-        filters=[
-            {
-                "id": lzma.FILTER_LZMA1,
-                "dict_size": dict_size,
-                "lc": lc,
-                "lp": lp,
-                "pb": pb,
-            }
-        ],
-    )
-    return dec.decompress(data[5:])
+    return lzma.LZMADecompressor(format=lzma.FORMAT_AUTO).decompress(data)
 
 
 def compress_lzma(data: bytes) -> bytes:
