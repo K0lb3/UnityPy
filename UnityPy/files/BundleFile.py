@@ -456,7 +456,7 @@ class BundleFile(File.File):
 
         # Combine directory info and file content
         uncompressed_content = uncompressed_directory_info + uncompressed_file_content
-        compressed_content = CompressionHelper.compress_lzma(uncompressed_content)
+        compressed_content = CompressionHelper.compress_lzma(uncompressed_content) if self.signature == "UnityWeb" else uncompressed_content
         
         # Write header
         header_size = 60 # file_header 28, metadata max 4 * 8
