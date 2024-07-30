@@ -106,11 +106,11 @@ class Sprite(NamedObject):
 class SecondarySpriteTexture:
     def __init__(self, reader):
         self.texture = PPtr(reader)  # Texture2D
-        self.name = reader.read_string_to_null()
+        self.name = reader.read_aligned_string()
 
     def save(self, writer):
         self.texture.save(writer)
-        writer.write_string_to_null(self.name)
+        writer.write_aligned_string(self.name)
 
 
 class SpriteSettings:
