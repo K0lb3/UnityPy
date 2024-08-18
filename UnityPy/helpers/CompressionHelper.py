@@ -36,7 +36,7 @@ def decompress_lzma(data: bytes) -> bytes:
             }
         ],
     )
-    return dec.decompress(data[5:])
+    return dec.decompress(data[13:])
 
 
 def compress_lzma(data: bytes) -> bytes:
