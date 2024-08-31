@@ -51,27 +51,18 @@ def compress_lzma(data: bytes) -> bytes:
     """
     compressor = lzma.LZMACompressor(format=lzma.FORMAT_ALONE, filters=[{
         "id": lzma.FILTER_LZMA1,
-        "dict_size": 524288,
+        "dict_size": 0x200000,
         "lc": 3,
         "lp": 0,
         "pb": 2,
     }])
     compressed_data = compressor.compress(data) + compressor.flush()
 
-    # Extract the header
-    header = bytearray(compressed_data[:13])
+    # Skip Decompressed Length
+    header = compressed_data[:5]
     compressed_body = compressed_data[13:]
 
-    # Decompressed size (adjust this value according to your data)
-    decompressed_size = len(data)
-
-    # Manually set the decompressed size in the header
-    header[5:13] = decompressed_size.to_bytes(8, 'little')
-
-    # Combine the header and the compressed body
-    final_compressed_data = header + compressed_body
-
-    return final_compressed_data
+    return header + compressed_body
 
 
 # LZ4
