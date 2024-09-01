@@ -10,11 +10,9 @@ NODES_CACHE: dict = {}
 
 
 def init():
-    import os
+    from importlib.resources import open_binary
 
-    with open(
-        os.path.join(os.path.dirname(os.path.dirname(__file__)), "resources", "uncompressed.tpk"), "rb"
-    ) as f:
+    with open_binary("UnityPy.resources", "uncompressed.tpk") as f:
         global TPKTYPETREE
         TPKTYPETREE = TpkFile(f).GetDataBlob()
 
