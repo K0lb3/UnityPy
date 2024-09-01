@@ -24,7 +24,7 @@ def export_mesh_obj(m_Mesh, material_names: list = None):
 
     for v in range(int(m_Mesh.m_VertexCount)):
         sb.append(
-            "v {0:.7G} {1:.7G} {2:.7G}\r\n".format(
+            "v {0:.9G} {1:.9G} {2:.9G}\r\n".format(
                 -m_Mesh.m_Vertices[v * c],
                 m_Mesh.m_Vertices[v * c + 1],
                 m_Mesh.m_Vertices[v * c + 2],
@@ -41,7 +41,7 @@ def export_mesh_obj(m_Mesh, material_names: list = None):
 
         for v in range(int(m_Mesh.m_VertexCount)):
             sb.append(
-                "vt {0:.7G} {1:.7G}\r\n".format(
+                "vt {0:.9G} {1:.9G}\r\n".format(
                     m_Mesh.m_UV0[v * c], m_Mesh.m_UV0[v * c + 1]
                 ).replace("nan", "0")
             )
@@ -56,7 +56,7 @@ def export_mesh_obj(m_Mesh, material_names: list = None):
 
         for v in range(int(m_Mesh.m_VertexCount)):
             sb.append(
-                "vn {0:.7G} {1:.7G} {2:.7G}\r\n".format(
+                "vn {0:.9G} {1:.9G} {2:.9G}\r\n".format(
                     -m_Mesh.m_Normals[v * c],
                     m_Mesh.m_Normals[v * c + 1],
                     m_Mesh.m_Normals[v * c + 2],
