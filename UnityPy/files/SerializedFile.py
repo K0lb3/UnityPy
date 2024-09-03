@@ -166,7 +166,7 @@ class SerializedType:
                     writer.write_string_to_null(self.m_NameSpace)
                     writer.write_string_to_null(self.m_AssemblyName)
                 else:
-                    writer.write_int_array(self.type_dependencies)
+                    writer.write_int_array(self.type_dependencies, write_length=True)
 
 
 class SerializedFile(File.File):
@@ -630,9 +630,6 @@ class SerializedFile(File.File):
 
         # string buffer
         writer.write(string_buffer.bytes)
-
-        if self.header.version >= 21:
-            writer.write_bytes(b"\x00" * 4)
 
 
 def read_string(string_buffer_reader: EndianBinaryReader, value: int) -> str:
