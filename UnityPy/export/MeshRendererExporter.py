@@ -1,4 +1,3 @@
-import os
 from ..classes import Renderer, SkinnedMeshRenderer, Material
 from .MeshExporter import export_mesh_obj
 
@@ -17,7 +16,7 @@ def get_mesh(meshR: Renderer):
 
 
 def export_mesh_renderer(obj: Renderer, export_dir: str) -> None:
-    env = mesh.assets_file.enviroment
+    env = obj.assets_file.enviroment
     env.fs.makedirs(export_dir, exist_ok=True)
     meshR = obj.read()
     mesh = get_mesh(meshR)
