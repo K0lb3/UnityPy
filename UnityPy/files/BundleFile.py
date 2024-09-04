@@ -37,9 +37,7 @@ class BundleFile(File.File):
         if signature == "UnityArchive":
             raise NotImplementedError("BundleFile - UnityArchive")
         elif signature in ["UnityWeb", "UnityRaw"]:
-            m_DirectoryInfo, blocksReader = self.read_web_raw(
-                reader, signature == "UnityWeb"
-            )
+            m_DirectoryInfo, blocksReader = self.read_web_raw(reader)
         elif signature == "UnityFS":
             m_DirectoryInfo, blocksReader = self.read_fs(reader)
         else:
@@ -47,12 +45,12 @@ class BundleFile(File.File):
 
         self.read_files(blocksReader, m_DirectoryInfo)
 
-    def read_web_raw(self, reader: EndianBinaryReader, is_compressed = True):
+    def read_web_raw(self, reader: EndianBinaryReader):
         # def read_header_and_blocks_info(self, reader:EndianBinaryReader):
         version = self.version
         if version >= 4:
-            _hash = reader.read_bytes(16)
-            crc = reader.read_u_int()
+            self._hash = reader.read_bytes(16)
+            self.crc = reader.read_u_int()
 
         minimumStreamedBytes = reader.read_u_int()
         headerSize = reader.read_u_int()
@@ -72,10 +70,8 @@ class BundleFile(File.File):
         reader.Position = headerSize
 
         uncompressedBytes = reader.read_bytes(compressedSize)
-        if is_compressed:
-            uncompressedBytes = CompressionHelper.decompress_lzma(
-                uncompressedBytes, True
-            )
+        if self.signature == "UnityWeb":
+            uncompressedBytes = CompressionHelper.decompress_lzma(uncompressedBytes, True)
 
         blocksReader = EndianBinaryReader(uncompressedBytes, offset=headerSize)
         nodesCount = blocksReader.read_int()
@@ -456,10 +452,25 @@ class BundleFile(File.File):
 
         # Combine directory info and file content
         uncompressed_content = uncompressed_directory_info + uncompressed_file_content
-        compressed_content = CompressionHelper.compress_lzma(uncompressed_content) if self.signature == "UnityWeb" else uncompressed_content
+        compressed_content = uncompressed_content
+        if self.signature == "UnityWeb":
+            compressed_content = CompressionHelper.compress_lzma(uncompressed_content, True)
         
         # Write header
-        header_size = 60 # file_header 28, metadata max 4 * 8
+        header_size = writer.Position + 24 # assuming levelCount = 1
+        if self.version >= 2:
+            header_size += 4
+        if self.version >= 3:
+            header_size += 4
+        if self.version >= 4:
+            header_size += 20
+        # pad to multiple of 4
+        header_size = (header_size + 3) & ~3
+
+        if self.version >= 4:
+            writer.write_bytes(self._hash)
+            writer.write_u_int(self.crc)
+
         writer.write_u_int(header_size + len(compressed_content))  # minimumStreamedBytes (same as completeFileSize)
         writer.write_u_int(header_size)  # headerSize
         writer.write_u_int(1)  # numberOfLevelsToDownloadBeforeStreaming (always 1)
@@ -474,10 +485,8 @@ class BundleFile(File.File):
         if self.version >= 3:
             writer.write_u_int(file_info_header_size)  # file_info_header_size
 
-        # Pad header if necessary
-        current_header_size = writer.Position
-        if current_header_size < header_size:
-            writer.write(b'\x00' * (header_size - current_header_size))
+        # align header
+        writer.align_stream(4)
 
         # Write compressed content
         writer.write(compressed_content)
