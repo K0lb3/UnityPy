@@ -68,12 +68,11 @@ def compress_lzma(data: bytes, write_decompressed_size: bool = False) -> bytes:
     )
 
     compressed_data = compressor.compress(data) + compressor.flush()
+    cdl = len(compressed_data)
     if write_decompressed_size:
-        return struct.pack(
-            f"<BIQ{len(data)}s", 0x5D, dict_size, len(data), compressed_data
-        )
+        return struct.pack(f"<BIQ{cdl}s", 0x5D, dict_size, len(data), compressed_data)
     else:
-        return struct.pack(f"<BI{len(data)}s", 0x5D, dict_size, compressed_data)
+        return struct.pack(f"<BI{cdl}s", 0x5D, dict_size, compressed_data)
 
 
 # LZ4
