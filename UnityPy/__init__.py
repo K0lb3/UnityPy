@@ -1,7 +1,9 @@
-__version__ = "1.10.14"
+__version__ = "1.10.15"
 
-from .environment import Environment
-from .helpers.ArchiveStorageManager import set_assetbundle_decrypt_key
+from .environment import Environment as Environment
+from .helpers.ArchiveStorageManager import (
+    set_assetbundle_decrypt_key as set_assetbundle_decrypt_key,
+)
 
 
 def load(*args, fs=None, **kwargs):
