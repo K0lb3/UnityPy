@@ -227,6 +227,8 @@ class BundleFile(File.File):
                 )
             elif packer == "lz4":
                 self.save_fs(writer, data_flag=194, block_info_flag=2)
+            elif packer == "lzma":
+                self.save_fs(writer, data_flag=65, block_info_flag=1)
             elif isinstance(packer, tuple):
                 self.save_fs(writer, *packer)
             else:
