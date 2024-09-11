@@ -166,7 +166,7 @@ def chunk_based_compress(data: bytes, block_info_flag: int) -> (bytes, list):
     """
     switch = block_info_flag & 0x3F
     if switch == 0:  # NONE
-        return data, [len(data), len(data), block_info_flag]
+        return data, [(len(data), len(data), block_info_flag)]
     elif switch == 1:  # LZMA
         chunk_size = 0xFFFFFFFF
         compress_func = compress_lzma
