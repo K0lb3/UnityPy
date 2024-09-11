@@ -311,13 +311,13 @@ class BundleFile(File.File):
         block_writer = EndianBinaryWriter(b"\x00" * 0x10)
         # data block info
         block_writer.write_int(len(block_info))
-        for u_size, c_size, f in block_info:
+        for block_uncompressed_size, block_compressed_size, block_flag in block_info:
             # uncompressed size
-            block_writer.write_u_int(u_size)
+            block_writer.write_u_int(block_uncompressed_size)
             # compressed size
-            block_writer.write_u_int(c_size)
+            block_writer.write_u_int(block_compressed_size)
             # flag
-            block_writer.write_u_short(f)
+            block_writer.write_u_short(block_flag)
 
         # file block info
         if not data_flag & 0x40:
