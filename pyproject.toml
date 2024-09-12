@@ -50,6 +50,8 @@ dependencies = [
     "pyfmodex >= 0.7.1",
     # filesystem handling
     "fsspec",
+    # better classes
+    "attrs",
 ]
 dynamic = ["version"]
 
