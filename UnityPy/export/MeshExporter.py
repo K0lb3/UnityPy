@@ -1,85 +1,64 @@
-from UnityPy.classes import Mesh
+from typing import TYPE_CHECKING
+
+from ..helpers.MeshHelper import MeshHandler
+
+if TYPE_CHECKING:
+    from ..classes.generated import Mesh
 
 
-def export_mesh(m_Mesh: Mesh, format="obj") -> str:
+def export_mesh(m_Mesh: "Mesh", format="obj") -> str:
     if format == "obj":
         return export_mesh_obj(m_Mesh)
     raise NotImplementedError(f"Export format {format} not implemented")
 
 
-def export_mesh_obj(m_Mesh, material_names: list = None):
+def export_mesh_obj(mesh: "Mesh", material_names: list = None):
+    handler = MeshHandler(mesh)
+    handler.process()
+
+    m_Mesh = handler
     if m_Mesh.m_VertexCount <= 0:
         return False
 
-    sb = [f"g {m_Mesh.name}\r\n"]
+    sb = [f"g {mesh.m_Name}\n"]
     if material_names:
-        sb.append(f"mtllib {m_Mesh.name}.mtl\r\n")
+        sb.append(f"mtllib {mesh.m_Name}.mtl\n")
     # region Vertices
     if not m_Mesh.m_Vertices:
         return False
 
-    c = 3
-    if len(m_Mesh.m_Vertices) == m_Mesh.m_VertexCount * 4:
-        c = 4
-
-    for v in range(int(m_Mesh.m_VertexCount)):
-        sb.append(
-            "v {0:.9G} {1:.9G} {2:.9G}\r\n".format(
-                -m_Mesh.m_Vertices[v * c],
-                m_Mesh.m_Vertices[v * c + 1],
-                m_Mesh.m_Vertices[v * c + 2],
-            ).replace("nan", "0")
+    sb.extend(
+        "v {0:.9G} {1:.9G} {2:.9G}\n".format(-pos[0], pos[1], pos[2]).replace(
+            "nan", "0"
         )
+        for pos in m_Mesh.m_Vertices
+    )
     # endregion
 
     # region UV
     if m_Mesh.m_UV0:
-        if len(m_Mesh.m_UV0) == m_Mesh.m_VertexCount * 2:
-            c = 2
-        elif len(m_Mesh.m_UV0) == m_Mesh.m_VertexCount * 3:
-            c = 3
-
-        for v in range(int(m_Mesh.m_VertexCount)):
-            sb.append(
-                "vt {0:.9G} {1:.9G}\r\n".format(
-                    m_Mesh.m_UV0[v * c], m_Mesh.m_UV0[v * c + 1]
-                ).replace("nan", "0")
-            )
+        sb.extend(
+            "vt {0:.9G} {1:.9G}\n".format(uv[0], uv[1]).replace("nan", "0")
+            for uv in m_Mesh.m_UV0
+        )
     # endregion
 
     # region Normals
     if m_Mesh.m_Normals:
-        if len(m_Mesh.m_Normals) == m_Mesh.m_VertexCount * 3:
-            c = 3
-        elif len(m_Mesh.m_Normals) == m_Mesh.m_VertexCount * 4:
-            c = 4
-
-        for v in range(int(m_Mesh.m_VertexCount)):
-            sb.append(
-                "vn {0:.9G} {1:.9G} {2:.9G}\r\n".format(
-                    -m_Mesh.m_Normals[v * c],
-                    m_Mesh.m_Normals[v * c + 1],
-                    m_Mesh.m_Normals[v * c + 2],
-                ).replace("nan", "0")
-            )
+        sb.extend(
+            "vn {0:.9G} {1:.9G} {2:.9G}\n".format(-n[0], n[1], n[2]).replace("nan", "0")
+            for n in m_Mesh.m_Normals
+        )
     # endregion
 
     # region Face
-    sum = 0
-    for i in range(len(m_Mesh.m_SubMeshes)):
-        sb.append(f"g {m_Mesh.name}_{i}\r\n")
+    for i, triangles in enumerate(m_Mesh.get_triangles()):
+        sb.append(f"g {mesh.m_Name}_{i}\n")
         if material_names and i < len(material_names) and material_names[i]:
-            sb.append(f"usemtl {material_names[i]}\r\n")
-        indexCount = m_Mesh.m_SubMeshes[i].indexCount
-        end = sum + indexCount // 3
-        for f in range(sum, end):
-            sb.append(
-                "f {0}/{0}/{0} {1}/{1}/{1} {2}/{2}/{2}\r\n".format(
-                    m_Mesh.m_Indices[f * 3 + 2] + 1,
-                    m_Mesh.m_Indices[f * 3 + 1] + 1,
-                    m_Mesh.m_Indices[f * 3] + 1,
-                )
-            )
-        sum = end
+            sb.append(f"usemtl {material_names[i]}\n")
+        sb.extend(
+            "f {0}/{0}/{0} {1}/{1}/{1} {2}/{2}/{2}\n".format(c + 1, b + 1, a + 1)
+            for a, b, c in triangles
+        )
     # endregion
     return "".join(sb)

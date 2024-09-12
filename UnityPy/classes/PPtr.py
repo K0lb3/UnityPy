@@ -1,90 +1,81 @@
-from ..files import ObjectReader
-from ..streams import EndianBinaryWriter
-from ..enums import ClassIDType
+from __future__ import annotations
+from typing import TypeVar, Generic, TYPE_CHECKING, Optional, Any, cast
+
+from attr import define
+
+if TYPE_CHECKING:
+    from ..files.ObjectReader import ObjectReader
+    from ..files.SerializedFile import SerializedFile
+
+T = TypeVar("T")
 
 
-def save_ptr(obj, writer: EndianBinaryWriter):
-    if isinstance(obj, PPtr):
-        writer.write_int(obj.file_id)
-    else:
-        writer.write_int(0)  # it's usually 0......
-    if obj._version < 14:
-        writer.write_int(obj.path_id)
-    else:
-        writer.write_long(obj.path_id)
+@define
+class PPtr(Generic[T]):
+    m_FileID: int
+    m_PathID: int
+    assetsfile: Optional[SerializedFile] = None
+    type: Optional[str] = None
 
+    @property
+    def file_id(self) -> int:
+        # backwards compatibility
+        return self.m_FileID
 
-class PPtr:
-    def __init__(self, reader: ObjectReader):
-        self._version = reader.version2
-        self.index = -2
-        self.file_id = reader.read_int()
-        self.path_id = reader.read_int() if self._version < 14 else reader.read_long()
-        self.assets_file = reader.assets_file
-        self._obj = None
+    @property
+    def path_id(self) -> int:
+        # backwards compatibility
+        return self.m_PathID
 
-    def save(self, writer: EndianBinaryWriter):
-        save_ptr(self, writer)
+    def read(self):
+        # backwards compatibility
+        return self.deref_parse_as_object()
 
-    def get_obj(self):
-        if self._obj != None:
-            return self._obj
+    def deref(self, assetsfile: Optional[SerializedFile] = None) -> ObjectReader[T]:
+        assetsfile = assetsfile or self.assetsfile
+        if assetsfile is None:
+            raise ValueError("PPtr can't deref without an assetsfile!")
 
-        manager = None
+        if self.m_PathID == 0:
+            raise ValueError("PPtr can't deref with m_PathID == 0!")
 
-        if self.file_id == 0:
-            manager = self.assets_file
-
-        elif self.file_id > 0 and self.file_id - 1 < len(self.assets_file.externals):
-            if self.index == -2:
-                environment = self.assets_file.environment
-                external_name = self.external_name
-                # try to find it in the already registered cabs
-                manager = environment.get_cab(external_name)
-                # not found, load all dependencies and try again
-                if not manager:
-                    self.assets_file.load_dependencies([external_name])
-                    manager = environment.get_cab(external_name)
-
-        if manager is not None:
-            self._obj = manager.objects.get(self.path_id)
+        if self.m_FileID == 0:
+            pass
         else:
-            self._obj = None
-            if self.external_name:
-                print(f"Couldn't find dependency {self.external_name}")
-                print("You can try to load it manually to the environment in advance")
-                print("for Web-&BundleFiles: env.load_file(dependency)")
-                print(
-                    "for SerializedFiles: env.register_cab(depdency_basename, env.load_file(dependency)"
+            # resolve file id to external name
+            external_id = self.m_FileID - 1
+            if external_id >= len(assetsfile.m_Externals):
+                raise FileNotFoundError("Failed to resolve pointer - invalid m_FileID!")
+            external = assetsfile.m_Externals[external_id]
+
+            # resolve external name to assetsfile
+            container = assetsfile.parent
+            if container is None:
+                # TODO - use default fs
+                raise FileNotFoundError(
+                    f"PPtr points to {external.path} but no container is set!"
                 )
-            elif self.path_id:
-                print(f"Couldn't find referenced object with path_id {self.path_id}")
 
-        return self._obj
+            for child in container.childs:
+                if isinstance(child, SerializedFile) and child.name == external.path:
+                    assetsfile = child
+                    break
+            else:
+                raise FileNotFoundError(
+                    f"Failed to resolve pointer - {external.path} not found!"
+                )
 
-    @property
-    def type(self):
-        obj = self.get_obj()
-        if obj is None:
-            return ClassIDType.UnknownType
-        return obj.type
+        return cast("ObjectReader[T]", assetsfile.objects[self.m_PathID])
 
-    @property
-    def external_name(self):
-        if self.file_id > 0 and self.file_id - 1 < len(self.assets_file.externals):
-            return self.assets_file.externals[self.file_id - 1].name
+    def deref_parse_as_object(self, assetsfile: Optional[SerializedFile] = None) -> T:
+        return self.deref(assetsfile).read()
 
-    def __getattr__(self, key):
-        obj = self.get_obj()
-        return getattr(obj, key)
-
-    def __repr__(self):
-        return "<%s %s>" % (
-            self.__class__.__name__,
-            self._obj.__class__.__repr__(self.get_obj())
-            if self.get_obj()
-            else "Not Found",
-        )
+    def deref_parse_as_dict(
+        self, assetsfile: Optional[SerializedFile] = None
+    ) -> dict[str, Any]:
+        ret = self.deref(assetsfile).parse_as_dict()
+        assert isinstance(ret, dict)
+        return ret
 
     def __bool__(self):
-        return True if self.get_obj() else False
+        return self.m_PathID != 0

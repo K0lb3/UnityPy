@@ -1,23 +1,30 @@
 ﻿import texture2ddecoder
-import etcpak
 from PIL import Image
 from copy import copy
 from io import BytesIO
 import struct
 from ..enums import TextureFormat, BuildTarget
 from ..helpers import TextureSwizzler
+from typing import Union
 
 TF = TextureFormat
 
 
-def image_to_texture2d(img: Image.Image, target_texture_format: TF, flip: bool = True):
+def image_to_texture2d(
+    img: Image.Image, target_texture_format: Union[TF, int], flip: bool = True
+):
+    if isinstance(target_texture_format, int):
+        target_texture_format = TextureFormat(target_texture_format)
+
+    import etcpak
+
     if flip:
         img = img.transpose(Image.FLIP_TOP_BOTTOM)
 
     # DXT
     if target_texture_format in [TF.DXT1, TF.DXT1Crunched]:
         raw_img = img.convert("RGBA").tobytes()
-        enc_img = etcpak.compress_to_dxt1(raw_img, img.width, img.height)
+        enc_img = etcpak.compress_bc1(raw_img, img.width, img.height)
         tex_format = TF.DXT1
     elif target_texture_format in [TF.DXT5, TF.DXT5Crunched]:
         raw_img = img.convert("RGBA").tobytes()
@@ -103,12 +110,12 @@ def get_image_from_texture2d(
     :rtype: Image
     """
     return parse_image_data(
-        texture_2d.image_data,
+        texture_2d.get_image_data(),
         texture_2d.m_Width,
         texture_2d.m_Height,
         texture_2d.m_TextureFormat,
-        texture_2d.version,
-        texture_2d.platform,
+        texture_2d.object_reader.version,
+        texture_2d.object_reader.platform,
         getattr(texture_2d, "m_PlatformBlob", None),
         flip,
     )
@@ -138,6 +145,8 @@ def parse_image_data(
     if texture_format in XBOX_SWAP_FORMATS:
         image_data = swap_bytes_for_xbox(image_data, platform)
 
+    if not isinstance(texture_format, TextureFormat):
+        texture_format = TextureFormat(texture_format)
     if "Crunched" in texture_format.name:
         version = version
         if (

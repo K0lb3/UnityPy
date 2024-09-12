@@ -1,180 +1,32 @@
-from .PPtr import PPtr
-from ..enums import BuildTarget
-from ..helpers import TypeTreeHelper
-from ..streams import EndianBinaryWriter
-from ..files import ObjectReader
-import types
-from ..exceptions import TypeTreeError as TypeTreeError
+from __future__ import annotations
+from abc import ABC, ABCMeta
+from typing import TYPE_CHECKING, Dict, Any, Optional, Self
+
+if TYPE_CHECKING:
+    from ..files.ObjectReader import ObjectReader
+    from ..files.SerializedFile import SerializedFile
 
 
-class Object(object):
-    type_tree: dict
+class Object(ABC, metaclass=ABCMeta):
+    object_reader: Optional[ObjectReader[Self]] = None
 
-    def __init__(self, reader: ObjectReader):
-        self.reader = reader
-        self.assets_file = reader.assets_file
-        self.type = reader.type
-        self.path_id = reader.path_id
-        self.version = reader.version
-        self.build_type = reader.build_type
-        self.platform = reader.platform
-        self.serialized_type = reader.serialized_type
-        self.byte_size = reader.byte_size
-        self.assets_file = reader.assets_file
+    def __init__(self, **kwargs: Dict[str, Any]) -> None:
+        self.__dict__.update(**kwargs)
 
-        if self.platform == BuildTarget.NoTarget:
-            self._object_hide_flags = reader.read_u_int()
+    def set_object_reader(self, object_info: ObjectReader[Any]):
+        self.object_reader = object_info
 
-        self.container = self.assets_file.container.path_dict.get(self.path_id)
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__}>"
 
-        self.reader.reset()
-        if type(self) == Object:
-            self.read_typetree()
+    @property
+    def assets_file(self) -> Optional[SerializedFile]:
+        if self.object_reader:
+            return self.object_reader.assets_file
+        return None
 
-    def has_struct_member(self, name: str) -> bool:
-        nodes = self.reader.get_typetree_nodes()
-        return any(node.m_Name == name for node in nodes)
+    def save(self) -> None:
+        if self.object_reader is None:
+            raise ValueError("ObjectReader not set")
 
-    def dump_typetree(self, nodes: list = None) -> str:
-        return self.reader.dump_typetree(nodes=nodes)
-
-    def dump_typetree_structure(self) -> str:
-        return self.reader.dump_typetree_structure()
-
-    def read_typetree(self, nodes: list = None, wrap: bool = False) -> dict:
-        tree = self.reader.read_typetree(nodes)
-        self.type_tree = NodeHelper(tree, self.assets_file)
-        return self.type_tree if wrap else tree
-
-    def save_typetree(self, nodes: list = None, writer: EndianBinaryWriter = None):
-        def class_to_dict(value):
-            if isinstance(value, list):
-                return [class_to_dict(val) for val in value]
-            elif isinstance(value, dict):
-                return {key: class_to_dict(val) for key, val in value.items()}
-            elif hasattr(value, "__dict__"):
-                if isinstance(value, PPtr):
-                    return {"m_PathID": value.path_id, "m_FileID": value.file_id}
-                return {
-                    key: class_to_dict(val)
-                    for key, val in value.__dict__.items()
-                    if not isinstance(value, (types.FunctionType, types.MethodType))
-                    and not key in ["type_tree", "assets_file"]
-                }
-            else:
-                return value
-
-        obj = class_to_dict(self if not self.type_tree else self.type_tree)
-        return self.reader.save_typetree(obj, nodes, writer)
-
-    def get_raw_data(self) -> bytes:
-        return self.reader.get_raw_data()
-
-    def set_raw_data(self, data):
-        self.reader.set_raw_data(data)
-
-    def save(self, writer: EndianBinaryWriter = None, intern_call=False):
-        if not writer:
-            writer = EndianBinaryWriter(endian=self.reader.endian)
-        if intern_call:
-            if self.platform == BuildTarget.NoTarget:
-                writer.write_u_int(self._object_hide_flags)
-        else:
-            # save for objects WITHOUT specific save function
-            # so we have to use the typetree if it exists
-            self.save_typetree()
-
-    def _save(self, writer):
-        # the reader is actually an ObjectReader,
-        # the data value is written back into the asset
-        self.reader.data = writer.bytes
-
-    def __getattr__(self, name):
-        """
-        If item not found in __dict__, read type_tree and check if it is in there.
-        """
-        if name == "type_tree" or self.type_tree == None:
-            old_pos = self.reader.Position
-            self.read_typetree()
-            self.reader.Position = old_pos
-            if name == "type_tree":
-                return self.type_tree
-        elif name == "read":
-            return lambda: self
-        return getattr(self.type_tree, name)
-
-    def get(self, key, default=None):
-        return getattr(self, key, default)
-
-    def __repr__(self):
-        return f"<{self.__class__.__name__} path_id={self.path_id}>"
-
-    def __hash__(self):
-        return hash(self.path_id)
-
-    def __eq__(self, other):
-        if isinstance(other, Object):
-            return self.path_id == other.path_id
-        elif isinstance(other, int):
-            return self.path_id == other
-        return False
-
-
-class NodeHelper:
-    def __init__(self, data, assets_file):
-        if "m_PathID" in data and "m_FileID" in data:
-            # used to make pointers directly useable
-            self.path_id = data["m_PathID"]
-            self.file_id = data["m_FileID"]
-            self.index = data.get("m_Index", -2)
-            self.assets_file = assets_file
-            self._obj = None
-            self.__class__ = PPtr
-        else:
-            self.__dict__ = {
-                key: NodeHelper(val, assets_file) for key, val in data.items()
-            }
-
-    def __new__(cls, data, assets_file):
-        if isinstance(data, dict):
-            return super(NodeHelper, cls).__new__(cls)
-        elif isinstance(data, list):
-            return [NodeHelper(x, assets_file) for x in data]
-        elif isinstance(data, tuple):
-            return tuple(NodeHelper(x, assets_file) for x in data)
-        return data
-
-    def __getitem__(self, item):
-        return getattr(self, item)
-
-    def to_dict(self):
-        def dump(val):
-            return (
-                val.to_dict()
-                if isinstance(val, NodeHelper)
-                else [dump(item) for item in val]
-                if isinstance(val, list)
-                else {"m_PathID": val.path_id, "m_FileID": val.file_id}
-                if isinstance(val, PPtr)
-                else [x for x in val]
-                if isinstance(val, (bytearray, bytes))
-                else val
-            )
-
-        return {key: dump(val) for key, val in self.__dict__.items()}
-
-    def items(self):
-        return self.__dict__.items()
-
-    def values(self):
-        return self.__dict__.values()
-
-    def keys(self):
-        return self.__dict__.keys()
-
-    def __repr__(self):
-        name = getattr(self, "m_Name", None)
-        if name:
-            return f"<NodeHelper name={name}>"
-        else:
-            return "<NodeHelper>"
+        self.object_reader.save_typetree(self)

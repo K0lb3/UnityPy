@@ -42,7 +42,7 @@ def export_mesh_renderer(obj: Renderer, export_dir: str) -> None:
             material_names.append(None)
             continue
         materials.append(export_material(mat))
-        material_names.append(mat.name)
+        material_names.append(mat.m_Name)
         # save material textures
         for key, texEnv in mat.m_SavedProperties.m_TexEnvs.items():
             if not texEnv.m_Texture:
@@ -85,14 +85,14 @@ def export_material(mat: Material) -> str:
 
     diffuse = clt(colors.get("_Color", (0.8, 0.8, 0.8, 1)))
     ambient = clt(colors.get("_SColor", (0.2, 0.2, 0.2, 1)))
-    emissive = clt(colors.get("_EmissionColor", (0, 0, 0, 1)))
+    # emissive = clt(colors.get("_EmissionColor", (0, 0, 0, 1)))
     specular = clt(colors.get("_SpecularColor", (0.2, 0.2, 0.2, 1)))
-    reflection = clt(colors.get("_ReflectColor", (0, 0, 0, 1)))
+    # reflection = clt(colors.get("_ReflectColor", (0, 0, 0, 1)))
     shininess = floats.get("_Shininess", 20.0)
     transparency = floats.get("_Transparency", 0.0)
 
     sb = []
-    sb.append(f"newmtl {mat.name}")
+    sb.append(f"newmtl {mat.m_Name}")
     # Ka r g b
     # defines the ambient color of the material to be (r,g,b). The default is (0.2,0.2,0.2);
     sb.append(f"Ka {ambient[0]:.4f} {ambient[1]:.4f} {ambient[2]:.4f}")
