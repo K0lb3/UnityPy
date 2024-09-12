@@ -151,3 +151,74 @@ def compress_gzip(data: bytes) -> bytes:
     :rtype: bytes
     """
     return gzip.compress(data)
+
+
+def chunk_based_compress(data: bytes, block_info_flag: int) -> (bytes, list):
+    """compresses AssetBundle data based on the block_info_flag
+    LZ4/LZ4HC will be chunk-based compression
+
+    :param data: uncompressed data
+    :type data: bytes
+    :param block_info_flag: block info flag
+    :type block_info_flag: int
+    :return: compressed data and block info
+    :rtype: tuple
+    """
+    switch = block_info_flag & 0x3F
+    if switch == 0:  # NONE
+        return data, [(len(data), len(data), block_info_flag)]
+    elif switch == 1:  # LZMA
+        chunk_size = 0xFFFFFFFF
+        compress_func = compress_lzma
+    elif switch in [2, 3]:  # LZ4
+        chunk_size = 0x00020000
+        compress_func = compress_lz4
+    elif switch == 4:  # LZHAM
+        raise NotImplementedError
+    block_info = []
+    uncompressed_data_size = len(data)
+    compressed_file_data = bytearray()
+    p = 0
+    while uncompressed_data_size > chunk_size:
+        compressed_data = compress_func(data[p: p + chunk_size])
+        if len(compressed_data) > chunk_size:
+            compressed_file_data.extend(data[p: p + chunk_size])
+            block_info.append(
+                (
+                    chunk_size,
+                    chunk_size,
+                    block_info_flag ^ switch,
+                )
+            )
+        else:
+            compressed_file_data.extend(compressed_data)
+            block_info.append(
+                (
+                    chunk_size,
+                    len(compressed_data),
+                    block_info_flag,
+                )
+            )
+        p += chunk_size
+        uncompressed_data_size -= chunk_size
+    if uncompressed_data_size > 0:
+        compressed_data = compress_func(data[p:])
+        if len(compressed_data) > uncompressed_data_size:
+            compressed_file_data.extend(data[p:])
+            block_info.append(
+                (
+                    uncompressed_data_size,
+                    uncompressed_data_size,
+                    block_info_flag ^ switch,
+                )
+            )
+        else:
+            compressed_file_data.extend(compressed_data)
+            block_info.append(
+                (
+                    uncompressed_data_size,
+                    len(compressed_data),
+                    block_info_flag,
+                )
+            )
+    return bytes(compressed_file_data), block_info
