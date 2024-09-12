@@ -123,9 +123,9 @@ class SerializedType:
 
         if serialized_file._enable_type_tree:
             if version >= 12 or version == 10:
-                self.nodes, self.string_data = serialized_file.read_type_tree_blob()
+                self.nodes = TypeTreeNode.parse_blob(reader, version)
             else:
-                self.nodes = serialized_file.read_type_tree()
+                self.nodes = TypeTreeNode.parse(reader, version)
 
             if version >= 21:
                 if is_ref_type:
@@ -156,9 +156,9 @@ class SerializedType:
 
         if serialized_file._enable_type_tree:
             if version >= 12 or version == 10:
-                serialized_file.save_type_tree5(self.nodes, writer, self.string_data)
+                self.nodes.dump_blob(writer, version)
             else:
-                serialized_file.save_type_tree(self.nodes, writer)
+                serialized_file.dump(writer, version)
 
             if version >= 21:
                 if is_ref_type:
@@ -166,7 +166,7 @@ class SerializedType:
                     writer.write_string_to_null(self.m_NameSpace)
                     writer.write_string_to_null(self.m_AssemblyName)
                 else:
-                    writer.write_int_array(self.type_dependencies)
+                    writer.write_int_array(self.type_dependencies, True)
 
 
 class SerializedFile(File.File):
@@ -329,80 +329,6 @@ class SerializedFile(File.File):
         self.build_type = BuildType(build_type[0] if build_type else "")
         version_split = re.split(r"\D", string_version)
         self.version = tuple(int(x) for x in version_split[:4])
-
-    def read_type_tree(self):
-        type_tree = []
-        level_stack = [[0, 1]]
-        while level_stack:
-            level, count = level_stack[-1]
-            if count == 1:
-                level_stack.pop()
-            else:
-                level_stack[-1][1] -= 1
-
-            type_tree_node = TypeTreeNode(
-                m_Level=level,
-                m_Type=self.reader.read_string_to_null(),
-                m_Name=self.reader.read_string_to_null(),
-                m_ByteSize=self.reader.read_int(),
-            )
-
-            type_tree.append(type_tree_node)
-            if self.header.version == 2:
-                type_tree_node.m_VariableCount = self.reader.read_int()
-
-            if self.header.version != 3:
-                type_tree_node.m_Index = self.reader.read_int()
-
-            type_tree_node.m_TypeFlags = self.reader.read_int()
-            type_tree_node.m_Version = self.reader.read_int()
-            if self.header.version != 3:
-                type_tree_node.m_MetaFlag = self.reader.read_int()
-
-            children_count = self.reader.read_int()
-            if children_count:
-                level_stack.append([level + 1, children_count])
-        return type_tree
-
-    def read_type_tree_blob(self):
-        reader = self.reader
-        number_of_nodes = self.reader.read_int()
-        string_buffer_size = self.reader.read_int()
-
-        type = f"{reader.endian}hBBIIiii"
-        keys = [
-            "m_Version",
-            "m_Level",
-            "m_TypeFlags",
-            "m_TypeStrOffset",
-            "m_NameStrOffset",
-            "m_ByteSize",
-            "m_Index",
-            "m_MetaFlag",
-        ]
-        if self.header.version >= 19:
-            type += "Q"
-            keys.append("m_RefTypeHash")
-
-        node_struct = Struct(type)
-        struct_data = reader.read(node_struct.size * number_of_nodes)
-        string_buffer_reader = EndianBinaryReader(
-            reader.read(string_buffer_size), reader.endian
-        )
-
-        if not config.SERIALIZED_FILE_PARSE_TYPETREE:
-            return [], string_buffer_reader.bytes
-
-        type_tree = [
-            TypeTreeNode(
-                **dict(zip(keys, raw_node)),
-                m_Type=read_string(string_buffer_reader, raw_node[3]),
-                m_Name=read_string(string_buffer_reader, raw_node[4]),
-            )
-            for i, raw_node in enumerate(node_struct.iter_unpack(struct_data))
-        ]
-
-        return type_tree, string_buffer_reader.bytes
 
     def get_writeable_cab(self, name: str = "CAB-UnityPy_Mod.resS"):
         """
@@ -653,7 +579,7 @@ class ContainerHelper:
         self.container = container
         # support for getitem
         self.container_dict = {key: value.asset for key, value in container}
-        self.path_dict = {value.asset.path_id: key for key, value in container}
+        self.path_dict = {value.asset.m_PathID: key for key, value in container}
 
     def items(self):
         return ((key, value.asset) for key, value in self.container)

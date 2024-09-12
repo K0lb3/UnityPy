@@ -1,29 +1,32 @@
+from typing import TYPE_CHECKING, Generic, TypeVar, Union
 from ..enums import ClassIDType
 
-from . import SerializedFile
-from .. import classes
-from ..classes.Object import NodeHelper
 from ..streams import EndianBinaryReader, EndianBinaryWriter
 from ..helpers import TypeTreeHelper
 from ..helpers.Tpk import get_typetree_nodes
 from ..exceptions import TypeTreeError
 
+if TYPE_CHECKING:
+    from ..files import SerializedFile
 
-class ObjectReader:
+T = TypeVar("T")
+
+
+class ObjectReader(Generic[T]):
     byte_start: int
     byte_size: int
     type_id: int
     class_id: int
     type: ClassIDType
     path_id: int
-    # serialized_type: SerializedType
+    assets_file: "SerializedFile"
     _read_until: int
 
     # saves where the parser stopped
     # in case that not all data is read
     # and the obj.data is changed, the unknown data can be added again
 
-    def __init__(self, assets_file, reader: EndianBinaryReader):
+    def __init__(self, assets_file: "SerializedFile", reader: EndianBinaryReader):
         self.assets_file = assets_file
         self.reader = reader
         self.data = b""
@@ -135,7 +138,8 @@ class ObjectReader:
 
     def set_raw_data(self, data):
         self.data = data
-        self.assets_file.mark_changed()
+        if self.assets_file:
+            self.assets_file.mark_changed()
 
     @property
     def container(self):
@@ -152,22 +156,8 @@ class ObjectReader:
     def reset(self):
         self.reader.Position = self.byte_start
 
-    def read(self, return_typetree_on_error: bool = True):
-        cls = getattr(classes, self.type.name, None)
-
-        obj = None
-        if cls:
-            try:
-                obj = cls(self)
-            except Exception as e:
-                if return_typetree_on_error:
-                    print(f"Error during the parsing of object {self.path_id}")
-                    print(e)
-                    print("Returning the typetree")
-                else:
-                    raise e
-        if not obj:
-            obj = self.read_typetree(wrap=True)
+    def read(self) -> T:
+        obj = self.read_typetree(wrap=True)
         self._read_until = self.reader.Position
         return obj
 
@@ -209,11 +199,15 @@ class ObjectReader:
             raise TypeTreeError("There are no TypeTree nodes for this object.")
         return nodes
 
-    def read_typetree(self, nodes: list = None, wrap: bool = False) -> dict:
+    def read_typetree(self, nodes: list = None, wrap: bool = False) -> Union[dict, T]:
         self.reset()
         nodes = self.get_typetree_nodes(nodes)
-        res = TypeTreeHelper.read_typetree(nodes, self)
-        return NodeHelper(res, self.assets_file) if wrap else res
+        ret = TypeTreeHelper.read_typetree(
+            nodes, self, as_dict=not wrap, assetsfile=self.assets_file
+        )
+        if wrap:
+            ret.set_object_reader(self)
+        return ret
 
     def save_typetree(
         self, tree: dict, nodes: list = None, writer: EndianBinaryWriter = None
@@ -221,7 +215,7 @@ class ObjectReader:
         nodes = self.get_typetree_nodes(nodes)
         if not writer:
             writer = EndianBinaryWriter(endian=self.reader.endian)
-        writer = TypeTreeHelper.write_typetree(tree, nodes, writer)
+        TypeTreeHelper.write_typetree(tree, nodes, writer)
         data = writer.bytes
         self.set_raw_data(data)
         return data
@@ -232,8 +226,3 @@ class ObjectReader:
         ret = self.reader.read_bytes(self.byte_size)
         self.Position = pos
         return ret
-
-    def set_raw_data(self, data):
-        self.data = data
-        if self.assets_file:
-            self.assets_file.mark_changed()

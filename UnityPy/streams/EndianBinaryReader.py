@@ -209,6 +209,9 @@ class EndianBinaryReader:
     def read_boolean_array(self, length: int = None) -> List[bool]:
         return self.read_array_struct("?", length)
 
+    def read_u_byte_array(self, length: int = None) -> List[int]:
+        return self.read_array_struct("B", length)
+
     def read_u_short_array(self, length: int = None) -> List[int]:
         return self.read_array_struct("h", length)
 
@@ -221,6 +224,12 @@ class EndianBinaryReader:
     def read_u_int_array(self, length: int = None) -> List[int]:
         return self.read_array_struct("I", length)
 
+    def read_long_array(self, length: int = None) -> List[int]:
+        return self.read_array_struct("q", length)
+
+    def read_u_long_array(self, length: int = None) -> List[int]:
+        return self.read_array_struct("Q", length)
+
     def read_u_int_array_array(self, length: int = None) -> List[List[int]]:
         return self.read_array(
             self.read_u_int_array, length if length is not None else self.read_int()
@@ -228,6 +237,9 @@ class EndianBinaryReader:
 
     def read_float_array(self, length: int = None) -> List[float]:
         return self.read_array_struct("f", length)
+
+    def read_double_array(self, length: int = None) -> List[float]:
+        return self.read_array_struct("d", length)
 
     def read_string_array(self) -> List[str]:
         return self.read_array(self.read_aligned_string, self.read_int())
