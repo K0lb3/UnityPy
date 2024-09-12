@@ -5,7 +5,7 @@ we define them here as subtypes of np.ndarray, so that casting won't be necessar
 """
 
 from attrs import define
-from typing import Self, TypeAlias
+from typing import TypeAlias
 
 
 @define(slots=True)
@@ -93,7 +93,7 @@ class ColorRGBA:
 
     def __new__(
         cls, r: float = 0, g: float = 0, b: float = 0, a: float = 1, rgba: int = -1
-    ) -> Self:
+    ) -> "ColorRGBA":
         obj = super().__new__(cls)
         if rgba != -1:
             r = ((rgba >> 24) & 0xFF) / 255

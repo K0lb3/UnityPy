@@ -1,6 +1,6 @@
 from __future__ import annotations
 from abc import ABC, ABCMeta
-from typing import TYPE_CHECKING, Dict, Any, Optional, Self
+from typing import TYPE_CHECKING, Dict, Any, Optional
 
 if TYPE_CHECKING:
     from ..files.ObjectReader import ObjectReader
@@ -8,7 +8,7 @@ if TYPE_CHECKING:
 
 
 class Object(ABC, metaclass=ABCMeta):
-    object_reader: Optional[ObjectReader[Self]] = None
+    object_reader: Optional[ObjectReader] = None
 
     def __init__(self, **kwargs: Dict[str, Any]) -> None:
         self.__dict__.update(**kwargs)
