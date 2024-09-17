@@ -16,6 +16,53 @@ if TYPE_CHECKING:
 
 kAlignBytes = 0x4000
 
+FUNCTION_MAP = {
+    "SInt8": EndianBinaryReader.read_byte,
+    "UInt8": EndianBinaryReader.read_u_byte,
+    "char": EndianBinaryReader.read_u_byte,
+    "short": EndianBinaryReader.read_short,
+    "SInt16": EndianBinaryReader.read_short,
+    "unsigned short": EndianBinaryReader.read_u_short,
+    "UInt16": EndianBinaryReader.read_u_short,
+    "int": EndianBinaryReader.read_int,
+    "SInt32": EndianBinaryReader.read_int,
+    "unsigned int": EndianBinaryReader.read_u_int,
+    "UInt32": EndianBinaryReader.read_u_int,
+    "Type*": EndianBinaryReader.read_u_int,
+    "long long": EndianBinaryReader.read_long,
+    "SInt64": EndianBinaryReader.read_long,
+    "unsigned long long": EndianBinaryReader.read_u_long,
+    "UInt64": EndianBinaryReader.read_u_long,
+    "FileSize": EndianBinaryReader.read_u_long,
+    "float": EndianBinaryReader.read_float,
+    "double": EndianBinaryReader.read_double,
+    "bool": EndianBinaryReader.read_boolean,
+    "string": EndianBinaryReader.read_aligned_string,
+    "TypelessData": EndianBinaryReader.read_byte_array,
+}
+FUNCTION_MAP_ARRAY = {
+    "SInt8": EndianBinaryReader.read_byte_array,
+    "UInt8": EndianBinaryReader.read_u_byte_array,
+    "char": EndianBinaryReader.read_u_byte_array,
+    "short": EndianBinaryReader.read_short_array,
+    "SInt16": EndianBinaryReader.read_short_array,
+    "unsigned short": EndianBinaryReader.read_u_short_array,
+    "UInt16": EndianBinaryReader.read_u_short_array,
+    "int": EndianBinaryReader.read_int_array,
+    "SInt32": EndianBinaryReader.read_int_array,
+    "unsigned int": EndianBinaryReader.read_u_int_array,
+    "UInt32": EndianBinaryReader.read_u_int_array,
+    "Type*": EndianBinaryReader.read_u_int_array,
+    "long long": EndianBinaryReader.read_long_array,
+    "SInt64": EndianBinaryReader.read_long_array,
+    "unsigned long long": EndianBinaryReader.read_u_long_array,
+    "UInt64": EndianBinaryReader.read_u_long_array,
+    "FileSize": EndianBinaryReader.read_u_long_array,
+    "float": EndianBinaryReader.read_float_array,
+    "double": EndianBinaryReader.read_double_array,
+    "bool": EndianBinaryReader.read_boolean_array,
+}
+
 
 def read_typetree(
     root_node: TypeTreeNode,
@@ -78,92 +125,61 @@ def read_value(
     # print(reader.Position, node.m_Name, node.m_Type, node.m_MetaFlag)
     align = metaflag_is_aligned(node.m_MetaFlag)
 
-    match node.m_Type:
-        case "SInt8":
-            value = reader.read_byte()
-        case "UInt8" | "char":
-            value = reader.read_u_byte()
-        case "short" | "SInt16":
-            value = reader.read_short()
-        case "UInt16" | "unsigned short":
-            value = reader.read_u_short()
-        case "int" | "SInt32":
-            value = reader.read_int()
-        case "UInt32" | "unsigned int" | "Type*":
-            value = reader.read_u_int()
-        case "long long" | "SInt64":
-            value = reader.read_long()
-        case "UInt64" | "unsigned long long" | "FileSize":
-            value = reader.read_u_long()
-        case "float":
-            value = reader.read_float()
-        case "double":
-            value = reader.read_double()
-        case "bool":
-            value = reader.read_boolean()
-        case "string":
-            value = reader.read_aligned_string()
-        case "TypelessData":
-            value = reader.read_byte_array()
-        case "pair":
-            first = read_value(node.m_Children[0], reader, as_dict, assetsfile)
-            second = read_value(node.m_Children[1], reader, as_dict, assetsfile)
-            value = (first, second)
-        case _:
-            if not node.m_Children:
-                value = None
-                # raise NotImplementedError(f"Reference type {node.m_Type} not implemented")
-            # Vector
-            elif node.m_Children and node.m_Children[0].m_Type == "Array":
-                if metaflag_is_aligned(node.m_Children[0].m_MetaFlag):
-                    align = True
+    func = FUNCTION_MAP.get(node.m_Type)
+    if func:
+        value = func(reader)
+    elif node.m_Type == "pair":
+        first = read_value(node.m_Children[0], reader, as_dict, assetsfile)
+        second = read_value(node.m_Children[1], reader, as_dict, assetsfile)
+        value = (first, second)
+    elif not node.m_Children:
+        value = None
+        # raise NotImplementedError(f"Reference type {node.m_Type} not implemented")
+    # Vector
+    elif node.m_Children[0].m_Type == "Array":
+        if metaflag_is_aligned(node.m_Children[0].m_MetaFlag):
+            align = True
 
-                size = (
-                    reader.read_int()
-                )  # read_value(node.m_Children[0].m_Children[0], reader, as_dict)
-                subtype = node.m_Children[0].m_Children[1]
-                if metaflag_is_aligned(subtype.m_MetaFlag):
-                    value = read_value_array(subtype, reader, as_dict, size, assetsfile)
-                else:
-                    value = [
-                        read_value(subtype, reader, as_dict, assetsfile)
-                        for _ in range(size)
-                    ]
+        # size = read_value(node.m_Children[0].m_Children[0], reader, as_dict)
+        size = reader.read_int()
+        subtype = node.m_Children[0].m_Children[1]
+        if metaflag_is_aligned(subtype.m_MetaFlag):
+            value = read_value_array(subtype, reader, as_dict, size, assetsfile)
+        else:
+            value = [
+                read_value(subtype, reader, as_dict, assetsfile) for _ in range(size)
+            ]
 
-            else:  # Class
-                value = {
-                    child.m_Name: read_value(child, reader, as_dict, assetsfile)
-                    for child in node.m_Children
-                }
+    else:  # Class
+        value = {
+            child.m_Name: read_value(child, reader, as_dict, assetsfile)
+            for child in node.m_Children
+        }
 
-                if not as_dict:
-                    if node.m_Type.startswith("PPtr<"):
-                        value = PPtr[Any](
-                            assetsfile=assetsfile,
-                            m_FileID=value["m_FileID"],
-                            m_PathID=value["m_PathID"],
-                            type=node.m_Type[6:-1],
-                        )
-                    else:
-                        clz = getattr(classes, node.m_Type, Object)
-                        clz_kwargs = {
-                            clean_name(key): value for key, value in value.items()
+        if not as_dict:
+            if node.m_Type.startswith("PPtr<"):
+                value = PPtr[Any](
+                    assetsfile=assetsfile,
+                    m_FileID=value["m_FileID"],
+                    m_PathID=value["m_PathID"],
+                    type=node.m_Type[6:-1],
+                )
+            else:
+                clz = getattr(classes, node.m_Type, Object)
+                clz_kwargs = {clean_name(key): value for key, value in value.items()}
+                try:
+                    value = clz(**clz_kwargs)
+                except TypeError:
+                    extra_keys = set(clz_kwargs.keys()) - set(clz.__annotations__)
+                    value = clz(
+                        **{
+                            key: value
+                            for key, value in clz_kwargs.items()
+                            if key in clz.__annotations__
                         }
-                        try:
-                            value = clz(**clz_kwargs)
-                        except TypeError:
-                            extra_keys = set(clz_kwargs.keys()) - set(
-                                clz.__annotations__
-                            )
-                            value = clz(
-                                **{
-                                    key: value
-                                    for key, value in clz_kwargs.items()
-                                    if key in clz.__annotations__
-                                }
-                            )
-                            for key in extra_keys:
-                                setattr(value, key, clz_kwargs[key])
+                    )
+                    for key in extra_keys:
+                        setattr(value, key, clz_kwargs[key])
 
     if align:
         reader.align_stream()
@@ -180,132 +196,108 @@ def read_value_array(
 ) -> Any:
     align = metaflag_is_aligned(node.m_MetaFlag)
 
-    match node.m_Type:
-        case "SInt8":
-            value = reader.read_byte_array(size)
-        case "UInt8" | "char":
-            value = reader.read_u_byte_array(size)
-        case "short" | "SInt16":
-            value = reader.read_short_array(size)
-        case "UInt16" | "unsigned short":
-            value = reader.read_u_short_array(size)
-        case "int" | "SInt32":
-            value = reader.read_int_array(size)
-        case "UInt32" | "unsigned int" | "Type*":
-            value = reader.read_u_int_array(size)
-        case "long long" | "SInt64":
-            value = reader.read_long_array(size)
-        case "UInt64" | "unsigned long long" | "FileSize":
-            value = reader.read_u_long_array(size)
-        case "float":
-            value = reader.read_float_array(size)
-        case "double":
-            value = reader.read_double_array(size)
-        case "bool":
-            value = reader.read_boolean_array(size)
-        case "string":
-            value = [reader.read_aligned_string() for _ in range(size)]
-        case "TypelessData":
-            value = [reader.read_bytes() for _ in range(size)]
-        case "pair":
+    func = FUNCTION_MAP_ARRAY.get(node.m_Type)
+    if func:
+        value = func(reader, size)
+    elif node.m_Type == "string":
+        value = [reader.read_aligned_string() for _ in range(size)]
+    elif node.m_Type == "TypelessData":
+        value = [reader.read_bytes() for _ in range(size)]
+    elif node.m_Type == "pair":
+        key_node = node.m_Children[0]
+        value_node = node.m_Children[1]
+
+        key_func = FUNCTION_MAP.get(
+            key_node.m_Type,
+            lambda reader: read_value(key_node, reader, as_dict, assetsfile),
+        )
+        value_func = FUNCTION_MAP.get(
+            value_node.m_Type,
+            lambda reader: read_value(value_node, reader, as_dict, assetsfile),
+        )
+        value = [(key_func(reader), value_func(reader)) for _ in range(size)]
+    elif not node.m_Children:
+        value = None
+        # raise NotImplementedError(f"Reference type {node.m_Type} not implemented")
+    # Vector
+    elif node.m_Children[0].m_Type == "Array":
+        if metaflag_is_aligned(node.m_Children[0].m_MetaFlag):
+            align = True
+        subtype = node.m_Children[0].m_Children[1]
+        if metaflag_is_aligned(subtype.m_MetaFlag):
             value = [
-                (
-                    read_value(node.m_Children[0], reader, as_dict, assetsfile),
-                    read_value(node.m_Children[1], reader, as_dict, assetsfile),
+                read_value_array(
+                    subtype, reader, as_dict, reader.read_int(), assetsfile
                 )
                 for _ in range(size)
             ]
-        case _:
-            if not node.m_Children:
-                value = None
-                # raise NotImplementedError(f"Reference type {node.m_Type} not implemented")
-            # Vector
-            elif node.m_Children[0].m_Type == "Array":
-                if metaflag_is_aligned(node.m_Children[0].m_MetaFlag):
-                    align = True
-                subtype = node.m_Children[0].m_Children[1]
-                if metaflag_is_aligned(subtype.m_MetaFlag):
-                    value = [
-                        read_value_array(
-                            subtype, reader, as_dict, reader.read_int(), assetsfile
-                        )
-                        for _ in range(size)
-                    ]
-                else:
-                    value = [
-                        [
-                            read_value(subtype, reader, as_dict, assetsfile)
-                            for _ in range(reader.read_int())
-                        ]
-                        for _ in range(size)
-                    ]
-            else:  # Class
-                if as_dict:
-                    value = [
-                        {
+        else:
+            value = [
+                [
+                    read_value(subtype, reader, as_dict, assetsfile)
+                    for _ in range(reader.read_int())
+                ]
+                for _ in range(size)
+            ]
+    else:  # Class
+        if as_dict:
+            value = [
+                {
+                    child.m_Name: read_value(child, reader, as_dict, assetsfile)
+                    for child in node.m_Children
+                }
+                for _ in range(size)
+            ]
+        else:
+            if node.m_Type.startswith("PPtr<"):
+                value = [
+                    PPtr[Any](
+                        assetsfile=assetsfile,
+                        type=node.m_Type[6:-1],
+                        **{
                             child.m_Name: read_value(child, reader, as_dict, assetsfile)
                             for child in node.m_Children
-                        }
+                        },
+                    )
+                    for _ in range(size)
+                ]
+            else:
+                clz = getattr(
+                    classes,
+                    node.m_Type,
+                    Object,
+                )
+                clean_names = [clean_name(child.m_Name) for child in node.m_Children]
+                if all(name in clz.__annotations__ for name in clean_names):
+                    value = [
+                        clz(
+                            **{
+                                name: read_value(child, reader, as_dict, assetsfile)
+                                for name, child in zip(clean_names, node.m_Children)
+                            }
+                        )
                         for _ in range(size)
                     ]
                 else:
-                    if node.m_Type.startswith("PPtr<"):
-                        value = [
-                            PPtr[Any](
-                                assetsfile=assetsfile,
-                                type=node.m_Type[6:-1],
-                                **{
-                                    child.m_Name: read_value(
-                                        child, reader, as_dict, assetsfile
-                                    )
-                                    for child in node.m_Children
-                                },
+                    extra_keys = set(clean_names) - set(clz.__annotations__)
+                    value = [None] * size
+                    for i in range(size):
+                        value_i_d = {
+                            clean_name(child.m_Name): read_value(
+                                child, reader, as_dict, assetsfile
                             )
-                            for _ in range(size)
-                        ]
-                    else:
-                        clz = getattr(
-                            classes,
-                            node.m_Type,
-                            Object,
+                            for child in node.m_Children
+                        }
+                        value_i = clz(
+                            **{
+                                key: value
+                                for key, value in value_i_d.items()
+                                if key in clz.__annotations__
+                            }
                         )
-                        clean_names = [
-                            clean_name(child.m_Name) for child in node.m_Children
-                        ]
-                        if all(name in clz.__annotations__ for name in clean_names):
-                            value = [
-                                clz(
-                                    **{
-                                        name: read_value(
-                                            child, reader, as_dict, assetsfile
-                                        )
-                                        for name, child in zip(
-                                            clean_names, node.m_Children
-                                        )
-                                    }
-                                )
-                                for _ in range(size)
-                            ]
-                        else:
-                            extra_keys = set(clean_names) - set(clz.__annotations__)
-                            value = [None] * size
-                            for i in range(size):
-                                value_i_d = {
-                                    clean_name(child.m_Name): read_value(
-                                        child, reader, as_dict, assetsfile
-                                    )
-                                    for child in node.m_Children
-                                }
-                                value_i = clz(
-                                    **{
-                                        key: value
-                                        for key, value in value_i_d.items()
-                                        if key in clz.__annotations__
-                                    }
-                                )
-                                for key in extra_keys:
-                                    setattr(value_i, key, value_i_d[key])
-                                value[i] = value_i
+                        for key in extra_keys:
+                            setattr(value_i, key, value_i_d[key])
+                        value[i] = value_i
     if align:
         reader.align_stream()
     return value

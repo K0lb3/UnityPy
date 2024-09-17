@@ -203,7 +203,7 @@ class ObjectReader(Generic[T]):
         self.reset()
         nodes = self.get_typetree_nodes(nodes)
         ret = TypeTreeHelper.read_typetree(
-            nodes, self, as_dict=not wrap, assetsfile=self.assets_file
+            nodes, self.reader, as_dict=not wrap, assetsfile=self.assets_file
         )
         if wrap:
             ret.set_object_reader(self)
