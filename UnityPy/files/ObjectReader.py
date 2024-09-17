@@ -190,7 +190,7 @@ class ObjectReader:
     def dump_typetree(self, nodes: list = None) -> str:
         self.reset()
         sb = []
-        nodes = self.get_typetree(nodes)
+        nodes = self.get_typetree_nodes(nodes)
         TypeTreeHelper.read_typetree_str(sb, nodes, self)
         return "".join(sb)
 
