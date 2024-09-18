@@ -36,8 +36,8 @@ class TypeTreeNode:
     def parse(cls, reader: EndianBinaryReader, version: int) -> TypeTreeNode:
         # stack approach is way faster than recursion
         # using a fake root node to avoid special case for root node
-        dummy_node = TypeTreeNode(-1, "", "", 0, 0, 0, [])
-        dummy_root = TypeTreeNode(-1, "", "", 0, 0, 0, [dummy_node])
+        dummy_node = cls(-1, "", "", 0, 0, 0, [])
+        dummy_root = cls(-1, "", "", 0, 0, 0, [dummy_node])
 
         stack: List[Tuple[TypeTreeNode, int]] = [(dummy_root, 1)]
         while stack:
@@ -47,7 +47,7 @@ class TypeTreeNode:
             else:
                 stack[-1] = (parent, count - 1)
 
-            node = TypeTreeNode(
+            node = cls(
                 m_Level=parent.m_Level + 1,
                 m_Type=reader.read_string_to_null(),
                 m_Name=reader.read_string_to_null(),
@@ -87,18 +87,40 @@ class TypeTreeNode:
             offset = value & 0x7FFFFFFF
             return CommonString.get(offset, str(offset))
 
-        fake_root: TypeTreeNode = TypeTreeNode(-1, "", "", 0, 0, 0, [])
+        fake_root: TypeTreeNode = cls(-1, "", "", 0, 0, 0, [])
         stack: List[TypeTreeNode] = [fake_root]
         parent = fake_root
         prev = fake_root
 
         for raw_node in node_struct.iter_unpack(struct_data):
-            node = TypeTreeNode(
+            node = cls(
                 **dict(zip(keys[:3], raw_node[:3])),
                 **dict(zip(keys[5:], raw_node[5:])),
                 m_Type=read_string(stringbuffer_reader, raw_node[3]),
                 m_Name=read_string(stringbuffer_reader, raw_node[4]),
             )
+
+            if node.m_Level > prev.m_Level:
+                stack.append(parent)
+                parent = prev
+            elif node.m_Level < prev.m_Level:
+                while node.m_Level <= parent.m_Level:
+                    parent = stack.pop()
+
+            parent.m_Children.append(node)
+            prev = node
+
+        return fake_root.m_Children[0]
+
+    @classmethod
+    def from_list(cls, nodes: List[dict]) -> TypeTreeNode:
+        fake_root: TypeTreeNode = cls(-1, "", "", 0, 0, 0, [])
+        stack: List[TypeTreeNode] = [fake_root]
+        parent = fake_root
+        prev = fake_root
+
+        for dict_node in nodes:
+            node = cls(**dict_node)
 
             if node.m_Level > prev.m_Level:
                 stack.append(parent)
@@ -180,6 +202,15 @@ class TypeTreeNode:
         writer.write_int(string_writer.Position)
         writer.write(node_writer.bytes)
         writer.write(string_writer.bytes)
+
+    def dump_structure(self, indent: str = "  ") -> str:
+        # dump structure similar to https://github.com/AssetRipper/TypeTreeDumps/blob/main/StructsDump
+        sb = [
+            f"{indent}{self.m_Type} {self.m_Name} // ByteSize{{{self.m_ByteSize:X}}}, Index{{{self.m_Index}}}, Version{{{self.m_Version}}}, TypeFlags{{{self.m_TypeFlags}}}, MetaFlag{{{self.m_MetaFlag}}}"
+        ]
+        for child in self.m_Children:
+            sb.append(child.dump_structure(indent + "  "))
+        return "\n".join(sb)
 
 
 COMMONSTRING_CACHE: Dict[Optional[UnityVersion], Dict[int, str]] = {}
