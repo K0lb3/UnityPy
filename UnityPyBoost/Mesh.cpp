@@ -85,7 +85,7 @@ PyObject *unpack_vertexdata(PyObject *self, PyObject *args)
             uint16_t *componentUints = (uint16_t *)componentBytes;
             for (uint32_t i = 0; i < componentBytesLength; i += 2)
             {
-                *componentUints++ = bswap16(*componentUints);
+                swap_any_inplace(componentUints++);
             }
         }
         else if (componentByteSize == 4)
@@ -94,12 +94,12 @@ PyObject *unpack_vertexdata(PyObject *self, PyObject *args)
             uint32_t *componentUints = (uint32_t *)componentBytes;
             for (uint32_t i = 0; i < componentBytesLength; i += 4)
             {
-                *componentUints++ = bswap32(*componentUints);
+                swap_any_inplace(componentUints++);
             }
         }
     }
 
-    PyObject *res = PyByteArray_FromStringAndSize((const char*)componentBytes, componentBytesLength);
+    PyObject *res = PyByteArray_FromStringAndSize((const char *)componentBytes, componentBytesLength);
     PyMem_Free(componentBytes);
     PyBuffer_Release(&vertexDataView);
     return res;
