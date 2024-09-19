@@ -10,21 +10,26 @@ from ..streams.EndianBinaryWriter import EndianBinaryWriter
 if TYPE_CHECKING:
     from .Tpk import UnityVersion
 
+try:
+    from ..UnityPyBoost import TypeTreeNode as TypeTreeNodeC
+except ImportError:
 
-@define
-class TypeTreeNode:
-    m_Level: int
-    m_Type: str
-    m_Name: str
-    m_ByteSize: int
-    m_TypeFlags: int
-    m_Version: int
-    m_Children: List[TypeTreeNode] = field(factory=list)
-    m_VariableCount: Optional[int] = None
-    m_Index: Optional[int] = None
-    m_MetaFlag: Optional[int] = None
-    m_RefTypeHash: Optional[int] = None
+    @define(slots=True)
+    class TypeTreeNodeC:
+        m_Level: int
+        m_Type: str
+        m_Name: str
+        m_ByteSize: int
+        m_TypeFlags: int
+        m_Version: int
+        m_Children: List[TypeTreeNode] = field(factory=list)
+        m_VariableCount: Optional[int] = None
+        m_Index: Optional[int] = None
+        m_MetaFlag: Optional[int] = None
+        m_RefTypeHash: Optional[int] = None
 
+
+class TypeTreeNode(TypeTreeNodeC):
     def traverse(self) -> Iterator[TypeTreeNode]:
         stack: list[TypeTreeNode] = [self]
         while stack:

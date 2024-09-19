@@ -65,9 +65,10 @@ setup(
             [
                 f"UnityPyBoost/{f}"
                 for f in os.listdir(UNITYPYBOOST_DIR)
-                if f.endswith(".c")
+                if f.endswith(".cpp")
             ],
-            language="c",
+            language="c++",
+            extra_compile_args=["/std:c++20"],
             include_dirs=[UNITYPYBOOST_DIR],
         )
     ],

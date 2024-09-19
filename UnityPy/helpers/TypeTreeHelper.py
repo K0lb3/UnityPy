@@ -14,6 +14,12 @@ PPtr = classes.PPtr
 if TYPE_CHECKING:
     from ..files.SerializedFile import SerializedFile
 
+
+try:
+    from ..UnityPyBoost import read_typetree as read_typetree_boost
+except ImportError:
+    read_typetree_boost = None
+
 kAlignBytes = 0x4000
 
 FUNCTION_MAP = {
@@ -85,6 +91,12 @@ def read_typetree(
     dict | objects.Object
         The parsed typtree
     """
+    if expected_read and read_typetree_boost:
+        data = reader.read_bytes(expected_read)
+        return read_typetree_boost(
+            data, root_node, reader.endian, as_dict, assetsfile, classes, clean_name
+        )
+
     pos = reader.Position
     obj = read_value(root_node, reader, as_dict, assetsfile)
 
@@ -136,7 +148,7 @@ def read_value(
         value = None
         # raise NotImplementedError(f"Reference type {node.m_Type} not implemented")
     # Vector
-    elif node.m_Children[0].m_Type == "Array":
+    elif node.m_Children and node.m_Children[0].m_Type == "Array":
         if metaflag_is_aligned(node.m_Children[0].m_MetaFlag):
             align = True
 
@@ -220,7 +232,7 @@ def read_value_array(
         value = None
         # raise NotImplementedError(f"Reference type {node.m_Type} not implemented")
     # Vector
-    elif node.m_Children[0].m_Type == "Array":
+    elif node.m_Children and node.m_Children[0].m_Type == "Array":
         if metaflag_is_aligned(node.m_Children[0].m_MetaFlag):
             align = True
         subtype = node.m_Children[0].m_Children[1]
@@ -359,11 +371,8 @@ def write_value(
             write_value(value[0], node.m_Children[0], writer)
             write_value(value[1], node.m_Children[1], writer)
         case _:
-            if not node.m_Children:
-                value = None
-                # raise NotImplementedError(f"Reference type {node.m_Type} not implemented")
             # Vector
-            elif node.m_Children and node.m_Children[0].m_Type == "Array":
+            if node.m_Children and node.m_Children[0].m_Type == "Array":
                 if metaflag_is_aligned(node.m_Children[0].m_MetaFlag):
                     align = True
 

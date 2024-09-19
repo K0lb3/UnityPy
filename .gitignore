@@ -6,6 +6,7 @@ __pycache__/
 *$py.class
 test.py
 AssetStudio/
+.vscode/
 
 # Distribution / packaging
 .Python

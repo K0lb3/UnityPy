@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 T = TypeVar("T")
 
 
-@define
+@define(slots=True, kw_only=True)
 class PPtr(Generic[T]):
     m_FileID: int
     m_PathID: int
