@@ -1,3 +1,4 @@
+import io
 import os
 
 import UnityPy
@@ -25,7 +26,7 @@ def test_texture2d():
         for obj in env.objects:
             if obj.type.name == "Texture2D":
                 data = obj.read()
-                data.image.save("test.png")
+                data.image.save(io.BytesIO(), format="PNG")
                 data.image = data.image.transpose(Image.ROTATE_90)
                 data.save()
 
@@ -35,14 +36,16 @@ def test_sprite():
         env = UnityPy.load(os.path.join(SAMPLES, f))
         for obj in env.objects:
             if obj.type.name == "Sprite":
-                obj.read().image.save("test.png")
+                obj.read().image.save(io.BytesIO(), format="PNG")
 
 
 def test_audioclip():
     # as not platforms are supported by FMOD
     # we have to check if the platform is supported first
     try:
-        UnityPy.export.AudioClipConverter.import_pyfmodex()
+        from UnityPy.export import AudioClipConverter
+
+        AudioClipConverter.import_pyfmodex()
     except NotImplementedError:
         return
     except OSError:
@@ -51,7 +54,7 @@ def test_audioclip():
         print("Failed to load the fmod lib for your system.")
         print("Skipping the audioclip test.")
         return
-    if UnityPy.export.AudioClipConverter.pyfmodex is False:
+    if AudioClipConverter.pyfmodex is False:
         return
     env = UnityPy.load(os.path.join(SAMPLES, "char_118_yuki.ab"))
     for obj in env.objects:
