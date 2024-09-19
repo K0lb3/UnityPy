@@ -197,24 +197,20 @@ inline PyObject *read_pair(ReaderT *reader, TypeTreeNodeObject *node, TypeTreeRe
     return pair;
 }
 
-inline PyObject *class_from_dict(PyObject *dict, TypeTreeNodeObject *node, TypeTreeReaderConfigT *config)
+template <bool swap>
+inline PyObject *read_class(ReaderT *reader, TypeTreeNodeObject *node, TypeTreeReaderConfigT *config)
 {
     PyObject *clz = NULL;
-    PyObject *args = NULL;
-    PyObject *instance = NULL;
-    PyObject *keys = NULL;
-    PyObject *clean_args = NULL;
-    PyObject *annotations = NULL;
-    PyObject *extra = NULL;
+    PyObject *dict = PyDict_New();
 
     // Determine the class based on node's _data_type
     if (node->_data_type == NodeDataType::pptr)
     {
-        // Add 'assetsfile' key for PPtr objects
         if (PyDict_SetItemString(dict, "assetsfile", config->assetfile) != 0)
         {
             PyErr_SetString(PyExc_RuntimeError, "Failed to set 'assetsfile'");
-            goto error_cleanup;
+            Py_DECREF(dict);
+            return NULL;
         }
         clz = PyObject_GetAttrString(config->classes, "PPtr");
     }
@@ -227,136 +223,100 @@ inline PyObject *class_from_dict(PyObject *dict, TypeTreeNodeObject *node, TypeT
         }
     }
 
-    // If class lookup fails, raise an error
     if (clz == NULL)
     {
         PyErr_SetString(PyExc_ValueError, "Failed to get class");
-        goto error_cleanup;
+        Py_DECREF(dict);
+        return NULL;
     }
 
-    // Prepare arguments (empty tuple)
-    args = PyTuple_New(0);
-    if (args == NULL)
+    for (int i = 0; i < PyList_GET_SIZE(node->m_Children); i++)
     {
-        goto error_cleanup;
+        TypeTreeNodeObject *child = (TypeTreeNodeObject *)PyList_GetItem(node->m_Children, i);
+        PyObject *child_value = read_typetree_value<swap>(reader, child, config);
+        if (!child_value)
+        {
+            Py_DECREF(dict);
+            return NULL;
+        }
+        if (PyDict_SetItem(dict, child->m_Name, child_value))
+        {
+            Py_DECREF(dict);
+            Py_DECREF(child_value);
+            return NULL;
+        }
+        // dict increases ref count, so we need to decref here
+        Py_DECREF(child_value);
     }
 
-    // Attempt to create the instance from the class and dict
-    instance = PyObject_Call(clz, args, dict);
+    PyObject *args = PyTuple_New(0);
+    PyObject *instance = PyObject_Call(clz, args, dict);
     if (instance != NULL)
     {
-        goto success;
+        Py_DECREF(args);
+        Py_DECREF(dict);
+        return instance;
     }
     PyErr_Clear();
 
-    // If calling the class failed, check for callable clean_name function
-    if (!PyCallable_Check(config->clean_name))
-    {
-        PyErr_SetString(PyExc_ValueError, "clean_name is not callable");
-        goto error_cleanup;
-    }
-
-    // Clean the dictionary keys
-    keys = PyDict_Keys(dict);
-    clean_args = PyTuple_New(1); // For passing to the clean_name function
-    if (keys == NULL || clean_args == NULL)
-    {
-        goto error_cleanup;
-    }
-
-    // Iterate through dict keys, clean them, and update if necessary
+    PyObject *keys = PyDict_Keys(dict);
+    PyObject *clean_args = PyTuple_New(1);
     for (Py_ssize_t i = 0; i < PyList_Size(keys); i++)
     {
         PyObject *key = PyList_GetItem(keys, i);
-        Py_INCREF(key); // Protect reference count
-
-        PyTuple_SetItem(clean_args, 0, key);
-        PyObject *clean_key = PyObject_CallFunctionObjArgs(config->clean_name, clean_args, NULL);
-        if (clean_key == NULL)
+        PyTuple_SET_ITEM(clean_args, 0, key);
+        PyObject *clean_key = PyObject_Call(config->clean_name, clean_args, NULL);
+        if (PyUnicode_Compare(key, clean_key))
         {
-            Py_DECREF(key);
-            goto error_cleanup;
-        }
-
-        if (PyUnicode_Compare(key, clean_key) != 0)
-        {
-            // Replace the key in the dict with the cleaned key
             PyObject *value = PyDict_GetItem(dict, key);
-            if (value != NULL)
-            {
-                PyDict_DelItem(dict, key);
-                PyDict_SetItem(dict, clean_key, value);
-            }
+            PyDict_SetItem(dict, clean_key, value);
+            PyDict_DelItem(dict, key);
         }
         Py_DECREF(clean_key);
-        Py_DECREF(key);
     }
+    PyTuple_SET_ITEM(clean_args, 0, Py_None);
+    Py_DECREF(clean_args);
+    Py_DECREF(keys);
 
-    // Retry creating the class instance with cleaned dictionary
     instance = PyObject_Call(clz, args, dict);
     if (instance != NULL)
     {
-        goto success;
+        Py_DECREF(args);
+        Py_DECREF(dict);
+        return instance;
     }
+    PyErr_Clear();
 
-    // Handle extra attributes not present in class annotations
-    annotations = PyObject_GetAttrString(clz, "__annotations__");
-    if (annotations == NULL)
-    {
-        PyErr_SetString(PyExc_ValueError, "Failed to get annotations");
-        goto error_cleanup;
-    }
-
-    extra = PyDict_New();
+    PyObject *annonations = PyObject_GetAttrString(clz, "__annotations__");
+    PyObject *extras = PyDict_New();
+    keys = PyDict_Keys(dict);
     for (Py_ssize_t i = 0; i < PyList_Size(keys); i++)
     {
         PyObject *key = PyList_GetItem(keys, i);
-        if (PyDict_Contains(annotations, key) == 0)
+        if (PyDict_Contains(annonations, key) == 0)
         {
             PyObject *value = PyDict_GetItem(dict, key);
-            PyDict_SetItem(extra, key, value);
+            PyDict_SetItem(extras, key, value);
             PyDict_DelItem(dict, key);
         }
     }
+    Py_DECREF(keys);
 
     instance = PyObject_Call(clz, args, dict);
     if (instance != NULL)
     {
-        // Set extra attributes on the instance
-        keys = PyDict_Keys(extra);
-        for (Py_ssize_t i = 0; i < PyList_Size(keys); i++)
+        PyObject *items = PyDict_Items(extras);
+        for (Py_ssize_t i = 0; i < PyList_Size(items); i++)
         {
-            PyObject *key = PyList_GetItem(keys, i);
-            PyObject *value = PyDict_GetItem(extra, key);
+            PyObject *item = PyList_GetItem(items, i);
+            PyObject *key = PyTuple_GetItem(item, 0);
+            PyObject *value = PyTuple_GetItem(item, 1);
             PyObject_SetAttr(instance, key, value);
         }
-        goto success;
+        Py_DECREF(items);
     }
 
-    PyErr_SetString(PyExc_ValueError, "Failed to create instance");
-    goto error_cleanup;
-
-success:
-    // Cleanup and return the instance
-    Py_DECREF(args);
-    Py_DECREF(clz);
-    Py_DECREF(dict);
-    Py_XDECREF(keys);
-    Py_XDECREF(clean_args);
-    Py_XDECREF(annotations);
-    Py_XDECREF(extra);
     return instance;
-
-error_cleanup:
-    // Cleanup in case of an error
-    Py_XDECREF(args);
-    Py_XDECREF(clz);
-    Py_XDECREF(dict);
-    Py_XDECREF(keys);
-    Py_XDECREF(clean_args);
-    Py_XDECREF(annotations);
-    Py_XDECREF(extra);
-    return NULL;
 }
 
 template <bool swap>
@@ -445,27 +405,30 @@ PyObject *read_typetree_value(ReaderT *reader, TypeTreeNodeObject *node, TypeTre
         {
             // class
             value = PyDict_New();
-            for (int i = 0; i < PyList_GET_SIZE(node->m_Children); i++)
+            if (config->as_dict)
             {
-                child = (TypeTreeNodeObject *)PyList_GetItem(node->m_Children, i);
-                PyObject *child_value = read_typetree_value<swap>(reader, child, config);
-                if (!child_value)
+                for (int i = 0; i < PyList_GET_SIZE(node->m_Children); i++)
                 {
-                    Py_DECREF(value);
-                    return NULL;
-                }
-                if (PyDict_SetItem(value, child->m_Name, child_value))
-                {
-                    Py_DECREF(value);
+                    child = (TypeTreeNodeObject *)PyList_GetItem(node->m_Children, i);
+                    PyObject *child_value = read_typetree_value<swap>(reader, child, config);
+                    if (!child_value)
+                    {
+                        Py_DECREF(value);
+                        return NULL;
+                    }
+                    if (PyDict_SetItem(value, child->m_Name, child_value))
+                    {
+                        Py_DECREF(value);
+                        Py_DECREF(child_value);
+                        return NULL;
+                    }
+                    // dict increases ref count, so we need to decref here
                     Py_DECREF(child_value);
-                    return NULL;
                 }
-                // dict increases ref count, so we need to decref here
-                Py_DECREF(child_value);
             }
-            if (!config->as_dict)
+            else
             {
-                value = class_from_dict(value, node, config);
+                value = read_class<swap>(reader, node, config);
             }
         }
     }
@@ -497,6 +460,26 @@ PyObject *read_typetree(PyObject *self, PyObject *args, PyObject *kwargs)
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OOC|OOOO", (char **)kwlist, &data, &node, &endian, &as_dict, &config.assetfile, &config.classes, &config.clean_name))
     {
         return NULL;
+    }
+
+    config.as_dict = Py_IsTrue(as_dict) == 1;
+    if (!config.as_dict)
+    {
+        if (PyCallable_Check(config.clean_name) == 0)
+        {
+            PyErr_SetString(PyExc_ValueError, "clean_name must be callable if not as dict");
+            return NULL;
+        }
+        if (Py_IsNone(config.assetfile) == 1)
+        {
+            PyErr_SetString(PyExc_ValueError, "assetsfile must be set if not as dict");
+            return NULL;
+        }
+        if (Py_IsNone(config.classes) == 1)
+        {
+            PyErr_SetString(PyExc_ValueError, "classes must be set if not as dict");
+            return NULL;
+        }
     }
 
     volatile uint16_t bint = 0x0100;
@@ -536,7 +519,6 @@ PyObject *read_typetree(PyObject *self, PyObject *args, PyObject *kwargs)
         return NULL;
     }
     ReaderT reader = {static_cast<uint8_t *>(view.buf), static_cast<uint8_t *>(view.buf) + view.len, static_cast<uint8_t *>(view.buf)};
-    config.as_dict = Py_IsTrue(as_dict) == 1;
 
     PyObject *value;
     if (swap)
