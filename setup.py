@@ -68,7 +68,9 @@ setup(
                 if f.endswith(".cpp")
             ],
             language="c++",
-            extra_compile_args=["/std:c++20"],
+            extra_compile_args=[
+                "/std:c++20" if platform.system() == "Windows" else "-std=c++20"
+            ],
             include_dirs=[UNITYPYBOOST_DIR],
         )
     ],
