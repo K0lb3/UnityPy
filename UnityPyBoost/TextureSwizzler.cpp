@@ -1,4 +1,4 @@
-#include <TextureSwizzler.h>
+#include <TextureSwizzler.hpp>
 
 const uint32_t GOB_X_BLOCK_COUNT = 4;
 const uint32_t GOB_Y_BLOCK_COUNT = 8;

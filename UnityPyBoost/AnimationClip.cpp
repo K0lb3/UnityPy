@@ -1,4 +1,4 @@
-#include "AnimationClip.h"
+#include "AnimationClip.hpp"
 #include <Python.h>
 
 #define MIN(x, y) (((x) < (y)) ? (x) : (y))

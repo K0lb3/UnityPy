@@ -1,6 +1,6 @@
-#include "Mesh.h"
+#include "Mesh.hpp"
 #include <Python.h>
-#include <swap.h>
+#include <swap.hpp>
 
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
 
@@ -99,7 +99,7 @@ PyObject *unpack_vertexdata(PyObject *self, PyObject *args)
         }
     }
 
-    PyObject *res = PyByteArray_FromStringAndSize(componentBytes, componentBytesLength);
+    PyObject *res = PyByteArray_FromStringAndSize((const char*)componentBytes, componentBytesLength);
     PyMem_Free(componentBytes);
     PyBuffer_Release(&vertexDataView);
     return res;
