@@ -1,18 +1,22 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from PIL import Image, ImageDraw
 
-from .Texture2DConverter import get_image_from_texture2d
 from ..enums import (
     ClassIDType,
+    SpriteMeshType,
     SpritePackingMode,
     SpritePackingRotation,
-    SpriteMeshType,
 )
-
 from ..helpers.MeshHelper import MeshHandler
-from typing import Tuple, TYPE_CHECKING
+from .Texture2DConverter import get_image_from_texture2d
 
 if TYPE_CHECKING:
-    from ..classes.generated import Sprite
+    from typing import List, Optional, Tuple
+
+    from ..classes import PPtr, Sprite, Texture2D
 
 
 class SpriteSettings:
@@ -30,12 +34,10 @@ class SpriteSettings:
         # rest of the bits are reserved
 
 
-def get_image(sprite, texture, alpha_texture) -> Image.Image:
-    if (
-        alpha_texture
-        and getattr(alpha_texture, "type", ClassIDType.UnknownType)
-        == ClassIDType.Texture2D
-    ):
+def get_image(
+    sprite: Sprite, texture: PPtr[Texture2D], alpha_texture: Optional[PPtr[Texture2D]]
+) -> Image.Image:
+    if alpha_texture:
         cache_id = (texture.path_id, alpha_texture.path_id)
         if cache_id not in sprite.assets_file._cache:
             original_image = get_image_from_texture2d(texture.read(), False)
@@ -52,11 +54,11 @@ def get_image(sprite, texture, alpha_texture) -> Image.Image:
     return sprite.assets_file._cache[cache_id]
 
 
-def get_image_from_sprite(m_Sprite: "Sprite") -> Image.Image:
+def get_image_from_sprite(m_Sprite: Sprite) -> Image.Image:
     atlas = None
-    if getattr(m_Sprite, "m_SpriteAtlas", None):
+    if m_Sprite.m_SpriteAtlas:
         atlas = m_Sprite.m_SpriteAtlas.read()
-    elif getattr(m_Sprite, "m_AtlasTags", None):
+    elif m_Sprite.m_AtlasTags:
         # looks like the direct pointer is empty, let's try to find the Atlas via its name
         for obj in m_Sprite.assets_file.objects.values():
             if obj.type == ClassIDType.SpriteAtlas:
@@ -121,7 +123,7 @@ def get_image_from_sprite(m_Sprite: "Sprite") -> Image.Image:
 
 
 def mask_sprite(
-    m_Sprite: "Sprite", mesh: MeshHandler, sprite_image: Image.Image
+    m_Sprite: Sprite, mesh: MeshHandler, sprite_image: Image.Image
 ) -> Image.Image:
     mask_img = Image.new("1", sprite_image.size, color=0)
     draw = ImageDraw.ImageDraw(mask_img)
@@ -164,7 +166,9 @@ def mask_sprite(
     return sprite_image
 
 
-def render_sprite_mesh(m_Sprite: "Sprite", mesh: MeshHandler, texture: Image.Image):
+def render_sprite_mesh(
+    m_Sprite: Sprite, mesh: MeshHandler, texture: Image.Image
+) -> Image.Image:
     for triangles in mesh.get_triangles():
         positions = mesh.m_Vertices
         uv = mesh.m_UV0
@@ -218,7 +222,7 @@ def copy_triangle(
     src_tri: Tuple[float, float],
     dst_img: Image.Image,
     dst_tri: Tuple[float, float],
-):
+) -> None:
     src_off = (
         (src_tri[1][0] - src_tri[0][0], src_tri[1][1] - src_tri[0][1]),
         (src_tri[2][0] - src_tri[0][0], src_tri[2][1] - src_tri[0][1]),
@@ -275,23 +279,23 @@ def copy_triangle(
         dst_img.paste(transformed, mask=mask)
 
 
-def linalg_solve(M, y):
+def linalg_solve(M: List[List[float]], y: List[float]) -> List[float]:
     # M^-1 * y
     M_i = get_matrix_inverse(M)
     return [sum(M_i[i][j] * y[j] for j in range(len(y))) for i in range(len(M_i))]
 
 
-def transpose_matrix(m):
+def transpose_matrix(m: List[List[float]]) -> List[List[float]]:
     # https://stackoverflow.com/a/39881366
     return map(list, zip(*m))
 
 
-def get_matrix_minor(m, i, j):
+def get_matrix_minor(m: List[List[float]], i: int, j: int) -> List[float]:
     # https://stackoverflow.com/a/39881366
     return [row[:j] + row[j + 1 :] for row in (m[:i] + m[i + 1 :])]
 
 
-def get_matrix_determinant(m):
+def get_matrix_determinant(m: List[List[float]]) -> float:
     # https://stackoverflow.com/a/39881366
     # base case for 2x2 matrix
     if len(m) == 2:
@@ -303,7 +307,7 @@ def get_matrix_determinant(m):
     )
 
 
-def get_matrix_inverse(m):
+def get_matrix_inverse(m: List[List[float]]) -> List[List[float]]:
     # https://stackoverflow.com/a/39881366
     determinant = get_matrix_determinant(m)
     # special case for 2x2 matrix:
@@ -323,7 +327,7 @@ def get_matrix_inverse(m):
     ]
     cofactors = list(transpose_matrix(cofactors))
 
-    return [[c / determinant for c in range(row)] for row in cofactors]
+    return [[c / determinant for c in row] for row in cofactors]
 
 
 __all__ = ["get_image_from_sprite"]
