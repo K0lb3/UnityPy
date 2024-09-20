@@ -1,8 +1,12 @@
+from __future__ import annotations
+
 import ctypes
 import os
 import platform
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Dict
+
 from UnityPy.streams import EndianBinaryWriter
+
 from ..helpers.ResourceReader import get_resource_data
 
 if TYPE_CHECKING:
@@ -73,7 +77,7 @@ def import_pyfmodex():
     import pyfmodex
 
 
-def extract_audioclip_samples(audio: "AudioClip") -> dict:
+def extract_audioclip_samples(audio: AudioClip) -> Dict[str, bytes]:
     """extracts all the samples from an AudioClip
     :param audio: AudioClip
     :type audio: AudioClip
@@ -101,7 +105,7 @@ def extract_audioclip_samples(audio: "AudioClip") -> dict:
     return dump_samples(audio, audio_data)
 
 
-def dump_samples(clip: "AudioClip", audio_data: bytes) -> dict:
+def dump_samples(clip: AudioClip, audio_data: bytes) -> Dict[str, bytes]:
     if pyfmodex is None:
         import_pyfmodex()
     if not pyfmodex:
@@ -136,7 +140,7 @@ def dump_samples(clip: "AudioClip", audio_data: bytes) -> dict:
     return samples
 
 
-def subsound_to_wav(subsound):
+def subsound_to_wav(subsound) -> bytes:
     # get sound settings
     length = subsound.get_length(pyfmodex.enums.TIMEUNIT.PCMBYTES)
     channels = subsound.format.channels
