@@ -13,13 +13,16 @@ def init():
     import os
 
     with open(
-        os.path.join(os.path.dirname(os.path.dirname(__file__)), "resources", "uncompressed.tpk"), "rb"
+        os.path.join(
+            os.path.dirname(os.path.dirname(__file__)), "resources", "uncompressed.tpk"
+        ),
+        "rb",
     ) as f:
         global TPKTYPETREE
         TPKTYPETREE = TpkFile(f).GetDataBlob()
 
 
-def get_typetree_nodes(class_id: int, version: tuple):
+def get_typetree_node(class_id: int, version: tuple):
     global NODES_CACHE
     key = (class_id, version)
     if key in NODES_CACHE:
@@ -31,12 +34,12 @@ def get_typetree_nodes(class_id: int, version: tuple):
     if class_info is None:
         raise ValueError("Could not find class info for class id {}".format(class_id))
 
-    nodes = generate_flat_nodes(class_info)
-    NODES_CACHE[key] = nodes
-    return nodes
+    node = generate_node(class_info)
+    NODES_CACHE[key] = node
+    return node
 
 
-def generate_flat_nodes(class_info: TpkUnityClass) -> List[TypeTreeNode]:
+def generate_node(class_info: TpkUnityClass) -> TypeTreeNode:
     nodes = []
     NODES = TPKTYPETREE.NodeBuffer.Nodes
     stack = [(class_info.ReleaseRootNode, 0)]
@@ -57,7 +60,7 @@ def generate_flat_nodes(class_info: TpkUnityClass) -> List[TypeTreeNode]:
         )
         stack = [(node_id, level + 1) for node_id in node.SubNodes] + stack
         index += 1
-    return nodes
+    return TypeTreeNode.from_list(nodes)
 
 
 ######################################################################################
@@ -292,7 +295,9 @@ class UnityVersion(int):
         return UnityVersion(version.split("."))
 
     @staticmethod
-    def fromList(major: int = 0, minor: int = 0, patch: int = 0, build: int = 0) -> UnityVersion:
+    def fromList(
+        major: int = 0, minor: int = 0, patch: int = 0, build: int = 0
+    ) -> UnityVersion:
         return UnityVersion(major << 48 | minor << 32 | patch << 16 | build)
 
     @property

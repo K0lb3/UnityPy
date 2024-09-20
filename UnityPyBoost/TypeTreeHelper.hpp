@@ -38,8 +38,8 @@ typedef struct TypeTreeNodeObject
     PyObject *m_Level;
     PyObject *m_Type;
     PyObject *m_ByteSize;
-    PyObject *m_TypeFlags;
     PyObject *m_Version;
+    PyObject *m_TypeFlags;
     PyObject *m_VariableCount;
     PyObject *m_Index;
     PyObject *m_MetaFlag;

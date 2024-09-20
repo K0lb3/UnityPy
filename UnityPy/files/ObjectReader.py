@@ -3,7 +3,7 @@ from ..enums import ClassIDType
 
 from ..streams import EndianBinaryReader, EndianBinaryWriter
 from ..helpers import TypeTreeHelper
-from ..helpers.Tpk import get_typetree_nodes
+from ..helpers.Tpk import get_typetree_node
 from ..helpers.TypeTreeNode import TypeTreeNode
 from ..exceptions import TypeTreeError
 
@@ -238,7 +238,7 @@ class ObjectReader(Generic[T]):
         if self.serialized_type:
             nodes = self.serialized_type.nodes
         if not nodes:
-            nodes = get_typetree_nodes(self.class_id, self.version)
+            nodes = get_typetree_node(self.class_id, self.version)
         if not nodes:
             raise TypeTreeError("There are no TypeTree nodes for this object.")
         return nodes

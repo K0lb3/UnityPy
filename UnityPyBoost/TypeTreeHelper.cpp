@@ -586,23 +586,23 @@ static int TypeTreeNode_init(TypeTreeNodeObject *self, PyObject *args, PyObject 
         "m_Type",
         "m_Name",
         "m_ByteSize",
-        "m_TypeFlags",
         "m_Version",
         "m_Children",
+        "m_TypeFlags",
         "m_VariableCount",
         "m_Index",
         "m_MetaFlag",
         "m_RefTypeHash",
         NULL};
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OOOOOO|OOOOO", (char **)kwlist,
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OOOOO|OOOOOO", (char **)kwlist,
                                      &self->m_Level,
                                      &self->m_Type,
                                      &self->m_Name,
                                      &self->m_ByteSize,
-                                     &self->m_TypeFlags,
                                      &self->m_Version,
                                      &self->m_Children,
+                                     &self->m_TypeFlags,
                                      &self->m_VariableCount,
                                      &self->m_Index,
                                      &self->m_MetaFlag,
@@ -615,7 +615,6 @@ static int TypeTreeNode_init(TypeTreeNodeObject *self, PyObject *args, PyObject 
     Py_INCREF(self->m_Type);
     Py_INCREF(self->m_Name);
     Py_INCREF(self->m_ByteSize);
-    Py_INCREF(self->m_TypeFlags);
     Py_INCREF(self->m_Version);
     // optional fields
     if (self->m_Children == nullptr)
@@ -626,38 +625,22 @@ static int TypeTreeNode_init(TypeTreeNodeObject *self, PyObject *args, PyObject 
     {
         Py_XINCREF(self->m_Children);
     }
-    if (self->m_VariableCount == nullptr)
-    {
-        self->m_VariableCount = Py_None;
+
+#define SET_NONE_IF_NULL(field) \
+    if (self->field == nullptr) \
+    {                           \
+        self->field = Py_None;  \
+    }                           \
+    else                        \
+    {                           \
+        Py_INCREF(self->field); \
     }
-    else
-    {
-        Py_INCREF(self->m_VariableCount);
-    }
-    if (self->m_Index == nullptr)
-    {
-        self->m_Index = Py_None;
-    }
-    else
-    {
-        Py_INCREF(self->m_Index);
-    }
-    if (self->m_MetaFlag == nullptr)
-    {
-        self->m_MetaFlag = Py_None;
-    }
-    else
-    {
-        Py_INCREF(self->m_MetaFlag);
-    }
-    if (self->m_RefTypeHash == nullptr)
-    {
-        self->m_RefTypeHash = Py_None;
-    }
-    else
-    {
-        Py_INCREF(self->m_RefTypeHash);
-    }
+
+    SET_NONE_IF_NULL(m_TypeFlags);
+    SET_NONE_IF_NULL(m_VariableCount);
+    SET_NONE_IF_NULL(m_Index);
+    SET_NONE_IF_NULL(m_MetaFlag);
+    SET_NONE_IF_NULL(m_RefTypeHash);
 
     if (self->m_MetaFlag != Py_None && PyLong_AsLong(self->m_MetaFlag) & 0x4000)
     {
