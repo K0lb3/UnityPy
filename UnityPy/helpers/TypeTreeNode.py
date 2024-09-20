@@ -20,9 +20,9 @@ except ImportError:
         m_Type: str
         m_Name: str
         m_ByteSize: int
-        m_TypeFlags: int
         m_Version: int
         m_Children: List[TypeTreeNode] = field(factory=list)
+        m_TypeFlags: Optional[int] = None
         m_VariableCount: Optional[int] = None
         m_Index: Optional[int] = None
         m_MetaFlag: Optional[int] = None
@@ -92,7 +92,7 @@ class TypeTreeNode(TypeTreeNodeC):
             offset = value & 0x7FFFFFFF
             return CommonString.get(offset, str(offset))
 
-        fake_root: TypeTreeNode = cls(-1, "", "", 0, 0, 0, [])
+        fake_root: TypeTreeNode = cls(-1, "", "", 0, 0, [])
         stack: List[TypeTreeNode] = [fake_root]
         parent = fake_root
         prev = fake_root
@@ -119,13 +119,14 @@ class TypeTreeNode(TypeTreeNodeC):
 
     @classmethod
     def from_list(cls, nodes: List[dict]) -> TypeTreeNode:
-        fake_root: TypeTreeNode = cls(-1, "", "", 0, 0, 0, [])
+        fake_root: TypeTreeNode = cls(-1, "", "", 0, 0, [])
         stack: List[TypeTreeNode] = [fake_root]
         parent = fake_root
         prev = fake_root
 
-        for dict_node in nodes:
-            node = cls(**dict_node)
+        for node in nodes:
+            if isinstance(node, dict):
+                node = cls(node)
 
             if node.m_Level > prev.m_Level:
                 stack.append(parent)
