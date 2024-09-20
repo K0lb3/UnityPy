@@ -1,53 +1,88 @@
-from ..classes import Renderer, SkinnedMeshRenderer, Material
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, List, Optional
+
 from .MeshExporter import export_mesh_obj
 
+if TYPE_CHECKING:
+    from ..classes import (
+        Material,
+        Mesh,
+        MeshFilter,
+        PPtr,
+        Renderer,
+        SkinnedMeshRenderer,
+        StaticBatchInfo,
+        Texture2D,
+    )
 
-def get_mesh(meshR: Renderer):
-    if isinstance(meshR, SkinnedMeshRenderer.SkinnedMeshRenderer):
+    class Renderer(Renderer):
+        m_Materials: Optional[list[PPtr[Material]]] = None
+        m_StaticBatchInfo: Optional[StaticBatchInfo] = None
+        m_SubsetIndices: Optional[List[int]] = None
+
+
+def get_mesh(meshR: Renderer) -> Optional[Mesh]:
+    if isinstance(meshR, SkinnedMeshRenderer):
         if meshR.m_Mesh:
             return meshR.m_Mesh.read()
     else:
         m_GameObject = meshR.m_GameObject.read()
-        if m_GameObject.m_MeshFilter:
-            filter = m_GameObject.m_MeshFilter.read()
-            if filter.m_Mesh:
-                return filter.m_Mesh.read()
+        for comp in m_GameObject.m_Component:
+            if isinstance(comp, tuple):
+                pptr = comp[1]
+            else:
+                pptr = comp.component
+            if not pptr:
+                continue
+            obj = pptr.deref()
+            if not obj:
+                continue
+            if obj.type.name == "MeshFilter":
+                filter: MeshFilter = pptr.read()
+                if filter.m_Mesh:
+                    return filter.m_Mesh.read()
     return None
 
 
-def export_mesh_renderer(obj: Renderer, export_dir: str) -> None:
-    env = obj.assets_file.enviroment
+def export_mesh_renderer(renderer: Renderer, export_dir: str) -> None:
+    env = renderer.object_reader.assets_file.enviroment
     env.fs.makedirs(export_dir, exist_ok=True)
-    meshR = obj.read()
-    mesh = get_mesh(meshR)
+    mesh = get_mesh(renderer)
     if not mesh:
         return
 
     firstSubMesh = 0
-    if hasattr(meshR, "m_StaticBatchInfo") and meshR.m_StaticBatchInfo.subMeshCount > 0:
-        firstSubMesh = meshR.m_StaticBatchInfo.firstSubMesh
-    elif hasattr(meshR, "m_SubsetIndices"):
-        firstSubMesh = min(meshR.m_SubsetIndices)
+    if (
+        hasattr(renderer, "m_StaticBatchInfo")
+        and renderer.m_StaticBatchInfo.subMeshCount > 0
+    ):
+        firstSubMesh = renderer.m_StaticBatchInfo.firstSubMesh
+    elif hasattr(renderer, "m_SubsetIndices"):
+        firstSubMesh = min(renderer.m_SubsetIndices)
 
     materials = []
     material_names = []
     for i, submesh in enumerate(mesh.m_SubMeshes):
         mat_index = i - firstSubMesh
-        if mat_index < 0 or mat_index >= len(meshR.m_Materials):
+        if mat_index < 0 or mat_index >= len(renderer.m_Materials):
             continue
-        matPtr = meshR.m_Materials[i - firstSubMesh]
+        matPtr: Optional[PPtr[Material]] = renderer.m_Materials[i - firstSubMesh]
         if matPtr:
-            mat = matPtr.read()
+            mat: Material = matPtr.read()
         else:
             material_names.append(None)
             continue
         materials.append(export_material(mat))
         material_names.append(mat.m_Name)
         # save material textures
-        for key, texEnv in mat.m_SavedProperties.m_TexEnvs.items():
+        for key, texEnv in mat.m_SavedProperties.m_TexEnvs:
             if not texEnv.m_Texture:
                 continue
-            tex = texEnv.m_Texture.read()
+            if not isinstance(key, str):
+                # FastPropertyName
+                key = key.name
+            tex: Texture2D = texEnv.m_Texture.read()
             texName = f"{tex.m_Name if tex.m_Name else key}.png"
             with env.fs.open(env.fs.sep.join([export_dir, texName]), "wb") as f:
                 tex.read().image.save(f)
@@ -79,9 +114,16 @@ def export_material(mat: Material) -> str:
             color if isinstance(color, tuple) else (color.R, color.G, color.B, color.A)
         )
 
-    colors = mat.m_SavedProperties.m_Colors
-    floats = mat.m_SavedProperties.m_Floats
-    texEnvs = mat.m_SavedProperties.m_TexEnvs
+    def properties_to_dict(properties):
+        return {
+            k if isinstance(k, str) else k.name: v
+            for k, v in properties
+            if v is not None
+        }
+
+    colors = properties_to_dict(mat.m_SavedProperties.m_Colors)
+    floats = properties_to_dict(mat.m_SavedProperties.m_Floats)
+    texEnvs = properties_to_dict(mat.m_SavedProperties.m_TexEnvs)
 
     diffuse = clt(colors.get("_Color", (0.8, 0.8, 0.8, 1)))
     ambient = clt(colors.get("_SColor", (0.2, 0.2, 0.2, 1)))
@@ -91,7 +133,7 @@ def export_material(mat: Material) -> str:
     shininess = floats.get("_Shininess", 20.0)
     transparency = floats.get("_Transparency", 0.0)
 
-    sb = []
+    sb: List[str] = []
     sb.append(f"newmtl {mat.m_Name}")
     # Ka r g b
     # defines the ambient color of the material to be (r,g,b). The default is (0.2,0.2,0.2);
@@ -116,10 +158,14 @@ def export_material(mat: Material) -> str:
     # names a file containing a texture map, which should just be an ASCII dump of RGB values;
     texName = None
     tex = None
-    for key, texEnv in texEnvs.items():
+    for key, texEnv in texEnvs:
         if not texEnv.m_Texture:
             continue
-        tex = texEnv.m_Texture.read()
+        if not isinstance(key, str):
+            # FastPropertyName
+            key = key.name
+
+        tex: Texture2D = texEnv.m_Texture.read()
         texName = f"{tex.m_Name if tex.m_Name else key}.png"
         if key == "_MainTex":
             sb.append(f"map_Kd {texName}")
