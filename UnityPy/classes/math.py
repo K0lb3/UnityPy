@@ -5,7 +5,6 @@ we define them here as subtypes of np.ndarray, so that casting won't be necessar
 """
 
 from attrs import define
-from typing import TypeAlias
 
 
 @define(slots=True)
@@ -38,8 +37,8 @@ class Vector4f:
         return f"Vector4f({self.x}, {self.y}, {self.z}, {self.w})"
 
 
-float3: TypeAlias = Vector3f
-float4: TypeAlias = Vector4f
+float3 = Vector3f
+float4 = Vector4f
 
 
 class Quaternionf(Vector4f):
@@ -115,3 +114,16 @@ class ColorRGBA:
         self.g = ((value >> 16) & 0xFF) / 255
         self.b = ((value >> 8) & 0xFF) / 255
         self.a = (value & 0xFF) / 255
+
+
+__all__ = (
+    "Vector2f",
+    "Vector3f",
+    "Vector4f",
+    "Quaternionf",
+    "Matrix3x4f",
+    "Matrix4x4f",
+    "ColorRGBA",
+    "float3",
+    "float4",
+)
