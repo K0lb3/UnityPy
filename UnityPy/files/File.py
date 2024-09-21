@@ -1,27 +1,35 @@
-from ..enums import FileType
-from ..helpers import ImportHelper
-from ..streams import EndianBinaryReader, EndianBinaryWriter
+from __future__ import annotations
 
 from collections import namedtuple
 from os.path import basename
+from typing import TYPE_CHECKING, Dict, Optional
+
+from ..helpers import ImportHelper
+from ..streams import EndianBinaryReader, EndianBinaryWriter
+
+if TYPE_CHECKING:
+    from ..environment import Environment
 
 DirectoryInfo = namedtuple("DirectoryInfo", "path offset size")
 
 
 class File(object):
     name: str
-    files: dict
-    environment: "Environment"
+    files: Dict[str, File]
+    environment: Environment
     cab_file: str
     is_changed: bool
     signature: str
     packer: str
     is_dependency: bool
+    parent: Optional[File]
 
-    # parent: File
-    # environment: Environment
-
-    def __init__(self, parent=None, name: str = None, is_dependency: bool = False):
+    def __init__(
+        self,
+        parent: Optional[File] = None,
+        name: Optional[str] = None,
+        is_dependency: bool = False,
+    ):
         self.files = {}
         self.is_changed = False
         self.cab_file = "CAB-UnityPy_Mod.resS"
@@ -154,4 +162,4 @@ class File(object):
 
 
 # recursive import requires the import down here
-from . import BundleFile, SerializedFile, WebFile, ObjectReader
+from . import BundleFile, ObjectReader, SerializedFile, WebFile
