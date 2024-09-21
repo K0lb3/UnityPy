@@ -1,8 +1,11 @@
 from __future__ import annotations
+
 from enum import IntEnum, IntFlag
-from struct import Struct
+from importlib.resources import open_binary
 from io import BytesIO
-from typing import List, Tuple, Any, Dict
+from struct import Struct
+from typing import Any, Dict, List, Tuple
+
 from .TypeTreeHelper import TypeTreeNode
 
 TPKTYPETREE: TpkTypeTreeBlob = None
@@ -10,16 +13,12 @@ NODES_CACHE: dict = {}
 
 
 def init():
-    import os
+    with open_binary("UnityPy.resources", "uncompressed.tpk") as f:
+        data = f.read()
 
-    with open(
-        os.path.join(
-            os.path.dirname(os.path.dirname(__file__)), "resources", "uncompressed.tpk"
-        ),
-        "rb",
-    ) as f:
-        global TPKTYPETREE
-        TPKTYPETREE = TpkFile(f).GetDataBlob()
+    global TPKTYPETREE
+    with BytesIO(data) as stream:
+        TPKTYPETREE = TpkFile(stream).GetDataBlob()
 
 
 def get_typetree_node(class_id: int, version: tuple):
@@ -172,12 +171,12 @@ class TpkFile:
         elif self.CompressionType == TpkCompressionType.Lzma:
             import lzma
 
-            raise Exception("LZMA compression not implemented")
+            decompressed = lzma.decompress(self.CompressedBytes)
 
         elif self.CompressionType == TpkCompressionType.Brotli:
             import brotli
 
-            decompressed = brotli.decompress(self.CompressedBytes)
+            decompressed: bytes = brotli.decompress(self.CompressedBytes)
 
         else:
             raise Exception("Invalid compression type")
@@ -193,7 +192,7 @@ class TpkFile:
 
 
 class TpkDataBlob:
-    __slots__ = "DataType"
+    __slots__ = ("DataType",)
     DataType: TpkDataType
 
     def __init__(self, stream: BytesIO) -> None:
@@ -247,7 +246,7 @@ class TpkCollectionBlob(TpkDataBlob):
 
 
 class TpkFileSystemBlob(TpkDataBlob):
-    __slots__ = "Files"
+    __slots__ = ("Files",)
     # TODO: check if dict might be better
     Files: List[Tuple[str, bytes]]
 

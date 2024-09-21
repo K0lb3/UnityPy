@@ -3,6 +3,7 @@ from __future__ import annotations
 import ctypes
 import os
 import platform
+from importlib.resources import path
 from typing import TYPE_CHECKING, Dict
 
 from UnityPy.streams import EndianBinaryWriter
@@ -24,8 +25,6 @@ def import_pyfmodex():
     global pyfmodex
     if pyfmodex is not None:
         return
-
-    ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 
     # determine system - Windows, Darwin, Linux, Android
     system = platform.system()
@@ -62,17 +61,21 @@ def import_pyfmodex():
         )
 
     # build path and load library
-    LIB_PATH = os.path.join(ROOT, "lib", "FMOD", system, arch)
-
     # prepare the environment for pyfmodex
     if system == "Windows":
-        os.environ["PYFMODEX_DLL_PATH"] = os.path.join(LIB_PATH, "fmod.dll")
+        libname = "fmod.dll"
     else:
         ext = "dylib" if system == "Darwin" else "so"
-        os.environ["PYFMODEX_DLL_PATH"] = os.path.join(LIB_PATH, f"libfmod.{ext}")
+        libname = f"libfmod.{ext}"
+        # hotfix ctypes for pyfmodex for non windows systems
+        ctypes.windll = None
 
-        # hotfix ctypes for pyfmodex for non windows
-        ctypes.windll = getattr(ctypes, "windll", None)
+    fp = path(f"UnityPy.lib.FMOD.{system}.{arch}", libname)
+    if hasattr(fp, "args"):
+        # some newer version doesn't directly return a path, but instead a generator
+        fp = fp.args[0]
+
+    os.environ["PYFMODEX_DLL_PATH"] = str(fp.absolute())
 
     import pyfmodex
 
