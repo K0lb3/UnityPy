@@ -462,7 +462,7 @@ PyObject *read_typetree(PyObject *self, PyObject *args, PyObject *kwargs)
         return NULL;
     }
 
-    config.as_dict = Py_IsTrue(as_dict) == 1;
+    config.as_dict = as_dict == Py_True;
     if (!config.as_dict)
     {
         if (PyCallable_Check(config.clean_name) == 0)
@@ -470,12 +470,12 @@ PyObject *read_typetree(PyObject *self, PyObject *args, PyObject *kwargs)
             PyErr_SetString(PyExc_ValueError, "clean_name must be callable if not as dict");
             return NULL;
         }
-        if (Py_IsNone(config.assetfile) == 1)
+        if (config.assetfile == Py_None)
         {
             PyErr_SetString(PyExc_ValueError, "assetsfile must be set if not as dict");
             return NULL;
         }
-        if (Py_IsNone(config.classes) == 1)
+        if (config.classes == Py_None)
         {
             PyErr_SetString(PyExc_ValueError, "classes must be set if not as dict");
             return NULL;
