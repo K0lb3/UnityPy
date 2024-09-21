@@ -199,7 +199,7 @@ All object types can be found in [UnityPy/classes](UnityPy/classes/).
 
 ### [Texture2D](UnityPy/classes/Texture2D.py)
 
--   `.name`
+-   `.m_Name`
 -   `.image` converts the texture into a `PIL.Image`
 -   `.m_Width` - texture width (int)
 -   `.m_Height` - texture height (int)
@@ -212,9 +212,10 @@ for obj in env.objects:
     if obj.type.name == "Texture2D":
         # export texture
         data = obj.read()
+        path = os.path.join(export_dir, f"{data.m_Name}.png")
         data.image.save(path)
         # edit texture
-        fp = os.path.join(replace_dir, data.name)
+        fp = os.path.join(replace_dir, f"{data.m_Name}.png")
         pil_img = Image.open(fp)
         data.image = pil_img
         data.save()
@@ -225,7 +226,7 @@ for obj in env.objects:
 Sprites are part of a texture and can have a separate alpha-image as well.
 Unlike most other extractors (including AssetStudio), UnityPy merges those two images by itself.
 
--   `.name`
+-   `.m_Name`
 -   `.image` - converts the merged texture part into a `PIL.Image`
 -   `.m_Width` - sprite width (int)
 -   `.m_Height` - sprite height (int)
@@ -236,6 +237,7 @@ Unlike most other extractors (including AssetStudio), UnityPy merges those two i
 for obj in env.objects:
     if obj.type.name == "Sprite":
         data = obj.read()
+        path = os.path.join(export_dir, f"{data.m_Name}.png")
         data.image.save(path)
 ```
 
@@ -243,9 +245,8 @@ for obj in env.objects:
 
 TextAssets are usually normal text files.
 
--   `.name`
--   `.script` - binary data (bytes)
--   `.text` - script decoded via UTF8 (str)
+-   `.m_Name`
+-   `.m_Script` - str
 
 Some games save binary data as TextFile, so it's usually better to use `.script`.
 
@@ -256,12 +257,13 @@ for obj in env.objects:
     if obj.type.name == "TextAsset":
         # export asset
         data = obj.read()
+        path = os.path.join(export_dir, f"{data.m_Name}.txt")
         with open(path, "wb") as f:
-            f.write(bytes(data.script))
+            f.write(data.m_Script.encode("utf-8", "surrogateescape"))
         # edit asset
-        fp = os.path.join(replace_dir, data.name)
+        fp = os.path.join(replace_dir, f"{data.m_Name}.txt")
         with open(fp, "rb") as f:
-            data.script = f.read()
+            data.m_Script = f.read().decode("utf-8", "surrogateescape"))
         data.save()
 ```
 
@@ -272,9 +274,8 @@ If a type tree exists, it can be used to read the whole data,
 but if it doesn't exist, then it is usually necessary to investigate the class that loads the specific MonoBehaviour to extract the data.
 ([example](examples/CustomMonoBehaviour/get_scriptable_texture.py))
 
--   `.name`
--   `.script`
--   `.raw_data` - data after the basic initialisation
+-   `.m_Name`
+-   `.m_Script`
 
 **Export**
 
@@ -290,12 +291,6 @@ for obj in env.objects:
             fp = os.path.join(extract_dir, f"{tree['m_Name']}.json")
             with open(fp, "wt", encoding = "utf8") as f:
                 json.dump(tree, f, ensure_ascii = False, indent = 4)
-        else:
-            # save raw relevant data (without Unity MonoBehaviour header)
-            data = obj.read()
-            fp = os.path.join(extract_dir, f"{data.name}.bin")
-            with open(fp, "wb") as f:
-                f.write(data.raw_data)
 
         # edit
         if obj.serialized_type.node:
@@ -304,7 +299,7 @@ for obj in env.objects:
             obj.save_typetree(tree)
         else:
             data = obj.read()
-            with open(os.path.join(replace_dir, data.name)) as f:
+            with open(os.path.join(replace_dir, data.m_Name)) as f:
                 data.save(raw_data = f.read())
 ```
 
@@ -332,7 +327,7 @@ if obj.type.name == "Font":
         if font.m_FontData[0:4] == b"OTTO":
             extension = ".otf"
 
-    with open(os.path.join(path, font.name+extension), "wb") as f:
+    with open(os.path.join(path, font.m_Name+extension), "wb") as f:
         f.write(font.m_FontData)
 ```
 
@@ -344,7 +339,7 @@ The mesh will be converted to the Wavefront .obj file format.
 
 ```python
 mesh : Mesh
-with open(f"{mesh.name}.obj", "wt", newline = "") as f:
+with open(f"{mesh.m_Name}.obj", "wt", newline = "") as f:
     # newline = "" is important
     f.write(mesh.export())
 ```
@@ -364,7 +359,7 @@ export_dir: str
 if mesh_renderer.m_GameObject:
     # get the name of the model
     game_object = mesh_renderer.m_GameObject.read()
-    export_dir = os.path.join(export_dir, game_object.name)
+    export_dir = os.path.join(export_dir, game_object.m_Name)
 mesh_renderer.export(export_dir)
 ```
 
@@ -372,7 +367,7 @@ mesh_renderer.export(export_dir)
 
 WARNING - not well tested
 
--   `.name`
+-   `.m_Name`
 -   `.image` converts the texture2darray into a `PIL.Image`
 -   `.m_Width` - texture width (int)
 -   `.m_Height` - texture height (int)
