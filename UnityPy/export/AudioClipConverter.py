@@ -70,12 +70,15 @@ def import_pyfmodex():
         # hotfix ctypes for pyfmodex for non windows systems
         ctypes.windll = None
 
+    # behavior changed in python 3.12
     fp = path(f"UnityPy.lib.FMOD.{system}.{arch}", libname)
     if hasattr(fp, "args"):
         # some newer version doesn't directly return a path, but instead a generator
         fp = fp.args[0]
+    if not isinstance(fp, str):
+        fp = fp.absolute()
 
-    os.environ["PYFMODEX_DLL_PATH"] = str(fp.absolute())
+    os.environ["PYFMODEX_DLL_PATH"] = str(fp)
 
     import pyfmodex
 
