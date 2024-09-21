@@ -1,11 +1,13 @@
-from typing import TYPE_CHECKING, Generic, TypeVar, Union, List, Optional
-from ..enums import ClassIDType
+from __future__ import annotations
 
-from ..streams import EndianBinaryReader, EndianBinaryWriter
+from typing import TYPE_CHECKING, Generic, List, Optional, TypeVar, Union
+
+from ..enums import ClassIDType
+from ..exceptions import TypeTreeError
 from ..helpers import TypeTreeHelper
 from ..helpers.Tpk import get_typetree_node
 from ..helpers.TypeTreeNode import TypeTreeNode
-from ..exceptions import TypeTreeError
+from ..streams import EndianBinaryReader, EndianBinaryWriter
 
 if TYPE_CHECKING:
     from ..files import SerializedFile
@@ -20,14 +22,14 @@ class ObjectReader(Generic[T]):
     class_id: int
     type: ClassIDType
     path_id: int
-    assets_file: "SerializedFile"
+    assets_file: SerializedFile
     _read_until: int
 
     # saves where the parser stopped
     # in case that not all data is read
     # and the obj.data is changed, the unknown data can be added again
 
-    def __init__(self, assets_file: "SerializedFile", reader: EndianBinaryReader):
+    def __init__(self, assets_file: SerializedFile, reader: EndianBinaryReader):
         self.assets_file = assets_file
         self.reader = reader
         self.data = b""
@@ -226,19 +228,19 @@ class ObjectReader(Generic[T]):
         return ret
 
     def _get_typetree_node(
-        self, nodes: Optional[Union[TypeTreeNode, List[dict]]] = None
+        self, node: Optional[Union[TypeTreeNode, List[dict]]] = None
     ) -> TypeTreeNode:
-        if isinstance(nodes, TypeTreeNode):
-            return nodes
-        elif isinstance(nodes, list):
-            return TypeTreeNode.from_list(nodes)
-        elif nodes is not None:
+        if isinstance(node, TypeTreeNode):
+            return node
+        elif isinstance(node, list):
+            return TypeTreeNode.from_list(node)
+        elif node is not None:
             raise ValueError("nodes must be a list[dict] or TypeTreeNode")
 
         if self.serialized_type:
-            nodes = self.serialized_type.nodes
-        if not nodes:
-            nodes = get_typetree_node(self.class_id, self.version)
-        if not nodes:
+            node = self.serialized_type.node
+        if not node:
+            node = get_typetree_node(self.class_id, self.version)
+        if not node:
             raise TypeTreeError("There are no TypeTree nodes for this object.")
-        return nodes
+        return node

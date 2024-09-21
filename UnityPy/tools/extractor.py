@@ -192,7 +192,7 @@ def exportMonoBehaviour(
 ) -> List[int]:
     export = None
     # TODO - add generic way to add external typetrees
-    if obj.serialized_type and obj.serialized_type.nodes:
+    if obj.serialized_type and obj.serialized_type.node:
         extension = ".json"
         export = json.dumps(obj.read_typetree(), indent=4, ensure_ascii=False).encode(
             "utf8", errors="surrogateescape"

@@ -284,7 +284,7 @@ import json
 for obj in env.objects:
     if obj.type.name == "MonoBehaviour":
         # export
-        if obj.serialized_type.nodes:
+        if obj.serialized_type.node:
             # save decoded data
             tree = obj.read_typetree()
             fp = os.path.join(extract_dir, f"{tree['m_Name']}.json")
@@ -298,7 +298,7 @@ for obj in env.objects:
                 f.write(data.raw_data)
 
         # edit
-        if obj.serialized_type.nodes:
+        if obj.serialized_type.node:
             tree = obj.read_typetree()
             # apply modifications to the data within the tree
             obj.save_typetree(tree)
