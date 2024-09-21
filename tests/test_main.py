@@ -26,6 +26,7 @@ def test_save_dict():
     for obj in env.objects:
         data = obj.get_raw_data()
         item = obj.read_typetree(wrap=False)
+        assert isinstance(item, dict)
         re_data = obj.save_typetree(item)
         assert data == re_data
 
@@ -35,6 +36,7 @@ def test_save_wrap():
     for obj in env.objects:
         data = obj.get_raw_data()
         item = obj.read_typetree(wrap=True)
+        assert not isinstance(item, dict)
         re_data = obj.save_typetree(item)
         assert data == re_data
 
