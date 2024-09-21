@@ -22,7 +22,7 @@ except ImportError:
 
 kAlignBytes = 0x4000
 
-FUNCTION_MAP = {
+FUNCTION_READ_MAP = {
     "SInt8": EndianBinaryReader.read_byte,
     "UInt8": EndianBinaryReader.read_u_byte,
     "char": EndianBinaryReader.read_u_byte,
@@ -46,7 +46,7 @@ FUNCTION_MAP = {
     "string": EndianBinaryReader.read_aligned_string,
     "TypelessData": EndianBinaryReader.read_byte_array,
 }
-FUNCTION_MAP_ARRAY = {
+FUNCTION_READ_MAP_ARRAY = {
     "SInt8": EndianBinaryReader.read_byte_array,
     "UInt8": EndianBinaryReader.read_u_byte_array,
     "char": EndianBinaryReader.read_u_byte_array,
@@ -137,16 +137,13 @@ def read_value(
     # print(reader.Position, node.m_Name, node.m_Type, node.m_MetaFlag)
     align = metaflag_is_aligned(node.m_MetaFlag)
 
-    func = FUNCTION_MAP.get(node.m_Type)
+    func = FUNCTION_READ_MAP.get(node.m_Type)
     if func:
         value = func(reader)
     elif node.m_Type == "pair":
         first = read_value(node.m_Children[0], reader, as_dict, assetsfile)
         second = read_value(node.m_Children[1], reader, as_dict, assetsfile)
         value = (first, second)
-    elif not node.m_Children:
-        value = None
-        # raise NotImplementedError(f"Reference type {node.m_Type} not implemented")
     # Vector
     elif node.m_Children and node.m_Children[0].m_Type == "Array":
         if metaflag_is_aligned(node.m_Children[0].m_MetaFlag):
@@ -208,7 +205,7 @@ def read_value_array(
 ) -> Any:
     align = metaflag_is_aligned(node.m_MetaFlag)
 
-    func = FUNCTION_MAP_ARRAY.get(node.m_Type)
+    func = FUNCTION_READ_MAP_ARRAY.get(node.m_Type)
     if func:
         value = func(reader, size)
     elif node.m_Type == "string":
@@ -219,18 +216,15 @@ def read_value_array(
         key_node = node.m_Children[0]
         value_node = node.m_Children[1]
 
-        key_func = FUNCTION_MAP.get(
+        key_func = FUNCTION_READ_MAP.get(
             key_node.m_Type,
             lambda reader: read_value(key_node, reader, as_dict, assetsfile),
         )
-        value_func = FUNCTION_MAP.get(
+        value_func = FUNCTION_READ_MAP.get(
             value_node.m_Type,
             lambda reader: read_value(value_node, reader, as_dict, assetsfile),
         )
         value = [(key_func(reader), value_func(reader)) for _ in range(size)]
-    elif not node.m_Children:
-        value = None
-        # raise NotImplementedError(f"Reference type {node.m_Type} not implemented")
     # Vector
     elif node.m_Children and node.m_Children[0].m_Type == "Array":
         if metaflag_is_aligned(node.m_Children[0].m_MetaFlag):
@@ -332,6 +326,32 @@ def clean_name(name: str) -> str:
     return name
 
 
+FUNCTION_WRITE_MAP = {
+    "SInt8": EndianBinaryWriter.write_byte,
+    "UInt8": EndianBinaryWriter.write_u_byte,
+    "char": EndianBinaryWriter.write_u_byte,
+    "short": EndianBinaryWriter.write_short,
+    "SInt16": EndianBinaryWriter.write_short,
+    "unsigned short": EndianBinaryWriter.write_u_short,
+    "UInt16": EndianBinaryWriter.write_u_short,
+    "int": EndianBinaryWriter.write_int,
+    "SInt32": EndianBinaryWriter.write_int,
+    "unsigned int": EndianBinaryWriter.write_u_int,
+    "UInt32": EndianBinaryWriter.write_u_int,
+    "Type*": EndianBinaryWriter.write_u_int,
+    "long long": EndianBinaryWriter.write_long,
+    "SInt64": EndianBinaryWriter.write_long,
+    "unsigned long long": EndianBinaryWriter.write_u_long,
+    "UInt64": EndianBinaryWriter.write_u_long,
+    "FileSize": EndianBinaryWriter.write_u_long,
+    "float": EndianBinaryWriter.write_float,
+    "double": EndianBinaryWriter.write_double,
+    "bool": EndianBinaryWriter.write_boolean,
+    "string": EndianBinaryWriter.write_aligned_string,
+    "TypelessData": EndianBinaryWriter.write_byte_array,
+}
+
+
 def write_value(
     value: Any,
     node: TypeTreeNode,
@@ -340,55 +360,27 @@ def write_value(
     # print(reader.Position, node.m_Name, node.m_Type, node.m_MetaFlag)
     align = metaflag_is_aligned(node.m_MetaFlag)
 
-    match node.m_Type:
-        case "SInt8":
-            writer.write_byte(value)
-        case "UInt8" | "char":
-            writer.write_u_byte(value)
-        case "short" | "SInt16":
-            writer.write_short(value)
-        case "UInt16" | "unsigned short":
-            writer.write_u_short(value)
-        case "int" | "SInt32":
-            writer.write_int(value)
-        case "UInt32" | "unsigned int" | "Type*":
-            writer.write_u_int(value)
-        case "long long" | "SInt64":
-            writer.write_long(value)
-        case "UInt64" | "unsigned long long" | "FileSize":
-            writer.write_u_long(value)
-        case "float":
-            writer.write_float(value)
-        case "double":
-            writer.write_double(value)
-        case "bool":
-            writer.write_boolean(value)
-        case "string":
-            writer.write_aligned_string(value)
-        case "TypelessData":
-            writer.write_byte_array(value)
-        case "pair":
-            write_value(value[0], node.m_Children[0], writer)
-            write_value(value[1], node.m_Children[1], writer)
-        case _:
-            # Vector
-            if node.m_Children and node.m_Children[0].m_Type == "Array":
-                if metaflag_is_aligned(node.m_Children[0].m_MetaFlag):
-                    align = True
+    func = FUNCTION_WRITE_MAP.get(node.m_Type)
+    if func:
+        value = func(writer, value)
+    elif node.m_Type == "pair":
+        write_value(value[0], node.m_Children[0], writer)
+        write_value(value[1], node.m_Children[1], writer)
+    elif node.m_Children and node.m_Children[0].m_Type == "Array":
+        if metaflag_is_aligned(node.m_Children[0].m_MetaFlag):
+            align = True
 
-                writer.write_int(len(value))
-                subtype = node.m_Children[0].m_Children[1]
-                [write_value(sub_value, subtype, writer) for sub_value in value]
+        writer.write_int(len(value))
+        subtype = node.m_Children[0].m_Children[1]
+        [write_value(sub_value, subtype, writer) for sub_value in value]
 
-            else:  # Class
-                if isinstance(value, dict):
-                    for child in node.m_Children:
-                        write_value(value[child.m_Name], child, writer)
-                else:
-                    for child in node.m_Children:
-                        write_value(
-                            getattr(value, clean_name(child.m_Name)), child, writer
-                        )
+    else:  # Class
+        if isinstance(value, dict):
+            for child in node.m_Children:
+                write_value(value[child.m_Name], child, writer)
+        else:
+            for child in node.m_Children:
+                write_value(getattr(value, clean_name(child.m_Name)), child, writer)
 
     if align:
         writer.align_stream()

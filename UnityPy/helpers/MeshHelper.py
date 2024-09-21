@@ -401,61 +401,59 @@ class MeshHandler:
 
     def assign_channel_vertex_data(self, channel: int, component_data: list):
         if self.version[0] >= 2018:
-            match channel:
-                case 0:  # kShaderChannelVertex
-                    self.m_Vertices = component_data
-                case 1:  # kShaderChannelNormal
-                    self.m_Normals = component_data
-                case 2:  # kShaderChannelTangent
-                    self.m_Tangents = component_data
-                case 3:  # kShaderChannelColor
-                    self.m_Colors = component_data
-                case 4:  # kShaderChannelTexCoord0
-                    self.m_UV0 = component_data
-                case 5:  # kShaderChannelTexCoord1
-                    self.m_UV1 = component_data
-                case 6:  # kShaderChannelTexCoord2
-                    self.m_UV2 = component_data
-                case 7:  # kShaderChannelTexCoord3
-                    self.m_UV3 = component_data
-                case 8:  # kShaderChannelTexCoord4
-                    self.m_UV4 = component_data
-                case 9:  # kShaderChannelTexCoord5
-                    self.m_UV5 = component_data
-                case 10:  # kShaderChannelTexCoord6
-                    self.m_UV6 = component_data
-                case 11:  # kShaderChannelTexCoord7
-                    self.m_UV7 = component_data
-                # 2018.2 and up
-                case 12:  # kShaderChannelBlendWeight
-                    self.m_BoneWeights = component_data
-                case 13:  # kShaderChannelBlendIndices
-                    self.m_BoneIndices = component_data
-                case _:
-                    raise ValueError(f"Unknown channel {channel}")
+            if channel == 0:  # kShaderChannelVertex
+                self.m_Vertices = component_data
+            elif channel == 1:  # kShaderChannelNormal
+                self.m_Normals = component_data
+            elif channel == 2:  # kShaderChannelTangent
+                self.m_Tangents = component_data
+            elif channel == 3:  # kShaderChannelColor
+                self.m_Colors = component_data
+            elif channel == 4:  # kShaderChannelTexCoord0
+                self.m_UV0 = component_data
+            elif channel == 5:  # kShaderChannelTexCoord1
+                self.m_UV1 = component_data
+            elif channel == 6:  # kShaderChannelTexCoord2
+                self.m_UV2 = component_data
+            elif channel == 7:  # kShaderChannelTexCoord3
+                self.m_UV3 = component_data
+            elif channel == 8:  # kShaderChannelTexCoord4
+                self.m_UV4 = component_data
+            elif channel == 9:  # kShaderChannelTexCoord5
+                self.m_UV5 = component_data
+            elif channel == 10:  # kShaderChannelTexCoord6
+                self.m_UV6 = component_data
+            elif channel == 11:  # kShaderChannelTexCoord7
+                self.m_UV7 = component_data
+            # 2018.2 and up
+            elif channel == 12:  # kShaderChannelBlendWeight
+                self.m_BoneWeights = component_data
+            elif channel == 13:  # kShaderChannelBlendIndices
+                self.m_BoneIndices = component_data
+            else:
+                raise ValueError(f"Unknown channel {channel}")
         else:
-            match channel:
-                case 0:  # kShaderChannelVertex
-                    self.m_Vertices = component_data
-                case 1:  # kShaderChannelNormal
-                    self.m_Normals = component_data
-                case 2:  # kShaderChannelColor
-                    self.m_Colors = component_data
-                case 3:  # kShaderChannelTexCoord0
-                    self.m_UV0 = component_data
-                case 4:  # kShaderChannelTexCoord1
-                    self.m_UV1 = component_data
-                case 5:
-                    if self.version[0] >= 5:  # kShaderChannelTexCoord2
-                        self.m_UV2 = component_data
-                    else:  # kShaderChannelTangent
-                        self.m_Tangents = component_data
-                case 6:  # kShaderChannelTexCoord3
-                    self.m_UV3 = component_data
-                case 7:  # kShaderChannelTangent
+            if channel == 0:  # kShaderChannelVertex
+                self.m_Vertices = component_data
+            elif channel == 1:  # kShaderChannelNormal
+                self.m_Normals = component_data
+            elif channel == 2:  # kShaderChannelColor
+                self.m_Colors = component_data
+            elif channel == 3:  # kShaderChannelTexCoord0
+                self.m_UV0 = component_data
+            elif channel == 4:  # kShaderChannelTexCoord1
+                self.m_UV1 = component_data
+            elif channel == 5:
+                if self.version[0] >= 5:  # kShaderChannelTexCoord2
+                    self.m_UV2 = component_data
+                else:  # kShaderChannelTangent
                     self.m_Tangents = component_data
-                case _:
-                    raise ValueError(f"Unknown channel {channel}")
+            elif channel == 6:  # kShaderChannelTexCoord3
+                self.m_UV3 = component_data
+            elif channel == 7:  # kShaderChannelTangent
+                self.m_Tangents = component_data
+            else:
+                raise ValueError(f"Unknown channel {channel}")
 
     def get_channel_dtype(self, m_Channel: ChannelInfo):
         if self.version[0] < 2017:
