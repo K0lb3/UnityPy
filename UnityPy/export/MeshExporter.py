@@ -1,16 +1,14 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Literal, Optional
+from typing import TYPE_CHECKING, List, Optional
 
 from ..helpers.MeshHelper import MeshHandler
 
 if TYPE_CHECKING:
     from ..classes.generated import Mesh
 
-MESH_EXPORT_FORMATS = Literal["obj"]
 
-
-def export_mesh(m_Mesh: Mesh, format: MESH_EXPORT_FORMATS = "obj") -> str:
+def export_mesh(m_Mesh: Mesh, format: str = "obj") -> str:
     if format == "obj":
         return export_mesh_obj(m_Mesh)
     raise NotImplementedError(f"Export format {format} not implemented")
