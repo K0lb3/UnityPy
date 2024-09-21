@@ -1,8 +1,9 @@
 import io
 import os
 
-import UnityPy
 from PIL import Image
+
+import UnityPy
 
 SAMPLES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "samples")
 
@@ -18,6 +19,24 @@ def test_read_batch():
     env = UnityPy.load(SAMPLES)
     for obj in env.objects:
         obj.read()
+
+
+def test_save_dict():
+    env = UnityPy.load(SAMPLES)
+    for obj in env.objects:
+        data = obj.get_raw_data()
+        item = obj.read_typetree(wrap=False)
+        re_data = obj.save_typetree(item)
+        assert data == re_data
+
+
+def test_save_wrap():
+    env = UnityPy.load(SAMPLES)
+    for obj in env.objects:
+        data = obj.get_raw_data()
+        item = obj.read_typetree(wrap=True)
+        re_data = obj.save_typetree(item)
+        assert data == re_data
 
 
 def test_texture2d():
