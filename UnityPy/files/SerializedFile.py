@@ -1,16 +1,24 @@
-﻿from ntpath import basename
+﻿from __future__ import annotations
+
 import re
+from ntpath import basename
+from typing import TYPE_CHECKING, Dict, Generator, List, Optional, Tuple
 
-from . import File, ObjectReader, BundleFile
-from ..enums import BuildTarget, ClassIDType, CommonString
-from ..streams import EndianBinaryReader, EndianBinaryWriter
-from ..helpers.TypeTreeHelper import TypeTreeNode
-
-from struct import Struct
+from attrs import define
 
 from .. import config
+from ..enums import BuildTarget, ClassIDType, CommonString
+from ..helpers.TypeTreeHelper import TypeTreeNode
+from ..streams import EndianBinaryWriter
+from . import BundleFile, File, ObjectReader
+
+if TYPE_CHECKING:
+    from ..classes import AssetBundle, AssetInfo
+    from ..files import ObjectReader
+    from ..streams.EndianBinaryReader import EndianBinaryReader
 
 
+@define(slots=True)
 class SerializedFileHeader:
     metadata_size: int
     file_size: int
@@ -28,6 +36,7 @@ class SerializedFileHeader:
         ) = reader.read_u_int_array(4)
 
 
+@define(slots=True)
 class LocalSerializedObjectIdentifier:  # script type
     local_serialized_file_index: int
     local_identifier_in_file: int
@@ -49,11 +58,13 @@ class LocalSerializedObjectIdentifier:  # script type
             writer.write_long(self.local_identifier_in_file)
 
 
+@define(slots=True)
 class FileIdentifier:  # external
-    guid: bytes
-    type: int
-    # enum { kNonAssetType = 0, kDeprecatedCachedAssetType = 1, kSerializedAssetType = 2, kMetaAssetType = 3 };
     path: str
+    temp_empty: Optional[str] = None
+    guid: Optional[bytes] = None
+    type: Optional[int] = None
+    # enum { kNonAssetType = 0, kDeprecatedCachedAssetType = 1, kSerializedAssetType = 2, kMetaAssetType = 3 };
 
     @property
     def name(self):
@@ -79,6 +90,7 @@ class FileIdentifier:  # external
         writer.write_string_to_null(self.path)
 
 
+@define(slots=True)
 class BuildType:
     build_type: str
 
@@ -94,15 +106,27 @@ class BuildType:
         return self.build_type == "p"
 
 
+@define(slots=True)
 class SerializedType:
     class_id: int
-    is_stripped_type: bool
-    script_type_index = -1
-    nodes: list = []  # TypeTreeNode
-    script_id: bytes  # Hash128
-    old_type_hash: bytes  # Hash128}
+    is_stripped_type: Optional[bool] = None
+    script_type_index: Optional[int] = -1
+    script_id: Optional[bytes] = None  # Hash128
+    old_type_hash: Optional[bytes] = None  # Hash128
+    node: Optional[TypeTreeNode] = None
+    # ref type
+    m_ClassName: Optional[str] = None
+    m_NameSpace: Optional[str] = None
+    m_AssemblyName: Optional[str] = None
+    # 21+
+    type_dependencies: Optional[List[int]] = None
 
-    def __init__(self, reader, serialized_file, is_ref_type: bool):
+    def __init__(
+        self,
+        reader: EndianBinaryReader,
+        serialized_file: SerializedFile,
+        is_ref_type: bool,
+    ):
         version = serialized_file.header.version
         self.class_id = reader.read_int()
 
@@ -123,9 +147,9 @@ class SerializedType:
 
         if serialized_file._enable_type_tree:
             if version >= 12 or version == 10:
-                self.nodes = TypeTreeNode.parse_blob(reader, version)
+                self.node = TypeTreeNode.parse_blob(reader, version)
             else:
-                self.nodes = TypeTreeNode.parse(reader, version)
+                self.node = TypeTreeNode.parse(reader, version)
 
             if version >= 21:
                 if is_ref_type:
@@ -135,7 +159,12 @@ class SerializedType:
                 else:
                     self.type_dependencies = reader.read_int_array()
 
-    def write(self, serialized_file, writer, is_ref_type):
+    def write(
+        self,
+        serialized_file: SerializedFile,
+        writer: EndianBinaryWriter,
+        is_ref_type: bool,
+    ):
         version = serialized_file.header.version
         writer.write_int(self.class_id)
 
@@ -155,8 +184,9 @@ class SerializedType:
             writer.write_bytes(self.old_type_hash)  # Hash128
 
         if serialized_file._enable_type_tree:
+            assert self.node is not None
             if version >= 12 or version == 10:
-                self.nodes.dump_blob(writer, version)
+                self.node.dump_blob(writer, version)
             else:
                 serialized_file.dump(writer, version)
 
@@ -181,8 +211,8 @@ class SerializedFile(File.File):
     externals: list
     objects: dict
     _cache: dict
-    assetbundle: "AssetBundle"
-    container: "ContainerHelper"
+    assetbundle: AssetBundle
+    container: ContainerHelper
     header: SerializedFileHeader
 
     @property
@@ -288,8 +318,8 @@ class SerializedFile(File.File):
         # read the asset_bundles to get the containers
         for obj in self.objects.values():
             if obj.type == ClassIDType.AssetBundle:
-                self.assetbundle = obj.read_typetree(wrap=True)
-                self._container = ContainerHelper(self.assetbundle.m_Container)
+                self.assetbundle = obj.read()
+                self._container = ContainerHelper(self.assetbundle)
                 break
         else:
             self.assetbundle = None
@@ -316,7 +346,7 @@ class SerializedFile(File.File):
             except FileNotFoundError:
                 pass
 
-    def set_version(self, string_version):
+    def set_version(self, string_version: str):
         self.unity_version = string_version
         if not string_version or string_version == "0.0.0":
             # weird case, but apparently can happen?
@@ -463,103 +493,6 @@ class SerializedFile(File.File):
 
         return writer.bytes
 
-    def save_serialized_type(
-        self,
-        typ: SerializedType,
-        header: SerializedFileHeader,
-        writer: EndianBinaryWriter,
-    ):
-        writer.write_int(typ.class_id)
-
-        if header.version >= 16:
-            writer.write_boolean(typ.is_stripped_type)
-
-        if header.version >= 17:
-            writer.write_short(typ.script_type_index)
-
-        if header.version >= 13:
-            if (header.version < 16 and typ.class_id < 0) or (
-                header.version >= 16 and typ.class_id == 114
-            ):
-                writer.write_bytes(typ.script_id)  # Hash128
-            writer.write_bytes(typ.old_type_hash)  # Hash128
-
-        if self._enable_type_tree:
-            if header.version >= 12 or header.version == 10:
-                self.save_type_tree5(typ.nodes, writer, typ.string_data)
-            else:
-                self.save_type_tree(typ.nodes, writer)
-
-    def save_type_tree(self, nodes: list, writer: EndianBinaryWriter):
-        for i, node in nodes:
-            writer.write_string_to_null(node.m_Type)
-            writer.write_string_to_null(node.m_Name)
-            writer.write_int(node.byte_size)
-            if self.header.version == 2:
-                writer.write_int(node.m_VariableCount)
-
-            if self.header.version != 3:
-                writer.write_int(node.m_Index)
-
-            writer.write_int(node.m_TypeFlags)
-            writer.write_int(node.m_Version)
-            if self.header.version != 3:
-                writer.write_int(node.m_MetaFlag)
-
-            # calc children count
-            children_count = 0
-            for node2 in nodes[i + 1 :]:
-                if node2.m_Level == node.m_Level:
-                    break
-                if node2.m_Level == node.m_Level - 1:
-                    children_count += 1
-            writer.write_int(children_count)
-
-    def save_type_tree5(self, nodes: list, writer: EndianBinaryWriter, str_data=b""):
-        # node count
-        # stream buffer size
-        # node data
-        # string buffer
-
-        string_buffer = EndianBinaryWriter()
-        string_buffer.write(str_data)
-        strings_values = [
-            (node.m_TypeStrOffset, node.m_NameStrOffset) for node in nodes
-        ]
-
-        # number of nodes
-        writer.write_int(len(nodes))
-        # string buffer size
-        writer.write_int(string_buffer.Length)
-
-        # nodes
-        for i, node in enumerate(nodes):
-            # version
-            writer.write_u_short(node.m_Version)
-            # level
-            writer.write_byte(node.m_Level)
-            # is array
-            writer.write_u_byte(node.m_TypeFlags)
-            # type str offfset
-            writer.write_u_int(strings_values[i][0])
-            # name str offset
-            writer.write_u_int(strings_values[i][1])
-            # byte size
-            writer.write_int(node.m_ByteSize)
-            # index
-            writer.write_int(node.m_Index)
-            # meta flag
-            writer.write_int(node.m_MetaFlag)
-            # ref hash
-            if self.header.version > 19:
-                writer.write_u_long(node.m_RefTypeHash)
-
-        # string buffer
-        writer.write(string_buffer.bytes)
-
-        if self.header.version >= 21:
-            writer.write_bytes(b"\x00" * 4)
-
 
 def read_string(string_buffer_reader: EndianBinaryReader, value: int) -> str:
     is_offset = (value & 0x80000000) == 0
@@ -571,48 +504,53 @@ def read_string(string_buffer_reader: EndianBinaryReader, value: int) -> str:
     return CommonString.get(offset, str(offset))
 
 
+@define(slots=True)
 class ContainerHelper:
     """Helper class to allow multidict containers
     without breaking compatibility with old versions"""
 
-    def __init__(self, container) -> None:
-        self.container = container
-        # support for getitem
-        self.container_dict = {key: value.asset for key, value in container}
-        self.path_dict = {value.asset.m_PathID: key for key, value in container}
+    container: Tuple[str, AssetInfo]
+    container_dict: Dict[str, ObjectReader]
+    path_dict: Dict[int, str]
 
-    def items(self):
+    def __init__(self, assetbundle: AssetBundle) -> None:
+        self.container = assetbundle.m_Container
+        # support for getitem
+        self.container_dict = {key: value.asset for key, value in self.container}
+        self.path_dict = {value.asset.m_PathID: key for key, value in self.container}
+
+    def items(self) -> Generator[Tuple[str, ObjectReader], None, None]:
         return ((key, value.asset) for key, value in self.container)
 
-    def keys(self):
+    def keys(self) -> list[str]:
         return list({key for key, value in self.container})
 
-    def values(self):
+    def values(self) -> list[ObjectReader]:
         return list({value.asset for key, value in self.container})
 
-    def __getitem__(self, key):
+    def __getitem__(self, key) -> ObjectReader:
         return self.container_dict[key]
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key, value) -> None:
         raise NotImplementedError("Assigning to container is not allowed!")
 
-    def __delitem__(self, key):
+    def __delitem__(self, key) -> None:
         raise NotImplementedError("Deleting from the container is not allowed!")
 
-    def __iter__(self):
+    def __iter__(self) -> Generator[str, None, None]:
         return iter(self.keys())
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.container)
 
-    def __getattr__(self, name: str):
+    def __getattr__(self, name: str) -> ObjectReader:
         return self.container_dict[name]
 
-    def __or__(self, other: "ContainerHelper"):
+    def __or__(self, other: ContainerHelper):
         return ContainerHelper(list(set(self.container + other.container)))
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f'{{{", ".join(f"{key}: {value}" for key, value in self.items())}}}'
 
-    def __dict__(self):
+    def __dict__(self) -> Dict[str, ObjectReader]:
         return self.container_dict
