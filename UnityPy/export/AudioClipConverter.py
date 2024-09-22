@@ -3,6 +3,7 @@ from __future__ import annotations
 import ctypes
 import os
 import platform
+import sys
 from importlib.resources import path
 from typing import TYPE_CHECKING, Dict
 
@@ -70,15 +71,15 @@ def import_pyfmodex():
         # hotfix ctypes for pyfmodex for non windows systems
         ctypes.windll = None
 
-    # behavior changed in python 3.12
-    fp = path(f"UnityPy.lib.FMOD.{system}.{arch}", libname)
-    if hasattr(fp, "args"):
-        # some newer version doesn't directly return a path, but instead a generator
-        fp = fp.args[0]
-    if not isinstance(fp, str):
-        fp = fp.absolute()
-
-    os.environ["PYFMODEX_DLL_PATH"] = str(fp)
+    lib_path = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
+        "lib",
+        "FMOD",
+        system,
+        arch,
+        libname
+    )
+    os.environ["PYFMODEX_DLL_PATH"] = lib_path
 
     import pyfmodex
 
