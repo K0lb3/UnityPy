@@ -2,7 +2,7 @@
 
 import re
 from ntpath import basename
-from typing import TYPE_CHECKING, Dict, Generator, List, Optional, Tuple
+from typing import TYPE_CHECKING, Dict, Generator, List, Optional, Tuple, Union
 
 from attrs import define
 
@@ -13,7 +13,7 @@ from ..streams import EndianBinaryWriter
 from . import BundleFile, File, ObjectReader
 
 if TYPE_CHECKING:
-    from ..classes import AssetBundle, AssetInfo
+    from ..classes import AssetBundle, AssetInfo, Object
     from ..files import ObjectReader
     from ..streams.EndianBinaryReader import EndianBinaryReader
 
@@ -198,22 +198,30 @@ class SerializedType:
                 else:
                     writer.write_int_array(self.type_dependencies, True)
 
+    @property
+    def nodes(self) -> Union[TypeTreeNode, None]:
+        # for compatibility with old versions
+        return self.node
+
 
 class SerializedFile(File.File):
     reader: EndianBinaryReader
-    is_changed: bool
     unity_version: str
-    version: tuple
     build_type: BuildType
     target_platform: BuildTarget
-    types: list
-    script_types: list
-    externals: list
-    objects: dict
-    _cache: dict
+    _enable_type_tree: bool
+    types: List[SerializedType]
+    script_types: List[LocalSerializedObjectIdentifier]
+    externals: List[FileIdentifier]
+    objects: Dict[int, ObjectReader]
+    unknown: int
+    header: SerializedFileHeader
+    _m_target_platform: int
+    big_id_enabled: int
+    userInformation: Optional[str]
     assetbundle: AssetBundle
     container: ContainerHelper
-    header: SerializedFileHeader
+    _cache: Dict[str, Object]
 
     @property
     def files(self):
