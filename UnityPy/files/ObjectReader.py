@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Generic, List, Optional, TypeVar, Union
+from typing import TYPE_CHECKING, Generic, List, Optional, Tuple, TypeVar, Union
 
 from ..enums import ClassIDType
 from ..exceptions import TypeTreeError
@@ -10,20 +10,31 @@ from ..helpers.TypeTreeNode import TypeTreeNode
 from ..streams import EndianBinaryReader, EndianBinaryWriter
 
 if TYPE_CHECKING:
-    from ..files import SerializedFile
+    from ..enums import BuildTarget
+    from ..files.SerializedFile import BuildType, SerializedFile, SerializedType
 
 T = TypeVar("T")
 
 
 class ObjectReader(Generic[T]):
+    assets_file: SerializedFile
+    reader: EndianBinaryReader
+    data: bytes
+    version: Tuple[int, int, int, int]
+    version2: int
+    platform: BuildTarget
+    build_type: BuildType
+    path_id: int
+    byte_start_offset: Tuple[int, int]
     byte_start: int
+    byte_size_offset: Tuple[int, int]
     byte_size: int
     type_id: int
+    serialized_type: Optional[SerializedType]
     class_id: int
     type: ClassIDType
-    path_id: int
-    assets_file: SerializedFile
-    _read_until: int
+    is_destroyed: Optional[int]
+    is_stripped: Optional[int]
 
     # saves where the parser stopped
     # in case that not all data is read
