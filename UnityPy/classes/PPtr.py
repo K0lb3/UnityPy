@@ -6,6 +6,7 @@ from attr import define
 if TYPE_CHECKING:
     from ..files.ObjectReader import ObjectReader
     from ..files.SerializedFile import SerializedFile
+    from ..enums.ClassIDType import ClassIDType
 
 T = TypeVar("T")
 
@@ -15,7 +16,6 @@ class PPtr(Generic[T]):
     m_FileID: int
     m_PathID: int
     assetsfile: Optional[SerializedFile] = None
-    type: Optional[str] = None
 
     @property
     def file_id(self) -> int:
@@ -26,6 +26,10 @@ class PPtr(Generic[T]):
     def path_id(self) -> int:
         # backwards compatibility
         return self.m_PathID
+
+    @property
+    def type(self) -> ClassIDType:
+        return self.deref().type
 
     def read(self):
         # backwards compatibility
