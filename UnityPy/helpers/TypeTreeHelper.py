@@ -171,7 +171,6 @@ def read_value(
                     assetsfile=assetsfile,
                     m_FileID=value["m_FileID"],
                     m_PathID=value["m_PathID"],
-                    type=node.m_Type[6:-1],
                 )
             else:
                 clz = getattr(classes, node.m_Type, Object)
@@ -259,7 +258,6 @@ def read_value_array(
                 value = [
                     PPtr[Any](
                         assetsfile=assetsfile,
-                        type=node.m_Type[6:-1],
                         **{
                             child.m_Name: read_value(child, reader, as_dict, assetsfile)
                             for child in node.m_Children
