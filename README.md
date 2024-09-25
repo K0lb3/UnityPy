@@ -248,7 +248,7 @@ TextAssets are usually normal text files.
 -   `.m_Name`
 -   `.m_Script` - str
 
-Some games save binary data as TextFile, so it's usually better to use `.script`.
+Some games save binary data as TextFile, so to convert the ``str`` back to bytes correctly ``m_Script.encode("utf-8", "surrogateescape")`` has to be used.
 
 **Export**
 
