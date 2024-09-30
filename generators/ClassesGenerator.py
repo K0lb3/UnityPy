@@ -40,6 +40,53 @@ BASE_TYPE_MAP = {
     "TypelessData": "bytes",
 }
 
+GENERATED_HEADER = """
+# type: ignore
+from __future__ import annotations
+
+from abc import ABC
+from typing import List, Optional, Tuple, TypeVar, Union
+
+from attrs import define as attrs_define
+
+from .math import (
+  ColorRGBA,
+  Matrix3x4f,
+  Matrix4x4f,
+  Quaternionf,
+  Vector2f,
+  Vector3f,
+  Vector4f,
+  float3,
+  float4,
+)
+from .Object import Object
+from .PPtr import PPtr
+
+T = TypeVar("T")
+
+
+def unitypy_define(cls: T) -> T:
+  \"\"\"
+  A hacky solution to bypass multiple problems related to attrs and inheritance.
+
+  The class inheritance is very lax and based on the typetrees.
+  Some of the child classes might not have the same attributes as the parent class,
+  which would make type-hinting more tricky, and breaks attrs.define.
+
+  Therefore this function bypasses the issue
+  by redifining the bases for problematic classes for the attrs.define call.
+  \"\"\"
+  bases = cls.__bases__
+  if bases[0] in (object, Object, ABC):
+    cls = attrs_define(cls, slots=True, unsafe_hash=True)
+  else:
+    cls.__bases__ = (Object,)
+    cls = attrs_define(cls, slots=False, unsafe_hash=True)
+    cls.__bases__ = bases
+  return cls
+"""[0:]
+
 # LIST_BASE_TYPE_MAP = {
 #     "short": "np.int16",
 #     "int": "np.int32",
@@ -140,7 +187,7 @@ class NodeClass:
             )
         return "\n".join(
             [
-                "@define(kw_only=True, slots=False)",
+                "@unitypy_define",
                 f"class {self.name}{parentsString}:",
                 *field_strings,
             ]
@@ -318,14 +365,7 @@ def main():
 
     fp = os.path.join(ROOT, "UnityPy", "classes", "generated.py")
     with open(fp, "wt", encoding="utf8") as f:
-        f.write("#type: ignore\n")
-        f.write("from __future__ import annotations\n")
-        f.write("from abc import ABC\n")
-        f.write("from attrs import define\n")
-        f.write("from typing import List, Optional, Tuple, Union\n\n")
-        f.write(f"from .math import {', '.join(MATH_CLASSES)}\n")
-        f.write("from .Object import Object\n")
-        f.write("from .PPtr import PPtr\n")
+        f.write(GENERATED_HEADER)
         f.write("\n\n")
 
         f.write(

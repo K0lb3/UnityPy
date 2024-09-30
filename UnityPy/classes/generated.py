@@ -1,15 +1,50 @@
-#type: ignore
+# type: ignore
 from __future__ import annotations
-from abc import ABC
-from attrs import define
-from typing import List, Optional, Tuple, Union
 
-from .math import float3, Matrix3x4f, Vector3f, Vector4f, ColorRGBA, Vector2f, Quaternionf, Matrix4x4f, float4
+from abc import ABC
+from typing import List, Optional, Tuple, TypeVar, Union
+
+from attrs import define as attrs_define
+
+from .math import (
+  ColorRGBA,
+  Matrix3x4f,
+  Matrix4x4f,
+  Quaternionf,
+  Vector2f,
+  Vector3f,
+  Vector4f,
+  float3,
+  float4,
+)
 from .Object import Object
 from .PPtr import PPtr
 
+T = TypeVar("T")
 
-@define(kw_only=True, slots=False)
+
+def unitypy_define(cls: T) -> T:
+  """
+  A hacky solution to bypass multiple problems related to attrs and inheritance.
+
+  The class inheritance is very lax and based on the typetrees.
+  Some of the child classes might not have the same attributes as the parent class,
+  which would make type-hinting more tricky, and breaks attrs.define.
+
+  Therefore this function bypasses the issue
+  by redifining the bases for problematic classes for the attrs.define call.
+  """
+  bases = cls.__bases__
+  if bases[0] in (object, Object, ABC):
+    cls = attrs_define(cls, slots=True, unsafe_hash=True)
+  else:
+    cls.__bases__ = (Object,)
+    cls = attrs_define(cls, slots=False, unsafe_hash=True)
+    cls.__bases__ = bases
+  return cls
+
+
+@unitypy_define
 class AnnotationManager(Object):
   m_CurrentPreset_m_AnnotationList: List[Annotation]
   m_RecentlyChanged: List[Annotation]
@@ -22,7 +57,8 @@ class AnnotationManager(Object):
   m_Use3dGizmos: Optional[bool] = None
   m_WorldIconSize: Optional[float] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AssetDatabaseV1(Object):
   m_AssetBundleNames: List[Tuple[int, AssetBundleFullName]]
   m_AssetTimeStamps: List[Tuple[str, AssetTimeStamp]]
@@ -32,7 +68,8 @@ class AssetDatabaseV1(Object):
   m_lastValidVersionHashes: Optional[List[Tuple[int, int]]] = None
   m_lastValidVersions: Optional[List[Tuple[AssetImporterHashKey, int]]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AssetMetaData(Object):
   assetStoreRef: int
   guid: GUID
@@ -45,7 +82,8 @@ class AssetMetaData(Object):
   originalParent: Optional[GUID] = None
   timeCreated: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AssetServerCache(Object):
   m_CachesInitialized: int
   m_CommitItemSelection: List[GUID]
@@ -56,47 +94,57 @@ class AssetServerCache(Object):
   m_ModifiedItems: List[Tuple[GUID, Item]]
   m_WorkingItemMetaData: List[Tuple[GUID, CachedAssetMetaData]]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AudioBuildInfo(Object):
   m_AudioClipCount: int
   m_AudioMixerCount: int
   m_IsAudioDisabled: bool
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class BuiltAssetBundleInfoSet(Object):
   bundleInfos: List[BuiltAssetBundleInfo]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Derived(Object):
   pass
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SubDerived(Derived):
   pass
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class DifferentMarshallingTestObject(Object):
   pass
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class EditorBuildSettings(Object):
   m_Scenes: List[Scene]
   m_UseUCBPForAssetBundles: Optional[bool] = None
   m_configObjects: Optional[List[Tuple[str, PPtr[Object]]]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class EditorExtension(Object, ABC):
   pass
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Component(EditorExtension):
   m_GameObject: PPtr[GameObject]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Behaviour(Component):
   m_GameObject: PPtr[GameObject]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Animation(Behaviour):
   m_AnimatePhysics: bool
   m_Animation: PPtr[AnimationClip]
@@ -109,7 +157,8 @@ class Animation(Behaviour):
   m_UpdateMode: Optional[int] = None
   m_UserAABB: Optional[AABB] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Animator(Behaviour):
   m_ApplyRootMotion: bool
   m_Avatar: PPtr[Avatar]
@@ -127,7 +176,8 @@ class Animator(Behaviour):
   m_UpdateMode: Optional[int] = None
   m_WriteDefaultValuesOnDisable: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ArticulationBody(Behaviour):
   m_AnchorPosition: Vector3f
   m_AnchorRotation: Quaternionf
@@ -162,17 +212,20 @@ class ArticulationBody(Behaviour):
   m_MatchAnchors: Optional[bool] = None
   m_UseGravity: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AudioBehaviour(Behaviour):
   m_GameObject: PPtr[GameObject]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AudioListener(AudioBehaviour):
   m_Enabled: int
   m_GameObject: PPtr[GameObject]
   m_ExtensionPropertyValues: Optional[List[ExtensionPropertyValue]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AudioSource(AudioBehaviour):
   BypassEffects: bool
   DopplerLevel: float
@@ -201,11 +254,13 @@ class AudioSource(AudioBehaviour):
   m_Resource: Optional[PPtr[AudioResource]] = None
   reverbZoneMixCustomCurve: Optional[AnimationCurve] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AudioFilter(Behaviour):
   m_GameObject: PPtr[GameObject]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AudioChorusFilter(AudioFilter):
   m_Delay: float
   m_Depth: float
@@ -218,13 +273,15 @@ class AudioChorusFilter(AudioFilter):
   m_WetMix3: float
   m_FeedBack: Optional[float] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AudioDistortionFilter(AudioFilter):
   m_DistortionLevel: float
   m_Enabled: int
   m_GameObject: PPtr[GameObject]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AudioEchoFilter(AudioFilter):
   m_DecayRatio: float
   m_Delay: Union[int, float]
@@ -233,14 +290,16 @@ class AudioEchoFilter(AudioFilter):
   m_GameObject: PPtr[GameObject]
   m_WetMix: float
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AudioHighPassFilter(AudioFilter):
   m_CutoffFrequency: float
   m_Enabled: int
   m_GameObject: PPtr[GameObject]
   m_HighpassResonanceQ: float
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AudioLowPassFilter(AudioFilter):
   lowpassLevelCustomCurve: AnimationCurve
   m_Enabled: int
@@ -248,7 +307,8 @@ class AudioLowPassFilter(AudioFilter):
   m_LowpassResonanceQ: float
   m_CutoffFrequency: Optional[float] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AudioReverbFilter(AudioFilter):
   m_DecayHFRatio: float
   m_DecayTime: float
@@ -269,7 +329,8 @@ class AudioReverbFilter(AudioFilter):
   m_RoomLF: float
   m_RoomRolloff: Optional[float] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AudioReverbZone(Behaviour):
   m_DecayHFRatio: float
   m_DecayTime: float
@@ -291,7 +352,8 @@ class AudioReverbZone(Behaviour):
   m_RoomLF: int
   m_RoomRolloffFactor: Optional[float] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Camera(Behaviour):
   far_clip_plane: float
   field_of_view: float
@@ -331,7 +393,8 @@ class Camera(Behaviour):
   m_TargetEye: Optional[int] = None
   m_projectionMatrixMode: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ScriptableCamera(Camera):
   far_clip_plane: float
   field_of_view: float
@@ -363,7 +426,8 @@ class ScriptableCamera(Camera):
   orthographic: bool
   orthographic_size: float
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Canvas(Behaviour):
   m_Camera: PPtr[Camera]
   m_Enabled: int
@@ -385,7 +449,8 @@ class Canvas(Behaviour):
   m_UpdateRectTransformForStandalone: Optional[int] = None
   m_VertexColorAlwaysGammaSpace: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class CanvasGroup(Behaviour):
   m_Alpha: float
   m_BlocksRaycasts: bool
@@ -394,7 +459,8 @@ class CanvasGroup(Behaviour):
   m_Interactable: bool
   m_Enabled: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Cloth(Behaviour):
   m_GameObject: PPtr[GameObject]
   m_BendingStiffness: Optional[float] = None
@@ -411,7 +477,12 @@ class Cloth(Behaviour):
   m_SelfCollisionStiffness: Optional[float] = None
   m_SleepThreshold: Optional[float] = None
   m_SolverFrequency: Optional[Union[int, float]] = None
-  m_SphereColliders: Optional[Union[List[ClothSphereColliderPair], List[Tuple[PPtr[SphereCollider], PPtr[SphereCollider]]]]] = None
+  m_SphereColliders: Optional[
+    Union[
+      List[ClothSphereColliderPair],
+      List[Tuple[PPtr[SphereCollider], PPtr[SphereCollider]]],
+    ]
+  ] = None
   m_StretchingStiffness: Optional[float] = None
   m_UseContinuousCollision: Optional[bool] = None
   m_UseGravity: Optional[bool] = None
@@ -422,7 +493,8 @@ class Cloth(Behaviour):
   m_WorldAccelerationScale: Optional[float] = None
   m_WorldVelocityScale: Optional[float] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class InteractiveCloth(Cloth):
   m_AttachedColliders: List[ClothAttachment]
   m_AttachmentResponse: float
@@ -444,7 +516,8 @@ class InteractiveCloth(Cloth):
   m_Thickness: float
   m_UseGravity: bool
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SkinnedCloth(Cloth):
   m_BendingStiffness: float
   m_Coefficients: List[ClothConstrainCoefficients]
@@ -460,16 +533,19 @@ class SkinnedCloth(Cloth):
   m_WorldAccelerationScale: float
   m_WorldVelocityScale: float
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class CloudServiceHandlerBehaviour(Behaviour):
   m_Enabled: int
   m_GameObject: PPtr[GameObject]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Collider2D(Behaviour):
   m_GameObject: PPtr[GameObject]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class BoxCollider2D(Collider2D):
   m_Enabled: int
   m_GameObject: PPtr[GameObject]
@@ -494,7 +570,8 @@ class BoxCollider2D(Collider2D):
   m_UsedByComposite: Optional[bool] = None
   m_UsedByEffector: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class CapsuleCollider2D(Collider2D):
   m_Density: float
   m_Direction: int
@@ -516,7 +593,8 @@ class CapsuleCollider2D(Collider2D):
   m_LayerOverridePriority: Optional[int] = None
   m_UsedByComposite: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class CircleCollider2D(Collider2D):
   m_Enabled: int
   m_GameObject: PPtr[GameObject]
@@ -538,7 +616,8 @@ class CircleCollider2D(Collider2D):
   m_UsedByComposite: Optional[bool] = None
   m_UsedByEffector: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class CompositeCollider2D(Collider2D):
   m_ColliderPaths: List[SubCollider]
   m_CompositePaths: Polygon2D
@@ -567,7 +646,8 @@ class CompositeCollider2D(Collider2D):
   m_UseDelaunayMesh: Optional[bool] = None
   m_UsedByComposite: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class CustomCollider2D(Collider2D):
   m_CustomShapes: PhysicsShapeGroup2D
   m_Density: float
@@ -588,7 +668,8 @@ class CustomCollider2D(Collider2D):
   m_LayerOverridePriority: Optional[int] = None
   m_UsedByComposite: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class EdgeCollider2D(Collider2D):
   m_Enabled: int
   m_GameObject: PPtr[GameObject]
@@ -614,7 +695,8 @@ class EdgeCollider2D(Collider2D):
   m_UsedByComposite: Optional[bool] = None
   m_UsedByEffector: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class PolygonCollider2D(Collider2D):
   m_Enabled: int
   m_GameObject: PPtr[GameObject]
@@ -639,11 +721,13 @@ class PolygonCollider2D(Collider2D):
   m_UsedByComposite: Optional[bool] = None
   m_UsedByEffector: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class PolygonColliderBase2D(Collider2D):
   m_GameObject: PPtr[GameObject]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class TilemapCollider2D(Collider2D):
   m_Density: float
   m_Enabled: int
@@ -666,7 +750,8 @@ class TilemapCollider2D(Collider2D):
   m_UseDelaunayMesh: Optional[bool] = None
   m_UsedByComposite: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ConstantForce(Behaviour):
   m_Enabled: int
   m_Force: Vector3f
@@ -675,11 +760,13 @@ class ConstantForce(Behaviour):
   m_RelativeTorque: Vector3f
   m_Torque: Vector3f
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Effector2D(Behaviour):
   m_GameObject: PPtr[GameObject]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AreaEffector2D(Effector2D):
   m_AngularDrag: float
   m_ColliderMask: BitField
@@ -694,7 +781,8 @@ class AreaEffector2D(Effector2D):
   m_UseColliderMask: Optional[bool] = None
   m_UseGlobalAngle: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class BuoyancyEffector2D(Effector2D):
   m_AngularDrag: float
   m_ColliderMask: BitField
@@ -708,7 +796,8 @@ class BuoyancyEffector2D(Effector2D):
   m_SurfaceLevel: float
   m_UseColliderMask: bool
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class PlatformEffector2D(Effector2D):
   m_ColliderMask: BitField
   m_Enabled: int
@@ -726,7 +815,8 @@ class PlatformEffector2D(Effector2D):
   m_UseSideBounce: Optional[bool] = None
   m_UseSideFriction: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class PointEffector2D(Effector2D):
   m_AngularDrag: float
   m_ColliderMask: BitField
@@ -741,7 +831,8 @@ class PointEffector2D(Effector2D):
   m_GameObject: PPtr[GameObject]
   m_UseColliderMask: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SurfaceEffector2D(Effector2D):
   m_ColliderMask: BitField
   m_Enabled: int
@@ -754,16 +845,19 @@ class SurfaceEffector2D(Effector2D):
   m_UseContactForce: Optional[bool] = None
   m_UseFriction: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class FlareLayer(Behaviour):
   m_Enabled: int
   m_GameObject: PPtr[GameObject]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class GUIElement(Behaviour):
   m_GameObject: PPtr[GameObject]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class GUIText(GUIElement):
   m_Alignment: int
   m_Anchor: int
@@ -781,7 +875,8 @@ class GUIText(GUIElement):
   m_Color: Optional[ColorRGBA] = None
   m_RichText: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class GUITexture(GUIElement):
   m_BottomBorder: int
   m_Color: ColorRGBA
@@ -793,16 +888,19 @@ class GUITexture(GUIElement):
   m_Texture: PPtr[Texture]
   m_TopBorder: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class GUILayer(Behaviour):
   m_Enabled: int
   m_GameObject: PPtr[GameObject]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class GridLayout(Behaviour):
   m_GameObject: PPtr[GameObject]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Grid(GridLayout):
   m_CellGap: Vector3f
   m_CellLayout: int
@@ -811,7 +909,8 @@ class Grid(GridLayout):
   m_Enabled: int
   m_GameObject: PPtr[GameObject]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Tilemap(GridLayout):
   m_AnimatedTiles: List[Tuple[int3_storage, TileAnimationData]]
   m_AnimationFrameRate: float
@@ -830,23 +929,27 @@ class Tilemap(GridLayout):
   m_Tiles: List[Tuple[int3_storage, Tile]]
   m_TileObjectToInstantiateArray: Optional[List[TilemapRefCountedData]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Halo(Behaviour):
   m_Color: ColorRGBA
   m_Enabled: int
   m_GameObject: PPtr[GameObject]
   m_Size: float
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class HaloLayer(Behaviour):
   m_Enabled: int
   m_GameObject: PPtr[GameObject]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class IConstraint(Behaviour):
   m_GameObject: PPtr[GameObject]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AimConstraint(IConstraint):
   m_AffectRotationX: bool
   m_AffectRotationY: bool
@@ -865,7 +968,8 @@ class AimConstraint(IConstraint):
   m_Active: Optional[bool] = None
   m_IsContraintActive: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class LookAtConstraint(IConstraint):
   m_Enabled: int
   m_GameObject: PPtr[GameObject]
@@ -879,7 +983,8 @@ class LookAtConstraint(IConstraint):
   m_Active: Optional[bool] = None
   m_IsContraintActive: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ParentConstraint(IConstraint):
   m_AffectRotationX: bool
   m_AffectRotationY: bool
@@ -898,7 +1003,8 @@ class ParentConstraint(IConstraint):
   m_Active: Optional[bool] = None
   m_IsContraintActive: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class PositionConstraint(IConstraint):
   m_AffectTranslationX: bool
   m_AffectTranslationY: bool
@@ -912,7 +1018,8 @@ class PositionConstraint(IConstraint):
   m_Active: Optional[bool] = None
   m_IsContraintActive: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class RotationConstraint(IConstraint):
   m_AffectRotationX: bool
   m_AffectRotationY: bool
@@ -926,7 +1033,8 @@ class RotationConstraint(IConstraint):
   m_Active: Optional[bool] = None
   m_IsContraintActive: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ScaleConstraint(IConstraint):
   m_AffectScalingX: bool
   m_AffectScalingY: bool
@@ -940,15 +1048,18 @@ class ScaleConstraint(IConstraint):
   m_Active: Optional[bool] = None
   m_IsContraintActive: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Joint2D(Behaviour):
   m_GameObject: PPtr[GameObject]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AnchoredJoint2D(Joint2D):
   m_GameObject: PPtr[GameObject]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class DistanceJoint2D(AnchoredJoint2D):
   m_Anchor: Vector2f
   m_ConnectedAnchor: Vector2f
@@ -965,7 +1076,8 @@ class DistanceJoint2D(AnchoredJoint2D):
   m_EnableCollision: Optional[bool] = None
   m_MaxDistanceOnly: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class FixedJoint2D(AnchoredJoint2D):
   m_Anchor: Vector2f
   m_AutoConfigureConnectedAnchor: bool
@@ -980,7 +1092,8 @@ class FixedJoint2D(AnchoredJoint2D):
   m_GameObject: PPtr[GameObject]
   m_BreakAction: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class FrictionJoint2D(AnchoredJoint2D):
   m_Anchor: Vector2f
   m_AutoConfigureConnectedAnchor: bool
@@ -995,7 +1108,8 @@ class FrictionJoint2D(AnchoredJoint2D):
   m_MaxTorque: float
   m_BreakAction: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class HingeJoint2D(AnchoredJoint2D):
   m_Anchor: Vector2f
   m_AngleLimits: Union[JointAngleLimit2D, JointAngleLimits2D]
@@ -1014,7 +1128,8 @@ class HingeJoint2D(AnchoredJoint2D):
   m_EnableCollision: Optional[bool] = None
   m_UseConnectedAnchor: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SliderJoint2D(AnchoredJoint2D):
   m_Anchor: Vector2f
   m_Angle: float
@@ -1034,7 +1149,8 @@ class SliderJoint2D(AnchoredJoint2D):
   m_CollideConnected: Optional[bool] = None
   m_EnableCollision: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SpringJoint2D(AnchoredJoint2D):
   m_Anchor: Vector2f
   m_ConnectedAnchor: Vector2f
@@ -1052,7 +1168,8 @@ class SpringJoint2D(AnchoredJoint2D):
   m_CollideConnected: Optional[bool] = None
   m_EnableCollision: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class WheelJoint2D(AnchoredJoint2D):
   m_Anchor: Vector2f
   m_ConnectedAnchor: Vector2f
@@ -1069,7 +1186,8 @@ class WheelJoint2D(AnchoredJoint2D):
   m_CollideConnected: Optional[bool] = None
   m_EnableCollision: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class RelativeJoint2D(Joint2D):
   m_AngularOffset: float
   m_AutoConfigureOffset: bool
@@ -1085,7 +1203,8 @@ class RelativeJoint2D(Joint2D):
   m_MaxTorque: float
   m_BreakAction: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class TargetJoint2D(Joint2D):
   m_Anchor: Vector2f
   m_AutoConfigureTarget: bool
@@ -1101,7 +1220,8 @@ class TargetJoint2D(Joint2D):
   m_Target: Vector2f
   m_BreakAction: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class LensFlare(Behaviour):
   m_Brightness: float
   m_Color: ColorRGBA
@@ -1112,7 +1232,8 @@ class LensFlare(Behaviour):
   m_IgnoreLayers: BitField
   m_FadeSpeed: Optional[float] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Light(Behaviour):
   m_Color: ColorRGBA
   m_Cookie: PPtr[Texture]
@@ -1150,12 +1271,14 @@ class Light(Behaviour):
   m_UseColorTemperature: Optional[bool] = None
   m_UseViewFrustumForShadowCasterCull: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class LightProbeGroup(Behaviour):
   m_GameObject: PPtr[GameObject]
   m_Enabled: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class LightProbeProxyVolume(Behaviour):
   m_BoundingBoxMode: int
   m_BoundingBoxOrigin: Vector3f
@@ -1172,14 +1295,16 @@ class LightProbeProxyVolume(Behaviour):
   m_DataFormat: Optional[int] = None
   m_QualityMode: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class MonoBehaviour(Behaviour):
   m_Enabled: int
   m_GameObject: PPtr[GameObject]
   m_Name: str
   m_Script: PPtr[MonoScript]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class NavMeshAgent(Behaviour):
   m_Acceleration: float
   m_AngularSpeed: float
@@ -1198,7 +1323,8 @@ class NavMeshAgent(Behaviour):
   m_AgentTypeID: Optional[int] = None
   m_AutoBraking: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class NavMeshObstacle(Behaviour):
   m_Enabled: int
   m_GameObject: PPtr[GameObject]
@@ -1212,7 +1338,8 @@ class NavMeshObstacle(Behaviour):
   m_Shape: Optional[int] = None
   m_TimeToStationary: Optional[float] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class NetworkView(Behaviour):
   m_Enabled: int
   m_GameObject: PPtr[GameObject]
@@ -1220,7 +1347,8 @@ class NetworkView(Behaviour):
   m_StateSynchronization: int
   m_ViewID: NetworkViewID
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class OffMeshLink(Behaviour):
   m_Activated: bool
   m_BiDirectional: bool
@@ -1235,17 +1363,20 @@ class OffMeshLink(Behaviour):
   m_Enabled: Optional[int] = None
   m_NavMeshLayer: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ParticleSystemForceField(Behaviour):
   m_Enabled: int
   m_GameObject: PPtr[GameObject]
   m_Parameters: ParticleSystemForceFieldParameters
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class PhysicsUpdateBehaviour2D(Behaviour):
   m_GameObject: PPtr[GameObject]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ConstantForce2D(PhysicsUpdateBehaviour2D):
   m_Enabled: int
   m_Force: Vector2f
@@ -1253,7 +1384,8 @@ class ConstantForce2D(PhysicsUpdateBehaviour2D):
   m_RelativeForce: Vector2f
   m_Torque: float
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class PlayableDirector(Behaviour):
   m_DirectorUpdateMode: int
   m_Enabled: int
@@ -1265,7 +1397,8 @@ class PlayableDirector(Behaviour):
   m_SceneBindings: List[DirectorGenericBinding]
   m_WrapMode: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Projector(Behaviour):
   m_AspectRatio: float
   m_Enabled: int
@@ -1278,7 +1411,8 @@ class Projector(Behaviour):
   m_Orthographic: bool
   m_OrthographicSize: float
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ReflectionProbe(Behaviour):
   m_BackGroundColor: ColorRGBA
   m_BakedTexture: PPtr[Texture]
@@ -1306,13 +1440,15 @@ class ReflectionProbe(Behaviour):
   m_UseOcclusionCulling: bool
   m_BlendDistance: Optional[float] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Skybox(Behaviour):
   m_CustomSkybox: PPtr[Material]
   m_Enabled: int
   m_GameObject: PPtr[GameObject]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SortingGroup(Behaviour):
   m_Enabled: int
   m_GameObject: PPtr[GameObject]
@@ -1321,13 +1457,15 @@ class SortingGroup(Behaviour):
   m_SortAtRoot: Optional[bool] = None
   m_SortingLayerID: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class StreamingController(Behaviour):
   m_Enabled: int
   m_GameObject: PPtr[GameObject]
   m_StreamingMipmapBias: float
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Terrain(Behaviour):
   m_BakeLightProbesForTrees: bool
   m_ChunkDynamicUVST: Vector4f
@@ -1372,7 +1510,8 @@ class Terrain(Behaviour):
   m_TreeMotionVectorModeOverride: Optional[int] = None
   m_UseDefaultSmoothness: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class VideoPlayer(Behaviour):
   m_AspectRatio: int
   m_AudioOutputMode: int
@@ -1404,7 +1543,8 @@ class VideoPlayer(Behaviour):
   m_TimeUpdateMode: Optional[int] = None
   m_VideoShaders: Optional[List[PPtr[Shader]]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class VisualEffect(Behaviour):
   m_Asset: PPtr[VisualEffectAsset]
   m_Enabled: int
@@ -1416,7 +1556,8 @@ class VisualEffect(Behaviour):
   m_InitialEventName: Optional[str] = None
   m_InitialEventNameOverriden: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class WindZone(Behaviour):
   m_Enabled: int
   m_GameObject: PPtr[GameObject]
@@ -1427,12 +1568,14 @@ class WindZone(Behaviour):
   m_WindPulseMagnitude: float
   m_WindTurbulence: float
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class CanvasRenderer(Component):
   m_GameObject: PPtr[GameObject]
   m_CullTransparentMesh: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Collider(Component):
   m_GameObject: Optional[PPtr[GameObject]] = None
   m_MaxLimitX: Optional[float] = None
@@ -1445,7 +1588,8 @@ class Collider(Component):
   m_YMotionType: Optional[int] = None
   m_ZMotionType: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class BoxCollider(Collider):
   m_Center: Vector3f
   m_Enabled: bool
@@ -1458,7 +1602,8 @@ class BoxCollider(Collider):
   m_LayerOverridePriority: Optional[int] = None
   m_ProvidesContacts: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class CapsuleCollider(Collider):
   m_Center: Vector3f
   m_Direction: int
@@ -1473,7 +1618,8 @@ class CapsuleCollider(Collider):
   m_LayerOverridePriority: Optional[int] = None
   m_ProvidesContacts: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class CharacterController(Collider):
   m_Center: Vector3f
   m_GameObject: PPtr[GameObject]
@@ -1491,7 +1637,8 @@ class CharacterController(Collider):
   m_Material: Optional[Union[PPtr[PhysicMaterial], PPtr[PhysicsMaterial]]] = None
   m_ProvidesContacts: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class MeshCollider(Collider):
   m_Convex: bool
   m_Enabled: bool
@@ -1508,7 +1655,8 @@ class MeshCollider(Collider):
   m_SkinWidth: Optional[float] = None
   m_SmoothSphereCollisions: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class RaycastCollider(Collider):
   m_Center: Vector3f
   m_Enabled: bool
@@ -1517,7 +1665,8 @@ class RaycastCollider(Collider):
   m_Length: float
   m_Material: PPtr[PhysicMaterial]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SphereCollider(Collider):
   m_Center: Vector3f
   m_Enabled: bool
@@ -1530,7 +1679,8 @@ class SphereCollider(Collider):
   m_LayerOverridePriority: Optional[int] = None
   m_ProvidesContacts: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class TerrainCollider(Collider):
   m_Enabled: bool
   m_GameObject: PPtr[GameObject]
@@ -1544,7 +1694,8 @@ class TerrainCollider(Collider):
   m_Material: Optional[Union[PPtr[PhysicMaterial], PPtr[PhysicsMaterial]]] = None
   m_ProvidesContacts: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class WheelCollider(Collider):
   m_Center: Vector3f
   m_ForwardFriction: WheelFrictionCurve
@@ -1562,15 +1713,18 @@ class WheelCollider(Collider):
   m_ProvidesContacts: Optional[bool] = None
   m_WheelDampingRate: Optional[float] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class FakeComponent(Component):
   m_GameObject: PPtr[GameObject]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Joint(Component):
   m_GameObject: PPtr[GameObject]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class CharacterJoint(Joint):
   m_Anchor: Vector3f
   m_Axis: Vector3f
@@ -1597,7 +1751,8 @@ class CharacterJoint(Joint):
   m_SwingLimitSpring: Optional[SoftJointLimitSpring] = None
   m_TwistLimitSpring: Optional[SoftJointLimitSpring] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ConfigurableJoint(Joint):
   m_Anchor: Vector3f
   m_AngularXDrive: JointDrive
@@ -1645,7 +1800,8 @@ class ConfigurableJoint(Joint):
   m_MassScale: Optional[float] = None
   m_SwapBodies: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class FixedJoint(Joint):
   m_BreakForce: float
   m_BreakTorque: float
@@ -1658,7 +1814,8 @@ class FixedJoint(Joint):
   m_Enabled: Optional[bool] = None
   m_MassScale: Optional[float] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class HingeJoint(Joint):
   m_Anchor: Vector3f
   m_Axis: Vector3f
@@ -1683,7 +1840,8 @@ class HingeJoint(Joint):
   m_MassScale: Optional[float] = None
   m_UseAcceleration: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SpringJoint(Joint):
   m_Anchor: Vector3f
   m_BreakForce: float
@@ -1705,7 +1863,8 @@ class SpringJoint(Joint):
   m_MassScale: Optional[float] = None
   m_Tolerance: Optional[float] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class LODGroup(Component):
   m_Enabled: bool
   m_GameObject: PPtr[GameObject]
@@ -1717,18 +1876,21 @@ class LODGroup(Component):
   m_LastLODIsBillboard: Optional[bool] = None
   m_ScreenRelativeTransitionHeight: Optional[float] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class MeshFilter(Component):
   m_GameObject: PPtr[GameObject]
   m_Mesh: PPtr[Mesh]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class MultiplayerRolesData(Component):
   m_ComponentsRolesMasks: List[ObjectRolePair]
   m_GameObject: PPtr[GameObject]
   m_GameObjectRolesMask: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class OcclusionArea(Component):
   m_Center: Vector3f
   m_GameObject: PPtr[GameObject]
@@ -1737,14 +1899,16 @@ class OcclusionArea(Component):
   m_IsTargetVolume: Optional[bool] = None
   m_TargetResolution: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class OcclusionPortal(Component):
   m_Center: Vector3f
   m_GameObject: PPtr[GameObject]
   m_Open: bool
   m_Size: Vector3f
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ParticleAnimator(Component):
   Does_Animate_Color: bool
   autodestruct: bool
@@ -1762,11 +1926,13 @@ class ParticleAnimator(Component):
   stopSimulation: bool
   worldRotationAxis: Vector3f
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ParticleEmitter(Component):
   m_GameObject: PPtr[GameObject]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class EllipsoidParticleEmitter(ParticleEmitter):
   Simulate_in_Worldspace: bool
   angularVelocity: float
@@ -1790,7 +1956,8 @@ class EllipsoidParticleEmitter(ParticleEmitter):
   tangentVelocity: Vector3f
   worldVelocity: Vector3f
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class MeshParticleEmitter(ParticleEmitter):
   Simulate_in_Worldspace: bool
   angularVelocity: float
@@ -1817,7 +1984,8 @@ class MeshParticleEmitter(ParticleEmitter):
   tangentVelocity: Vector3f
   worldVelocity: Vector3f
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ParticleSystem(Component):
   ClampVelocityModule: ClampVelocityModule
   CollisionModule: CollisionModule
@@ -1863,15 +2031,18 @@ class ParticleSystem(Component):
   useRigidbodyForVelocity: Optional[bool] = None
   useUnscaledTime: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Pipeline(Component):
   m_GameObject: PPtr[GameObject]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Renderer(Component):
   m_GameObject: PPtr[GameObject]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class BillboardRenderer(Renderer):
   m_Billboard: PPtr[BillboardAsset]
   m_CastShadows: int
@@ -1905,7 +2076,8 @@ class BillboardRenderer(Renderer):
   m_SubsetIndices: Optional[List[int]] = None
   m_UseLightProbes: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ClothRenderer(Renderer):
   m_CastShadows: bool
   m_Enabled: bool
@@ -1923,7 +2095,8 @@ class ClothRenderer(Renderer):
   m_SortingOrder: Optional[int] = None
   m_UseLightProbes: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class LineRenderer(Renderer):
   m_CastShadows: Union[bool, int]
   m_Enabled: bool
@@ -1963,7 +2136,8 @@ class LineRenderer(Renderer):
   m_SubsetIndices: Optional[List[int]] = None
   m_UseLightProbes: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class RendererFake(LineRenderer):
   m_CastShadows: int
   m_DynamicOccludee: int
@@ -1994,7 +2168,8 @@ class RendererFake(LineRenderer):
   m_RayTraceProcedural: Optional[int] = None
   m_RayTracingMode: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class MeshRenderer(Renderer):
   m_CastShadows: Union[bool, int]
   m_Enabled: bool
@@ -2030,7 +2205,8 @@ class MeshRenderer(Renderer):
   m_SubsetIndices: Optional[List[int]] = None
   m_UseLightProbes: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ParticleRenderer(Renderer):
   UV_Animation: UVAnimation
   m_CameraVelocityScale: float
@@ -2063,7 +2239,8 @@ class ParticleRenderer(Renderer):
   m_SubsetIndices: Optional[List[int]] = None
   m_UseLightProbes: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ParticleSystemRenderer(Renderer):
   m_CameraVelocityScale: float
   m_CastShadows: Union[bool, int]
@@ -2130,7 +2307,8 @@ class ParticleSystemRenderer(Renderer):
   m_VertexStreamMask: Optional[int] = None
   m_VertexStreams: Optional[List[int]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SkinnedMeshRenderer(Renderer):
   m_AABB: AABB
   m_Bones: List[PPtr[Transform]]
@@ -2173,7 +2351,8 @@ class SkinnedMeshRenderer(Renderer):
   m_SubsetIndices: Optional[List[int]] = None
   m_UseLightProbes: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SpriteMask(Renderer):
   m_BackSortingLayer: int
   m_BackSortingOrder: int
@@ -2215,7 +2394,8 @@ class SpriteMask(Renderer):
   m_SpriteSortPoint: Optional[int] = None
   m_StaticShadowCaster: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SpriteRenderer(Renderer):
   m_CastShadows: Union[bool, int]
   m_Color: ColorRGBA
@@ -2260,7 +2440,8 @@ class SpriteRenderer(Renderer):
   m_UseLightProbes: Optional[bool] = None
   m_WasSpriteAssigned: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SpriteShapeRenderer(Renderer):
   m_CastShadows: int
   m_Color: ColorRGBA
@@ -2297,7 +2478,8 @@ class SpriteShapeRenderer(Renderer):
   m_SpriteSortPoint: Optional[int] = None
   m_StaticShadowCaster: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class TilemapRenderer(Renderer):
   m_CastShadows: int
   m_ChunkSize: int3_storage
@@ -2336,7 +2518,8 @@ class TilemapRenderer(Renderer):
   m_SmallMeshCulling: Optional[int] = None
   m_StaticShadowCaster: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class TrailRenderer(Renderer):
   m_Autodestruct: bool
   m_CastShadows: Union[bool, int]
@@ -2380,7 +2563,8 @@ class TrailRenderer(Renderer):
   m_SubsetIndices: Optional[List[int]] = None
   m_UseLightProbes: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class UIRenderer(Renderer):
   m_GameObject: PPtr[GameObject]
   m_CastShadows: Optional[int] = None
@@ -2411,7 +2595,8 @@ class UIRenderer(Renderer):
   m_StaticBatchRoot: Optional[PPtr[Transform]] = None
   m_StaticShadowCaster: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class VFXRenderer(Renderer):
   m_CastShadows: int
   m_DynamicOccludee: int
@@ -2442,7 +2627,8 @@ class VFXRenderer(Renderer):
   m_SmallMeshCulling: Optional[int] = None
   m_StaticShadowCaster: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Rigidbody(Component):
   m_AngularDrag: float
   m_CollisionDetection: int
@@ -2461,7 +2647,8 @@ class Rigidbody(Component):
   m_InertiaRotation: Optional[Quaternionf] = None
   m_InertiaTensor: Optional[Vector3f] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Rigidbody2D(Component):
   m_CollisionDetection: int
   m_GameObject: PPtr[GameObject]
@@ -2484,7 +2671,8 @@ class Rigidbody2D(Component):
   m_UseAutoMass: Optional[bool] = None
   m_UseFullKinematicContacts: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class TextMesh(Component):
   m_Alignment: int
   m_Anchor: int
@@ -2500,7 +2688,8 @@ class TextMesh(Component):
   m_Color: Optional[ColorRGBA] = None
   m_RichText: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Transform(Component):
   m_Children: List[PPtr[Transform]]
   m_Father: PPtr[Transform]
@@ -2509,7 +2698,8 @@ class Transform(Component):
   m_LocalRotation: Quaternionf
   m_LocalScale: Vector3f
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class RectTransform(Transform):
   m_AnchorMax: Vector2f
   m_AnchorMin: Vector2f
@@ -2524,16 +2714,19 @@ class RectTransform(Transform):
   m_LocalScale: Optional[Vector3f] = None
   m_Position: Optional[Vector2f] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Tree(Component):
   m_GameObject: PPtr[GameObject]
   m_SpeedTreeWindAsset: Optional[PPtr[SpeedTreeWindAsset]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class WorldAnchor(Component):
   m_GameObject: PPtr[GameObject]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class WorldParticleCollider(Component):
   m_BounceFactor: float
   m_CollidesWith: BitField
@@ -2542,7 +2735,8 @@ class WorldParticleCollider(Component):
   m_MinKillVelocity: float
   m_SendCollisionMessage: bool
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class GameObject(EditorExtension):
   m_Component: Union[List[ComponentPair], List[Tuple[int, PPtr[Component]]]]
   m_IsActive: Union[bool, int]
@@ -2550,11 +2744,13 @@ class GameObject(EditorExtension):
   m_Name: str
   m_Tag: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class NamedObject(EditorExtension, ABC):
   pass
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AnimatorState(NamedObject):
   m_CycleOffset: float
   m_IKOnFeet: bool
@@ -2576,7 +2772,8 @@ class AnimatorState(NamedObject):
   m_TimeParameter: Optional[str] = None
   m_TimeParameterActive: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AnimatorStateMachine(NamedObject):
   m_AnyStatePosition: Vector3f
   m_AnyStateTransitions: List[PPtr[AnimatorStateTransition]]
@@ -2589,9 +2786,12 @@ class AnimatorStateMachine(NamedObject):
   m_Name: str
   m_ParentStateMachinePosition: Vector3f
   m_StateMachineBehaviours: List[PPtr[MonoBehaviour]]
-  m_StateMachineTransitions: List[Tuple[PPtr[AnimatorStateMachine], List[PPtr[AnimatorTransition]]]]
+  m_StateMachineTransitions: List[
+    Tuple[PPtr[AnimatorStateMachine], List[PPtr[AnimatorTransition]]]
+  ]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AnimatorTransitionBase(NamedObject):
   m_Conditions: List[AnimatorCondition]
   m_DstState: PPtr[AnimatorState]
@@ -2601,7 +2801,8 @@ class AnimatorTransitionBase(NamedObject):
   m_Name: str
   m_Solo: bool
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AnimatorStateTransition(AnimatorTransitionBase):
   m_CanTransitionToSelf: bool
   m_Conditions: List[AnimatorCondition]
@@ -2619,7 +2820,8 @@ class AnimatorStateTransition(AnimatorTransitionBase):
   m_TransitionOffset: float
   m_HasFixedDuration: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AnimatorTransition(AnimatorTransitionBase):
   m_Conditions: List[AnimatorCondition]
   m_DstState: PPtr[AnimatorState]
@@ -2629,7 +2831,8 @@ class AnimatorTransition(AnimatorTransitionBase):
   m_Name: str
   m_Solo: bool
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AssetBundle(NamedObject):
   m_Container: List[Tuple[str, AssetInfo]]
   m_MainAsset: AssetInfo
@@ -2646,29 +2849,34 @@ class AssetBundle(NamedObject):
   m_SceneHashes: Optional[List[Tuple[str, str]]] = None
   m_ScriptCompatibility: Optional[List[AssetBundleScriptInfo]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AssetBundleManifest(NamedObject):
   AssetBundleInfos: List[Tuple[int, AssetBundleInfo]]
   AssetBundleNames: List[Tuple[int, str]]
   AssetBundlesWithVariant: List[int]
   m_Name: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AssetImportInProgressProxy(NamedObject):
   m_Name: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AssetImporter(NamedObject, ABC):
   pass
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ASTCImporter(AssetImporter):
   m_AssetBundleName: str
   m_AssetBundleVariant: str
   m_Name: str
   m_UserData: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AndroidAssetPackImporter(AssetImporter):
   m_AssetBundleName: str
   m_AssetBundleVariant: str
@@ -2677,7 +2885,8 @@ class AndroidAssetPackImporter(AssetImporter):
   m_UsedFileIDs: List[int]
   m_UserData: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AssemblyDefinitionImporter(AssetImporter):
   m_AssetBundleName: str
   m_AssetBundleVariant: str
@@ -2686,7 +2895,8 @@ class AssemblyDefinitionImporter(AssetImporter):
   m_UserData: str
   m_UsedFileIDs: Optional[List[int]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AssemblyDefinitionReferenceImporter(AssetImporter):
   m_AssetBundleName: str
   m_AssetBundleVariant: str
@@ -2695,7 +2905,8 @@ class AssemblyDefinitionReferenceImporter(AssetImporter):
   m_UsedFileIDs: List[int]
   m_UserData: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AudioImporter(AssetImporter):
   m_3D: bool
   m_ForceToMono: bool
@@ -2714,7 +2925,9 @@ class AudioImporter(AssetImporter):
   m_Normalize: Optional[bool] = None
   m_OldHashIdentity: Optional[MdFour] = None
   m_Output: Optional[Union[AudioImporterOutput, Output]] = None
-  m_PlatformSettingOverrides: Optional[Union[List[Tuple[str, SampleSettings]], List[Tuple[int, SampleSettings]]]] = None
+  m_PlatformSettingOverrides: Optional[
+    Union[List[Tuple[str, SampleSettings]], List[Tuple[int, SampleSettings]]]
+  ] = None
   m_PreloadAudioData: Optional[bool] = None
   m_PreviewData: Optional[PreviewData] = None
   m_PreviewDataLength: Optional[int] = None
@@ -2724,7 +2937,8 @@ class AudioImporter(AssetImporter):
   m_UsedFileIDs: Optional[List[int]] = None
   m_UserData: Optional[str] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class BuildArchiveImporter(AssetImporter):
   m_AssetBundleName: str
   m_AssetBundleVariant: str
@@ -2733,7 +2947,8 @@ class BuildArchiveImporter(AssetImporter):
   m_UsedFileIDs: List[int]
   m_UserData: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class BuildInstructionImporter(AssetImporter):
   m_AssetBundleName: str
   m_AssetBundleVariant: str
@@ -2742,7 +2957,8 @@ class BuildInstructionImporter(AssetImporter):
   m_UsedFileIDs: List[int]
   m_UserData: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class BuildMetaDataImporter(AssetImporter):
   m_AssetBundleName: str
   m_AssetBundleVariant: str
@@ -2751,7 +2967,8 @@ class BuildMetaDataImporter(AssetImporter):
   m_UsedFileIDs: List[int]
   m_UserData: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class C4DImporter(AssetImporter):
   m_AssetBundleName: str
   m_AssetBundleVariant: str
@@ -2760,7 +2977,8 @@ class C4DImporter(AssetImporter):
   m_UsedFileIDs: List[int]
   m_UserData: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ComputeShaderImporter(AssetImporter):
   m_Name: str
   m_UserData: str
@@ -2772,7 +2990,8 @@ class ComputeShaderImporter(AssetImporter):
   m_PreprocessorOverride: Optional[int] = None
   m_UsedFileIDs: Optional[List[int]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class DDSImporter(AssetImporter):
   m_Name: str
   m_AssetBundleName: Optional[str] = None
@@ -2783,7 +3002,8 @@ class DDSImporter(AssetImporter):
   m_OldHashIdentity: Optional[MdFour] = None
   m_UserData: Optional[str] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class DefaultImporter(AssetImporter):
   m_Name: str
   m_AssetBundleName: Optional[str] = None
@@ -2795,7 +3015,8 @@ class DefaultImporter(AssetImporter):
   m_UsedFileIDs: Optional[List[int]] = None
   m_UserData: Optional[str] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class IHVImageFormatImporter(AssetImporter):
   m_AssetBundleName: str
   m_AssetBundleVariant: str
@@ -2811,14 +3032,16 @@ class IHVImageFormatImporter(AssetImporter):
   m_UsedFileIDs: Optional[List[int]] = None
   m_sRGBTexture: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class KTXImporter(AssetImporter):
   m_AssetBundleName: str
   m_AssetBundleVariant: str
   m_Name: str
   m_UserData: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class LibraryAssetImporter(AssetImporter):
   m_Name: str
   m_AssetBundleName: Optional[str] = None
@@ -2830,7 +3053,8 @@ class LibraryAssetImporter(AssetImporter):
   m_UsedFileIDs: Optional[List[int]] = None
   m_UserData: Optional[str] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class LocalizationImporter(AssetImporter):
   m_AssetBundleName: str
   m_AssetBundleVariant: str
@@ -2839,11 +3063,13 @@ class LocalizationImporter(AssetImporter):
   m_UserData: str
   m_UsedFileIDs: Optional[List[int]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ModelImporter(AssetImporter, ABC):
   pass
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class FBXImporter(ModelImporter):
   m_AddColliders: bool
   m_AnimationCompression: int
@@ -2865,7 +3091,9 @@ class FBXImporter(ModelImporter):
   generateSecondaryUV: Optional[bool] = None
   indexFormat: Optional[int] = None
   keepQuads: Optional[bool] = None
-  legacyComputeAllNormalsFromSmoothingGroupsWhenMeshHasBlendShapes: Optional[bool] = None
+  legacyComputeAllNormalsFromSmoothingGroupsWhenMeshHasBlendShapes: Optional[bool] = (
+    None
+  )
   m_AddHumanoidExtraRootOnlyWhenUsingAvatar: Optional[bool] = None
   m_AdditionalBone: Optional[bool] = None
   m_AnimationDoRetargetingWarnings: Optional[bool] = None
@@ -2968,7 +3196,8 @@ class FBXImporter(ModelImporter):
   tangentImportMode: Optional[int] = None
   weldVertices: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Mesh3DSImporter(ModelImporter):
   m_AddColliders: bool
   m_AnimationCompression: int
@@ -2990,7 +3219,9 @@ class Mesh3DSImporter(ModelImporter):
   generateSecondaryUV: Optional[bool] = None
   indexFormat: Optional[int] = None
   keepQuads: Optional[bool] = None
-  legacyComputeAllNormalsFromSmoothingGroupsWhenMeshHasBlendShapes: Optional[bool] = None
+  legacyComputeAllNormalsFromSmoothingGroupsWhenMeshHasBlendShapes: Optional[bool] = (
+    None
+  )
   m_AddHumanoidExtraRootOnlyWhenUsingAvatar: Optional[bool] = None
   m_AdditionalBone: Optional[bool] = None
   m_AnimationDoRetargetingWarnings: Optional[bool] = None
@@ -3093,7 +3324,8 @@ class Mesh3DSImporter(ModelImporter):
   tangentImportMode: Optional[int] = None
   weldVertices: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SketchUpImporter(ModelImporter):
   generateSecondaryUV: bool
   keepQuads: bool
@@ -3157,7 +3389,9 @@ class SketchUpImporter(ModelImporter):
   bakeAxisConversion: Optional[bool] = None
   blendShapeNormalImportMode: Optional[int] = None
   indexFormat: Optional[int] = None
-  legacyComputeAllNormalsFromSmoothingGroupsWhenMeshHasBlendShapes: Optional[bool] = None
+  legacyComputeAllNormalsFromSmoothingGroupsWhenMeshHasBlendShapes: Optional[bool] = (
+    None
+  )
   m_AddHumanoidExtraRootOnlyWhenUsingAvatar: Optional[bool] = None
   m_AutoGenerateAvatarMappingIfUnspecified: Optional[bool] = None
   m_AutoMapExternalMaterials: Optional[bool] = None
@@ -3212,7 +3446,8 @@ class SketchUpImporter(ModelImporter):
   skinWeightsMode: Optional[int] = None
   splitTangentsAcrossUV: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class MonoImporter(AssetImporter):
   executionOrder: int
   icon: PPtr[Texture2D]
@@ -3227,7 +3462,8 @@ class MonoImporter(AssetImporter):
   m_UsedFileIDs: Optional[List[int]] = None
   m_UserData: Optional[str] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class MovieImporter(AssetImporter):
   m_Name: str
   m_Quality: float
@@ -3241,7 +3477,8 @@ class MovieImporter(AssetImporter):
   m_UsedFileIDs: Optional[List[int]] = None
   m_UserData: Optional[str] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class MultiArtifactTestImporter(AssetImporter):
   m_AssetBundleName: str
   m_AssetBundleVariant: str
@@ -3250,7 +3487,8 @@ class MultiArtifactTestImporter(AssetImporter):
   m_UsedFileIDs: List[int]
   m_UserData: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class NativeFormatImporter(AssetImporter):
   m_Name: str
   m_AssetBundleName: Optional[str] = None
@@ -3263,7 +3501,8 @@ class NativeFormatImporter(AssetImporter):
   m_UsedFileIDs: Optional[List[int]] = None
   m_UserData: Optional[str] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class PVRImporter(AssetImporter):
   m_Name: str
   m_AssetBundleName: Optional[str] = None
@@ -3273,7 +3512,8 @@ class PVRImporter(AssetImporter):
   m_OldHashIdentity: Optional[MdFour] = None
   m_UserData: Optional[str] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class PackageManifestImporter(AssetImporter):
   m_AssetBundleName: str
   m_AssetBundleVariant: str
@@ -3282,7 +3522,8 @@ class PackageManifestImporter(AssetImporter):
   m_UsedFileIDs: List[int]
   m_UserData: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class PluginImporter(AssetImporter):
   m_AssetBundleName: str
   m_AssetBundleVariant: str
@@ -3291,7 +3532,10 @@ class PluginImporter(AssetImporter):
   m_IsPreloaded: bool
   m_Name: str
   m_Output: PluginImportOutput
-  m_PlatformData: Union[List[Tuple[str, PlatformSettingsData]], List[Tuple[Tuple[str, str], PlatformSettingsData]]]
+  m_PlatformData: Union[
+    List[Tuple[str, PlatformSettingsData]],
+    List[Tuple[Tuple[str, str], PlatformSettingsData]],
+  ]
   m_UserData: str
   m_DefineConstraints: Optional[List[str]] = None
   m_ExternalObjects: Optional[List[Tuple[SourceAssetIdentifier, PPtr[Object]]]] = None
@@ -3300,7 +3544,8 @@ class PluginImporter(AssetImporter):
   m_UsedFileIDs: Optional[List[int]] = None
   m_ValidateReferences: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class PrefabImporter(AssetImporter):
   m_AddedObjectFileIDs: List[int]
   m_AssetBundleName: str
@@ -3313,7 +3558,8 @@ class PrefabImporter(AssetImporter):
   m_UsedFileIDs: Optional[List[int]] = None
   m_VariantParentGUID: Optional[GUID] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class PreviewImporter(AssetImporter):
   m_AssetBundleName: str
   m_AssetBundleVariant: str
@@ -3322,7 +3568,8 @@ class PreviewImporter(AssetImporter):
   m_UsedFileIDs: List[int]
   m_UserData: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class RayTracingShaderImporter(AssetImporter):
   m_AssetBundleName: str
   m_AssetBundleVariant: str
@@ -3332,7 +3579,8 @@ class RayTracingShaderImporter(AssetImporter):
   m_UserData: str
   m_CurrentAPIMask: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ReferencesArtifactGenerator(AssetImporter):
   m_AssetBundleName: str
   m_AssetBundleVariant: str
@@ -3341,7 +3589,8 @@ class ReferencesArtifactGenerator(AssetImporter):
   m_UsedFileIDs: List[int]
   m_UserData: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class RoslynAdditionalFileImporter(AssetImporter):
   m_AssetBundleName: str
   m_AssetBundleVariant: str
@@ -3350,7 +3599,8 @@ class RoslynAdditionalFileImporter(AssetImporter):
   m_UsedFileIDs: List[int]
   m_UserData: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class RoslynAnalyzerConfigImporter(AssetImporter):
   m_AssetBundleName: str
   m_AssetBundleVariant: str
@@ -3359,7 +3609,8 @@ class RoslynAnalyzerConfigImporter(AssetImporter):
   m_UsedFileIDs: List[int]
   m_UserData: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class RuleSetFileImporter(AssetImporter):
   m_AssetBundleName: str
   m_AssetBundleVariant: str
@@ -3368,7 +3619,8 @@ class RuleSetFileImporter(AssetImporter):
   m_UsedFileIDs: List[int]
   m_UserData: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ScriptedImporter(AssetImporter):
   m_AssetBundleName: str
   m_AssetBundleVariant: str
@@ -3380,7 +3632,8 @@ class ScriptedImporter(AssetImporter):
   m_InternalIDToNameTable: Optional[List[Tuple[Tuple[int, int], str]]] = None
   m_UsedFileIDs: Optional[List[int]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ShaderImporter(AssetImporter):
   m_Name: str
   m_AssetBundleName: Optional[str] = None
@@ -3395,7 +3648,8 @@ class ShaderImporter(AssetImporter):
   m_UsedFileIDs: Optional[List[int]] = None
   m_UserData: Optional[str] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ShaderIncludeImporter(AssetImporter):
   m_AssetBundleName: str
   m_AssetBundleVariant: str
@@ -3404,7 +3658,8 @@ class ShaderIncludeImporter(AssetImporter):
   m_UsedFileIDs: List[int]
   m_UserData: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SpeedTreeImporter(AssetImporter):
   m_AlphaTestRef: float
   m_AssetBundleName: str
@@ -3443,7 +3698,8 @@ class SpeedTreeImporter(AssetImporter):
   m_UnitConversionEnumValue: Optional[int] = None
   m_UsedFileIDs: Optional[List[int]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SpriteAtlasImporter(AssetImporter):
   m_AssetBundleName: str
   m_AssetBundleVariant: str
@@ -3454,18 +3710,22 @@ class SpriteAtlasImporter(AssetImporter):
   m_BindAsDefault: Optional[bool] = None
   m_PackingSettings: Optional[PackingSettings] = None
   m_PlatformSettings: Optional[List[TextureImporterPlatformSettings]] = None
-  m_SecondaryTextureSettings: Optional[List[Tuple[str, SecondaryTextureSettings]]] = None
+  m_SecondaryTextureSettings: Optional[List[Tuple[str, SecondaryTextureSettings]]] = (
+    None
+  )
   m_TextureSettings: Optional[TextureSettings] = None
   m_VariantMultiplier: Optional[float] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class StyleSheetImporter(AssetImporter):
   m_AssetBundleName: str
   m_AssetBundleVariant: str
   m_Name: str
   m_UserData: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SubstanceImporter(AssetImporter):
   m_Name: str
   m_AssetBundleName: Optional[str] = None
@@ -3481,7 +3741,8 @@ class SubstanceImporter(AssetImporter):
   m_UsedFileIDs: Optional[List[int]] = None
   m_UserData: Optional[str] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class TextScriptImporter(AssetImporter):
   m_Name: str
   m_AssetBundleName: Optional[str] = None
@@ -3493,7 +3754,8 @@ class TextScriptImporter(AssetImporter):
   m_UsedFileIDs: Optional[List[int]] = None
   m_UserData: Optional[str] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class TextureImporter(AssetImporter):
   m_BorderMipMap: int
   m_ConvertToNormalMap: int
@@ -3550,7 +3812,9 @@ class TextureImporter(AssetImporter):
   m_Output: Optional[TextureImportOutput] = None
   m_PSDRemoveMatte: Optional[bool] = None
   m_PSDShowRemoveMatteOption: Optional[bool] = None
-  m_PlatformSettings: Optional[Union[List[TextureImporterPlatformSettings], List[PlatformSettings]]] = None
+  m_PlatformSettings: Optional[
+    Union[List[TextureImporterPlatformSettings], List[PlatformSettings]]
+  ] = None
   m_PushPullDilation: Optional[int] = None
   m_RGBM: Optional[int] = None
   m_RecommendedTextureFormat: Optional[int] = None
@@ -3577,7 +3841,8 @@ class TextureImporter(AssetImporter):
   m_VTOnly: Optional[int] = None
   m_sRGBTexture: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class TrueTypeFontImporter(AssetImporter):
   m_FontNames: List[str]
   m_FontSize: int
@@ -3607,7 +3872,8 @@ class TrueTypeFontImporter(AssetImporter):
   m_UsedFileIDs: Optional[List[int]] = None
   m_UserData: Optional[str] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class VideoClipImporter(AssetImporter):
   m_AssetBundleName: str
   m_AssetBundleVariant: str
@@ -3621,7 +3887,10 @@ class VideoClipImporter(AssetImporter):
   m_Name: str
   m_Output: VideoClipImporterOutput
   m_StartFrame: int
-  m_TargetSettings: Union[List[Tuple[int, VideoClipImporterTargetSettings]], List[Tuple[str, VideoClipImporterTargetSettings]]]
+  m_TargetSettings: Union[
+    List[Tuple[int, VideoClipImporterTargetSettings]],
+    List[Tuple[str, VideoClipImporterTargetSettings]],
+  ]
   m_UserData: str
   m_AudioImportMode: Optional[int] = None
   m_ExternalObjects: Optional[List[Tuple[SourceAssetIdentifier, PPtr[Object]]]] = None
@@ -3641,7 +3910,8 @@ class VideoClipImporter(AssetImporter):
   m_UseLegacyImporter: Optional[bool] = None
   m_UsedFileIDs: Optional[List[int]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class VisualEffectImporter(AssetImporter):
   m_AssetBundleName: str
   m_AssetBundleVariant: str
@@ -3651,14 +3921,16 @@ class VisualEffectImporter(AssetImporter):
   m_Template: Optional[VFXTemplate] = None
   m_UsedFileIDs: Optional[List[int]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AudioContainerElement(NamedObject):
   m_AudioClip: PPtr[AudioClip]
   m_Enabled: bool
   m_Name: str
   m_Volume: float
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AudioMixer(NamedObject):
   m_EnableSuspend: bool
   m_MasterGroup: PPtr[AudioMixerGroup]
@@ -3670,7 +3942,8 @@ class AudioMixer(NamedObject):
   m_SuspendThreshold: float
   m_UpdateMode: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AudioMixerController(AudioMixer):
   m_EnableSuspend: bool
   m_MasterGroup: PPtr[AudioMixerGroup]
@@ -3682,7 +3955,8 @@ class AudioMixerController(AudioMixer):
   m_SuspendThreshold: float
   m_UpdateMode: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AudioMixerEffectController(NamedObject):
   m_Bypass: bool
   m_EffectID: GUID
@@ -3693,37 +3967,43 @@ class AudioMixerEffectController(NamedObject):
   m_Parameters: List[Parameter]
   m_SendTarget: PPtr[AudioMixerEffectController]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AudioMixerGroup(NamedObject):
   m_AudioMixer: PPtr[AudioMixer]
   m_Children: List[PPtr[AudioMixerGroup]]
   m_GroupID: GUID
   m_Name: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AudioMixerGroupController(AudioMixerGroup):
   m_AudioMixer: PPtr[AudioMixer]
   m_Children: List[PPtr[AudioMixerGroup]]
   m_GroupID: GUID
   m_Name: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AudioMixerSnapshot(NamedObject):
   m_AudioMixer: PPtr[AudioMixer]
   m_Name: str
   m_SnapshotID: GUID
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AudioMixerSnapshotController(AudioMixerSnapshot):
   m_AudioMixer: PPtr[AudioMixer]
   m_Name: str
   m_SnapshotID: GUID
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AudioResource(NamedObject):
   m_Name: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AudioRandomContainer(AudioResource):
   m_AutomaticTriggerMode: int
   m_AutomaticTriggerTime: float
@@ -3745,11 +4025,13 @@ class AudioRandomContainer(AudioResource):
   m_VolumeRandomizationEnabled: bool
   m_VolumeRandomizationRange: Vector2f
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SampleClip(AudioResource):
   m_Name: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AudioClip(SampleClip):
   m_Name: str
   m_3D: Optional[bool] = None
@@ -3772,7 +4054,8 @@ class AudioClip(SampleClip):
   m_Type: Optional[int] = None
   m_UseHardware: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Avatar(NamedObject):
   m_Avatar: AvatarConstant
   m_AvatarSize: int
@@ -3780,28 +4063,33 @@ class Avatar(NamedObject):
   m_TOS: List[Tuple[int, str]]
   m_HumanDescription: Optional[HumanDescription] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AvatarMask(NamedObject):
   m_Elements: List[TransformMaskElement]
   m_Mask: List[int]
   m_Name: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AvatarSkeletonMask(NamedObject):
   elements: List[AvatarSkeletonMaskElement]
   m_Name: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class BaseAnimationTrack(NamedObject, ABC):
   pass
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class NewAnimationTrack(BaseAnimationTrack):
   m_ClassID: int
   m_Curves: List[Channel]
   m_Name: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class BillboardAsset(NamedObject):
   bottom: float
   height: float
@@ -3813,7 +4101,8 @@ class BillboardAsset(NamedObject):
   width: float
   rotated: Optional[List[int]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class BuildReport(NamedObject):
   m_Appendices: List[PPtr[Object]]
   m_BuildSteps: List[BuildStepInfo]
@@ -3821,33 +4110,40 @@ class BuildReport(NamedObject):
   m_Name: str
   m_Summary: BuildSummary
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class CachedSpriteAtlas(NamedObject):
   frames: List[Tuple[Tuple[GUID, int], SpriteRenderData]]
   textures: List[PPtr[Texture2D]]
   alphaTextures: Optional[List[PPtr[Texture2D]]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class CachedSpriteAtlasRuntimeData(NamedObject):
   alphaTextures: List[PPtr[Texture2D]]
   frames: List[Tuple[Tuple[GUID, int], SpriteAtlasData]]
   textures: List[PPtr[Texture2D]]
   currentPackingHash: Optional[Hash128] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ComputeShader(NamedObject):
   m_Name: str
   constantBuffers: Optional[List[ComputeShaderCB]] = None
   kernels: Optional[List[ComputeShaderKernel]] = None
-  variants: Optional[Union[List[ComputeShaderVariant], List[ComputeShaderPlatformVariant]]] = None
+  variants: Optional[
+    Union[List[ComputeShaderVariant], List[ComputeShaderPlatformVariant]]
+  ] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class DefaultAsset(NamedObject):
   m_Name: str
   m_IsWarning: Optional[bool] = None
   m_Message: Optional[str] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class BrokenPrefabAsset(DefaultAsset):
   m_BrokenParentPrefab: PPtr[BrokenPrefabAsset]
   m_IsPrefabFileValid: bool
@@ -3856,17 +4152,20 @@ class BrokenPrefabAsset(DefaultAsset):
   m_Message: str
   m_Name: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SceneAsset(DefaultAsset):
   m_Name: str
   m_IsWarning: Optional[bool] = None
   m_Message: Optional[str] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class EditorProjectAccess(NamedObject):
   m_Name: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Flare(NamedObject):
   m_Elements: List[FlareElement]
   m_FlareTexture: PPtr[Texture]
@@ -3874,7 +4173,8 @@ class Flare(NamedObject):
   m_TextureLayout: int
   m_UseFog: bool
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Font(NamedObject):
   m_Ascent: float
   m_AsciiStartOffset: int
@@ -3904,11 +4204,13 @@ class Font(NamedObject):
   m_Tracking: Optional[float] = None
   m_UseLegacyBoundsCalculation: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class GameObjectRecorder(NamedObject):
   m_Name: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class GraphicsStateCollection(NamedObject):
   m_DeviceRenderer: int
   m_Name: str
@@ -3920,17 +4222,20 @@ class GraphicsStateCollection(NamedObject):
   m_Version: int
   m_VertexLayoutInfoMap: List[Tuple[int, VertexLayoutInfo]]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class HumanTemplate(NamedObject):
   m_BoneTemplate: List[Tuple[str, str]]
   m_Name: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ImportLog(NamedObject):
   m_Logs: List[ImportLog_ImportLogEntry]
   m_Name: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class LightProbes(NamedObject):
   m_Name: str
   bakedCoefficients: Optional[List[LightmapData]] = None
@@ -3942,7 +4247,8 @@ class LightProbes(NamedObject):
   m_HasBeenEdited: Optional[bool] = None
   tetrahedra: Optional[List[Tetrahedron]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class LightingDataAsset(NamedObject):
   m_BakedAmbientProbeInLinear: SphericalHarmonicsL2
   m_BakedReflectionProbeCubemaps: List[PPtr[Texture]]
@@ -3966,11 +4272,13 @@ class LightingDataAsset(NamedObject):
   m_Scene: Optional[PPtr[SceneAsset]] = None
   m_SceneGUID: Optional[GUID] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class LightingDataAssetParent(NamedObject):
   m_Name: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class LightingSettings(NamedObject):
   m_AlbedoBoost: float
   m_BounceScale: float
@@ -4025,7 +4333,8 @@ class LightingSettings(NamedObject):
   m_TextureCompression: Optional[bool] = None
   m_TrainingDataDestination: Optional[str] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class LightmapParameters(NamedObject):
   AOAntiAliasingSamples: int
   AOQuality: int
@@ -4047,14 +4356,16 @@ class LightmapParameters(NamedObject):
   maxLightmapCount: Optional[int] = None
   pushoff: Optional[float] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class LocalizationAsset(NamedObject):
   Editor_Asset: bool
   Locale_ISO_Code: str
   String_Table: List[Tuple[str, str]]
   m_Name: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Material(NamedObject):
   m_Name: str
   m_SavedProperties: UnityPropertySheet
@@ -4070,7 +4381,8 @@ class Material(NamedObject):
   m_ValidKeywords: Optional[List[str]] = None
   stringTagMap: Optional[List[Tuple[str, str]]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ProceduralMaterial(Material):
   m_Name: str
   m_SavedProperties: UnityPropertySheet
@@ -4099,7 +4411,8 @@ class ProceduralMaterial(Material):
   m_Width: Optional[int] = None
   stringTagMap: Optional[List[Tuple[str, str]]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Mesh(NamedObject):
   m_BindPose: List[Matrix4x4f]
   m_CompressedMesh: CompressedMesh
@@ -4138,11 +4451,13 @@ class Mesh(NamedObject):
   m_VertexData: Optional[VertexData] = None
   m_Vertices: Optional[List[Vector3f]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Motion(NamedObject, ABC):
   pass
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AnimationClip(Motion):
   m_Bounds: AABB
   m_Compressed: bool
@@ -4166,7 +4481,8 @@ class AnimationClip(Motion):
   m_PPtrCurves: Optional[List[PPtrCurve]] = None
   m_UseHighQualityCurve: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class PreviewAnimationClip(AnimationClip):
   m_Bounds: AABB
   m_ClipBindingConstant: AnimationClipBindingConstant
@@ -4189,7 +4505,8 @@ class PreviewAnimationClip(AnimationClip):
   m_HasGenericRootTransform: Optional[bool] = None
   m_HasMotionFloatCurves: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class BlendTree(Motion):
   m_Childs: Union[List[Child], List[ChildMotion]]
   m_MaxThreshold: float
@@ -4203,7 +4520,8 @@ class BlendTree(Motion):
   m_BlendType: Optional[int] = None
   m_NormalizedBlendValues: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class NavMeshData(NamedObject):
   m_HeightMeshes: List[HeightMeshData]
   m_Heightmaps: List[HeightmapData]
@@ -4217,17 +4535,20 @@ class NavMeshData(NamedObject):
   m_Rotation: Optional[Quaternionf] = None
   m_SourceBounds: Optional[AABB] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class NavMeshObsolete(NamedObject):
   m_Name: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class OcclusionCullingData(NamedObject):
   m_Name: str
   m_PVSData: List[int]
   m_Scenes: List[OcclusionScene]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class PhysicsMaterial(NamedObject):
   m_Name: str
   bounceCombine: Optional[int] = None
@@ -4241,7 +4562,8 @@ class PhysicsMaterial(NamedObject):
   m_StaticFriction: Optional[float] = None
   staticFriction: Optional[float] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class PhysicsMaterial2D(NamedObject):
   bounciness: float
   friction: float
@@ -4249,14 +4571,16 @@ class PhysicsMaterial2D(NamedObject):
   m_BounceCombine: Optional[int] = None
   m_FrictionCombine: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class PreloadData(NamedObject):
   m_Assets: List[PPtr[Object]]
   m_Name: str
   m_Dependencies: Optional[List[str]] = None
   m_ExplicitDataLayout: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Preset(NamedObject):
   m_Name: str
   m_Properties: List[PropertyModification]
@@ -4265,22 +4589,26 @@ class Preset(NamedObject):
   m_CoupledType: Optional[PresetType] = None
   m_ExcludedProperties: Optional[List[str]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class RayTracingShader(NamedObject):
   m_MaxRecursionDepth: int
   m_Name: str
   variants: List[RayTracingShaderVariant]
   m_EnableRayPayloadSizeChecks: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class RoslynAdditionalFileAsset(NamedObject):
   m_Name: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class RoslynAnalyzerConfigAsset(NamedObject):
   m_Name: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class RuntimeAnimatorController(NamedObject):
   m_AnimationClips: List[PPtr[AnimationClip]]
   m_Controller: ControllerConstant
@@ -4288,7 +4616,8 @@ class RuntimeAnimatorController(NamedObject):
   m_Name: str
   m_TOS: List[Tuple[int, str]]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AnimatorController(RuntimeAnimatorController):
   m_AnimationClips: List[PPtr[AnimationClip]]
   m_Controller: ControllerConstant
@@ -4296,16 +4625,20 @@ class AnimatorController(RuntimeAnimatorController):
   m_Name: str
   m_TOS: List[Tuple[int, str]]
   m_MultiThreadedStateMachine: Optional[bool] = None
-  m_StateMachineBehaviourVectorDescription: Optional[StateMachineBehaviourVectorDescription] = None
+  m_StateMachineBehaviourVectorDescription: Optional[
+    StateMachineBehaviourVectorDescription
+  ] = None
   m_StateMachineBehaviours: Optional[List[PPtr[MonoBehaviour]]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AnimatorOverrideController(RuntimeAnimatorController):
   m_Clips: List[AnimationClipOverride]
   m_Controller: PPtr[RuntimeAnimatorController]
   m_Name: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Shader(NamedObject):
   m_Name: str
   compressedBlob: Optional[List[int]] = None
@@ -4324,12 +4657,14 @@ class Shader(NamedObject):
   platforms: Optional[List[int]] = None
   stageCounts: Optional[List[int]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ShaderVariantCollection(NamedObject):
   m_Name: str
   m_Shaders: List[Tuple[PPtr[Shader], ShaderInfo]]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SpeedTreeWindAsset(NamedObject):
   m_Name: str
   m_Config8: Optional[SpeedTreeWindConfig8] = None
@@ -4337,7 +4672,8 @@ class SpeedTreeWindAsset(NamedObject):
   m_Wind: Optional[SpeedTreeWind] = None
   m_eVersion: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Sprite(NamedObject):
   m_Extrude: int
   m_Name: str
@@ -4355,7 +4691,8 @@ class Sprite(NamedObject):
   m_ScriptableObjects: Optional[List[PPtr[MonoBehaviour]]] = None
   m_SpriteAtlas: Optional[PPtr[SpriteAtlas]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SpriteAtlas(NamedObject):
   m_IsVariant: bool
   m_Name: str
@@ -4364,7 +4701,8 @@ class SpriteAtlas(NamedObject):
   m_RenderDataMap: List[Tuple[Tuple[GUID, int], SpriteAtlasData]]
   m_Tag: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SpriteAtlasAsset(NamedObject):
   m_ImporterData: Union[SpriteAtlasEditorData, SpriteAtlasAssetData]
   m_IsVariant: bool
@@ -4372,12 +4710,14 @@ class SpriteAtlasAsset(NamedObject):
   m_Name: str
   m_ScriptablePacker: Optional[PPtr[Object]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SubstanceArchive(NamedObject):
   m_Name: str
   m_PackageData: Optional[List[int]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class TerrainData(NamedObject):
   m_DetailDatabase: DetailDatabase
   m_Heightmap: Heightmap
@@ -4385,7 +4725,8 @@ class TerrainData(NamedObject):
   m_SplatDatabase: SplatDatabase
   m_PreloadShaders: Optional[List[PPtr[Shader]]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class TerrainLayer(NamedObject):
   m_DiffuseRemapMax: Vector4f
   m_DiffuseRemapMin: Vector4f
@@ -4403,23 +4744,27 @@ class TerrainLayer(NamedObject):
   m_TileSize: Vector2f
   m_SmoothnessSource: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class TextAsset(NamedObject):
   m_Name: str
   m_Script: str
   m_PathName: Optional[str] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AssemblyDefinitionAsset(TextAsset):
   m_Name: str
   m_Script: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AssemblyDefinitionReferenceAsset(TextAsset):
   m_Name: str
   m_Script: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class MonoScript(TextAsset):
   m_AssemblyName: str
   m_ClassName: str
@@ -4429,37 +4774,44 @@ class MonoScript(TextAsset):
   m_PropertiesHash: Union[Hash128, int]
   m_IsEditorScript: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class PackageManifest(TextAsset):
   m_Name: str
   m_Script: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class RuleSetFileAsset(TextAsset):
   m_Name: str
   m_Script: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ShaderInclude(TextAsset):
   m_Name: str
   m_Script: Optional[str] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Texture(NamedObject, ABC):
   pass
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class BaseVideoTexture(Texture, ABC):
   pass
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class WebCamTexture(BaseVideoTexture):
   m_Name: str
   m_DownscaleFallback: Optional[bool] = None
   m_ForcedFallbackFormat: Optional[int] = None
   m_IsAlphaChannelOptional: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class CubemapArray(Texture):
   image_data: bytes
   m_ColorSpace: int
@@ -4477,14 +4829,16 @@ class CubemapArray(Texture):
   m_StreamData: Optional[StreamingInfo] = None
   m_UsageMode: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class LowerResBlitTexture(Texture):
   m_Name: str
   m_DownscaleFallback: Optional[bool] = None
   m_ForcedFallbackFormat: Optional[int] = None
   m_IsAlphaChannelOptional: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class MovieTexture(Texture):
   m_Name: str
   m_AudioClip: Optional[PPtr[AudioClip]] = None
@@ -4495,7 +4849,8 @@ class MovieTexture(Texture):
   m_Loop: Optional[bool] = None
   m_MovieData: Optional[List[int]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ProceduralTexture(Texture):
   m_Name: str
   AlphaSource: Optional[int] = None
@@ -4517,7 +4872,8 @@ class ProceduralTexture(Texture):
   m_TextureParameters: Optional[TextureParameters] = None
   m_TextureSettings: Optional[GLTextureSettings] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class RenderTexture(Texture):
   m_ColorFormat: int
   m_Height: int
@@ -4545,7 +4901,8 @@ class RenderTexture(Texture):
   m_UseDynamicScaleExplicit: Optional[bool] = None
   m_VolumeDepth: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class CustomRenderTexture(RenderTexture):
   m_AntiAliasing: int
   m_ColorFormat: int
@@ -4586,7 +4943,8 @@ class CustomRenderTexture(RenderTexture):
   m_UseDynamicScale: Optional[bool] = None
   m_UseDynamicScaleExplicit: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SparseTexture(Texture):
   m_ColorSpace: int
   m_Format: int
@@ -4599,7 +4957,8 @@ class SparseTexture(Texture):
   m_ForcedFallbackFormat: Optional[int] = None
   m_IsAlphaChannelOptional: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Texture2D(Texture):
   image_data: bytes
   m_CompleteImageSize: int
@@ -4629,7 +4988,8 @@ class Texture2D(Texture):
   m_StreamingMipmaps: Optional[bool] = None
   m_StreamingMipmapsPriority: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Cubemap(Texture2D):
   image_data: bytes
   m_CompleteImageSize: int
@@ -4660,7 +5020,8 @@ class Cubemap(Texture2D):
   m_StreamingMipmaps: Optional[bool] = None
   m_StreamingMipmapsPriority: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Texture2DArray(Texture):
   image_data: bytes
   m_ColorSpace: int
@@ -4682,7 +5043,8 @@ class Texture2DArray(Texture):
   m_StreamData: Optional[StreamingInfo] = None
   m_UsageMode: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Texture3D(Texture):
   image_data: bytes
   m_Height: int
@@ -4708,7 +5070,8 @@ class Texture3D(Texture):
   m_TextureFormat: Optional[int] = None
   m_UsageMode: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class VideoClip(NamedObject):
   Height: int
   Width: int
@@ -4729,29 +5092,35 @@ class VideoClip(NamedObject):
   m_VideoShaders: Optional[List[PPtr[Shader]]] = None
   m_sRGB: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class VisualEffectObject(NamedObject, ABC):
   pass
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class VisualEffectAsset(VisualEffectObject):
   m_Infos: VisualEffectInfo
   m_Name: str
   m_Systems: List[VFXSystemDesc]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class VisualEffectSubgraph(VisualEffectObject, ABC):
   pass
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class VisualEffectSubgraphBlock(VisualEffectSubgraph):
   m_Name: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class VisualEffectSubgraphOperator(VisualEffectSubgraph):
   m_Name: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class VisualEffectResource(NamedObject):
   m_Graph: PPtr[MonoBehaviour]
   m_Infos: Union[VisualEffectSettings, VisualEffectInfo]
@@ -4759,7 +5128,8 @@ class VisualEffectResource(NamedObject):
   m_ShaderSources: Optional[List[VFXShaderSourceDesc]] = None
   m_Systems: Optional[List[VFXEditorSystemDesc]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class EditorExtensionImpl(Object):
   gFlattenedTypeTree: Optional[List[int]] = None
   m_DataTemplate: Optional[PPtr[DataTemplate]] = None
@@ -4767,7 +5137,8 @@ class EditorExtensionImpl(Object):
   m_OverrideVariable: Optional[bitset] = None
   m_TemplateFather: Optional[PPtr[EditorExtensionImpl]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class EditorSettings(Object):
   m_AssetNamingUsesSpace: Optional[bool] = None
   m_AssetPipelineMode: Optional[int] = None
@@ -4821,7 +5192,8 @@ class EditorSettings(Object):
   m_WebSecurityEmulationEnabled: Optional[int] = None
   m_WebSecurityEmulationHostUrl: Optional[str] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class EditorUserBuildSettings(Object):
   m_ActiveBuildTarget: int
   m_AllowDebugging: bool
@@ -4967,7 +5339,8 @@ class EditorUserBuildSettings(Object):
   m_XboxOneUsername: Optional[str] = None
   m_macosXcodeBuildConfig: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class EditorUserSettings(Object):
   m_VCAutomaticAdd: bool
   m_VCDebugCmd: bool
@@ -4998,27 +5371,33 @@ class EditorUserSettings(Object):
   m_VCUserName: Optional[str] = None
   m_VCWorkspace: Optional[str] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class EmptyObject(Object):
   pass
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class GUIDSerializer(Object):
   guidToPath: List[Tuple[GUID, str]]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class GameManager(Object, ABC):
   pass
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class GlobalGameManager(GameManager, ABC):
   pass
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AnimationManager(GlobalGameManager):
   pass
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AudioManager(GlobalGameManager):
   Default_Speaker_Mode: int
   Doppler_Factor: float
@@ -5035,7 +5414,8 @@ class AudioManager(GlobalGameManager):
   m_VirtualVoiceCount: Optional[int] = None
   m_VirtualizeEffects: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class BuildSettings(GlobalGameManager):
   enableDynamicBatching: bool
   hasAdvancedVersion: bool
@@ -5063,28 +5443,35 @@ class BuildSettings(GlobalGameManager):
   m_AuthToken: Optional[str] = None
   m_GraphicsAPIs: Optional[List[int]] = None
   preloadedPlugins: Optional[List[str]] = None
-  runtimeClassHashes: Optional[Union[List[Tuple[int, int]], List[Tuple[int, Hash128]]]] = None
+  runtimeClassHashes: Optional[
+    Union[List[Tuple[int, int]], List[Tuple[int, Hash128]]]
+  ] = None
   scenes: Optional[List[str]] = None
   scriptHashes: Optional[List[Tuple[Hash128, Hash128]]] = None
   usesOnMouseEvents: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class CloudWebServicesManager(GlobalGameManager):
   pass
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ClusterInputManager(GlobalGameManager):
   m_Inputs: List[ClusterInput]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class CrashReportManager(GlobalGameManager):
   pass
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class DelayedCallManager(GlobalGameManager):
   pass
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class GraphicsSettings(GlobalGameManager):
   m_AlwaysIncludedShaders: List[PPtr[Shader]]
   m_AllowEnlightenSupportForUpgradedProject: Optional[bool] = None
@@ -5122,16 +5509,19 @@ class GraphicsSettings(GlobalGameManager):
   m_TransparencySortMode: Optional[int] = None
   m_VideoShadersIncludeMode: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class InputManager(GlobalGameManager):
   m_Axes: List[InputAxis]
   m_UsePhysicalKeys: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class MasterServerInterface(GlobalGameManager):
   pass
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class MonoManager(GlobalGameManager):
   m_Scripts: List[PPtr[MonoScript]]
   m_AssemblyNames: Optional[List[str]] = None
@@ -5139,33 +5529,39 @@ class MonoManager(GlobalGameManager):
   m_RuntimeClassHashes: Optional[List[Tuple[int, Hash128]]] = None
   m_ScriptHashes: Optional[List[Tuple[Hash128, Hash128]]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class MultiplayerManager(GlobalGameManager):
   m_ActiveMultiplayerRole: Optional[int] = None
   m_ActiveMultiplayerRoles: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class NavMeshProjectSettings(GlobalGameManager):
   areas: List[NavMeshAreaData]
   m_LastAgentTypeID: Optional[int] = None
   m_SettingNames: Optional[List[str]] = None
   m_Settings: Optional[List[NavMeshBuildSettings]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class NetworkManager(GlobalGameManager):
   m_AssetToPrefab: List[Tuple[GUID, PPtr[GameObject]]]
   m_DebugLevel: int
   m_Sendrate: float
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class NotificationManager(GlobalGameManager):
   pass
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class PerformanceReportingManager(GlobalGameManager):
   pass
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Physics2DSettings(GlobalGameManager):
   m_DefaultMaterial: PPtr[PhysicsMaterial2D]
   m_Gravity: Vector2f
@@ -5204,7 +5600,8 @@ class Physics2DSettings(GlobalGameManager):
   m_UseSubStepping: Optional[bool] = None
   m_VelocityThreshold: Optional[float] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class PhysicsManager(GlobalGameManager):
   m_BounceThreshold: float
   m_DefaultMaterial: Union[PPtr[PhysicMaterial], PPtr[PhysicsMaterial]]
@@ -5251,7 +5648,8 @@ class PhysicsManager(GlobalGameManager):
   m_WorldBounds: Optional[AABB] = None
   m_WorldSubdivisions: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class PlayerSettings(GlobalGameManager):
   AndroidProfiler: bool
   allowedAutorotateToLandscapeLeft: bool
@@ -5500,7 +5898,8 @@ class PlayerSettings(GlobalGameManager):
   xboxSkinOnGPU: Optional[bool] = None
   xboxSpeechDB: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class QualitySettings(GlobalGameManager):
   Beautiful: Optional[QualitySetting] = None
   Fantastic: Optional[QualitySetting] = None
@@ -5517,12 +5916,14 @@ class QualitySettings(GlobalGameManager):
   m_StrippedMaximumLODLevel: Optional[int] = None
   m_TextureMipmapLimitGroupNames: Optional[List[str]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ResourceManager(GlobalGameManager):
   m_Container: List[Tuple[str, PPtr[Object]]]
   m_DependentAssets: Optional[List[ResourceManager_Dependency]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class RuntimeInitializeOnLoadManager(GlobalGameManager):
   m_AfterAssembliesLoadedMethodExecutionOrders: Optional[List[int]] = None
   m_AfterAssembliesLoadedUnityMethodExecutionOrders: Optional[List[int]] = None
@@ -5541,16 +5942,19 @@ class RuntimeInitializeOnLoadManager(GlobalGameManager):
   m_SubsystemRegistrationUnityMethodExecutionOrders: Optional[List[int]] = None
   m_UnityMethodExecutionOrders: Optional[List[int]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ShaderNameRegistry(GlobalGameManager):
   m_PreloadShaders: bool
   m_Shaders: NameToObjectMap
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class StreamingManager(GlobalGameManager):
   pass
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class TagManager(GlobalGameManager):
   tags: List[str]
   Builtin_Layer_0: Optional[str] = None
@@ -5589,18 +5993,21 @@ class TagManager(GlobalGameManager):
   m_RenderingLayers: Optional[List[str]] = None
   m_SortingLayers: Optional[List[SortingLayerEntry]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class TimeManager(GlobalGameManager):
   Fixed_Timestep: Union[RationalTime, float]
   Maximum_Allowed_Timestep: float
   m_TimeScale: float
   Maximum_Particle_Timestep: Optional[float] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class UnityAdsManager(GlobalGameManager):
   pass
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class UnityAnalyticsManager(GlobalGameManager):
   m_Enabled: Optional[bool] = None
   m_InitializeOnStartup: Optional[bool] = None
@@ -5608,7 +6015,8 @@ class UnityAnalyticsManager(GlobalGameManager):
   m_TestEventUrl: Optional[str] = None
   m_TestMode: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class UnityConnectSettings(GlobalGameManager):
   UnityAnalyticsSettings: UnityAnalyticsSettings
   UnityPurchasingSettings: UnityPurchasingSettings
@@ -5625,7 +6033,8 @@ class UnityConnectSettings(GlobalGameManager):
   m_TestInitMode: Optional[int] = None
   m_TestMode: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class VFXManager(GlobalGameManager):
   m_CopyBufferShader: PPtr[ComputeShader]
   m_FixedTimeStep: float
@@ -5642,15 +6051,18 @@ class VFXManager(GlobalGameManager):
   m_RuntimeVersion: Optional[int] = None
   m_StripUpdateShader: Optional[PPtr[ComputeShader]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class LevelGameManager(GameManager, ABC):
   pass
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class HaloManager(LevelGameManager):
   pass
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class LightmapSettings(LevelGameManager):
   m_Lightmaps: List[LightmapData]
   m_LightmapsMode: int
@@ -5664,19 +6076,22 @@ class LightmapSettings(LevelGameManager):
   m_UseDualLightmapsInForward: Optional[bool] = None
   m_UseShadowmask: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class NavMeshSettings(LevelGameManager):
   m_NavMesh: Optional[PPtr[NavMesh]] = None
   m_NavMeshData: Optional[PPtr[NavMeshData]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class OcclusionCullingSettings(LevelGameManager):
   m_OcclusionCullingData: PPtr[OcclusionCullingData]
   m_Portals: List[PPtr[OcclusionPortal]]
   m_SceneGUID: GUID
   m_StaticRenderers: List[PPtr[Renderer]]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class RenderSettings(LevelGameManager):
   m_FlareStrength: float
   m_Fog: bool
@@ -5709,7 +6124,8 @@ class RenderSettings(LevelGameManager):
   m_Sun: Optional[PPtr[Light]] = None
   m_UseRadianceAmbientProbe: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class HierarchyState(Object):
   expanded: List[PPtr[Object]]
   selection: List[PPtr[Object]]
@@ -5718,43 +6134,52 @@ class HierarchyState(Object):
   scrollposition_y: Optional[float] = None
   scrollposition_y: Optional[float] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class InspectorExpandedState(Object):
   m_ExpandedData: List[ExpandedData]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class MarshallingTestObject(Object):
   m_Prop: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class MemorySettings(Object):
   pass
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class NScreenBridge(Object):
   pass
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class NativeObjectType(Object):
   m_Inner: NativeType
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class PackedAssets(Object):
   m_Contents: List[BuildReportPackedAssetInfo]
   m_Overhead: int
   m_ShortPath: str
   m_File: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class PlatformModuleSetup(Object):
   modules: List[Module]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class PluginBuildInfo(Object):
   m_EditorPlugins: List[str]
   m_RuntimePlugins: List[str]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Prefab(Object):
   m_RootGameObject: PPtr[GameObject]
   m_ContainsMissingSerializeReferenceTypes: Optional[bool] = None
@@ -5766,18 +6191,21 @@ class Prefab(Object):
   m_ParentPrefab: Optional[PPtr[Prefab]] = None
   m_SourcePrefab: Optional[PPtr[Prefab]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class PrefabInstance(Object):
   m_Modification: PrefabModification
   m_RootGameObject: PPtr[GameObject]
   m_SourcePrefab: PPtr[Prefab]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class PresetManager(Object):
   m_DefaultList: Optional[List[DefaultPresetList]] = None
   m_DefaultPresets: Optional[List[Tuple[PresetType, List[DefaultPreset]]]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class PropertyModificationsTargetTestObject(Object):
   m_Array: List[PropertyModificationsTargetTestNativeObject]
   m_Data: PropertyModificationsTargetTestNativeObject
@@ -5787,15 +6215,18 @@ class PropertyModificationsTargetTestObject(Object):
   m_BytesSize: Optional[int] = None
   m_Floats: Optional[List[float]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class RenderPassAttachment(Object):
   pass
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SceneRoots(Object):
   m_Roots: List[PPtr[Object]]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SceneVisibilityState(Object):
   m_IsolationMode: Optional[bool] = None
   m_MainStageIsolated: Optional[bool] = None
@@ -5805,99 +6236,119 @@ class SceneVisibilityState(Object):
   m_SceneVisibilityData: Optional[SceneDataContainer] = None
   m_SceneVisibilityDataIsolated: Optional[SceneDataContainer] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ScenesUsingAssets(Object):
   m_ListOfScenesUsingEachAsset: List[Tuple[str, List[str]]]
   m_ScenesUsingAssets: List[BuildReportScenesUsingAsset]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SerializableManagedHost(Object):
   m_Script: PPtr[MonoScript]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SerializableManagedRefTestClass(Object):
   m_Script: PPtr[MonoScript]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ShaderContainer(Object):
   pass
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SiblingDerived(Object):
   pass
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SpriteAtlasDatabase(Object):
   pass
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class TestObjectVectorPairStringBool(Object):
   m_Map: List[Tuple[str, bool]]
   m_String: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class TestObjectWithSerializedAnimationCurve(Object):
   m_Curve: AnimationCurve
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class TestObjectWithSerializedArray(Object):
   m_ClampTestValue: float
   m_IntegerArray: List[int]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class TestObjectWithSerializedMapStringBool(Object):
   m_Map: List[Tuple[str, bool]]
   m_String: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class TestObjectWithSerializedMapStringNonAlignedStruct(Object):
   m_Map: List[Tuple[str, NonAlignedStruct]]
   m_String: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class TestObjectWithSpecialLayoutOne(Object):
   differentLayout: LayoutDataOne
   sameLayout: LayoutDataOne
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class TestObjectWithSpecialLayoutTwo(Object):
   differentLayout: LayoutDataTwo
   sameLayout: LayoutDataThree
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class TilemapEditorUserSettings(Object):
   m_FocusMode: int
   m_LastUsedPalette: PPtr[GameObject]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class VersionControlSettings(Object):
   m_Mode: str
   m_CollabEditorSettings: Optional[CollabEditorSettings] = None
   m_TrackPackagesOutsideProject: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class VideoBuildInfo(Object):
   m_IsVideoModuleDisabled: bool
   m_VideoClipCount: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AABB:
   m_Center: Vector3f
   m_Extent: Vector3f
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AddedComponent:
   addedObject: PPtr[Component]
   insertIndex: int
   targetCorrespondingSourceObject: PPtr[GameObject]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AddedGameObject:
   addedObject: PPtr[Transform]
   insertIndex: int
   targetCorrespondingSourceObject: PPtr[Transform]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AndroidDeviceFilterData:
   androidOsVersionString: str
   brandName: str
@@ -5907,24 +6358,28 @@ class AndroidDeviceFilterData:
   vendorName: str
   vulkanApiVersionString: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AnimationClipBindingConstant:
   genericBindings: List[GenericBinding]
   pptrCurveMapping: List[PPtr[Object]]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AnimationClipOverride:
   m_OriginalClip: PPtr[AnimationClip]
   m_OverrideClip: PPtr[AnimationClip]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AnimationCurve:
   m_Curve: List[Keyframe]
   m_PostInfinity: int
   m_PreInfinity: int
   m_RotationOrder: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AnimationEvent:
   data: str
   floatParameter: float
@@ -5934,13 +6389,15 @@ class AnimationEvent:
   objectReferenceParameter: PPtr[Object]
   time: float
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AnimatorCondition:
   m_ConditionEvent: str
   m_ConditionMode: int
   m_EventTreshold: float
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Annotation:
   m_ClassID: int
   m_Flags: int
@@ -5948,7 +6405,8 @@ class Annotation:
   m_IconEnabled: bool
   m_ScriptClass: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ArticulationDrive:
   damping: float
   forceLimit: float
@@ -5959,7 +6417,8 @@ class ArticulationDrive:
   upperLimit: float
   driveType: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AspectRatios:
   Others: bool
   x16_10: bool
@@ -5967,13 +6426,15 @@ class AspectRatios:
   x4_3: bool
   x5_4: bool
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AssemblyJsonAsset(TextAsset):
   m_Name: str
   m_Script: str
   m_PathName: Optional[str] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AssemblyJsonImporter(AssetImporter):
   m_AssetBundleName: str
   m_AssetBundleVariant: str
@@ -5981,7 +6442,8 @@ class AssemblyJsonImporter(AssetImporter):
   m_UserData: str
   m_ExternalObjects: Optional[List[Tuple[SourceAssetIdentifier, PPtr[Object]]]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Asset:
   children: List[GUID]
   labels: AssetLabels
@@ -5991,7 +6453,9 @@ class Asset:
   type: int
   assetBundleIndex: Optional[int] = None
   digest: Optional[MdFour] = None
-  guidOfPathLocationDependencies: Optional[Union[List[Tuple[str, GUID]], List[Tuple[GUID, str]]]] = None
+  guidOfPathLocationDependencies: Optional[
+    Union[List[Tuple[str, GUID]], List[Tuple[GUID, str]]]
+  ] = None
   hash: Optional[Union[Hash128, MdFour]] = None
   hashOfImportedAssetDependencies: Optional[List[GUID]] = None
   hashOfSourceAssetDependencies: Optional[List[GUID]] = None
@@ -6003,24 +6467,28 @@ class Asset:
   modificationDate_1_: Optional[int] = None
   scriptedImporterClassID: Optional[str] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AssetBundleFullName:
   m_AssetBundleName: str
   m_AssetBundleVariant: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AssetBundleInfo:
   AssetBundleDependencies: List[int]
   AssetBundleHash: Hash128
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AssetBundleScriptInfo:
   assemblyName: str
   className: str
   hash: int
   nameSpace: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AssetDatabase(Object):
   m_Assets: List[Tuple[GUID, Asset]]
   m_AssetBundleNames: Optional[List[Tuple[int, AssetBundleFullName]]] = None
@@ -6029,23 +6497,27 @@ class AssetDatabase(Object):
   m_UnityShadersVersion: Optional[int] = None
   m_lastValidVersionHashes: Optional[List[Tuple[int, int]]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AssetDatabaseMetrics:
   totalAssetCount: int
   nonProAssetCount: Optional[int] = None
   nonProAssetsCreatedAfterProLicense: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AssetImporterHashKey:
   ScriptClass: str
   type: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AssetImporterLog(NamedObject):
   m_Logs: List[AssetImporter_ImportError]
   m_Name: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AssetImporter_ImportError:
   error: str
   file: str
@@ -6053,34 +6525,40 @@ class AssetImporter_ImportError:
   mode: int
   object: PPtr[Object]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AssetInfo:
   asset: PPtr[Object]
   preloadIndex: int
   preloadSize: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AssetLabels:
   m_Labels: List[str]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AssetTimeStamp:
   metaModificationDate_0_: int
   metaModificationDate_1_: int
   modificationDate_0_: int
   modificationDate_1_: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AttachmentIndexArray:
   activeAttachments: int
   attachments: List[int]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AttachmentInfo:
   format: int
   needsResolve: bool
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AudioImporterOutput:
   editorOutputContainerFormat: int
   editorOutputSettings: SampleSettings
@@ -6088,7 +6566,8 @@ class AudioImporterOutput:
   outputSettings: SampleSettings
   playerResource: Optional[StreamedResource] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AudioMixerConstant:
   effectGUIDs: List[GUID]
   effects: List[EffectConstant]
@@ -6104,15 +6583,18 @@ class AudioMixerConstant:
   snapshots: List[SnapshotConstant]
   groupConnections: Optional[List[GroupConnection]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AudioMixerLiveUpdateBool(ABC):
   pass
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AudioMixerLiveUpdateFloat(ABC):
   pass
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AutoOffMeshLinkData:
   m_Area: int
   m_End: Vector3f
@@ -6121,12 +6603,14 @@ class AutoOffMeshLinkData:
   m_Radius: float
   m_Start: Vector3f
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AvatarBodyMask(NamedObject):
   m_Mask: List[int]
   m_Name: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AvatarConstant:
   m_Human: OffsetPtr
   m_HumanSkeletonIndexArray: List[int]
@@ -6143,12 +6627,14 @@ class AvatarConstant:
   m_SkeletonNameIDArray: Optional[List[int]] = None
   m_SkeletonPose: Optional[OffsetPtr] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class AvatarSkeletonMaskElement:
   path: str
   weight: float
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Axes:
   m_Length: float
   m_Limit: Limit
@@ -6157,15 +6643,18 @@ class Axes:
   m_Sgn: Union[float3, float4]
   m_Type: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class BitField:
   m_Bits: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Blend1dDataConstant:
   m_ChildThresholdArray: List[float]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Blend2dDataConstant:
   m_ChildMagnitudeArray: Optional[List[float]] = None
   m_ChildNeighborListArray: Optional[List[MotionNeighborList]] = None
@@ -6174,31 +6663,36 @@ class Blend2dDataConstant:
   m_ChildPositionArray: Optional[List[Vector2f]] = None
   m_ChildThresholdArray: Optional[List[float]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class BlendDirectDataConstant:
   m_ChildBlendEventIDArray: List[int]
   m_NormalizedBlendValues: bool
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class BlendShapeData:
   channels: List[MeshBlendShapeChannel]
   fullWeights: List[float]
   shapes: List[MeshBlendShape]
   vertices: List[BlendShapeVertex]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class BlendShapeVertex:
   index: int
   normal: Vector3f
   tangent: Vector3f
   vertex: Vector3f
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class BlendTreeConstant:
   m_NodeArray: List[OffsetPtr]
   m_BlendEventArrayConstant: Optional[OffsetPtr] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class BlendTreeNodeConstant:
   m_BlendEventID: int
   m_ChildIndices: List[int]
@@ -6214,7 +6708,8 @@ class BlendTreeNodeConstant:
   m_CycleOffset: Optional[float] = None
   m_Mirror: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class BoneInfluence:
   boneIndex_0_: int
   boneIndex_1_: int
@@ -6225,7 +6720,8 @@ class BoneInfluence:
   weight_2_: float
   weight_3_: float
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class BoneWeights4:
   boneIndex_0_: int
   boneIndex_1_: int
@@ -6236,7 +6732,8 @@ class BoneWeights4:
   weight_2_: float
   weight_3_: float
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class BranchWindLevel:
   m_afBend_0: float
   m_afBend_1: float
@@ -6340,20 +6837,23 @@ class BranchWindLevel:
   m_afTurbulence_9: float
   m_fIndependence: float
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class BufferBinding:
   m_Index: int
   m_NameIndex: int
   m_ArraySize: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class BuildReportFile:
   id: int
   path: str
   role: str
   totalSize: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class BuildReportPackedAssetInfo:
   classID: int
   fileID: int
@@ -6362,12 +6862,14 @@ class BuildReportPackedAssetInfo:
   buildTimeAssetPath: Optional[str] = None
   offset: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class BuildReportScenesUsingAsset:
   assetPath: str
   scenePaths: List[str]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class BuildStepInfo:
   messages: List[BuildStepMessage]
   stepName: str
@@ -6375,12 +6877,14 @@ class BuildStepInfo:
   duration: Optional[int] = None
   durationTicks: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class BuildStepMessage:
   content: str
   type: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class BuildSummary:
   assetBundleOptions: int
   crc: int
@@ -6402,7 +6906,8 @@ class BuildSummary:
   totalTimeMS: Optional[int] = None
   totalTimeTicks: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class BuildTargetSettings:
   m_BuildTarget: str
   m_TextureFormat: int
@@ -6413,29 +6918,34 @@ class BuildTargetSettings:
   m_TextureHeight: Optional[int] = None
   m_TextureWidth: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class BuildTextureStackReference:
   groupName: str
   itemName: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class BuiltAssetBundleInfo:
   bundleArchiveFile: int
   bundleName: str
   packagedFileIndices: List[int]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class BuiltinShaderSettings:
   m_Mode: int
   m_Shader: PPtr[Shader]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class CGProgram(TextAsset):
   m_Name: str
   m_Script: str
   m_PathName: Optional[str] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class CachedAssetMetaData:
   guid: GUID
   originalChangeset: int
@@ -6444,20 +6954,23 @@ class CachedAssetMetaData:
   originalParent: GUID
   pathName: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Channel:
   attributeName: str
   byteOffset: int
   curve: AnimationCurve
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ChannelInfo:
   dimension: int
   format: int
   offset: int
   stream: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class CharacterInfo:
   index: int
   uv: Rectf
@@ -6466,7 +6979,8 @@ class CharacterInfo:
   flipped: Optional[bool] = None
   width: Optional[float] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Child:
   m_IsAnim: bool
   m_Motion: PPtr[Motion]
@@ -6476,17 +6990,20 @@ class Child:
   m_Mirror: Optional[bool] = None
   m_Position: Optional[Vector2f] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ChildAnimatorState:
   m_Position: Vector3f
   m_State: PPtr[AnimatorState]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ChildAnimatorStateMachine:
   m_Position: Vector3f
   m_StateMachine: PPtr[AnimatorStateMachine]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ChildMotion:
   m_CycleOffset: float
   m_DirectBlendParameter: str
@@ -6496,7 +7013,8 @@ class ChildMotion:
   m_Threshold: float
   m_TimeScale: float
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ClampVelocityModule:
   dampen: float
   enabled: bool
@@ -6510,7 +7028,8 @@ class ClampVelocityModule:
   multiplyDragByParticleSize: Optional[bool] = None
   multiplyDragByParticleVelocity: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ClassInfo:
   m_AssemblyNameIndex: int
   m_ClassName: str
@@ -6520,20 +7039,23 @@ class ClassInfo:
   m_NumOfMethods: int
   m_NamespaceName: Optional[str] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ClassMethodInfo:
   m_ClassIndex: int
   m_MethodName: str
   m_OrderNumber: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Clip:
   m_DenseClip: DenseClip
   m_StreamedClip: StreamedClip
   m_Binding: Optional[OffsetPtr] = None
   m_ConstantClip: Optional[ConstantClip] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ClipAnimationInfo:
   firstFrame: Union[int, float]
   lastFrame: Union[int, float]
@@ -6566,12 +7088,14 @@ class ClipAnimationInfo:
   takeName: Optional[str] = None
   transformMask: Optional[List[TransformMaskElement]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ClipAnimationInfoCurve:
   curve: AnimationCurve
   name: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ClipMuscleConstant:
   m_AverageAngularSpeed: float
   m_AverageSpeed: Union[float3, float4]
@@ -6604,25 +7128,29 @@ class ClipMuscleConstant:
   m_StopX: Optional[xform] = None
   m_ValueArrayReferencePose: Optional[List[float]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ClothAttachment:
   m_Collider: PPtr[Collider]
   m_Tearable: bool
   m_TwoWayInteraction: bool
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ClothConstrainCoefficients:
   collisionSphereDistance: float
   maxDistance: float
   collisionSphereRadius: Optional[float] = None
   maxDistanceBias: Optional[float] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ClothSphereColliderPair:
   first: PPtr[SphereCollider]
   second: PPtr[SphereCollider]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ClusterInput:
   m_DeviceName: str
   m_Index: int
@@ -6630,19 +7158,23 @@ class ClusterInput:
   m_ServerUrl: str
   m_Type: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class CollabEditorSettings:
   inProgressEnabled: bool
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Collision(ABC):
   pass
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Collision2D(ABC):
   pass
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class CollisionModule:
   enabled: bool
   minKillSpeed: float
@@ -6676,22 +7208,26 @@ class CollisionModule:
   radiusScale: Optional[float] = None
   voxelSize: Optional[float] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ColorBySpeedModule:
   enabled: bool
   gradient: MinMaxGradient
   range: Vector2f
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ColorModule:
   enabled: bool
   gradient: MinMaxGradient
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ComponentPair:
   component: PPtr[Component]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class CompressedAnimationCurve:
   m_Path: str
   m_PostInfinity: int
@@ -6700,7 +7236,8 @@ class CompressedAnimationCurve:
   m_Times: PackedBitVector
   m_Values: PackedBitVector
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class CompressedMesh:
   m_BoneIndices: PackedBitVector
   m_NormalSigns: PackedBitVector
@@ -6716,23 +7253,27 @@ class CompressedMesh:
   m_FloatColors: Optional[PackedBitVector] = None
   m_UVInfo: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ComputeBufferCounter:
   bindpoint: int
   offset: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ComputeShaderBuiltinSampler:
   bindPoint: int
   sampler: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ComputeShaderCB:
   byteSize: int
   name: Union[FastPropertyName, str]
   params: List[ComputeShaderParam]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ComputeShaderKernel:
   builtinSamplers: List[ComputeShaderBuiltinSampler]
   cbs: List[ComputeShaderResource]
@@ -6745,7 +7286,8 @@ class ComputeShaderKernel:
   requirements: Optional[int] = None
   threadGroupSize: Optional[List[int]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ComputeShaderKernelParent:
   name: str
   dynamicKeywords: Optional[List[str]] = None
@@ -6756,7 +7298,8 @@ class ComputeShaderKernelParent:
   variantIndices: Optional[List[Tuple[str, int]]] = None
   variantMap: Optional[List[Tuple[str, ComputeShaderKernel]]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ComputeShaderParam:
   arraySize: int
   colCount: int
@@ -6765,7 +7308,8 @@ class ComputeShaderParam:
   rowCount: int
   type: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ComputeShaderPlatformVariant:
   constantBuffers: List[ComputeShaderCB]
   kernels: List[ComputeShaderKernelParent]
@@ -6773,7 +7317,8 @@ class ComputeShaderPlatformVariant:
   targetLevel: int
   targetRenderer: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ComputeShaderResource:
   bindPoint: int
   name: Union[FastPropertyName, str]
@@ -6783,7 +7328,8 @@ class ComputeShaderResource:
   secondaryBindPoint: Optional[int] = None
   texDimension: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ComputeShaderVariant:
   constantBuffers: List[ComputeShaderCB]
   kernels: List[ComputeShaderKernel]
@@ -6791,26 +7337,30 @@ class ComputeShaderVariant:
   targetRenderer: int
   resourcesResolved: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Condition:
   m_ConditionEvent: str
   m_ConditionMode: int
   m_EventTreshold: float
   m_ExitTime: float
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ConditionConstant:
   m_ConditionMode: int
   m_EventID: int
   m_EventThreshold: float
   m_ExitTime: float
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ConfigSetting:
   flags: int
   value: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ConstantBuffer:
   m_MatrixParams: List[MatrixParameter]
   m_NameIndex: int
@@ -6819,16 +7369,19 @@ class ConstantBuffer:
   m_IsPartialCB: Optional[bool] = None
   m_StructParams: Optional[List[StructParameter]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ConstantClip:
   data: List[float]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ConstraintSource:
   sourceTransform: PPtr[Transform]
   weight: float
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ControllerConstant:
   m_DefaultValues: OffsetPtr
   m_StateMachineArray: List[OffsetPtr]
@@ -6836,14 +7389,16 @@ class ControllerConstant:
   m_HumanLayerArray: Optional[List[OffsetPtr]] = None
   m_LayerArray: Optional[List[OffsetPtr]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class CrashReportingSettings:
   m_Enabled: bool
   m_EventUrl: str
   m_LogBufferSize: Optional[int] = None
   m_NativeEventUrl: Optional[str] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class CustomDataModule:
   color0: MinMaxGradient
   color1: MinMaxGradient
@@ -6861,7 +7416,8 @@ class CustomDataModule:
   vectorComponentCount0: int
   vectorComponentCount1: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class DataTemplate(NamedObject):
   m_Father: PPtr[DataTemplate]
   m_IsDataTemplate: bool
@@ -6869,22 +7425,26 @@ class DataTemplate(NamedObject):
   m_Name: str
   m_Objects: List[PPtr[EditorExtension]]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class DateTime:
   ticks: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class DefaultPreset:
   m_Preset: PPtr[Preset]
   m_Disabled: Optional[bool] = None
   m_Filter: Optional[str] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class DefaultPresetList:
   defaultPresets: List[DefaultPreset]
   type: PresetType
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class DeletedItem:
   changeset: int
   digest: Union[Hash128, MdFour]
@@ -6893,7 +7453,8 @@ class DeletedItem:
   parent: GUID
   type: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class DenseClip:
   m_BeginTime: float
   m_CurveCount: int
@@ -6901,7 +7462,8 @@ class DenseClip:
   m_SampleArray: List[float]
   m_SampleRate: float
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class DetailDatabase:
   WavingGrassTint: ColorRGBA
   m_DetailPrototypes: List[DetailPrototype]
@@ -6923,14 +7485,16 @@ class DetailDatabase:
   m_DetailScatterMode: Optional[int] = None
   m_RandomRotations: Optional[List[Vector3f]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class DetailPatch:
   layerIndices: List[int]
   bounds: Optional[AABB] = None
   coverage: Optional[List[int]] = None
   numberOfObjects: Optional[List[int]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class DetailPrototype:
   dryColor: ColorRGBA
   healthyColor: ColorRGBA
@@ -6955,20 +7519,24 @@ class DetailPrototype:
   useDensityScaling: Optional[int] = None
   useInstancing: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class DeviceNone:
   pass
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class DirectorGenericBinding:
   key: PPtr[Object]
   value: PPtr[Object]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class DirectorPlayer(Behaviour):
   m_GameObject: PPtr[GameObject]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class EffectConstant:
   bypass: bool
   groupConstantIndex: int
@@ -6978,12 +7546,14 @@ class EffectConstant:
   type: int
   wetMixLevelIndex: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class EmbeddedNativeType:
   m_FloatArray: List[float]
   m_String: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class EmissionModule:
   enabled: bool
   m_BurstCount: int
@@ -7005,14 +7575,16 @@ class EmissionModule:
   time2: Optional[float] = None
   time3: Optional[float] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class EnlightenRendererInformation:
   dynamicLightmapSTInSystem: Vector4f
   instanceHash: Hash128
   renderer: PPtr[Object]
   systemId: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class EnlightenSceneMapping:
   m_Renderers: List[EnlightenRendererInformation]
   m_SystemAtlases: List[EnlightenSystemAtlasInformation]
@@ -7020,13 +7592,15 @@ class EnlightenSceneMapping:
   m_TerrainChunks: List[EnlightenTerrainChunksInformation]
   m_Probesets: Optional[List[Hash128]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class EnlightenSystemAtlasInformation:
   atlasHash: Hash128
   atlasSize: int
   firstSystemId: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class EnlightenSystemInformation:
   atlasIndex: int
   atlasOffsetX: int
@@ -7036,24 +7610,28 @@ class EnlightenSystemInformation:
   rendererIndex: int
   rendererSize: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class EnlightenTerrainChunksInformation:
   firstSystemId: int
   numChunksInX: int
   numChunksInY: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ExpandedData:
   m_ClassID: int
   m_ExpandedProperties: List[str]
   m_InspectorExpanded: bool
   m_ScriptClass: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ExposedReferenceTable:
   m_References: List[Tuple[str, PPtr[Object]]]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Expression:
   data_0_: int
   data_1_: int
@@ -7062,14 +7640,16 @@ class Expression:
   op: int
   valueIndex: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ExtensionPropertyValue:
   extensionName: str
   pluginName: str
   propertyName: str
   propertyValue: float
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ExternalForcesModule:
   enabled: bool
   influenceFilter: Optional[int] = None
@@ -7078,7 +7658,8 @@ class ExternalForcesModule:
   multiplier: Optional[float] = None
   multiplierCurve: Optional[MinMaxCurve] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class FalloffTable:
   m_Table_0_: float
   m_Table_10_: float
@@ -7094,11 +7675,13 @@ class FalloffTable:
   m_Table_8_: float
   m_Table_9_: float
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class FastPropertyName:
   name: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class FlareElement:
   m_Color: ColorRGBA
   m_Fade: bool
@@ -7109,7 +7692,8 @@ class FlareElement:
   m_UseLightColor: bool
   m_Zoom: bool
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class FloatCurve:
   attribute: str
   classID: int
@@ -7118,7 +7702,8 @@ class FloatCurve:
   script: PPtr[MonoScript]
   flags: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ForceModule:
   enabled: bool
   inWorldSpace: bool
@@ -7127,7 +7712,8 @@ class ForceModule:
   y: MinMaxCurve
   z: MinMaxCurve
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class GISettings:
   m_AlbedoBoost: float
   m_BounceScale: float
@@ -7137,7 +7723,8 @@ class GISettings:
   m_IndirectOutputScale: float
   m_TemporalCoherenceThreshold: Optional[float] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class GLTextureSettings:
   m_Aniso: int
   m_FilterMode: int
@@ -7147,14 +7734,16 @@ class GLTextureSettings:
   m_WrapV: Optional[int] = None
   m_WrapW: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class GUID:
   data_0_: int
   data_1_: int
   data_2_: int
   data_3_: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class GenericBinding:
   attribute: int
   customType: int
@@ -7166,18 +7755,21 @@ class GenericBinding:
   isSerializeReferenceCurve: Optional[int] = None
   typeID: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class GfxBlendState:
   alphaToMask: int
   rt: List[GfxRenderTargetBlendState]
   separateMRTBlend: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class GfxDepthState:
   depthFunc: int
   depthWrite: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class GfxRasterState:
   conservative: int
   cullMode: int
@@ -7185,7 +7777,8 @@ class GfxRasterState:
   depthClip: int
   slopeScaledDepthBias: float
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class GfxRenderTargetBlendState:
   blendOp: int
   blendOpAlpha: int
@@ -7195,7 +7788,8 @@ class GfxRenderTargetBlendState:
   srcBlendAlpha: int
   writeMask: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class GfxStencilState:
   padding: int
   readMask: int
@@ -7210,7 +7804,8 @@ class GfxStencilState:
   stencilZFailOpFront: int
   writeMask: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Google:
   depthFormat: int
   enableTransitionView: Optional[bool] = None
@@ -7220,7 +7815,8 @@ class Google:
   useProtectedVideoMemory: Optional[bool] = None
   useSustainedPerformanceMode: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Gradient:
   atime0: Optional[int] = None
   atime1: Optional[int] = None
@@ -7256,7 +7852,8 @@ class Gradient:
   m_NumAlphaKeys: Optional[int] = None
   m_NumColorKeys: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class GradientNEW:
   atime0: int
   atime1: int
@@ -7285,7 +7882,8 @@ class GradientNEW:
   m_NumAlphaKeys: int
   m_NumColorKeys: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class GraphicsStateInfo:
   appBackface: bool
   depthBias: float
@@ -7300,13 +7898,15 @@ class GraphicsStateInfo:
   vertexLayout: int
   wireframe: bool
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class GroupConnection:
   sendEffectIndex: int
   sourceGroupIndex: int
   targetGroupIndex: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class GroupConstant:
   bypassEffects: bool
   mute: bool
@@ -7316,11 +7916,13 @@ class GroupConstant:
   volumeIndex: int
   sendIndex: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Hand:
   m_HandBoneIndex: List[int]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class HandPose:
   m_CloseOpen: float
   m_DoFArray: List[float]
@@ -7329,13 +7931,15 @@ class HandPose:
   m_InOut: float
   m_Override: float
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Handle:
   m_ID: int
   m_ParentHumanIndex: int
   m_X: xform
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Hash128:
   bytes_0_: int
   bytes_10_: int
@@ -7354,21 +7958,24 @@ class Hash128:
   bytes_8_: int
   bytes_9_: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class HeightMeshBVNode:
   i: int
   max: Vector3f
   min: Vector3f
   n: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class HeightMeshData:
   m_Bounds: AABB
   m_Indices: List[int]
   m_Nodes: List[HeightMeshBVNode]
   m_Vertices: List[Vector3f]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Heightmap:
   m_Heights: List[int]
   m_Levels: int
@@ -7387,23 +7994,27 @@ class Heightmap:
   m_Thickness: Optional[float] = None
   m_Width: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class HeightmapData:
   terrainData: PPtr[Object]
   isRotated: Optional[bool] = None
   position: Optional[Vector3f] = None
   surfaceToTerrain: Optional[Matrix4x4f] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class HierarchicalSceneData:
   m_SceneGUID: GUID
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class HoloLens:
   depthFormat: int
   depthBufferSharingEnabled: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Human:
   m_ArmStretch: float
   m_ArmTwist: float
@@ -7427,13 +8038,15 @@ class Human:
   m_Handles: Optional[List[Handle]] = None
   m_HasTDoF: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class HumanBone:
   m_BoneName: str
   m_HumanName: str
   m_Limit: SkeletonBoneLimit
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class HumanDescription:
   m_ArmStretch: float
   m_ArmTwist: float
@@ -7452,7 +8065,8 @@ class HumanDescription:
   m_RootMotionBoneRotation: Optional[Quaternionf] = None
   m_SkeletonHasParents: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class HumanGoal:
   m_WeightR: float
   m_WeightT: float
@@ -7460,7 +8074,8 @@ class HumanGoal:
   m_HintT: Optional[Union[float3, float4]] = None
   m_HintWeightT: Optional[float] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class HumanHandle:
   m_BoneName: str
   m_LookAt: bool
@@ -7469,7 +8084,8 @@ class HumanHandle:
   m_Rotation: Quaternionf
   m_Scale: Vector3f
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class HumanLayerConstant:
   m_Binding: int
   m_BodyMask: HumanPoseMask
@@ -7481,7 +8097,8 @@ class HumanLayerConstant:
   m_DefaultWeight: Optional[float] = None
   m_SyncedLayerAffectsTiming: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class HumanPose:
   m_DoFArray: List[float]
   m_GoalArray: List[HumanGoal]
@@ -7492,13 +8109,15 @@ class HumanPose:
   m_RootX: xform
   m_TDoFArray: Optional[Union[List[float4], List[float3]]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class HumanPoseMask:
   word0: int
   word1: int
   word2: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Image:
   image_data: bytes
   m_Format: int
@@ -7506,7 +8125,8 @@ class Image:
   m_RowBytes: int
   m_Width: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ImportLog_ImportLogEntry:
   file: str
   line: int
@@ -7514,13 +8134,15 @@ class ImportLog_ImportLogEntry:
   mode: int
   object: PPtr[Object]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class InheritVelocityModule:
   enabled: bool
   m_Curve: MinMaxCurve
   m_Mode: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class InitialModule:
   enabled: bool
   gravityModifier: Union[MinMaxCurve, float]
@@ -7541,7 +8163,8 @@ class InitialModule:
   startSizeY: Optional[MinMaxCurve] = None
   startSizeZ: Optional[MinMaxCurve] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class InputAxis:
   altNegativeButton: str
   altPositiveButton: str
@@ -7559,7 +8182,8 @@ class InputAxis:
   snap: bool
   type: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class InputImportSettings:
   name: str
   alphaSource: Optional[int] = None
@@ -7568,12 +8192,14 @@ class InputImportSettings:
   value: Optional[SubstanceValue] = None
   wrapMode: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class IntPoint:
   X: int
   Y: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Item:
   changeFlags: Optional[int] = None
   changeset: Optional[int] = None
@@ -7589,17 +8215,20 @@ class Item:
   parentFolderID: Optional[int] = None
   type: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class JointAngleLimit2D:
   m_LowerAngle: float
   m_UpperAngle: float
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class JointAngleLimits2D:
   m_LowerAngle: float
   m_UpperAngle: float
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class JointDrive:
   maximumForce: float
   positionDamper: float
@@ -7607,7 +8236,8 @@ class JointDrive:
   mode: Optional[int] = None
   useAcceleration: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class JointLimits:
   max: float
   min: float
@@ -7617,35 +8247,41 @@ class JointLimits:
   maxBounce: Optional[float] = None
   minBounce: Optional[float] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class JointMotor:
   force: float
   freeSpin: int
   targetVelocity: float
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class JointMotor2D:
   m_MaximumMotorForce: float
   m_MotorSpeed: float
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class JointSpring:
   damper: float
   spring: float
   targetPosition: float
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class JointSuspension2D:
   m_Angle: float
   m_DampingRatio: float
   m_Frequency: float
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class JointTranslationLimits2D:
   m_LowerTranslation: float
   m_UpperTranslation: float
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Keyframe:
   inSlope: Union[Quaternionf, float, Vector3f]
   outSlope: Union[Quaternionf, float, Vector3f]
@@ -7655,18 +8291,21 @@ class Keyframe:
   outWeight: Optional[Union[Quaternionf, float, Vector3f]] = None
   weightedMode: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class LOD:
   renderers: List[LODRenderer]
   screenRelativeHeight: float
   fadeMode: Optional[int] = None
   fadeTransitionWidth: Optional[float] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class LODRenderer:
   renderer: PPtr[Renderer]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class LayerConstant:
   m_Binding: int
   m_BodyMask: HumanPoseMask
@@ -7679,25 +8318,30 @@ class LayerConstant:
   m_StateMachineMotionSetIndex: Optional[int] = None
   m_StateMachineSynchronizedLayerIndex: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class LayoutDataOne:
   m_FloatArray: List[float]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class LayoutDataThree:
   m_AnotherFloatArray: List[float]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class LayoutDataTwo:
   m_FloatValue: float
   m_IntegerValue: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class LeafInfoConstant:
   m_IDArray: List[int]
   m_IndexOffset: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class LibraryRepresentation:
   name: str
   scriptClassName: str
@@ -7709,13 +8353,15 @@ class LibraryRepresentation:
   object: Optional[Union[PPtr[EditorExtension], PPtr[Object]]] = None
   path: Optional[str] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class LifetimeByEmitterSpeedModule:
   enabled: bool
   m_Curve: MinMaxCurve
   m_Range: Vector2f
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class LightBakingOutput:
   probeOcclusionLightIndex: int
   isBaked: Optional[bool] = None
@@ -7724,14 +8370,16 @@ class LightBakingOutput:
   occlusionMaskChannel: Optional[int] = None
   shadowMaskChannel: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class LightProbeData:
   m_NonTetrahedralizedProbeSetIndexMap: List[Tuple[Hash128, int]]
   m_Positions: List[Vector3f]
   m_ProbeSets: List[ProbeSetIndex]
   m_Tetrahedralization: ProbeSetTetrahedralization
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class LightProbeOcclusion:
   m_Occlusion: List[float]
   m_BakedLightIndex: Optional[List[int]] = None
@@ -7739,12 +8387,14 @@ class LightProbeOcclusion:
   m_ProbeOcclusionLightIndex: Optional[List[int]] = None
   m_ShadowMaskChannel: Optional[List[int]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class LightmapBakeMode:
   lightmapBakeType: int
   mixedLightingMode: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class LightmapData:
   m_DirLightmap: Optional[PPtr[Texture2D]] = None
   m_IndirectLightmap: Optional[PPtr[Texture2D]] = None
@@ -7778,7 +8428,8 @@ class LightmapData:
   sh_8_: Optional[float] = None
   sh_9_: Optional[float] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class LightmapSnapshot(NamedObject):
   m_BakedReflectionProbeCubemaps: List[PPtr[Texture]]
   m_BakedReflectionProbes: List[SceneObjectIdentifier]
@@ -7798,7 +8449,8 @@ class LightmapSnapshot(NamedObject):
   m_BakedSkyboxProbeCubemaps: Optional[List[PPtr[Texture]]] = None
   m_SceneGUID: Optional[GUID] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class LightsModule:
   color: bool
   enabled: bool
@@ -7811,12 +8463,14 @@ class LightsModule:
   rangeCurve: MinMaxCurve
   ratio: float
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Limit:
   m_Max: Union[float3, float4]
   m_Min: Union[float3, float4]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class LineParameters:
   alignment: Optional[int] = None
   colorGradient: Optional[Gradient] = None
@@ -7833,7 +8487,8 @@ class LineParameters:
   widthCurve: Optional[AnimationCurve] = None
   widthMultiplier: Optional[float] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Lumin:
   depthFormat: int
   enableGLCache: bool
@@ -7841,12 +8496,14 @@ class Lumin:
   glCacheMaxBlobSize: int
   glCacheMaxFileSize: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class MaterialImportOutput:
   baked: int
   currentSettings: BuildTargetSettings
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class MaterialInstanceSettings:
   buildTargetSettings: List[BuildTargetSettings]
   inputs: List[InputImportSettings]
@@ -7862,7 +8519,8 @@ class MaterialInstanceSettings:
   shaderName: Optional[str] = None
   textureAssignments: Optional[List[ProceduralTextureAssignment]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class MatrixParameter:
   m_ArraySize: int
   m_Index: int
@@ -7870,11 +8528,13 @@ class MatrixParameter:
   m_RowCount: int
   m_Type: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class MdFour:
   md4_hash: bytes
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class MeshBlendShape:
   firstVertex: int
   hasNormals: bool
@@ -7884,26 +8544,30 @@ class MeshBlendShape:
   aabbMinDelta: Optional[Vector3f] = None
   name: Optional[str] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class MeshBlendShapeChannel:
   frameCount: int
   frameIndex: int
   name: str
   nameHash: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class MeshBlendShapeVertex:
   index: int
   normal: Vector3f
   tangent: Vector3f
   vertex: Vector3f
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class MinMaxAABB:
   m_Max: Vector3f
   m_Min: Vector3f
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class MinMaxCurve:
   maxCurve: AnimationCurve
   minCurve: AnimationCurve
@@ -7911,7 +8575,8 @@ class MinMaxCurve:
   scalar: float
   minScalar: Optional[float] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class MinMaxGradient:
   maxColor: ColorRGBA
   maxGradient: Union[GradientNEW, Gradient]
@@ -7919,19 +8584,22 @@ class MinMaxGradient:
   minGradient: Union[GradientNEW, Gradient]
   minMaxState: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class MipmapLimitSettings:
   limitBias: int
   limitBiasMode: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Module:
   dependencies: List[str]
   name: str
   strippable: bool
   controlledByBuiltinPackage: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class MonoAssemblyImporter(AssetImporter):
   m_ExecutionOrder: List[Tuple[str, int]]
   m_IconMap: List[Tuple[str, PPtr[Texture2D]]]
@@ -7941,51 +8609,61 @@ class MonoAssemblyImporter(AssetImporter):
   m_OldHashIdentity: Optional[MdFour] = None
   m_UserData: Optional[str] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class MonoObject(ABC):
   pass
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class MotionNeighborList:
   m_NeighborArray: List[int]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class MultiModeParameter:
   mode: int
   speed: MinMaxCurve
   spread: float
   value: Optional[float] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class NameToObjectMap:
   m_ObjectToName: List[Tuple[PPtr[Shader], str]]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class NativeType:
   a: int
   b: float
   embedded: EmbeddedNativeType
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class NavMesh(NamedObject):
   m_Heightmaps: List[HeightmapData]
   m_MeshData: List[int]
   m_Name: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class NavMeshAreaData:
   cost: float
   name: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class NavMeshAreas(GlobalGameManager):
   areas: List[NavMeshAreaData]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class NavMeshBuildDebugSettings:
   m_Flags: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class NavMeshBuildSettings:
   agentClimb: float
   agentHeight: float
@@ -8006,13 +8684,15 @@ class NavMeshBuildSettings:
   maxJobWorkers: Optional[int] = None
   preserveTilesOutsideBounds: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class NavMeshLayerData:
   cost: float
   editType: int
   name: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class NavMeshLayers(GlobalGameManager):
   Built_in_Layer_0: NavMeshLayerData
   Built_in_Layer_1: NavMeshLayerData
@@ -8047,7 +8727,8 @@ class NavMeshLayers(GlobalGameManager):
   User_Layer_8: NavMeshLayerData
   User_Layer_9: NavMeshLayerData
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class NavMeshParams:
   cellSize: float
   tileSize: float
@@ -8055,22 +8736,26 @@ class NavMeshParams:
   walkableHeight: float
   walkableRadius: float
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class NavMeshTileData:
   m_MeshData: List[int]
   m_Hash: Optional[Hash128] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class NetworkViewID:
   m_ID: int
   m_Type: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Node:
   m_AxesId: int
   m_ParentId: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class NoiseModule:
   damping: bool
   enabled: bool
@@ -8092,16 +8777,19 @@ class NoiseModule:
   rotationAmount: Optional[MinMaxCurve] = None
   sizeAmount: Optional[MinMaxCurve] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class NonAlignedStruct:
   m_Bool: bool
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ObjectRolePair:
   m_Object: PPtr[Object]
   m_RolesMask: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class OcclusionScene:
   indexPortals: int
   indexRenderers: int
@@ -8109,7 +8797,8 @@ class OcclusionScene:
   sizePortals: int
   sizeRenderers: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Oculus:
   dashSupport: bool
   sharedDepthBuffer: bool
@@ -8117,17 +8806,42 @@ class Oculus:
   protectedContext: Optional[bool] = None
   v2Signing: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
-class OffsetPtr:
-  data: Union[SkeletonMask, SkeletonPose, Blend2dDataConstant, Blend1dDataConstant, BlendTreeConstant, Skeleton, Clip, SelectorTransitionConstant, LayerConstant, ValueArray, SelectorStateConstant, ConditionConstant, Human, HumanLayerConstant, Hand, StateConstant, StateMachineConstant, BlendTreeNodeConstant, BlendDirectDataConstant, ValueArrayConstant, TransitionConstant]
 
-@define(kw_only=True, slots=False)
+@unitypy_define
+class OffsetPtr:
+  data: Union[
+    SkeletonMask,
+    SkeletonPose,
+    Blend2dDataConstant,
+    Blend1dDataConstant,
+    BlendTreeConstant,
+    Skeleton,
+    Clip,
+    SelectorTransitionConstant,
+    LayerConstant,
+    ValueArray,
+    SelectorStateConstant,
+    ConditionConstant,
+    Human,
+    HumanLayerConstant,
+    Hand,
+    StateConstant,
+    StateMachineConstant,
+    BlendTreeNodeConstant,
+    BlendDirectDataConstant,
+    ValueArrayConstant,
+    TransitionConstant,
+  ]
+
+
+@unitypy_define
 class Output:
   hasEmptyFontData: Optional[bool] = None
   importedType: Optional[int] = None
   previewData: Optional[List[float]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class PPtrCurve:
   attribute: str
   classID: int
@@ -8136,12 +8850,14 @@ class PPtrCurve:
   script: PPtr[MonoScript]
   flags: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class PPtrKeyframe:
   time: float
   value: PPtr[Object]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class PackedBitVector:
   m_Data: List[int]
   m_NumItems: int
@@ -8149,7 +8865,8 @@ class PackedBitVector:
   m_Range: Optional[float] = None
   m_Start: Optional[float] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class PackingSettings:
   allowAlphaSplitting: bool
   blockOffset: int
@@ -8158,17 +8875,20 @@ class PackingSettings:
   padding: int
   enableAlphaDilation: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Parameter:
   m_GUID: GUID
   m_ParameterName: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ParserBindChannels:
   m_Channels: List[ShaderBindChannel]
   m_SourceMap: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ParticleSystemEmissionBurst:
   cycleCount: int
   repeatInterval: float
@@ -8178,7 +8898,8 @@ class ParticleSystemEmissionBurst:
   minCount: Optional[int] = None
   probability: Optional[float] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ParticleSystemForceFieldParameters:
   m_DirectionCurveX: MinMaxCurve
   m_DirectionCurveY: MinMaxCurve
@@ -8199,7 +8920,8 @@ class ParticleSystemForceFieldParameters:
   m_VectorFieldAttractionCurve: MinMaxCurve
   m_VectorFieldSpeedCurve: MinMaxCurve
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class PerLODSettings:
   castShadows: bool
   enableBump: bool
@@ -8212,11 +8934,13 @@ class PerLODSettings:
   enableSettingOverride: Optional[bool] = None
   enableSubsurface: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class PerformanceReportingSettings:
   m_Enabled: bool
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class PhysicMaterial(NamedObject):
   bounceCombine: int
   bounciness: float
@@ -8228,7 +8952,8 @@ class PhysicMaterial(NamedObject):
   frictionDirection2: Optional[Vector3f] = None
   staticFriction2: Optional[float] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class PhysicsJobOptions2D:
   m_ClearBodyForcesPerJob: int
   m_ClearFlagsPerJob: int
@@ -8250,7 +8975,8 @@ class PhysicsJobOptions2D:
   useConsistencySorting: Optional[bool] = None
   useMultithreading: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class PhysicsShape:
   m_AdjacentEnd: Vector2f
   m_AdjacentStart: Vector2f
@@ -8261,12 +8987,14 @@ class PhysicsShape:
   m_VertexCount: int
   m_VertexStartIndex: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class PhysicsShapeGroup2D:
   m_Shapes: List[PhysicsShape]
   m_Vertices: List[Vector2f]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class PlatformSettings:
   m_AllowsAlphaSplitting: bool
   m_BuildTarget: str
@@ -8278,34 +9006,40 @@ class PlatformSettings:
   m_TextureFormat: int
   m_ResizeAlgorithm: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class PlatformSettingsData:
   settings: List[Tuple[str, str]]
   enabled: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class PlatformShaderDefines:
   defines_Tier1: List[int]
   defines_Tier2: List[int]
   defines_Tier3: List[int]
   shaderPlatform: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class PlatformShaderSettings:
   useCascadedShadowMaps: Optional[bool] = None
   useScreenSpaceShadows: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class PluginImportOutput:
   dllType: Optional[int] = None
   pluginType: Optional[int] = None
   scriptingRuntimeVersion: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Polygon2D(ABC):
   m_Paths: Optional[List[List[Vector2f]]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class PrefabModification:
   m_Modifications: List[PropertyModification]
   m_RemovedComponents: Union[List[PPtr[Object]], List[PPtr[Component]]]
@@ -8314,30 +9048,35 @@ class PrefabModification:
   m_AddedGameObjects: Optional[List[AddedGameObject]] = None
   m_RemovedGameObjects: Optional[List[PPtr[GameObject]]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class PresetType:
   m_ManagedTypeFallback: str
   m_ManagedTypePPtr: PPtr[MonoScript]
   m_NativeTypeID: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class PreviewData:
   m_CompSize: int
   m_OrigSize: int
   m_PreviewData: List[float]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ProbeSetIndex:
   m_Hash: Hash128
   m_Offset: int
   m_Size: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ProbeSetTetrahedralization:
   m_HullRays: List[Vector3f]
   m_Tetrahedra: List[Tetrahedron]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ProceduralMaterialInformation:
   m_Offset: Vector2f
   m_Scale: Vector2f
@@ -8346,25 +9085,29 @@ class ProceduralMaterialInformation:
   m_GenerateMipmaps: Optional[bool] = None
   m_GeneratedAtLoading: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ProceduralTextureAssignment:
   baseUID: int
   material: PPtr[ProceduralMaterial]
   shaderProp: Union[FastPropertyName, str]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class PropertyModification:
   objectReference: PPtr[Object]
   propertyPath: str
   target: PPtr[Object]
   value: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class PropertyModificationsTargetTestNativeObject:
   m_FloatValue: float
   m_IntegerValue: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class QualitySetting:
   anisotropicTextures: int
   antiAliasing: int
@@ -8419,40 +9162,47 @@ class QualitySetting:
   textureQuality: Optional[int] = None
   useLegacyDetailDistribution: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class QuaternionCurve:
   curve: AnimationCurve
   path: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class RationalTime:
   m_Count: int
   m_Rate: TicksPerSecond
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class RayTracingShaderBuiltinSampler:
   bindPoint: int
   sampler: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class RayTracingShaderConstantBuffer:
   byteSize: int
   name: str
   params: List[RayTracingShaderParam]
   hash: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class RayTracingShaderFunctionDesc:
   attributeSizeInBytes: int
   identifier: RayTracingShaderID
   payloadSizeInBytes: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class RayTracingShaderID:
   name: str
   type: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class RayTracingShaderParam:
   arraySize: int
   colCount: int
@@ -8464,7 +9214,8 @@ class RayTracingShaderParam:
   propertySheetType: Optional[int] = None
   type: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class RayTracingShaderReflectionData:
   code: List[int]
   functions: List[RayTracingShaderFunctionDesc]
@@ -8474,7 +9225,8 @@ class RayTracingShaderReflectionData:
   precompiled: Optional[List[int]] = None
   requirements: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class RayTracingShaderResource:
   bindPoint: int
   name: str
@@ -8484,7 +9236,8 @@ class RayTracingShaderResource:
   arraySize: Optional[int] = None
   multisampled: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class RayTracingShaderResources:
   builtinSamplers: List[RayTracingShaderBuiltinSampler]
   constantBuffers: List[RayTracingShaderResource]
@@ -8493,23 +9246,27 @@ class RayTracingShaderResources:
   outputBuffers: List[RayTracingShaderResource]
   textures: List[RayTracingShaderResource]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class RayTracingShaderVariant:
   resourceReflectionData: RayTracingShaderReflectionData
   targetRenderer: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Rectf:
   height: float
   width: float
   x: float
   y: float
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class RenderManager(GlobalGameManager):
   pass
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class RenderPassInfo:
   attachmentCount: int
   attachments: List[AttachmentInfo]
@@ -8520,7 +9277,8 @@ class RenderPassInfo:
   subPassCount: int
   subPasses: List[SubPassDescriptor]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class RenderStateBlock:
   blendState: GfxBlendState
   depthState: GfxDepthState
@@ -8529,11 +9287,13 @@ class RenderStateBlock:
   stencilRef: int
   stencilState: GfxStencilState
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class RenderStateInfo:
   renderState: RenderStateBlock
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class RendererData:
   lightmapIndex: int
   lightmapIndexDynamic: int
@@ -8544,12 +9304,14 @@ class RendererData:
   uvMesh: PPtr[Mesh]
   explicitProbeSetHash: Optional[Hash128] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ResourceManager_Dependency:
   m_Dependencies: List[PPtr[Object]]
   m_Object: PPtr[Object]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class RippleGroup:
   m_afDirectional_0: float
   m_afDirectional_1: float
@@ -8634,11 +9396,13 @@ class RippleGroup:
   m_fIndependence: float
   m_fShimmer: float
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class RootMotionData(ABC):
   pass
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class RotationBySpeedModule:
   curve: MinMaxCurve
   enabled: bool
@@ -8647,7 +9411,8 @@ class RotationBySpeedModule:
   x: Optional[MinMaxCurve] = None
   y: Optional[MinMaxCurve] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class RotationModule:
   curve: MinMaxCurve
   enabled: bool
@@ -8655,7 +9420,8 @@ class RotationModule:
   x: Optional[MinMaxCurve] = None
   y: Optional[MinMaxCurve] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SBranchWindLevel:
   m_afDirectionAdherence_0: float
   m_afDirectionAdherence_1: float
@@ -8691,7 +9457,8 @@ class SBranchWindLevel:
   m_fTwitch: float
   m_fTwitchFreqScale: float
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SParams:
   BranchLevel1: SBranchWindLevel
   BranchLevel2: SBranchWindLevel
@@ -8853,7 +9620,8 @@ class SParams:
   m_fRollingNoiseTwist: float
   m_fStrengthResponse: float
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SWindGroup:
   m_afRippleDistance_0: float
   m_afRippleDistance_1: float
@@ -8912,7 +9680,8 @@ class SWindGroup:
   m_fRollSpeed: float
   m_fTwitchSharpness: float
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SampleSettings:
   compressionFormat: int
   conversionMode: int
@@ -8922,12 +9691,14 @@ class SampleSettings:
   sampleRateSetting: int
   preloadAudioData: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SamplerParameter:
   bindPoint: int
   sampler: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Scene(LevelGameManager):
   enabled: Optional[bool] = None
   guid: Optional[GUID] = None
@@ -8937,63 +9708,75 @@ class Scene(LevelGameManager):
   m_QueryMode: Optional[int] = None
   path: Optional[str] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SceneDataContainer:
   m_SceneData: List[Tuple[SceneIdentifier, HierarchicalSceneData]]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SceneIdentifier:
   guid: GUID
   handle: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SceneObjectIdentifier:
   targetObject: int
   targetPrefab: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SceneSettings(LevelGameManager):
   m_PVSData: List[int]
   m_PVSObjectsArray: List[PPtr[Renderer]]
   m_PVSPortalsArray: List[PPtr[OcclusionPortal]]
   m_QueryMode: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SceneVisibilityData:
   m_SceneGUID: GUID
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ScriptMapper(GlobalGameManager):
   m_Shaders: NameToObjectMap
   m_PreloadShaders: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SecondarySpriteTexture:
   name: str
   texture: PPtr[Texture2D]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SecondaryTextureSettings:
   platformSettings: List[TextureImporterPlatformSettings]
   sRGB: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SelectorStateConstant:
   m_FullPathID: int
   m_IsEntry: bool
   m_TransitionConstantArray: List[OffsetPtr]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SelectorTransitionConstant:
   m_ConditionConstantArray: List[OffsetPtr]
   m_Destination: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SerializedCustomEditorForRenderPipeline:
   customEditorName: str
   renderPipelineType: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SerializedPass:
   m_HasInstancingVariant: bool
   m_Name: str
@@ -9017,14 +9800,16 @@ class SerializedPass:
   m_SerializedKeywordStateMask: Optional[List[int]] = None
   progRayTracing: Optional[SerializedProgram] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SerializedPlayerSubProgram:
   m_BlobIndex: int
   m_GpuProgramType: int
   m_KeywordIndices: List[int]
   m_ShaderRequirements: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SerializedProgram:
   m_SubPrograms: List[SerializedSubProgram]
   m_CommonParameters: Optional[SerializedProgramParameters] = None
@@ -9032,7 +9817,8 @@ class SerializedProgram:
   m_PlayerSubPrograms: Optional[List[List[SerializedPlayerSubProgram]]] = None
   m_SerializedKeywordStateMask: Optional[List[int]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SerializedProgramParameters:
   m_BufferParams: List[BufferBinding]
   m_ConstantBufferBindings: List[BufferBinding]
@@ -9043,11 +9829,13 @@ class SerializedProgramParameters:
   m_UAVParams: List[UAVParameter]
   m_VectorParams: List[VectorParameter]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SerializedProperties:
   m_Props: List[SerializedProperty]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SerializedProperty:
   m_Attributes: List[str]
   m_DefTexture: SerializedTextureProperty
@@ -9060,7 +9848,8 @@ class SerializedProperty:
   m_Name: str
   m_Type: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SerializedShader:
   m_CustomEditorName: str
   m_Dependencies: List[SerializedShaderDependency]
@@ -9069,21 +9858,26 @@ class SerializedShader:
   m_Name: str
   m_PropInfo: SerializedProperties
   m_SubShaders: List[SerializedSubShader]
-  m_CustomEditorForRenderPipelines: Optional[List[SerializedCustomEditorForRenderPipeline]] = None
+  m_CustomEditorForRenderPipelines: Optional[
+    List[SerializedCustomEditorForRenderPipeline]
+  ] = None
   m_KeywordFlags: Optional[List[int]] = None
   m_KeywordNames: Optional[List[str]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SerializedShaderDependency:
   from_: str
   to: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SerializedShaderFloatValue:
   name: Union[FastPropertyName, str]
   val: float
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SerializedShaderRTBlendState:
   blendOp: SerializedShaderFloatValue
   blendOpAlpha: SerializedShaderFloatValue
@@ -9093,7 +9887,8 @@ class SerializedShaderRTBlendState:
   srcBlend: SerializedShaderFloatValue
   srcBlendAlpha: SerializedShaderFloatValue
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SerializedShaderState:
   alphaToMask: SerializedShaderFloatValue
   culling: SerializedShaderFloatValue
@@ -9129,7 +9924,8 @@ class SerializedShaderState:
   conservative: Optional[SerializedShaderFloatValue] = None
   zClip: Optional[SerializedShaderFloatValue] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SerializedShaderVectorValue:
   name: Union[FastPropertyName, str]
   w: SerializedShaderFloatValue
@@ -9137,14 +9933,16 @@ class SerializedShaderVectorValue:
   y: SerializedShaderFloatValue
   z: SerializedShaderFloatValue
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SerializedStencilOp:
   comp: SerializedShaderFloatValue
   fail: SerializedShaderFloatValue
   pass_: SerializedShaderFloatValue
   zFail: SerializedShaderFloatValue
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SerializedSubProgram:
   m_BlobIndex: int
   m_Channels: ParserBindChannels
@@ -9164,31 +9962,37 @@ class SerializedSubProgram:
   m_UAVParams: Optional[List[UAVParameter]] = None
   m_VectorParams: Optional[List[VectorParameter]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SerializedSubShader:
   m_LOD: int
   m_Passes: List[SerializedPass]
   m_Tags: SerializedTagMap
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SerializedTagMap:
   tags: List[Tuple[str, str]]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SerializedTextureProperty:
   m_DefaultName: str
   m_TexDim: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ShaderBindChannel:
   source: int
   target: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ShaderInfo:
   variants: List[VariantInfo]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ShadowSettings:
   m_Bias: float
   m_Resolution: int
@@ -9202,7 +10006,8 @@ class ShadowSettings:
   m_SoftnessFade: Optional[float] = None
   m_UseCullingMatrixOverride: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ShapeModule:
   angle: float
   enabled: bool
@@ -9244,7 +10049,8 @@ class ShapeModule:
   randomPositionAmount: Optional[float] = None
   sphericalDirectionAmount: Optional[float] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SizeBySpeedModule:
   curve: MinMaxCurve
   enabled: bool
@@ -9253,7 +10059,8 @@ class SizeBySpeedModule:
   y: Optional[MinMaxCurve] = None
   z: Optional[MinMaxCurve] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SizeModule:
   curve: MinMaxCurve
   enabled: bool
@@ -9261,13 +10068,15 @@ class SizeModule:
   y: Optional[MinMaxCurve] = None
   z: Optional[MinMaxCurve] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Skeleton:
   m_AxesArray: List[Axes]
   m_ID: List[int]
   m_Node: List[Node]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SkeletonBone:
   m_Name: str
   m_Position: Vector3f
@@ -9276,7 +10085,8 @@ class SkeletonBone:
   m_ParentName: Optional[str] = None
   m_TransformModified: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SkeletonBoneLimit:
   m_Length: float
   m_Max: Vector3f
@@ -9286,21 +10096,25 @@ class SkeletonBoneLimit:
   m_PostQ: Optional[Quaternionf] = None
   m_PreQ: Optional[Quaternionf] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SkeletonMask:
   m_Data: List[SkeletonMaskElement]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SkeletonMaskElement:
   m_Weight: float
   m_Index: Optional[int] = None
   m_PathHash: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SkeletonPose:
   m_X: List[xform]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SketchUpImportCamera:
   aspectRatio: float
   fov: float
@@ -9312,24 +10126,28 @@ class SketchUpImportCamera:
   farPlane: Optional[float] = None
   nearPlane: Optional[float] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SketchUpImportData:
   defaultCamera: SketchUpImportCamera
   scenes: List[SketchUpImportScene]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SketchUpImportScene:
   camera: SketchUpImportCamera
   name: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SnapshotConstant:
   nameHash: int
   transitionIndices: List[int]
   transitionTypes: List[int]
   values: List[float]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SoftJointLimit:
   bounciness: float
   limit: float
@@ -9337,24 +10155,28 @@ class SoftJointLimit:
   damper: Optional[float] = None
   spring: Optional[float] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SoftJointLimitSpring:
   damper: float
   spring: float
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SortingLayerEntry:
   name: str
   uniqueID: int
   userID: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SourceAssetIdentifier:
   assembly: str
   name: str
   type: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SourceTextureInformation:
   doesTextureContainAlpha: bool
   height: int
@@ -9362,7 +10184,8 @@ class SourceTextureInformation:
   doesTextureContainColor: Optional[bool] = None
   sourceWasHDR: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SpeedTreeWind:
   BRANCH_DIRECTIONAL_1: bool
   BRANCH_DIRECTIONAL_2: bool
@@ -9398,7 +10221,8 @@ class SpeedTreeWind:
   m_fMaxBranchLevel1Length: float
   m_sParams: SParams
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SpeedTreeWindConfig8:
   BRANCH_DIRECTIONAL_1: bool
   BRANCH_DIRECTIONAL_2: bool
@@ -9592,7 +10416,8 @@ class SpeedTreeWindConfig8:
   m_fRollingNoiseTwist: float
   m_fStrengthResponse: float
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SpeedTreeWindConfig9:
   m_bDoBranch1: int
   m_bDoBranch2: int
@@ -9621,7 +10446,8 @@ class SpeedTreeWindConfig9:
   m_fImportScaling: Optional[float] = None
   pad: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SphericalHarmonicsL2:
   sh_10_: float
   sh_11_: float
@@ -9651,12 +10477,14 @@ class SphericalHarmonicsL2:
   sh__8_: float
   sh__9_: float
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SplashScreenLogo:
   duration: float
   logo: PPtr[Sprite]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SplatDatabase:
   m_AlphaTextures: List[PPtr[Texture2D]]
   m_AlphamapResolution: int
@@ -9667,7 +10495,8 @@ class SplatDatabase:
   m_Splats: Optional[List[SplatPrototype]] = None
   m_TerrainLayers: Optional[List[PPtr[TerrainLayer]]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SplatPrototype:
   texture: PPtr[Texture2D]
   tileOffset: Vector2f
@@ -9676,11 +10505,13 @@ class SplatPrototype:
   smoothness: Optional[float] = None
   specularMetallic: Optional[Vector4f] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SpriteAtlasAssetData:
   packables: List[PPtr[Object]]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SpriteAtlasData:
   alphaTexture: PPtr[Texture2D]
   downscaleMultiplier: float
@@ -9692,7 +10523,8 @@ class SpriteAtlasData:
   atlasRectOffset: Optional[Vector2f] = None
   secondaryTextures: Optional[List[SecondarySpriteTexture]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SpriteAtlasEditorData:
   bindAsDefault: bool
   cachedData: PPtr[CachedSpriteAtlasRuntimeData]
@@ -9702,11 +10534,14 @@ class SpriteAtlasEditorData:
   platformSettings: List[TextureImporterPlatformSettings]
   textureSettings: TextureSettings
   variantMultiplier: float
-  secondaryTextureSettings: Optional[List[Tuple[str, SecondaryTextureSettings]]] = None
+  secondaryTextureSettings: Optional[List[Tuple[str, SecondaryTextureSettings]]] = (
+    None
+  )
   storedHash: Optional[Hash128] = None
   totalSpriteSurfaceArea: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SpriteBone:
   length: float
   name: str
@@ -9716,20 +10551,24 @@ class SpriteBone:
   color: Optional[ColorRGBA] = None
   guid: Optional[str] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SpriteCustomDataEntry:
   m_Key: str
   m_Value: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SpriteCustomMetadata:
   m_Entries: List[SpriteCustomDataEntry]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SpriteData:
   sprite: PPtr[Object]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SpriteMetaData:
   m_Alignment: int
   m_Name: str
@@ -9748,7 +10587,8 @@ class SpriteMetaData:
   m_Vertices: Optional[List[Vector2f]] = None
   m_Weights: Optional[List[BoneWeights4]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SpriteRenderData:
   settingsRaw: int
   texture: PPtr[Texture2D]
@@ -9767,7 +10607,8 @@ class SpriteRenderData:
   uvTransform: Optional[Vector4f] = None
   vertices: Optional[List[SpriteVertex]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SpriteSheetMetaData:
   m_Sprites: List[SpriteMetaData]
   m_Bones: Optional[List[SpriteBone]] = None
@@ -9784,7 +10625,8 @@ class SpriteSheetMetaData:
   m_Vertices: Optional[List[Vector2f]] = None
   m_Weights: Optional[List[BoneWeights4]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SpriteTilingProperty:
   adaptiveTiling: bool
   adaptiveTilingThreshold: float
@@ -9794,12 +10636,14 @@ class SpriteTilingProperty:
   oldSize: Vector2f
   pivot: Vector2f
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SpriteVertex:
   pos: Vector3f
   uv: Optional[Vector2f] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class State(NamedObject):
   m_IKOnFeet: bool
   m_Motions: List[PPtr[Motion]]
@@ -9811,7 +10655,8 @@ class State(NamedObject):
   m_CycleOffset: Optional[float] = None
   m_Mirror: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class StateConstant:
   m_BlendTreeConstantArray: List[OffsetPtr]
   m_BlendTreeConstantIndexArray: List[int]
@@ -9833,12 +10678,14 @@ class StateConstant:
   m_TimeParamID: Optional[int] = None
   m_WriteDefaultValues: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class StateKey:
   m_LayerIndex: int
   m_StateID: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class StateMachine(NamedObject):
   m_AnyStatePosition: Vector3f
   m_ChildStateMachine: List[PPtr[StateMachine]]
@@ -9849,14 +10696,18 @@ class StateMachine(NamedObject):
   m_OrderedTransitions: List[Tuple[PPtr[State], List[PPtr[Transition]]]]
   m_ParentStateMachinePosition: Vector3f
   m_States: List[PPtr[State]]
-  m_LocalTransitions: Optional[List[Tuple[PPtr[State], List[PPtr[Transition]]]]] = None
+  m_LocalTransitions: Optional[List[Tuple[PPtr[State], List[PPtr[Transition]]]]] = (
+    None
+  )
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class StateMachineBehaviourVectorDescription:
   m_StateMachineBehaviourIndices: List[int]
   m_StateMachineBehaviourRanges: List[Tuple[StateKey, StateRange]]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class StateMachineConstant:
   m_AnyStateTransitionConstantArray: List[OffsetPtr]
   m_DefaultState: int
@@ -9865,17 +10716,20 @@ class StateMachineConstant:
   m_SelectorStateConstantArray: Optional[List[OffsetPtr]] = None
   m_SynchronizedLayerCount: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class StateRange:
   m_Count: int
   m_StartIndex: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class StaticBatchInfo:
   firstSubMesh: int
   subMeshCount: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class StreamInfo:
   channelMask: int
   offset: int
@@ -9884,25 +10738,29 @@ class StreamInfo:
   dividerOp: Optional[int] = None
   frequency: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class StreamedClip:
   curveCount: int
   data: List[int]
   discreteCurveCount: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class StreamedResource:
   m_Offset: int
   m_Size: int
   m_Source: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class StreamingInfo:
   offset: int
   path: str
   size: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class StructParameter:
   m_ArraySize: int
   m_Index: int
@@ -9911,19 +10769,22 @@ class StructParameter:
   m_StructSize: int
   m_VectorMembers: List[VectorParameter]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SubCollider:
   m_Collider: PPtr[Collider2D]
   m_ColliderPaths: List[List[IntPoint]]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SubEmitterData:
   emitter: PPtr[ParticleSystem]
   properties: int
   type: int
   emitProbability: Optional[float] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SubMesh:
   firstByte: int
   firstVertex: int
@@ -9935,7 +10796,8 @@ class SubMesh:
   topology: Optional[int] = None
   triangleCount: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SubModule:
   enabled: bool
   subEmitterBirth: Optional[PPtr[ParticleSystem]] = None
@@ -9946,18 +10808,21 @@ class SubModule:
   subEmitterDeath1: Optional[PPtr[ParticleSystem]] = None
   subEmitters: Optional[List[SubEmitterData]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SubPassDescriptor:
   colorOutputs: AttachmentIndexArray
   flags: int
   inputs: AttachmentIndexArray
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SubstanceEnumItem:
   text: str
   value: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SubstanceInput:
   alteredTexturesUID: List[int]
   enumValues: List[SubstanceEnumItem]
@@ -9976,7 +10841,8 @@ class SubstanceInput:
   label: Optional[str] = None
   visibleIf: Optional[str] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class SubstanceValue:
   scalar_0_: float
   scalar_1_: float
@@ -9985,7 +10851,8 @@ class SubstanceValue:
   texture: PPtr[Texture2D]
   stringvalue: Optional[str] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class TakeInfo:
   bakeStartTime: float
   bakeStopTime: float
@@ -9997,7 +10864,8 @@ class TakeInfo:
   stopTime: float
   internalID: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Tetrahedron:
   indices_0_: int
   indices_1_: int
@@ -10009,7 +10877,8 @@ class Tetrahedron:
   neighbors_2_: int
   neighbors_3_: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class TextureImportInstructions:
   colorSpace: int
   compressedFormat: int
@@ -10028,13 +10897,15 @@ class TextureImportInstructions:
   recommendedFormat: Optional[int] = None
   vtOnly: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class TextureImportOutput:
   sourceTextureInformation: SourceTextureInformation
   textureImportInstructions: TextureImportInstructions
   importInspectorWarnings: Optional[str] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class TextureImporterPlatformSettings:
   m_AllowsAlphaSplitting: bool
   m_AndroidETC2FallbackOverride: int
@@ -10049,7 +10920,8 @@ class TextureImporterPlatformSettings:
   m_ForceMaximumCompressionQuality_BC6H_BC7: Optional[bool] = None
   m_IgnorePlatformSupport: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class TextureParameter:
   m_Dim: int
   m_Index: int
@@ -10057,14 +10929,16 @@ class TextureParameter:
   m_SamplerIndex: int
   m_MultiSampled: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class TextureParameters:
   height: int
   mipLevels: int
   textureFormat: int
   width: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class TextureSettings:
   anisoLevel: int
   compressionQuality: int
@@ -10076,12 +10950,14 @@ class TextureSettings:
   sRGB: bool
   textureCompression: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class TicksPerSecond:
   m_Denominator: int
   m_Numerator: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class TierGraphicsSettings:
   renderingPath: int
   useCascadedShadowMaps: bool
@@ -10091,7 +10967,8 @@ class TierGraphicsSettings:
   realtimeGICPUUsage: Optional[int] = None
   useHDR: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Tile:
   m_TileColorIndex: int
   m_TileIndex: int
@@ -10104,7 +10981,8 @@ class Tile:
   m_TileFlags: Optional[int] = None
   m_TileObjectToInstantiateIndex: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class TileAnimationData:
   m_AnimatedSprites: List[PPtr[Sprite]]
   m_AnimationSpeed: float
@@ -10112,12 +10990,14 @@ class TileAnimationData:
   m_Flags: Optional[int] = None
   m_IsLooping: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class TilemapRefCountedData:
   m_Data: Union[PPtr[GameObject], ColorRGBA, PPtr[Object], Matrix4x4f, PPtr[Sprite]]
   m_RefCount: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class TrailModule:
   colorOverLifetime: MinMaxGradient
   colorOverTrail: MinMaxGradient
@@ -10140,12 +11020,14 @@ class TrailModule:
   splitSubEmitterRibbons: Optional[bool] = None
   textureScale: Optional[Vector2f] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class TransformMaskElement:
   m_Path: str
   m_Weight: float
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Transition(NamedObject):
   m_Atomic: bool
   m_Conditions: List[Condition]
@@ -10158,7 +11040,8 @@ class Transition(NamedObject):
   m_TransitionOffset: float
   m_CanTransitionToSelf: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class TransitionConstant:
   m_ConditionConstantArray: List[OffsetPtr]
   m_DestinationState: int
@@ -10175,7 +11058,8 @@ class TransitionConstant:
   m_InterruptionSource: Optional[int] = None
   m_OrderedInterruption: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class TreeInstance:
   color: ColorRGBA
   heightScale: float
@@ -10185,13 +11069,15 @@ class TreeInstance:
   widthScale: float
   rotation: Optional[float] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class TreePrototype:
   bendFactor: float
   prefab: PPtr[GameObject]
   navMeshLod: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class TriggerModule:
   enabled: bool
   enter: int
@@ -10208,19 +11094,22 @@ class TriggerModule:
   collisionShape5: Optional[PPtr[Component]] = None
   primitives: Optional[List[PPtr[Component]]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class UAVParameter:
   m_Index: int
   m_NameIndex: int
   m_OriginalIndex: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class UVAnimation:
   cycles: float
   x_Tile: int
   y_Tile: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class UVModule:
   animationType: int
   cycles: float
@@ -10241,7 +11130,8 @@ class UVModule:
   timeMode: Optional[int] = None
   uvChannelMask: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class UnityAdsSettings(GlobalGameManager):
   m_Enabled: bool
   m_InitializeOnStartup: bool
@@ -10251,7 +11141,8 @@ class UnityAdsSettings(GlobalGameManager):
   m_GameId: Optional[str] = None
   m_IosGameId: Optional[str] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class UnityAnalyticsSettings:
   m_Enabled: bool
   m_InitializeOnStartup: bool
@@ -10260,25 +11151,33 @@ class UnityAnalyticsSettings:
   m_TestConfigUrl: Optional[str] = None
   m_TestEventUrl: Optional[str] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class UnityPropertySheet:
-  m_Colors: Union[List[Tuple[FastPropertyName, ColorRGBA]], List[Tuple[str, ColorRGBA]]]
+  m_Colors: Union[
+    List[Tuple[FastPropertyName, ColorRGBA]], List[Tuple[str, ColorRGBA]]
+  ]
   m_Floats: Union[List[Tuple[FastPropertyName, float]], List[Tuple[str, float]]]
-  m_TexEnvs: Union[List[Tuple[FastPropertyName, UnityTexEnv]], List[Tuple[str, UnityTexEnv]]]
+  m_TexEnvs: Union[
+    List[Tuple[FastPropertyName, UnityTexEnv]], List[Tuple[str, UnityTexEnv]]
+  ]
   m_Ints: Optional[List[Tuple[str, int]]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class UnityPurchasingSettings:
   m_Enabled: bool
   m_TestMode: bool
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class UnityTexEnv:
   m_Offset: Vector2f
   m_Scale: Vector2f
   m_Texture: PPtr[Texture]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class UpdateZoneInfo:
   needSwap: bool
   passIndex: int
@@ -10286,18 +11185,21 @@ class UpdateZoneInfo:
   updateZoneCenter: Vector3f
   updateZoneSize: Vector3f
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class VFXCPUBufferData:
   data: List[int]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class VFXCPUBufferDesc:
   capacity: int
   initialData: VFXCPUBufferData
   layout: List[VFXLayoutElementDesc]
   stride: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class VFXEditorSystemDesc:
   buffers: List[VFXMapping]
   capacity: int
@@ -10308,7 +11210,8 @@ class VFXEditorSystemDesc:
   values: List[VFXMapping]
   name: Optional[str] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class VFXEditorTaskDesc:
   buffers: List[VFXMapping]
   params: List[VFXMapping]
@@ -10318,30 +11221,59 @@ class VFXEditorTaskDesc:
   values: List[VFXMapping]
   temporaryBuffers: Optional[List[VFXMappingTemporary]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class VFXEntryExposed:
   m_Name: str
   m_Overridden: bool
-  m_Value: Union[Gradient, Vector3f, float, PPtr[NamedObject], Vector4f, AnimationCurve, PPtr[Object], int, Vector2f, bool, Matrix4x4f]
+  m_Value: Union[
+    Gradient,
+    Vector3f,
+    float,
+    PPtr[NamedObject],
+    Vector4f,
+    AnimationCurve,
+    PPtr[Object],
+    int,
+    Vector2f,
+    bool,
+    Matrix4x4f,
+  ]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class VFXEntryExpressionValue:
   m_ExpressionIndex: int
-  m_Value: Union[Gradient, Vector3f, float, PPtr[NamedObject], Vector4f, AnimationCurve, PPtr[Object], int, Vector2f, bool, Matrix4x4f]
+  m_Value: Union[
+    Gradient,
+    Vector3f,
+    float,
+    PPtr[NamedObject],
+    Vector4f,
+    AnimationCurve,
+    PPtr[Object],
+    int,
+    Vector2f,
+    bool,
+    Matrix4x4f,
+  ]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class VFXEventDesc:
   name: str
   playSystems: List[int]
   stopSystems: List[int]
   initSystems: Optional[List[int]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class VFXExposedMapping:
   mapping: VFXMapping
   space: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class VFXExpressionContainer:
   m_Expressions: List[Expression]
   m_NeedsLocalToWorld: bool
@@ -10354,11 +11286,13 @@ class VFXExpressionContainer:
   m_NeededMainCameraBuffers: Optional[int] = None
   m_NeedsMainCamera: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class VFXField:
   m_Array: Union[List[VFXEntryExpressionValue], List[VFXEntryExposed]]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class VFXGPUBufferDesc:
   capacity: int
   layout: List[VFXLayoutElementDesc]
@@ -10368,34 +11302,40 @@ class VFXGPUBufferDesc:
   target: Optional[int] = None
   type: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class VFXInstanceSplitDesc:
   values: List[int]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class VFXLayoutElementDesc:
   name: str
   offset: VFXLayoutOffset
   type: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class VFXLayoutOffset:
   bucket: int
   element: int
   structure: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class VFXMapping:
   index: int
   nameId: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class VFXMappingTemporary:
   mapping: VFXMapping
   pastFrameIndex: int
   perCameraBuffer: bool
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class VFXPropertySheetSerializedBase:
   m_AnimationCurve: VFXField
   m_Bool: VFXField
@@ -10409,7 +11349,8 @@ class VFXPropertySheetSerializedBase:
   m_Vector3f: VFXField
   m_Vector4f: VFXField
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class VFXRendererSettings:
   lightProbeUsage: int
   motionVectorGenerationMode: int
@@ -10418,13 +11359,15 @@ class VFXRendererSettings:
   shadowCastingMode: int
   rayTracingMode: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class VFXShaderSourceDesc:
   compute: bool
   name: str
   source: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class VFXSystemDesc:
   buffers: List[VFXMapping]
   capacity: int
@@ -10436,7 +11379,8 @@ class VFXSystemDesc:
   instanceSplitDescs: Optional[List[VFXInstanceSplitDesc]] = None
   name: Optional[str] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class VFXTaskDesc:
   buffers: List[VFXMapping]
   params: List[VFXMapping]
@@ -10446,7 +11390,8 @@ class VFXTaskDesc:
   instanceSplitIndex: Optional[int] = None
   temporaryBuffers: Optional[List[VFXMappingTemporary]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class VFXTemplate:
   category: str
   description: str
@@ -10454,12 +11399,14 @@ class VFXTemplate:
   name: str
   thumbnail: PPtr[Texture2D]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class VFXTemporaryGPUBufferDesc:
   desc: VFXGPUBufferDesc
   frameCount: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class VRSettings:
   cardboard: Optional[Google] = None
   daydream: Optional[Google] = None
@@ -10469,7 +11416,8 @@ class VRSettings:
   none: Optional[DeviceNone] = None
   oculus: Optional[Oculus] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ValueArray:
   m_BoolValues: List[bool]
   m_FloatValues: List[float]
@@ -10479,27 +11427,32 @@ class ValueArray:
   m_ScaleValues: Optional[Union[List[float4], List[float3]]] = None
   m_VectorValues: Optional[List[float4]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ValueArrayConstant:
   m_ValueArray: List[ValueConstant]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ValueConstant:
   m_ID: int
   m_Index: int
   m_Type: int
   m_TypeID: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class ValueDelta:
   m_Start: float
   m_Stop: float
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class VariableBoneCountWeights:
   m_Data: List[int]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class VariantInfo:
   graphicsStateInfoSet: Optional[List[GraphicsStateInfo]] = None
   keywordNames: Optional[str] = None
@@ -10511,12 +11464,14 @@ class VariantInfo:
   shaderName: Optional[str] = None
   subShaderIndex: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class Vector3Curve:
   curve: AnimationCurve
   path: str
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class VectorParameter:
   m_ArraySize: int
   m_Dim: int
@@ -10524,7 +11479,8 @@ class VectorParameter:
   m_NameIndex: int
   m_Type: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class VelocityModule:
   enabled: bool
   inWorldSpace: bool
@@ -10540,7 +11496,8 @@ class VelocityModule:
   radial: Optional[MinMaxCurve] = None
   speedModifier: Optional[MinMaxCurve] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class VertexData:
   m_DataSize: bytes
   m_VertexCount: int
@@ -10552,13 +11509,15 @@ class VertexData:
   m_Streams_2_: Optional[StreamInfo] = None
   m_Streams_3_: Optional[StreamInfo] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class VertexLayoutInfo:
   vertexChannelsInfo: List[ChannelInfo]
   vertexStreamCount: int
   vertexStrides: List[int]
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class VideoClipImporterOutput:
   encodedEndFrame: Optional[int] = None
   encodedHeight: Optional[int] = None
@@ -10580,7 +11539,8 @@ class VideoClipImporterOutput:
   streamedResource: Optional[StreamedResource] = None
   transcodeSkipped: Optional[bool] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class VideoClipImporterTargetSettings:
   aspectRatio: int
   bitrateMode: int
@@ -10591,7 +11551,8 @@ class VideoClipImporterTargetSettings:
   resizeFormat: int
   spatialQuality: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class VisualEffectInfo:
   m_Buffers: List[VFXGPUBufferDesc]
   m_CPUBuffers: List[VFXCPUBufferDesc]
@@ -10612,7 +11573,8 @@ class VisualEffectInfo:
   m_RuntimeVersion: Optional[int] = None
   m_TemporaryBuffers: Optional[List[VFXTemporaryGPUBufferDesc]] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class VisualEffectSettings:
   m_CullingFlags: int
   m_InitialEventName: str
@@ -10624,7 +11586,8 @@ class VisualEffectSettings:
   m_InstancingDisabledReason: Optional[int] = None
   m_InstancingMode: Optional[int] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class WheelFrictionCurve:
   asymptoteSlip: Optional[float] = None
   asymptoteValue: Optional[float] = None
@@ -10637,23 +11600,27 @@ class WheelFrictionCurve:
   m_Stiffness: Optional[float] = None
   stiffnessFactor: Optional[float] = None
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class bitset:
   bitCount: int
   bitblocks: bytes
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class int2_storage:
   x: int
   y: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class int3_storage:
   x: int
   y: int
   z: int
 
-@define(kw_only=True, slots=False)
+
+@unitypy_define
 class xform:
   q: float4
   s: Union[float3, float4]
