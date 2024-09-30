@@ -74,7 +74,7 @@ In case this happens, the usage of the C-typetree reader can be disabled by addi
 
 ```python
 from UnityPy.helpers import TypeTreeHelper
-TypeTreeHelper.read_typetree_c = False
+TypeTreeHelper.read_typetree_boost = False
 ```
 
 ## Example
