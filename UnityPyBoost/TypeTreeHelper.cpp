@@ -180,12 +180,12 @@ inline PyObject *read_pair(ReaderT *reader, TypeTreeNodeObject *node, TypeTreeRe
         return NULL;
     }
 
-    PyObject *first = read_typetree_value<swap>(reader, (TypeTreeNodeObject *)PyList_GetItem(node->m_Children, 0), config);
+    PyObject *first = read_typetree_value<swap>(reader, (TypeTreeNodeObject *)PyList_GET_ITEM(node->m_Children, 0), config);
     if (!first)
     {
         return NULL;
     }
-    PyObject *second = read_typetree_value<swap>(reader, (TypeTreeNodeObject *)PyList_GetItem(node->m_Children, 1), config);
+    PyObject *second = read_typetree_value<swap>(reader, (TypeTreeNodeObject *)PyList_GET_ITEM(node->m_Children, 1), config);
     if (!second)
     {
         Py_DECREF(first);
@@ -198,10 +198,9 @@ inline PyObject *read_pair(ReaderT *reader, TypeTreeNodeObject *node, TypeTreeRe
 }
 
 template <bool swap>
-inline PyObject *read_class(ReaderT *reader, TypeTreeNodeObject *node, TypeTreeReaderConfigT *config)
+inline PyObject *parse_class(ReaderT *reader, PyObject *dict, TypeTreeNodeObject *node, TypeTreeReaderConfigT *config)
 {
     PyObject *clz = NULL;
-    PyObject *dict = PyDict_New();
 
     // Determine the class based on node's _data_type
     if (node->_data_type == NodeDataType::pptr)
@@ -223,47 +222,38 @@ inline PyObject *read_class(ReaderT *reader, TypeTreeNodeObject *node, TypeTreeR
         }
     }
 
+    // check if class is found
     if (clz == NULL)
     {
         PyErr_SetString(PyExc_ValueError, "Failed to get class");
+        Py_DECREF(clz);
         Py_DECREF(dict);
         return NULL;
     }
 
-    for (int i = 0; i < PyList_GET_SIZE(node->m_Children); i++)
-    {
-        TypeTreeNodeObject *child = (TypeTreeNodeObject *)PyList_GetItem(node->m_Children, i);
-        PyObject *child_value = read_typetree_value<swap>(reader, child, config);
-        if (!child_value)
-        {
-            Py_DECREF(dict);
-            return NULL;
-        }
-        if (PyDict_SetItem(dict, child->m_Name, child_value))
-        {
-            Py_DECREF(dict);
-            Py_DECREF(child_value);
-            return NULL;
-        }
-        // dict increases ref count, so we need to decref here
-        Py_DECREF(child_value);
-    }
-
+    // try to create class instance
     PyObject *args = PyTuple_New(0);
     PyObject *instance = PyObject_Call(clz, args, dict);
     if (instance != NULL)
     {
+        // success
+        // cleanup
+        Py_DECREF(clz);
         Py_DECREF(args);
         Py_DECREF(dict);
+        // return instance
         return instance;
     }
+    // failed, clear error
     PyErr_Clear();
 
+    // clean key names
+    PyObject *key = NULL;
     PyObject *keys = PyDict_Keys(dict);
     PyObject *clean_args = PyTuple_New(1);
-    for (Py_ssize_t i = 0; i < PyList_Size(keys); i++)
+    for (Py_ssize_t i = 0; i < PyList_GET_SIZE(keys); i++)
     {
-        PyObject *key = PyList_GetItem(keys, i);
+        key = PyList_GET_ITEM(keys, i);
         PyTuple_SET_ITEM(clean_args, 0, key);
         PyObject *clean_key = PyObject_Call(config->clean_name, clean_args, NULL);
         if (PyUnicode_Compare(key, clean_key))
@@ -274,25 +264,33 @@ inline PyObject *read_class(ReaderT *reader, TypeTreeNodeObject *node, TypeTreeR
         }
         Py_DECREF(clean_key);
     }
-    PyTuple_SET_ITEM(clean_args, 0, Py_None);
+    // increase ref count for key, as PyTuple_SET_ITEM steals reference, so decref there will decref key
+    Py_INCREF(key);
     Py_DECREF(clean_args);
     Py_DECREF(keys);
 
+    // try to create class instance again with cleaned keys
     instance = PyObject_Call(clz, args, dict);
     if (instance != NULL)
     {
+        // success
+        // cleanup
+        Py_DECREF(clz);
         Py_DECREF(args);
         Py_DECREF(dict);
+        // return instance
         return instance;
     }
+    // failed, clear error
     PyErr_Clear();
 
+    // some keys might be extra, check against __annotations__
     PyObject *annonations = PyObject_GetAttrString(clz, "__annotations__");
     PyObject *extras = PyDict_New();
     keys = PyDict_Keys(dict);
     for (Py_ssize_t i = 0; i < PyList_Size(keys); i++)
     {
-        PyObject *key = PyList_GetItem(keys, i);
+        PyObject *key = PyList_GET_ITEM(keys, i);
         if (PyDict_Contains(annonations, key) == 0)
         {
             PyObject *value = PyDict_GetItem(dict, key);
@@ -301,21 +299,29 @@ inline PyObject *read_class(ReaderT *reader, TypeTreeNodeObject *node, TypeTreeR
         }
     }
     Py_DECREF(keys);
+    Py_DECREF(annonations);
 
+    // try to create class instance again with cleaned keys
     instance = PyObject_Call(clz, args, dict);
     if (instance != NULL)
     {
+        // success, manually set extra keys
         PyObject *items = PyDict_Items(extras);
         for (Py_ssize_t i = 0; i < PyList_Size(items); i++)
         {
-            PyObject *item = PyList_GetItem(items, i);
+            PyObject *item = PyList_GET_ITEM(items, i);
             PyObject *key = PyTuple_GetItem(item, 0);
             PyObject *value = PyTuple_GetItem(item, 1);
             PyObject_SetAttr(instance, key, value);
         }
         Py_DECREF(items);
     }
-
+    // cleanup
+    Py_DECREF(clz);
+    Py_DECREF(args);
+    Py_DECREF(dict);
+    Py_DECREF(extras);
+    // return instance or NULL if failed
     return instance;
 }
 
@@ -373,7 +379,7 @@ PyObject *read_typetree_value(ReaderT *reader, TypeTreeNodeObject *node, TypeTre
         TypeTreeNodeObject *child = nullptr;
         if (PyList_GET_SIZE(node->m_Children) > 0)
         {
-            child = (TypeTreeNodeObject *)PyList_GetItem(node->m_Children, 0);
+            child = (TypeTreeNodeObject *)PyList_GET_ITEM(node->m_Children, 0);
         }
 
         if (child && child->_data_type == NodeDataType::array)
@@ -389,7 +395,7 @@ PyObject *read_typetree_value(ReaderT *reader, TypeTreeNodeObject *node, TypeTre
                 return NULL;
             }
             value = PyList_New(length);
-            child = (TypeTreeNodeObject *)PyList_GetItem(child->m_Children, 1);
+            child = (TypeTreeNodeObject *)PyList_GET_ITEM(child->m_Children, 1);
             for (int i = 0; i < length; i++)
             {
                 PyObject *item = read_typetree_value<swap>(reader, child, config);
@@ -405,30 +411,27 @@ PyObject *read_typetree_value(ReaderT *reader, TypeTreeNodeObject *node, TypeTre
         {
             // class
             value = PyDict_New();
-            if (config->as_dict)
+            for (int i = 0; i < PyList_GET_SIZE(node->m_Children); i++)
             {
-                for (int i = 0; i < PyList_GET_SIZE(node->m_Children); i++)
+                child = (TypeTreeNodeObject *)PyList_GET_ITEM(node->m_Children, i);
+                PyObject *child_value = read_typetree_value<swap>(reader, child, config);
+                if (!child_value)
                 {
-                    child = (TypeTreeNodeObject *)PyList_GetItem(node->m_Children, i);
-                    PyObject *child_value = read_typetree_value<swap>(reader, child, config);
-                    if (!child_value)
-                    {
-                        Py_DECREF(value);
-                        return NULL;
-                    }
-                    if (PyDict_SetItem(value, child->m_Name, child_value))
-                    {
-                        Py_DECREF(value);
-                        Py_DECREF(child_value);
-                        return NULL;
-                    }
-                    // dict increases ref count, so we need to decref here
-                    Py_DECREF(child_value);
+                    Py_DECREF(value);
+                    return NULL;
                 }
+                if (PyDict_SetItem(value, child->m_Name, child_value))
+                {
+                    Py_DECREF(value);
+                    Py_DECREF(child_value);
+                    return NULL;
+                }
+                // dict increases ref count, so we need to decref here
+                Py_DECREF(child_value);
             }
-            else
+            if (!config->as_dict)
             {
-                value = read_class<swap>(reader, node, config);
+                value = parse_class<swap>(reader, value, node, config);
             }
         }
     }
@@ -481,6 +484,9 @@ PyObject *read_typetree(PyObject *self, PyObject *args, PyObject *kwargs)
             return NULL;
         }
     }
+    Py_INCREF(config.assetfile);
+    Py_INCREF(config.classes);
+    Py_INCREF(config.clean_name);
 
     volatile uint16_t bint = 0x0100;
     volatile bool is_big_endian = ((uint8_t *)&bint)[0] == 1;
@@ -626,14 +632,13 @@ static int TypeTreeNode_init(TypeTreeNodeObject *self, PyObject *args, PyObject 
         Py_XINCREF(self->m_Children);
     }
 
-#define SET_NONE_IF_NULL(field) \
-    if (self->field == nullptr) \
-    {                           \
-        self->field = Py_None;  \
-    }                           \
-    else                        \
-    {                           \
-        Py_INCREF(self->field); \
+#define SET_NONE_IF_NULL(field)     \
+    {                               \
+        if (self->field == nullptr) \
+        {                           \
+            self->field = Py_None;  \
+        }                           \
+        Py_INCREF(self->field);     \
     }
 
     SET_NONE_IF_NULL(m_TypeFlags);
