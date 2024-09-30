@@ -1,12 +1,19 @@
+# test files and others
+test.py
+AssetStudio/
+.vscode/
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 .dump
 .idea/
 *.py[cod]
 *$py.class
-test.py
-AssetStudio/
-.vscode/
+
+# precompiled C extensions
+UnityPy/*.so
+UnityPy/*.pyd
 
 # Distribution / packaging
 .Python
