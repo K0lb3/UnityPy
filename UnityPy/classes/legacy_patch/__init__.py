@@ -1,7 +1,8 @@
-from .AudioClip import AudioClip
-from .Mesh import Mesh
-from .Renderer import Renderer
-from .Shader import Shader
-from .Sprite import Sprite
-from .Texture2D import Texture2D
-from .Texture2DArray import Texture2DArray
+from .AudioClip import AudioClip as AudioClip
+from .GameObject import GameObject as GameObject
+from .Mesh import Mesh as Mesh
+from .Renderer import Renderer as Renderer
+from .Shader import Shader as Shader
+from .Sprite import Sprite as Sprite
+from .Texture2D import Texture2D as Texture2D
+from .Texture2DArray import Texture2DArray as Texture2DArray
