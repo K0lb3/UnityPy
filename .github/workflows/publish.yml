@@ -14,7 +14,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        os: ["ubuntu-20.04", "windows-2019", "macos-11"]
+        os: ["ubuntu-20.04", "windows-2019", "macos-13"]
         cp: ["cp37", "cp38", "cp39", "cp310", "cp311", "cp312", "cp313"]
 
 
@@ -45,7 +45,7 @@ jobs:
         uses: pypa/cibuildwheel@v2.20.0
         env:
           CIBW_ARCHS_LINUX: auto aarch64
-          CIBW_ARCHS_MACOS: x86_64 arm64 universal2
+          CIBW_ARCHS_MACOS: x86_64 arm64
           CIBW_BUILD: |
             ${{ matrix.cp }}-manylinux_x86_64
             ${{ matrix.cp }}-manylinux_i686
@@ -54,7 +54,6 @@ jobs:
             ${{ matrix.cp }}-win32
             ${{ matrix.cp }}-macosx_x86_64
             ${{ matrix.cp }}-macosx_arm64
-            ${{ matrix.cp }}-macosx_universal2
             # Disabled repair wheel since the fmob lib is not compatible
           CIBW_REPAIR_WHEEL_COMMAND: ''
           CIBW_REPAIR_WHEEL_COMMAND_LINUX: 'mv {wheel} {dest_dir}/"$(basename {wheel} | sed "s/-linux_/-manylinux_2_17_/")"'
