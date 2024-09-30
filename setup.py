@@ -1,10 +1,45 @@
 import os
 import platform
-from setuptools import setup, Extension, find_packages
+import re
+import subprocess
 
+from setuptools import Extension, find_packages, setup
+from setuptools.command.build_ext import build_ext
 
 INSTALL_DIR = os.path.dirname(os.path.realpath(__file__))
 UNITYPYBOOST_DIR = os.path.join(INSTALL_DIR, "UnityPyBoost")
+
+
+class BuildExt(build_ext):
+    def build_extensions(self):
+        cpp_version_flag: str
+        compiler = self.compiler
+        # msvc - only ever used c++20, never c++2a
+        if compiler.compiler_type == "msvc":
+            cpp_version_flag = "/std:c++20"
+        # gnu & clang
+        elif compiler.compiler_type == "unix":
+            res = subprocess.run(
+                [compiler.compiler[0], "-v"],
+                capture_output=True,
+            )
+            # for some reason g++ and clang++ return this as error
+            text = (res.stdout or res.stderr).decode("utf-8")
+            version = re.search(r"version\s+(\d+)\.", text)
+            if version is None:
+                raise Exception("Failed to determine compiler version")
+            version = int(version.group(1))
+            if version < 10:
+                cpp_version_flag = "-std=c++2a"
+            else:
+                cpp_version_flag = "-std=c++20"
+        else:
+            cpp_version_flag = "-std=c++20"
+
+        for ext in self.extensions:
+            ext.extra_compile_args = [cpp_version_flag]
+
+        build_ext.build_extensions(self)
 
 
 def get_fmod_library():
@@ -68,10 +103,8 @@ setup(
                 if f.endswith(".cpp")
             ],
             language="c++",
-            extra_compile_args=[
-                "/std:c++20" if platform.system() == "Windows" else "-std=c++20"
-            ],
             include_dirs=[UNITYPYBOOST_DIR],
         )
     ],
+    cmdclass={"build_ext": BuildExt},
 )
