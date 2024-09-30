@@ -56,7 +56,7 @@ def _Texture2d_set_image(
     self.m_TextureFormat = tex_format
 
     if self.m_StreamData is not None:
-        self.m_StreamData.m_Path = ""
+        self.m_StreamData.path = ""
         self.m_StreamData.offset = 0
         self.m_StreamData.size = 0
 
