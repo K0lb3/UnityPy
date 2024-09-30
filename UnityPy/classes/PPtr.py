@@ -1,12 +1,13 @@
 from __future__ import annotations
-from typing import TypeVar, Generic, TYPE_CHECKING, Optional, Any, cast
+
+from typing import TYPE_CHECKING, Any, Generic, Optional, TypeVar, cast
 
 from attr import define
 
 if TYPE_CHECKING:
+    from ..enums.ClassIDType import ClassIDType
     from ..files.ObjectReader import ObjectReader
     from ..files.SerializedFile import SerializedFile
-    from ..enums.ClassIDType import ClassIDType
 
 T = TypeVar("T")
 
@@ -48,9 +49,9 @@ class PPtr(Generic[T]):
         else:
             # resolve file id to external name
             external_id = self.m_FileID - 1
-            if external_id >= len(assetsfile.m_Externals):
+            if external_id >= len(assetsfile.externals):
                 raise FileNotFoundError("Failed to resolve pointer - invalid m_FileID!")
-            external = assetsfile.m_Externals[external_id]
+            external = assetsfile.externals[external_id]
 
             # resolve external name to assetsfile
             container = assetsfile.parent
@@ -60,14 +61,26 @@ class PPtr(Generic[T]):
                     f"PPtr points to {external.path} but no container is set!"
                 )
 
-            for child in container.childs:
-                if isinstance(child, SerializedFile) and child.name == external.path:
-                    assetsfile = child
+            external_clean_path = external.path
+            if external_clean_path.startswith("archive:/"):
+                external_clean_path = external_clean_path[9:]
+            if external_clean_path.startswith("assets/"):
+                external_clean_path = external_clean_path[7:]
+            external_clean_path = external_clean_path.rsplit("/")[-1].lower()
+
+            for key, file in container.files.items():
+                if key.lower() == external_clean_path:
+                    assetsfile = file
                     break
             else:
-                raise FileNotFoundError(
-                    f"Failed to resolve pointer - {external.path} not found!"
-                )
+                env = assetsfile.environment
+                cab = env.find_file(external_clean_path)
+                if cab:
+                    assetsfile = cab
+                else:
+                    raise FileNotFoundError(
+                        f"Failed to resolve pointer - {external.path} not found!"
+                    )
 
         return cast("ObjectReader[T]", assetsfile.objects[self.m_PathID])
 
@@ -83,3 +96,11 @@ class PPtr(Generic[T]):
 
     def __bool__(self):
         return self.m_PathID != 0
+
+    def __hash__(self) -> int:
+        return hash((self.m_FileID, self.m_PathID))
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, PPtr):
+            return False
+        return self.m_FileID == other.m_FileID and self.m_PathID == other.m_PathID
