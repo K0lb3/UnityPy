@@ -106,7 +106,7 @@ class BuildType:
         return self.build_type == "p"
 
 
-@define(slots=True)
+@define(slots=True, init=False)
 class SerializedType:
     class_id: int
     is_stripped_type: Optional[bool] = None
@@ -129,6 +129,7 @@ class SerializedType:
     ):
         version = serialized_file.header.version
         self.class_id = reader.read_int()
+        self.__attrs_init__(self.class_id)
 
         if version >= 16:
             self.is_stripped_type = reader.read_boolean()
