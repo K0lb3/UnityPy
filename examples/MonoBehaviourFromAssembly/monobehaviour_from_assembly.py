@@ -6,6 +6,8 @@
 #       https://github.com/K0lb3/TypeTreeGenerator
 #       requires .NET 5.0 SDK
 #           https://dotnet.microsoft.com/download/dotnet/5.0
+#   Requires .NET 3.1
+#       https://aka.ms/dotnet-core-applaunch?framework=Microsoft.NETCore.App&framework_version=3.1.0&arch=x64&rid=win-x64&os=win10
 #
 #   pythonnet 2 and TypeTreeGenerator created with net4.8 works on Windows,
 #   so it can do without pythonnet_init,
@@ -94,7 +96,7 @@ def pythonnet_init():
     from clr_loader import get_coreclr
     from pythonnet import set_runtime
 
-    rt = get_coreclr(
+    rt = get_coreclr( runtime_config=
         os.path.join(TYPETREE_GENERATOR_PATH, "TypeTreeGenerator.runtimeconfig.json")
     )
     set_runtime(rt)
