@@ -7,7 +7,7 @@
 #       requires .NET 5.0 SDK
 #           https://dotnet.microsoft.com/download/dotnet/5.0
 #   Requires .NET 3.1
-#           https://dotnet.microsoft.com/en-us/download/dotnet/3.1/runtime?cid=getdotnetcore
+#           https://dotnet.microsoft.com/download/dotnet/3.1/runtime?cid=getdotnetcore
 #
 #   pythonnet 2 and TypeTreeGenerator created with net4.8 works on Windows,
 #   so it can do without pythonnet_init,
@@ -47,32 +47,34 @@ def export_monobehaviours(asset_path: str, trees: dict):
             except:
                 continue
             for obj in env.objects:
-                if obj.type == "MonoBehaviour":
-                    d = obj.read()
-                    if obj.serialized_type and obj.serialized_type.node:
-                        tree = obj.read_typetree()
-                    else:
-                        if not d.m_Script:
-                            continue
+                if obj.type.name == "MonoBehaviour":
+                    try:
+                        if obj.serialized_type and obj.serialized_type.node:
+                            tree = obj.read_typetree()
+                        else:
+                            if not obj.m_Script:
+                                continue
                             # RIP, no referenced script
                             # can only dump raw
-                        script = d.m_Script.read()
-                        # on-demand solution without already dumped tree
-                        #nodes = generate_tree(
-                        #    g, script.m_AssemblyName, script.m_ClassName, script.m_Namespace
-                        #)
-                        if script.m_ClassName not in trees:
-                            # class not found in known trees,
-                            # might have to add the classes of the other dlls
-                            continue
-                        nodes = FakeNode(**trees[script.m_ClassName])
-                        tree = obj.read_typetree(nodes)
-                
-                # save tree as json whereever you like
+                            script = obj.m_Script.read()
+                            # on-demand solution without already dumped tree
+                            #nodes = generate_tree(
+                            #    g, script.m_AssemblyName, script.m_ClassName, script.m_Namespace
+                            #)
+                            if script.m_ClassName not in trees:
+                                continue
+                                # class not found in known trees,
+                                # might have to add the classes of the other dlls
+                            nodes = FakeNode(**trees[script.m_ClassName])
+                            tree = obj.read_typetree(nodes)
+
+                        # save tree as json whereever you like
+                    except:
+                        continue
                     
                     
 
-def dump_assembly_trees(dll_folder: str, out_path: str):
+def dump_assembly_trees(dll_folder: str, out_path: str = "typetrees.json"):
     # init pythonnet, so that it uses the correct .net for the generator
     pythonnet_init()
     # create generator
@@ -83,9 +85,8 @@ def dump_assembly_trees(dll_folder: str, out_path: str):
     # it's faster and easier overall to just fetch all at once
     trees = generate_tree(g, "Assembly-CSharp.dll", "", "")
 
-    if out_path:
-        with open("typetrees.json", "wt", encoding="utf8") as f:
-            json.dump(trees, f, ensure_ascii=False)
+    with open(out_path, "wt", encoding="utf8") as f:
+        json.dump(trees, f, ensure_ascii=False)
     return trees
 
 
