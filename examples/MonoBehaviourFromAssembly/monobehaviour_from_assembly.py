@@ -7,7 +7,7 @@
 #       requires .NET 5.0 SDK
 #           https://dotnet.microsoft.com/download/dotnet/5.0
 #   Requires .NET 3.1
-#       https://aka.ms/dotnet-core-applaunch?framework=Microsoft.NETCore.App&framework_version=3.1.0&arch=x64&rid=win-x64&os=win10
+#           https://dotnet.microsoft.com/en-us/download/dotnet/3.1/runtime?cid=getdotnetcore
 #
 #   pythonnet 2 and TypeTreeGenerator created with net4.8 works on Windows,
 #   so it can do without pythonnet_init,
