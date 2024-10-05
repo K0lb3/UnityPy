@@ -1,4 +1,4 @@
-__version__ = "1.20.3"
+__version__ = "1.20.4"
 
 from .environment import Environment as Environment
 from .helpers.ArchiveStorageManager import (
