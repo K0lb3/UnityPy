@@ -150,8 +150,17 @@ def parse_image_data(
             f"Not implemented texture format: {texture_format.name}"
         )
 
-    if texture_format in XBOX_SWAP_FORMATS:
-        image_data = swap_bytes_for_xbox(image_data, platform)
+    if platform == BuildTarget.XBOX360 and texture_format in XBOX_SWAP_FORMATS:
+        image_data = swap_bytes_for_xbox(image_data)
+    elif platform == BuildTarget.Switch and platform_blob is not None:
+        gobsPerBlock = TextureSwizzler.get_switch_gobs_per_block(platform_blob)
+        block_size = TextureSwizzler.TEXTUREFORMAT_BLOCK_SIZE_MAP[texture_format]
+        padded_size = TextureSwizzler.get_padded_texture_size(
+            width, height, *block_size, gobsPerBlock
+        )
+        image_data = TextureSwizzler.deswizzle(
+            image_data, *padded_size, *block_size, gobsPerBlock
+        )
 
     if not isinstance(texture_format, TextureFormat):
         texture_format = TextureFormat(texture_format)
@@ -169,33 +178,18 @@ def parse_image_data(
 
     img = selection[0](image_data, width, height, *selection[1:])
 
-    if platform == BuildTarget.Switch and platform_blob is not None:
-        gobsPerBlock = TextureSwizzler.get_switch_gobs_per_block(platform_blob)
-        blockSize = TextureSwizzler.TEXTUREFORMAT_BLOCK_SIZE_MAP[texture_format]
-        img = TextureSwizzler.switch_deswizzle(img, blockSize, gobsPerBlock)
-
     if img and flip:
         return img.transpose(Image.FLIP_TOP_BOTTOM)
 
     return img
 
 
-def swap_bytes_for_xbox(image_data: bytes, build_target: BuildTarget) -> bytes:
+def swap_bytes_for_xbox(image_data: bytes) -> bytes:
     """swaps the texture bytes
     This is required for textures deployed on XBOX360.
-
-    :param image_data: texture data
-    :type image_data: bytes
-    :param build_target: platform of the asset
-    :type build_target: BuildTarget
-    :return: swapped data if platform = XBOX360 else data
-    :rtype: bytes
     """
-    if (
-        build_target == BuildTarget.XBOX360
-    ):  # swap bytes for Xbox confirmed,PS3 not encountered
-        for i in range(0, len(image_data), 2):
-            image_data[i : i + 2] = image_data[i : i + 2][::-1]
+    for i in range(0, len(image_data), 2):
+        image_data[i : i + 2] = image_data[i : i + 2][::-1]
     return image_data
 
 

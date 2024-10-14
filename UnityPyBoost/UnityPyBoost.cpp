@@ -2,7 +2,6 @@
 #pragma once
 #include <Python.h>
 #include "Mesh.hpp"
-#include "TextureSwizzler.hpp"
 #include "TypeTreeHelper.hpp"
 
 /* Mesh.py */
@@ -16,10 +15,6 @@ static struct PyMethodDef method_table[] = {
      (PyCFunction)read_typetree,
      METH_VARARGS | METH_KEYWORDS,
      "replacement for TypeTreeHelper.read_typetree"},
-    {"switch_deswizzle",
-     (PyCFunction)switch_deswizzle,
-     METH_VARARGS,
-     "replacement for TextureSwizzler.switch_deswizzle"},
     {NULL,
      NULL,
      0,
