@@ -414,8 +414,8 @@ def write_value(
     if func:
         value = func(writer, value)
     elif node.m_Type == "pair":
-        write_value(value[0], node.m_Children[0], writer)
-        write_value(value[1], node.m_Children[1], writer)
+        write_value(value[0], node.m_Children[0], writer, config)
+        write_value(value[1], node.m_Children[1], writer, config)
     elif node.m_Type == "ReferencedObject":
         for child in node.m_Children:
             if child.m_Type == "ReferencedObjectData":
