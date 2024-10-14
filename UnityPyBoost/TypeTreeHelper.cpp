@@ -39,6 +39,21 @@ inline PyObject *read_bool(ReaderT *reader)
     return *reader->ptr++ ? Py_True : Py_False;
 }
 
+inline PyObject *read_bool_array(ReaderT *reader, int32_t count)
+{
+    if (reader->ptr + count > reader->end)
+    {
+        PyErr_SetString(PyExc_ValueError, "read_bool out of bounds");
+        return NULL;
+    }
+    PyObject *list = PyList_New(count);
+    for (auto i = 0; i < count; i++)
+    {
+        PyList_SET_ITEM(list, i, *reader->ptr++ ? Py_True : Py_False);
+    }
+    return list;
+}
+
 inline PyObject *read_u8(ReaderT *reader)
 {
     if (reader->ptr + 1 > reader->end)
@@ -49,6 +64,21 @@ inline PyObject *read_u8(ReaderT *reader)
     return PyLong_FromUnsignedLong(*reader->ptr++);
 }
 
+inline PyObject *read_u8_array(ReaderT *reader, int32_t count)
+{
+    if (reader->ptr + count > reader->end)
+    {
+        PyErr_SetString(PyExc_ValueError, "read_u8 out of bounds");
+        return NULL;
+    }
+    PyObject *list = PyList_New(count);
+    for (auto i = 0; i < count; i++)
+    {
+        PyList_SET_ITEM(list, i, PyLong_FromUnsignedLong(*reader->ptr++));
+    }
+    return list;
+}
+
 inline PyObject *read_s8(ReaderT *reader)
 {
     if (reader->ptr + 1 > reader->end)
@@ -57,6 +87,23 @@ inline PyObject *read_s8(ReaderT *reader)
         return NULL;
     }
     return PyLong_FromLong((int8_t)*reader->ptr++);
+}
+
+inline PyObject *read_s8_array(ReaderT *reader, int32_t count)
+{
+    if (reader->ptr + count > reader->end)
+    {
+        PyErr_SetString(PyExc_ValueError, "read_s8 out of bounds");
+        return NULL;
+    }
+    PyObject *list = PyList_New(count);
+    int8_t *ptr = (int8_t *)reader->ptr;
+    for (auto i = 0; i < count; i++)
+    {
+        PyList_SET_ITEM(list, i, PyLong_FromLong(*ptr++));
+    }
+    reader->ptr = (uint8_t *)ptr;
+    return list;
 }
 
 template <typename T, bool swap>
@@ -100,6 +147,52 @@ inline PyObject *read_int(ReaderT *reader)
 }
 
 template <typename T, bool swap>
+inline PyObject *read_int_array(ReaderT *reader, int32_t count)
+{
+    static_assert(std::is_integral<T>::value, "Unsupported type for read_int_array");
+
+    if (reader->ptr + sizeof(T) * count > reader->end)
+    {
+        PyErr_SetString(PyExc_ValueError, "read_int_array out of bounds");
+        return NULL;
+    }
+    PyObject *list = PyList_New(count);
+    T *ptr = (T *)reader->ptr;
+    for (auto i = 0; i < count; i++)
+    {
+        T value = *ptr++;
+        if constexpr (swap)
+        {
+            swap_any_inplace(&value);
+        }
+        if constexpr (std::is_signed<T>::value)
+        {
+            if constexpr (std::is_same<T, int64_t>::value)
+            {
+                PyList_SET_ITEM(list, i, PyLong_FromLongLong(value));
+            }
+            else
+            {
+                PyList_SET_ITEM(list, i, PyLong_FromLong((int32_t)value));
+            }
+        }
+        else
+        {
+            if constexpr (std::is_same<T, uint64_t>::value)
+            {
+                PyList_SET_ITEM(list, i, PyLong_FromUnsignedLongLong(value));
+            }
+            else
+            {
+                PyList_SET_ITEM(list, i, PyLong_FromUnsignedLong((uint32_t)value));
+            }
+        }
+    }
+    reader->ptr = (uint8_t *)ptr;
+    return list;
+}
+
+template <typename T, bool swap>
 inline PyObject *read_float(ReaderT *reader)
 {
     static_assert(std::is_floating_point<T>::value, "Unsupported type for read_float");
@@ -116,6 +209,31 @@ inline PyObject *read_float(ReaderT *reader)
     }
     reader->ptr += sizeof(T);
     return PyFloat_FromDouble(value);
+}
+
+template <typename T, bool swap>
+inline PyObject *read_float_array(ReaderT *reader, int32_t count)
+{
+    static_assert(std::is_floating_point<T>::value, "Unsupported type for read_float_array");
+
+    if (reader->ptr + sizeof(T) * count > reader->end)
+    {
+        PyErr_SetString(PyExc_ValueError, "read_float_array out of bounds");
+        return NULL;
+    }
+    T *ptr = (T *)reader->ptr;
+    PyObject *list = PyList_New(count);
+    for (auto i = 0; i < count; i++)
+    {
+        T value = *ptr++;
+        if constexpr (swap)
+        {
+            swap_any_inplace(&value);
+        }
+        PyList_SET_ITEM(list, i, PyFloat_FromDouble(value));
+    }
+    reader->ptr = (uint8_t *)ptr;
+    return list;
 }
 
 template <bool swap>
@@ -148,10 +266,10 @@ inline PyObject *read_str(ReaderT *reader)
         PyErr_SetString(PyExc_ValueError, "read_str out of bounds");
         return NULL;
     }
-    PyObject *str = PyUnicode_DecodeUTF8((char *)reader->ptr, length, "surrogateescape");
+    PyObject *py_str = PyUnicode_DecodeUTF8((char *)reader->ptr, length, "surrogateescape");
     reader->ptr += length;
     align4(reader);
-    return str;
+    return py_str;
 }
 
 template <bool swap>
@@ -196,6 +314,42 @@ inline PyObject *read_pair(ReaderT *reader, TypeTreeNodeObject *node, TypeTreeRe
     Py_DECREF(first);
     Py_DECREF(second);
     return pair;
+}
+
+template <bool swap>
+inline PyObject *read_pair_array(ReaderT *reader, TypeTreeNodeObject *node, TypeTreeReaderConfigT *config, int32_t count)
+{
+    if (PyList_GET_SIZE(node->m_Children) != 2)
+    {
+        PyErr_SetString(PyExc_ValueError, "Pair node must have 2 children");
+        return NULL;
+    }
+
+    TypeTreeNodeObject *first_child = (TypeTreeNodeObject *)PyList_GET_ITEM(node->m_Children, 0);
+    TypeTreeNodeObject *second_child = (TypeTreeNodeObject *)PyList_GET_ITEM(node->m_Children, 1);
+
+    PyObject *list = PyList_New(count);
+    for (auto i = 0; i < count; i++)
+    {
+        PyObject *first = read_typetree_value<swap>(reader, first_child, config);
+        if (!first)
+        {
+            Py_DECREF(list);
+            return NULL;
+        }
+        PyObject *second = read_typetree_value<swap>(reader, second_child, config);
+        if (!second)
+        {
+            Py_DECREF(first);
+            Py_DECREF(list);
+            return NULL;
+        }
+        PyList_SET_ITEM(list, i, PyTuple_Pack(2, first, second));
+        Py_DECREF(first);
+        Py_DECREF(second);
+    }
+
+    return list;
 }
 
 template <bool swap>
@@ -416,6 +570,24 @@ TypeTreeNodeObject *get_ref_type_node(PyObject *ref_object, PyObject *assetsfile
 }
 
 template <bool swap>
+PyObject *read_typetree_value_array(ReaderT *reader, TypeTreeNodeObject *node, TypeTreeReaderConfigT *config, uint32_t size);
+
+const NodeDataType SUPPORTED_VALUE_ARRAY_READ_TYPES[] = {
+    NodeDataType::u8,
+    NodeDataType::u16,
+    NodeDataType::u32,
+    NodeDataType::u64,
+    NodeDataType::s8,
+    NodeDataType::s16,
+    NodeDataType::s32,
+    NodeDataType::s64,
+    NodeDataType::f32,
+    NodeDataType::f64,
+    NodeDataType::boolean,
+    NodeDataType::pair,
+};
+
+template <bool swap>
 PyObject *read_typetree_value(ReaderT *reader, TypeTreeNodeObject *node, TypeTreeReaderConfigT *config)
 {
     bool align = node->_align;
@@ -536,17 +708,25 @@ PyObject *read_typetree_value(ReaderT *reader, TypeTreeNodeObject *node, TypeTre
             {
                 return NULL;
             }
-            value = PyList_New(length);
+
             child = (TypeTreeNodeObject *)PyList_GET_ITEM(child->m_Children, 1);
-            for (int i = 0; i < length; i++)
+            if (std::find(std::begin(SUPPORTED_VALUE_ARRAY_READ_TYPES), std::end(SUPPORTED_VALUE_ARRAY_READ_TYPES), child->_data_type) == std::end(SUPPORTED_VALUE_ARRAY_READ_TYPES))
             {
-                PyObject *item = read_typetree_value<swap>(reader, child, config);
-                if (!item)
+                value = PyList_New(length);
+                for (int i = 0; i < length; i++)
                 {
-                    Py_DECREF(value);
-                    return NULL;
+                    PyObject *item = read_typetree_value<swap>(reader, child, config);
+                    if (!item)
+                    {
+                        Py_DECREF(value);
+                        return NULL;
+                    }
+                    PyList_SET_ITEM(value, i, item);
                 }
-                PyList_SET_ITEM(value, i, item);
+            }
+            else
+            {
+                value = read_typetree_value_array<swap>(reader, child, config, length);
             }
         }
         else
@@ -595,6 +775,61 @@ PyObject *read_typetree_value(ReaderT *reader, TypeTreeNodeObject *node, TypeTre
         }
     }
 
+    if (align)
+    {
+        align4(reader);
+    }
+
+    return value;
+}
+
+template <bool swap>
+PyObject *read_typetree_value_array(ReaderT *reader, TypeTreeNodeObject *node, TypeTreeReaderConfigT *config, int32_t count)
+{
+    bool align = node->_align;
+    PyObject *value = nullptr;
+
+    switch (node->_data_type)
+    {
+    case NodeDataType::u8:
+        value = read_u8_array(reader, count);
+        break;
+    case NodeDataType::u16:
+        value = read_int_array<uint16_t, swap>(reader, count);
+        break;
+    case NodeDataType::u32:
+        value = read_int_array<uint32_t, swap>(reader, count);
+        break;
+    case NodeDataType::u64:
+        value = read_int_array<uint64_t, swap>(reader, count);
+        break;
+    case NodeDataType::s8:
+        value = read_s8_array(reader, count);
+        break;
+    case NodeDataType::s16:
+        value = read_int_array<int16_t, swap>(reader, count);
+        break;
+    case NodeDataType::s32:
+        value = read_int_array<int32_t, swap>(reader, count);
+        break;
+    case NodeDataType::s64:
+        value = read_int_array<int64_t, swap>(reader, count);
+        break;
+    case NodeDataType::f32:
+        value = read_float_array<float, swap>(reader, count);
+        break;
+    case NodeDataType::f64:
+        value = read_float_array<double, swap>(reader, count);
+        break;
+    case NodeDataType::boolean:
+        value = read_bool_array(reader, count);
+        break;
+    case NodeDataType::pair:
+        value = read_pair_array<swap>(reader, node, config, count);
+        break;
+    default:
+        value = PyErr_Format(PyExc_ValueError, "Unsupported type for read_typetree_value_array: %d", node->_data_type);
+    }
     if (align)
     {
         align4(reader);
