@@ -214,6 +214,7 @@ class SerializedFile(File.File):
     types: List[SerializedType]
     script_types: List[LocalSerializedObjectIdentifier]
     externals: List[FileIdentifier]
+    ref_types: Optional[List[SerializedType]]
     objects: Dict[int, ObjectReader]
     unknown: int
     header: SerializedFileHeader

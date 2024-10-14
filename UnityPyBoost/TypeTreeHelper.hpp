@@ -20,8 +20,11 @@ enum NodeDataType
     str = 11,
     bytes = 12,
     pair = 13,
-    array = 14,
-    pptr = 15,
+    Array = 14,
+    PPtr = 15,
+    ReferencedObject = 16,
+    ReferencedObjectData = 17,
+    ManagedReferencesRegistry = 18,
     unk = 255
 };
 
