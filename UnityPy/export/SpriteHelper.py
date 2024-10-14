@@ -18,6 +18,11 @@ if TYPE_CHECKING:
 
     from ..classes import PPtr, Sprite, Texture2D
 
+try:
+    import numpy as np
+except ImportError:
+    np = None
+
 
 class SpriteSettings:
     packed: bool
@@ -247,7 +252,7 @@ def copy_triangle(
         maskdraw.polygon(mask_box, fill=255)
 
         # paste triangle into destination image
-        dst_img.paste(src_part, min(dst_tri))
+        dst_img.paste(src_part, min(dst_tri), mask=mask)
     else:
         # transform is necessary, use affine transformation
         # https://stackoverflow.com/a/6959111
@@ -267,8 +272,11 @@ def copy_triangle(
         # Vector y corresponds to the x coordinates in the source triangle
         y = [x11, x21, x31, x12, x22, x32]
 
-        # np.lingal.solve - obviously way faster, but numpy will only come with 2.0
-        A = linalg_solve(M, y)
+        if np:
+            A = np.linalg.solve(M, y)
+        else:
+            # np.lingal.solve - obviously way faster, but numpy will only come with 2.0
+            A = linalg_solve(M, y)
 
         transformed = src_img.transform(dst_img.size, Image.AFFINE, A)
 
