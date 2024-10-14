@@ -1,8 +1,10 @@
-#include <TypeTreeHelper.hpp>
+#include <algorithm>
 #include <cstdint>
-#include <type_traits>
-#include <swap.hpp>
 #include <map>
+#include <type_traits>
+
+#include "swap.hpp"
+#include "TypeTreeHelper.hpp"
 
 // TypeTreeReader - impl
 
