@@ -1,12 +1,15 @@
 ﻿from __future__ import annotations
-import re
-from typing import Optional, Any, Union, TYPE_CHECKING
 
-from .TypeTreeNode import TypeTreeNode
-from ..streams.EndianBinaryReader import EndianBinaryReader
-from ..streams.EndianBinaryWriter import EndianBinaryWriter
+import re
+from copy import copy
+from typing import TYPE_CHECKING, Any, Optional, Union
+
+from attrs import define
 
 from .. import classes
+from ..streams.EndianBinaryReader import EndianBinaryReader
+from ..streams.EndianBinaryWriter import EndianBinaryWriter
+from .TypeTreeNode import TypeTreeNode
 
 Object = classes.Object
 PPtr = classes.PPtr
@@ -70,6 +73,38 @@ FUNCTION_READ_MAP_ARRAY = {
 }
 
 
+@define(slots=True)
+class TypeTreeConfig:
+    as_dict: bool
+    assetsfile: "Optional[SerializedFile]" = None
+    has_registry: bool = False
+
+
+def get_ref_type_node(ref_object: dict, assetfile: SerializedFile) -> TypeTreeNode:
+    typ = ref_object["type"]
+    if isinstance(typ, dict):
+        cls = typ["class"]
+        ns = typ["ns"]
+        asm = typ["asm"]
+    else:
+        cls = getattr(typ, "class")
+        ns = typ.ns
+        asm = typ.asm
+
+    if not assetfile or not assetfile.ref_types:
+        raise ValueError("SerializedFile has no ref_types")
+
+    for ref_type in assetfile.ref_types:
+        if (
+            cls == ref_type.m_ClassName
+            and ns == ref_type.m_NameSpace
+            and asm == ref_type.m_AssemblyName
+        ):
+            return ref_type.node
+    else:
+        raise ValueError(f"Referenced type not found: {cls} {ns} {asm}")
+
+
 def read_typetree(
     root_node: TypeTreeNode,
     reader: EndianBinaryReader,
@@ -98,7 +133,8 @@ def read_typetree(
         )
 
     pos = reader.Position
-    obj = read_value(root_node, reader, as_dict, assetsfile)
+    config = TypeTreeConfig(as_dict, assetsfile, False)
+    obj = read_value(root_node, reader, config)
 
     read = reader.Position - pos
     if expected_read is not None and read != expected_read:
@@ -131,8 +167,7 @@ def write_typetree(
 def read_value(
     node: TypeTreeNode,
     reader: EndianBinaryReader,
-    as_dict: bool,
-    assetsfile: Optional[SerializedFile],
+    config: TypeTreeConfig,
 ) -> Any:
     # print(reader.Position, node.m_Name, node.m_Type, node.m_MetaFlag)
     align = metaflag_is_aligned(node.m_MetaFlag)
@@ -141,9 +176,17 @@ def read_value(
     if func:
         value = func(reader)
     elif node.m_Type == "pair":
-        first = read_value(node.m_Children[0], reader, as_dict, assetsfile)
-        second = read_value(node.m_Children[1], reader, as_dict, assetsfile)
+        first = read_value(node.m_Children[0], reader, config)
+        second = read_value(node.m_Children[1], reader, config)
         value = (first, second)
+    elif node.m_Type == "ReferencedObject":
+        value = {}
+        for child in node.m_Children:
+            if child.m_Type == "ReferencedObjectData":
+                ref_type_nodes = get_ref_type_node(value, config.assetsfile)
+                value[child.m_Name] = read_value(ref_type_nodes, reader, config)
+            else:
+                value[child.m_Name] = read_value(child, reader, config)
     # Vector
     elif node.m_Children and node.m_Children[0].m_Type == "Array":
         if metaflag_is_aligned(node.m_Children[0].m_MetaFlag):
@@ -153,22 +196,25 @@ def read_value(
         size = reader.read_int()
         subtype = node.m_Children[0].m_Children[1]
         if metaflag_is_aligned(subtype.m_MetaFlag):
-            value = read_value_array(subtype, reader, as_dict, size, assetsfile)
+            value = read_value_array(subtype, reader, config)
         else:
-            value = [
-                read_value(subtype, reader, as_dict, assetsfile) for _ in range(size)
-            ]
+            value = [read_value(subtype, reader, config) for _ in range(size)]
 
     else:  # Class
-        value = {
-            child.m_Name: read_value(child, reader, as_dict, assetsfile)
-            for child in node.m_Children
-        }
+        value = {}
+        for child in node.m_Children:
+            if child.m_Type == "ManagedReferencesRegistry":
+                if config.has_registry:
+                    continue
+                else:
+                    config = copy(config)
+                    config.has_registry = True
+            value[child.m_Name] = read_value(child, reader, config)
 
-        if not as_dict:
+        if not config.as_dict:
             if node.m_Type.startswith("PPtr<"):
                 value = PPtr[Any](
-                    assetsfile=assetsfile,
+                    assetsfile=config.assetsfile,
                     m_FileID=value["m_FileID"],
                     m_PathID=value["m_PathID"],
                 )
@@ -198,9 +244,8 @@ def read_value(
 def read_value_array(
     node: TypeTreeNode,
     reader: EndianBinaryReader,
-    as_dict: bool,
+    config: TypeTreeConfig,
     size: int,
-    assetsfile: Optional[SerializedFile],
 ) -> Any:
     align = metaflag_is_aligned(node.m_MetaFlag)
 
@@ -217,13 +262,24 @@ def read_value_array(
 
         key_func = FUNCTION_READ_MAP.get(
             key_node.m_Type,
-            lambda reader: read_value(key_node, reader, as_dict, assetsfile),
+            lambda reader: read_value(key_node, reader, config),
         )
         value_func = FUNCTION_READ_MAP.get(
             value_node.m_Type,
-            lambda reader: read_value(value_node, reader, as_dict, assetsfile),
+            lambda reader: read_value(value_node, reader, config),
         )
         value = [(key_func(reader), value_func(reader)) for _ in range(size)]
+    elif node.m_Type == "ReferencedObject":
+        value = [None] * size
+        for i in range(size):
+            item = {}
+            for child in node.m_Children:
+                if child.m_Type == "ReferencedObjectData":
+                    ref_type_nodes = get_ref_type_node(item, config.assetsfile)
+                    item[child.m_Name] = read_value(ref_type_nodes, reader, config)
+                else:
+                    item[child.m_Name] = read_value(child, reader, config)
+            value[i] = item
     # Vector
     elif node.m_Children and node.m_Children[0].m_Type == "Array":
         if metaflag_is_aligned(node.m_Children[0].m_MetaFlag):
@@ -231,24 +287,19 @@ def read_value_array(
         subtype = node.m_Children[0].m_Children[1]
         if metaflag_is_aligned(subtype.m_MetaFlag):
             value = [
-                read_value_array(
-                    subtype, reader, as_dict, reader.read_int(), assetsfile
-                )
+                read_value_array(subtype, reader, config, reader.read_int())
                 for _ in range(size)
             ]
         else:
             value = [
-                [
-                    read_value(subtype, reader, as_dict, assetsfile)
-                    for _ in range(reader.read_int())
-                ]
+                [read_value(subtype, reader, config) for _ in range(reader.read_int())]
                 for _ in range(size)
             ]
     else:  # Class
-        if as_dict:
+        if config.as_dict:
             value = [
                 {
-                    child.m_Name: read_value(child, reader, as_dict, assetsfile)
+                    child.m_Name: read_value(child, reader, config)
                     for child in node.m_Children
                 }
                 for _ in range(size)
@@ -257,9 +308,9 @@ def read_value_array(
             if node.m_Type.startswith("PPtr<"):
                 value = [
                     PPtr[Any](
-                        assetsfile=assetsfile,
+                        assetsfile=config.assetsfile,
                         **{
-                            child.m_Name: read_value(child, reader, as_dict, assetsfile)
+                            child.m_Name: read_value(child, reader, config)
                             for child in node.m_Children
                         },
                     )
@@ -276,7 +327,7 @@ def read_value_array(
                     value = [
                         clz(
                             **{
-                                name: read_value(child, reader, as_dict, assetsfile)
+                                name: read_value(child, reader, config)
                                 for name, child in zip(clean_names, node.m_Children)
                             }
                         )
@@ -287,9 +338,7 @@ def read_value_array(
                     value = [None] * size
                     for i in range(size):
                         value_i_d = {
-                            clean_name(child.m_Name): read_value(
-                                child, reader, as_dict, assetsfile
-                            )
+                            clean_name(child.m_Name): read_value(child, reader, config)
                             for child in node.m_Children
                         }
                         value_i = clz(
