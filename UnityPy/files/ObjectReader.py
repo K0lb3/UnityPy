@@ -226,7 +226,7 @@ class ObjectReader(Generic[T]):
         node = self._get_typetree_node(nodes)
         if not writer:
             writer = EndianBinaryWriter(endian=self.reader.endian)
-        TypeTreeHelper.write_typetree(tree, node, writer)
+        TypeTreeHelper.write_typetree(tree, node, writer, self.assets_file)
         data = writer.bytes
         self.set_raw_data(data)
         return data

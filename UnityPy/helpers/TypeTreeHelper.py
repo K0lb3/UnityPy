@@ -149,6 +149,7 @@ def write_typetree(
     value: Union[dict[str, Any], Object],
     root_node: TypeTreeNode,
     writer: EndianBinaryWriter,
+    assetsfile: Optional[SerializedFile] = None,
 ) -> None:
     """Writes the typetree of the object contained in the reader via the node list.
 
@@ -161,7 +162,8 @@ def write_typetree(
     writer : EndianBinaryWriter
         Writer of the object to be parsed
     """
-    return write_value(value, root_node, writer)
+    config = TypeTreeConfig(isinstance(value, dict), assetsfile, False)
+    return write_value(value, root_node, writer, config)
 
 
 def read_value(
@@ -403,6 +405,7 @@ def write_value(
     value: Any,
     node: TypeTreeNode,
     writer: EndianBinaryWriter,
+    config: TypeTreeConfig,
 ) -> None:
     # print(reader.Position, node.m_Name, node.m_Type, node.m_MetaFlag)
     align = metaflag_is_aligned(node.m_MetaFlag)
@@ -413,21 +416,42 @@ def write_value(
     elif node.m_Type == "pair":
         write_value(value[0], node.m_Children[0], writer)
         write_value(value[1], node.m_Children[1], writer)
+    elif node.m_Type == "ReferencedObject":
+        for child in node.m_Children:
+            if child.m_Type == "ReferencedObjectData":
+                ref_type_nodes = get_ref_type_node(value, config.assetsfile)
+                write_value(value[child.m_Name], ref_type_nodes, writer, config)
+            else:
+                write_value(value[child.m_Name], child, writer, config)
     elif node.m_Children and node.m_Children[0].m_Type == "Array":
         if metaflag_is_aligned(node.m_Children[0].m_MetaFlag):
             align = True
 
         writer.write_int(len(value))
         subtype = node.m_Children[0].m_Children[1]
-        [write_value(sub_value, subtype, writer) for sub_value in value]
+        [write_value(sub_value, subtype, writer, config) for sub_value in value]
 
     else:  # Class
         if isinstance(value, dict):
             for child in node.m_Children:
-                write_value(value[child.m_Name], child, writer)
+                if child.m_Type == "ManagedReferencesRegistry":
+                    if config.has_registry:
+                        continue
+                    else:
+                        config = copy(config)
+                        config.has_registry = True
+                write_value(value[child.m_Name], child, writer, config)
         else:
             for child in node.m_Children:
-                write_value(getattr(value, clean_name(child.m_Name)), child, writer)
+                if child.m_Type == "ManagedReferencesRegistry":
+                    if config.has_registry:
+                        continue
+                    else:
+                        config = copy(config)
+                        config.has_registry = True
+                write_value(
+                    getattr(value, clean_name(child.m_Name)), child, writer, config
+                )
 
     if align:
         writer.align_stream()
