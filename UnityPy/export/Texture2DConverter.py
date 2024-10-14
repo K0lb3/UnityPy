@@ -31,35 +31,66 @@ def image_to_texture2d(
 
     # DXT
     if target_texture_format in [TF.DXT1, TF.DXT1Crunched]:
-        raw_img = img.convert("RGBA").tobytes()
+        raw_img = img.tobytes("raw", "RGBA")
         enc_img = etcpak.compress_bc1(raw_img, img.width, img.height)
         tex_format = TF.DXT1
     elif target_texture_format in [TF.DXT5, TF.DXT5Crunched]:
-        raw_img = img.convert("RGBA").tobytes()
-        enc_img = etcpak.compress_to_dxt5(raw_img, img.width, img.height)
+        raw_img = img.tobytes("raw", "RGBA")
+        enc_img = etcpak.compress_bc3(raw_img, img.width, img.height)
         tex_format = TF.DXT5
+    elif target_texture_format in [TF.BC4]:
+        raw_img = img.tobytes("raw", "RGBA")
+        enc_img = etcpak.compress_bc4(raw_img, img.width, img.height)
+        tex_format = TF.BC4
+    elif target_texture_format in [TF.BC5]:
+        raw_img = img.tobytes("raw", "RGBA")
+        enc_img = etcpak.compress_bc5(raw_img, img.width, img.height)
+        tex_format = TF.BC5
+    elif target_texture_format in [TF.BC7]:
+        raw_img = img.tobytes("raw", "RGBA")
+        enc_img = etcpak.compress_bc7(raw_img, img.width, img.height)
+        tex_format = TF.BC7
     # ETC
     elif target_texture_format in [TF.ETC_RGB4, TF.ETC_RGB4Crunched, TF.ETC_RGB4_3DS]:
-        img = assert_rgba(img, target_texture_format)
-        r, g, b, a = img.split()
-        raw_img = Image.merge("RGBA", (b, g, r, a)).tobytes()
-        enc_img = etcpak.compress_to_etc1(raw_img, img.width, img.height)
+        raw_img = img.tobytes("raw", "RGBA")
+        enc_img = etcpak.compress_etc1_rgb(raw_img, img.width, img.height)
         tex_format = TF.ETC_RGB4
     elif target_texture_format == TF.ETC2_RGB:
-        img = assert_rgba(img, target_texture_format)
-        r, g, b, a = img.split()
-        raw_img = Image.merge("RGBA", (b, g, r, a)).tobytes()
-        enc_img = etcpak.compress_to_etc2_rgb(raw_img, img.width, img.height)
+        raw_img = img.tobytes("raw", "RGBA")
+        enc_img = etcpak.compress_etc2_rgb(raw_img, img.width, img.height)
         tex_format = TF.ETC2_RGB
     elif (
         target_texture_format in [TF.ETC2_RGBA8, TF.ETC2_RGBA8Crunched, TF.ETC2_RGBA1]
         or "_RGB_" in target_texture_format.name
     ):
-        img = assert_rgba(img, target_texture_format)
-        r, g, b, a = img.split()
-        raw_img = Image.merge("RGBA", (b, g, r, a)).tobytes()
-        enc_img = etcpak.compress_to_etc2_rgba(raw_img, img.width, img.height)
+        raw_img = img.tobytes("raw", "RGBA")
+        enc_img = etcpak.compress_etc2_rgba(raw_img, img.width, img.height)
         tex_format = TF.ETC2_RGBA8
+    # ASTC
+    elif target_texture_format.name.startswith("ASTC"):
+        import astc_encoder
+
+        raw_img = img.tobytes("raw", "RGBA")
+
+        block_size = tuple(
+            map(int, target_texture_format.name.rsplit("_", 1)[1].split("x"))
+        )
+
+        config = astc_encoder.ASTCConfig(
+            astc_encoder.ASTCProfile.LDR, *block_size, 1, 100
+        )
+        context = astc_encoder.ASTCContext(config)
+        raw_img = astc_encoder.ASTCImage(
+            astc_encoder.ASTCType.U8, img.width, img.height, 1, raw_img
+        )
+        if img.mode == "RGB":
+            tex_format = getattr(TF, f"ASTC_RGB_{block_size[0]}x{block_size[1]}")
+        else:
+            tex_format = getattr(TF, f"ASTC_RGBA_{block_size[0]}x{block_size[1]}")
+
+        swizzle = astc_encoder.ASTCSwizzle.from_str("RGBA")
+        enc_img = context.compress(raw_img, swizzle)
+        tex_format = target_texture_format
     # A
     elif target_texture_format == TF.Alpha8:
         enc_img = img.tobytes("raw", "A")
