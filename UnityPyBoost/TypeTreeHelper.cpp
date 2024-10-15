@@ -534,6 +534,15 @@ TypeTreeNodeObject *get_ref_type_node(PyObject *ref_object, PyObject *assetsfile
         return NULL;
     }
 
+    if (PyUnicode_GET_LENGTH(cls) == 0)
+    {
+        Py_DECREF(ref_types);
+        Py_DECREF(cls);
+        Py_DECREF(ns);
+        Py_DECREF(asm_);
+        return (TypeTreeNodeObject *)Py_None;
+    }
+
     Py_ssize_t ref_types_len = PyList_Size(ref_types);
     TypeTreeNodeObject *ref_type_node = NULL;
     for (Py_ssize_t i = 0; i < ref_types_len; i++)
@@ -655,6 +664,10 @@ PyObject *read_typetree_value(ReaderT *reader, TypeTreeNodeObject *node, TypeTre
                     Py_DECREF(value);
                     return NULL;
                 }
+                else if (ref_node == (TypeTreeNodeObject *)Py_None)
+                {
+                    continue;
+                }
                 child_value = read_typetree_value<swap>(reader, ref_node, config);
                 Py_DECREF(ref_node);
             }
@@ -676,19 +689,22 @@ PyObject *read_typetree_value(ReaderT *reader, TypeTreeNodeObject *node, TypeTre
             // dict increases ref count, so we need to decref here
             Py_DECREF(child_value);
         }
-        PyObject *clz = PyObject_GetAttrString(config->classes, "Object");
-        if (clz == NULL)
+        if (!config->as_dict)
         {
-            PyErr_SetString(PyExc_ValueError, "Failed to get class");
+            PyObject *clz = PyObject_GetAttrString(config->classes, "Object");
+            if (clz == NULL)
+            {
+                PyErr_SetString(PyExc_ValueError, "Failed to get class");
+                Py_DECREF(value);
+                return NULL;
+            }
+            PyObject *args = PyTuple_New(0);
+            PyObject *instance = PyObject_Call(clz, args, value);
+            Py_DECREF(clz);
+            Py_DECREF(args);
             Py_DECREF(value);
-            return NULL;
+            value = instance;
         }
-        PyObject *args = PyTuple_New(0);
-        PyObject *instance = PyObject_Call(clz, args, value);
-        Py_DECREF(clz);
-        Py_DECREF(args);
-        Py_DECREF(value);
-        value = instance;
         break;
     }
     default:
@@ -935,6 +951,12 @@ PyObject *read_typetree(PyObject *self, PyObject *args, PyObject *kwargs)
     }
 
     PyBuffer_Release(&view);
+
+    if (reader.ptr != reader.end)
+    {
+        Py_DecRef(value);
+        return PyErr_Format(PyExc_ValueError, "Read %ld bytes, %ld remaining", reader.ptr - reader.start, reader.end - reader.ptr);
+    }
 
     return value;
 }
