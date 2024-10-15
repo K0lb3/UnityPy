@@ -1,7 +1,6 @@
 ﻿from __future__ import annotations
 
 import re
-from copy import copy
 from typing import TYPE_CHECKING, Any, Optional, Union
 
 from attrs import define
@@ -79,6 +78,9 @@ class TypeTreeConfig:
     assetsfile: "Optional[SerializedFile]" = None
     has_registry: bool = False
 
+    def copy(self) -> TypeTreeConfig:
+        return TypeTreeConfig(self.as_dict, self.assetsfile, self.has_registry)
+
 
 def get_ref_type_node(ref_object: dict, assetfile: SerializedFile) -> TypeTreeNode:
     typ = ref_object["type"]
@@ -93,6 +95,9 @@ def get_ref_type_node(ref_object: dict, assetfile: SerializedFile) -> TypeTreeNo
 
     if not assetfile or not assetfile.ref_types:
         raise ValueError("SerializedFile has no ref_types")
+
+    if cls == "":
+        return None
 
     for ref_type in assetfile.ref_types:
         if (
@@ -186,6 +191,8 @@ def read_value(
         for child in node.m_Children:
             if child.m_Type == "ReferencedObjectData":
                 ref_type_nodes = get_ref_type_node(value, config.assetsfile)
+                if ref_type_nodes is None:
+                    continue
                 value[child.m_Name] = read_value(ref_type_nodes, reader, config)
             else:
                 value[child.m_Name] = read_value(child, reader, config)
@@ -209,7 +216,7 @@ def read_value(
                 if config.has_registry:
                     continue
                 else:
-                    config = copy(config)
+                    config = config.copy()
                     config.has_registry = True
             value[child.m_Name] = read_value(child, reader, config)
 
@@ -438,7 +445,7 @@ def write_value(
                     if config.has_registry:
                         continue
                     else:
-                        config = copy(config)
+                        config = config.copy()
                         config.has_registry = True
                 write_value(value[child.m_Name], child, writer, config)
         else:
@@ -447,7 +454,7 @@ def write_value(
                     if config.has_registry:
                         continue
                     else:
-                        config = copy(config)
+                        config = config.copy()
                         config.has_registry = True
                 write_value(
                     getattr(value, clean_name(child.m_Name)), child, writer, config
