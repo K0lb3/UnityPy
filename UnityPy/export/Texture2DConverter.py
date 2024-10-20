@@ -3,8 +3,9 @@
 import struct
 from copy import copy
 from io import BytesIO
-from typing import TYPE_CHECKING, Tuple, Union
+from typing import TYPE_CHECKING, Dict, Tuple, Union
 
+import astc_encoder
 import texture2ddecoder
 from PIL import Image
 
@@ -68,8 +69,6 @@ def image_to_texture2d(
         tex_format = TF.ETC2_RGBA8
     # ASTC
     elif target_texture_format.name.startswith("ASTC"):
-        import astc_encoder
-
         raw_img = img.tobytes("raw", "RGBA")
 
         block_size = tuple(
@@ -253,9 +252,25 @@ def atc(image_data: bytes, width: int, height: int, alpha: bool) -> Image.Image:
     return Image.frombytes("RGBA", (width, height), image_data, "raw", "BGRA")
 
 
+ASTC_CONTEXTS: Dict[Tuple[int, int], astc_encoder.ASTCContext] = {}
+
+
 def astc(image_data: bytes, width: int, height: int, block_size: tuple) -> Image.Image:
-    image_data = texture2ddecoder.decode_astc(image_data, width, height, *block_size)
-    return Image.frombytes("RGBA", (width, height), image_data, "raw", "BGRA")
+    context = ASTC_CONTEXTS.get(block_size)
+    if context is None:
+        config = astc_encoder.ASTCConfig(
+            astc_encoder.ASTCProfile.LDR,
+            *block_size,
+            1,
+            100,
+            astc_encoder.ASTCConfigFlags.USE_DECODE_UNORM8,
+        )
+        context = ASTC_CONTEXTS[block_size] = astc_encoder.ASTCContext(config)
+
+    image = astc_encoder.ASTCImage(astc_encoder.ASTCType.U8, width, height, 1)
+    context.decompress(image_data, image, astc_encoder.ASTCSwizzle.from_str("RGBA"))
+
+    return Image.frombytes("RGBA", (width, height), image.data, "raw", "RGBA")
 
 
 def pvrtc(image_data: bytes, width: int, height: int, fmt: bool) -> Image.Image:
