@@ -2,6 +2,8 @@
 #include <cstdint>
 #include <map>
 #include <type_traits>
+#include <string>
+#include <regex>
 
 #include "swap.hpp"
 #include "TypeTreeHelper.hpp"
@@ -20,9 +22,43 @@ typedef struct TypeTreeReaderConfig
     bool as_dict;
     PyObject *classes;
     PyObject *assetfile;
-    PyObject *clean_name;
     bool has_registry;
 } TypeTreeReaderConfigT;
+
+std::string clean_name(const std::string &name)
+{
+    // # keep in sync with TypeTreeNode.py
+    std::string cleaned_name = name;
+
+    // Remove "(int&)" prefix
+    if (cleaned_name.substr(0, 6) == "(int&)")
+    {
+        cleaned_name = cleaned_name.substr(6);
+    }
+
+    // Remove trailing "?"
+    if (!cleaned_name.empty() && cleaned_name.back() == '?')
+    {
+        cleaned_name.pop_back();
+    }
+
+    // Replace certain characters with "_"
+    cleaned_name = std::regex_replace(cleaned_name, std::regex("[ \\.:\\-\\[\\]]"), "_");
+
+    // Append "_" if the name is "pass" or "from"
+    if (cleaned_name == "pass" || cleaned_name == "from")
+    {
+        cleaned_name += "_";
+    }
+
+    // Prefix with "x" if the name starts with a digit
+    if (!cleaned_name.empty() && isdigit(cleaned_name[0]))
+    {
+        cleaned_name = "x" + cleaned_name;
+    }
+
+    return cleaned_name;
+}
 
 inline void align4(ReaderT *reader)
 {
@@ -312,7 +348,9 @@ inline PyObject *read_pair(ReaderT *reader, TypeTreeNodeObject *node, TypeTreeRe
         Py_DECREF(first);
         return NULL;
     }
+    // PyTuple_Pack creates two strong references
     PyObject *pair = PyTuple_Pack(2, first, second);
+    // so we need to decref both values here to bring their ref count back to 1
     Py_DECREF(first);
     Py_DECREF(second);
     return pair;
@@ -354,131 +392,179 @@ inline PyObject *read_pair_array(ReaderT *reader, TypeTreeNodeObject *node, Type
     return list;
 }
 
-template <bool swap>
-inline PyObject *parse_class(ReaderT *reader, PyObject *dict, TypeTreeNodeObject *node, TypeTreeReaderConfigT *config)
+template <bool swap, bool as_dict>
+inline PyObject *read_class(ReaderT *reader, TypeTreeNodeObject *node, TypeTreeReaderConfigT *config)
 {
-    PyObject *clz = NULL;
-
-    // Determine the class based on node's _data_type
-    if (node->_data_type == NodeDataType::PPtr)
+    bool changed_registry = false;
+    PyObject *value = PyDict_New();
+    for (int i = 0; i < PyList_GET_SIZE(node->m_Children); i++)
     {
-        if (PyDict_SetItemString(dict, "assetsfile", config->assetfile) != 0)
+        TypeTreeNodeObject *child = (TypeTreeNodeObject *)PyList_GET_ITEM(node->m_Children, i);
+        if (child->_data_type == NodeDataType::ManagedReferencesRegistry)
         {
-            PyErr_SetString(PyExc_RuntimeError, "Failed to set 'assetsfile'");
-            Py_DECREF(dict);
+            if (config->has_registry)
+            {
+                continue;
+            }
+            else
+            {
+                changed_registry = true;
+                config->has_registry = true;
+            }
+        }
+        PyObject *child_value = read_typetree_value<swap>(reader, child, config);
+        if (!child_value)
+        {
+            Py_DECREF(value);
             return NULL;
         }
+        int set_item_result;
+        if constexpr (as_dict == true)
+        {
+            set_item_result = PyDict_SetItem(value, child->m_Name, child_value);
+        }
+        else
+        {
+            set_item_result = PyDict_SetItem(value, child->_clean_name, child_value);
+        }
+        if (set_item_result != 0)
+        {
+            Py_DECREF(value);
+            Py_DECREF(child_value);
+            return NULL;
+        }
+        // PyDict_SetItem increases ref count, so we need to decref here
+        Py_DECREF(child_value);
+    }
+
+    if (changed_registry)
+    {
+        config->has_registry = false;
+    }
+
+    return value;
+}
+
+#if PY_VERSION_HEX >= 0x030e0000
+PyObject *get_annotations = nullptr;
+#endif
+
+inline PyObject *get_annotations(PyObject *clz)
+{
+#if PY_VERSION_HEX >= 0x030e0000
+    if (get_annotations == nullptr)
+    {
+        // from annotationlib import get_annotations
+        PyObject *annotationlib = PyImport_ImportModule("annotationlib");
+        get_annotations = PyObject_GetAttrString(annotationlib, "get_annotations");
+        Py_DECREF(annotationlib);
+    }
+    return PyObject_CallFunctionObjArgs(get_annotations, clz, NULL);
+#else
+    return PyObject_GetAttrString(clz, "__annotations__");
+#endif
+}
+
+inline PyObject *parse_class(PyObject *kwargs, TypeTreeNodeObject *node, TypeTreeReaderConfigT *config)
+{
+    PyObject *instance = nullptr;
+    PyObject *clz = nullptr;
+    PyObject *args = PyTuple_New(0);
+    PyObject *annotations = nullptr;
+    PyObject *extras = nullptr;
+    // dict iterator values
+    PyObject *key, *value = nullptr;
+    Py_ssize_t pos;
+
+    if (node->_data_type == NodeDataType::PPtr)
+    {
         clz = PyObject_GetAttrString(config->classes, "PPtr");
+        if (clz == nullptr)
+        {
+            PyErr_SetString(PyExc_ValueError, "Failed to get PPtr class");
+            goto PARSE_CLASS_CLEANUP;
+        }
+        PyDict_SetItemString(kwargs, "assetsfile", config->assetfile);
     }
     else
     {
         clz = PyObject_GetAttr(config->classes, node->m_Type);
-        if (clz == NULL)
+        if (clz == nullptr)
         {
-            clz = PyObject_GetAttrString(config->classes, "Object");
+            clz = PyObject_GetAttrString(config->classes, "UnknownObject");
+            if (clz == nullptr)
+            {
+                PyErr_SetString(PyExc_ValueError, "Failed to get UnknownObject class");
+                goto PARSE_CLASS_CLEANUP;
+            }
+            PyDict_SetItemString(kwargs, "__node__", node->m_Type);
         }
     }
 
-    // check if class is found
-    if (clz == NULL)
+    instance = PyObject_Call(clz, args, kwargs);
+    if (instance != nullptr)
     {
-        PyErr_SetString(PyExc_ValueError, "Failed to get class");
-        Py_DECREF(clz);
-        Py_DECREF(dict);
-        return NULL;
+        goto PARSE_CLASS_CLEANUP;
     }
-
-    // try to create class instance
-    PyObject *args = PyTuple_New(0);
-    PyObject *instance = PyObject_Call(clz, args, dict);
-    if (instance != NULL)
-    {
-        // success
-        // cleanup
-        Py_DECREF(clz);
-        Py_DECREF(args);
-        Py_DECREF(dict);
-        // return instance
-        return instance;
-    }
-    // failed, clear error
     PyErr_Clear();
 
-    // clean key names
-    PyObject *key = NULL;
-    PyObject *keys = PyDict_Keys(dict);
-    PyObject *clean_args = PyTuple_New(1);
-    for (Py_ssize_t i = 0; i < PyList_GET_SIZE(keys); i++)
+    // possibly extra fields
+    annotations = get_annotations(clz);
+    if (annotations == nullptr)
     {
-        key = PyList_GET_ITEM(keys, i);
-        PyTuple_SET_ITEM(clean_args, 0, key);
-        PyObject *clean_key = PyObject_Call(config->clean_name, clean_args, NULL);
-        if (PyUnicode_Compare(key, clean_key))
+        PyErr_SetString(PyExc_ValueError, "Failed to get annotations");
+        goto PARSE_CLASS_CLEANUP;
+    }
+    extras = PyDict_New();
+    for (int i = 0; i < PyList_GET_SIZE(node->m_Children); i++)
+    {
+        TypeTreeNodeObject *child = (TypeTreeNodeObject *)PyList_GET_ITEM(node->m_Children, i);
+        if (PyDict_Contains(annotations, child->_clean_name) == 1)
         {
-            PyObject *value = PyDict_GetItem(dict, key);
-            PyDict_SetItem(dict, clean_key, value);
-            PyDict_DelItem(dict, key);
+            continue;
         }
-        Py_DECREF(clean_key);
+        PyObject *extra_value = PyDict_GetItem(kwargs, child->_clean_name); // +1
+        PyDict_SetItem(extras, child->_clean_name, extra_value);            // +1
+        PyDict_DelItem(kwargs, child->_clean_name);                         // -1
+        Py_DECREF(extra_value);                                             // -1
     }
-    // increase ref count for key, as PyTuple_SET_ITEM steals reference, so decref there will decref key
-    Py_INCREF(key);
-    Py_DECREF(clean_args);
-    Py_DECREF(keys);
 
-    // try to create class instance again with cleaned keys
-    instance = PyObject_Call(clz, args, dict);
-    if (instance != NULL)
+    if (PyDict_Size(extras) == 0)
     {
-        // success
-        // cleanup
         Py_DECREF(clz);
-        Py_DECREF(args);
-        Py_DECREF(dict);
-        // return instance
-        return instance;
+        clz = PyObject_GetAttrString(config->classes, "UnknownObject");
+        PyDict_SetItemString(kwargs, "__node__", node->m_Type);
     }
-    // failed, clear error
+
+    instance = PyObject_Call(clz, args, kwargs);
+    if (instance != nullptr)
+    {
+        pos = 0;
+        while (PyDict_Next(extras, &pos, &key, &value))
+        {
+            PyObject_SetItem(instance, key, value);
+        }
+    }
     PyErr_Clear();
 
-    // some keys might be extra, check against __annotations__
-    PyObject *annonations = PyObject_GetAttrString(clz, "__annotations__");
-    PyObject *extras = PyDict_New();
-    keys = PyDict_Keys(dict);
-    for (Py_ssize_t i = 0; i < PyList_Size(keys); i++)
-    {
-        PyObject *key = PyList_GET_ITEM(keys, i);
-        if (PyDict_Contains(annonations, key) == 0)
-        {
-            PyObject *value = PyDict_GetItem(dict, key);
-            PyDict_SetItem(extras, key, value);
-            PyDict_DelItem(dict, key);
-        }
-    }
-    Py_DECREF(keys);
-    Py_DECREF(annonations);
-
-    // try to create class instance again with cleaned keys
-    instance = PyObject_Call(clz, args, dict);
-    if (instance != NULL)
-    {
-        // success, manually set extra keys
-        PyObject *items = PyDict_Items(extras);
-        for (Py_ssize_t i = 0; i < PyList_Size(items); i++)
-        {
-            PyObject *item = PyList_GET_ITEM(items, i);
-            PyObject *key = PyTuple_GetItem(item, 0);
-            PyObject *value = PyTuple_GetItem(item, 1);
-            PyObject_SetAttr(instance, key, value);
-        }
-        Py_DECREF(items);
-    }
-    // cleanup
+    // if we still failed to create an instance, fallback to UnknownObject
     Py_DECREF(clz);
+    clz = PyObject_GetAttrString(config->classes, "UnknownObject");
+    PyDict_SetItemString(kwargs, "__node__", node->m_Type);
+    // merge extras back into kwargs
+    pos = 0;
+    while (PyDict_Next(extras, &pos, &key, &value))
+    {
+        PyObject_SetItem(kwargs, key, value);
+    }
+    instance = PyObject_Call(clz, args, kwargs);
+
+PARSE_CLASS_CLEANUP:
     Py_DECREF(args);
-    Py_DECREF(dict);
-    Py_DECREF(extras);
-    // return instance or NULL if failed
+    Py_DECREF(kwargs);
+    Py_XDECREF(clz);
+    Py_XDECREF(annotations);
+    Py_XDECREF(extras);
     return instance;
 }
 
@@ -750,45 +836,14 @@ PyObject *read_typetree_value(ReaderT *reader, TypeTreeNodeObject *node, TypeTre
         else
         {
             // class
-            bool changed_registry = false;
-            value = PyDict_New();
-            for (int i = 0; i < PyList_GET_SIZE(node->m_Children); i++)
+            if (config->as_dict)
             {
-                child = (TypeTreeNodeObject *)PyList_GET_ITEM(node->m_Children, i);
-                if (child->_data_type == NodeDataType::ManagedReferencesRegistry)
-                {
-                    if (config->has_registry)
-                    {
-                        continue;
-                    }
-                    else
-                    {
-                        changed_registry = true;
-                        config->has_registry = true;
-                    }
-                }
-                PyObject *child_value = read_typetree_value<swap>(reader, child, config);
-                if (!child_value)
-                {
-                    Py_DECREF(value);
-                    return NULL;
-                }
-                if (PyDict_SetItem(value, child->m_Name, child_value))
-                {
-                    Py_DECREF(value);
-                    Py_DECREF(child_value);
-                    return NULL;
-                }
-                // dict increases ref count, so we need to decref here
-                Py_DECREF(child_value);
+                value = read_class<swap, true>(reader, node, config);
             }
             if (!config->as_dict)
             {
-                value = parse_class<swap>(reader, value, node, config);
-            }
-            if (changed_registry)
-            {
-                config->has_registry = false;
+                value = read_class<swap, false>(reader, node, config);
+                value = parse_class(value, node, config);
             }
         }
     }
@@ -858,7 +913,7 @@ PyObject *read_typetree_value_array(ReaderT *reader, TypeTreeNodeObject *node, T
 
 PyObject *read_typetree(PyObject *self, PyObject *args, PyObject *kwargs)
 {
-    const char *kwlist[] = {"data", "node", "endian", "as_dict", "assetsfile", "classes", "clean_name", NULL};
+    const char *kwlist[] = {"data", "node", "endian", "as_dict", "assetsfile", "classes", NULL};
     PyObject *data;
     PyObject *node;
     PyObject *as_dict = Py_True;
@@ -867,14 +922,13 @@ PyObject *read_typetree(PyObject *self, PyObject *args, PyObject *kwargs)
         false,
         Py_None,
         Py_None,
-        Py_None,
         false,
     };
 
     char endian;
     bool swap;
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OOC|OOOO", (char **)kwlist, &data, &node, &endian, &as_dict, &config.assetfile, &config.classes, &config.clean_name))
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OOC|OOO", (char **)kwlist, &data, &node, &endian, &as_dict, &config.assetfile, &config.classes))
     {
         return NULL;
     }
@@ -882,11 +936,6 @@ PyObject *read_typetree(PyObject *self, PyObject *args, PyObject *kwargs)
     config.as_dict = as_dict == Py_True;
     if (!config.as_dict)
     {
-        if (PyCallable_Check(config.clean_name) == 0)
-        {
-            PyErr_SetString(PyExc_ValueError, "clean_name must be callable if not as dict");
-            return NULL;
-        }
         if (config.assetfile == Py_None)
         {
             PyErr_SetString(PyExc_ValueError, "assetsfile must be set if not as dict");
@@ -900,7 +949,6 @@ PyObject *read_typetree(PyObject *self, PyObject *args, PyObject *kwargs)
     }
     Py_INCREF(config.assetfile);
     Py_INCREF(config.classes);
-    Py_INCREF(config.clean_name);
 
     volatile uint16_t bint = 0x0100;
     volatile bool is_big_endian = ((uint8_t *)&bint)[0] == 1;
@@ -928,16 +976,24 @@ PyObject *read_typetree(PyObject *self, PyObject *args, PyObject *kwargs)
         }
         break;
     default:
+    {
+        Py_DECREF(config.assetfile);
+        Py_DECREF(config.classes);
         PyErr_SetString(PyExc_ValueError, "Invalid endian");
-        break;
+        return NULL;
     }
+    }
+
     Py_buffer view;
 
     if (PyObject_GetBuffer(data, &view, PyBUF_SIMPLE) == -1)
     {
+        Py_DECREF(config.assetfile);
+        Py_DECREF(config.classes);
         PyErr_SetString(PyExc_ValueError, "Failed to get buffer");
         return NULL;
     }
+
     ReaderT reader = {static_cast<uint8_t *>(view.buf), static_cast<uint8_t *>(view.buf) + view.len, static_cast<uint8_t *>(view.buf)};
 
     PyObject *value;
@@ -951,6 +1007,8 @@ PyObject *read_typetree(PyObject *self, PyObject *args, PyObject *kwargs)
     }
 
     PyBuffer_Release(&view);
+    Py_DECREF(config.assetfile);
+    Py_DECREF(config.classes);
 
     if (reader.ptr != reader.end)
     {
@@ -1008,6 +1066,40 @@ static const std::map<const char *, NodeDataType> typeToNodeDataType = {
     {"ManagedReferencesRegistry", NodeDataType::ManagedReferencesRegistry},
 };
 
+static inline NodeDataType get_node_data_type(PyObject *py_type)
+{
+    if (py_type == Py_None)
+    {
+        return NodeDataType::unk;
+    }
+
+    const char *type = PyUnicode_AsUTF8(py_type);
+    if (type[0] == 'P' && type[1] == 'P' && type[2] == 't' && type[3] == 'r' && type[4] == '<')
+    {
+        return NodeDataType::PPtr;
+    }
+    else
+    {
+        for (auto it = typeToNodeDataType.begin(); it != typeToNodeDataType.end(); ++it)
+        {
+            if (strcmp(it->first, type) == 0)
+            {
+                return it->second;
+            }
+        }
+    }
+    return NodeDataType::unk;
+}
+
+static inline void set_none_if_null_n_incref(PyObject **field)
+{
+    if (*field == nullptr)
+    {
+        *field = Py_None;
+    }
+    Py_INCREF(*field);
+}
+
 static int TypeTreeNode_init(TypeTreeNodeObject *self, PyObject *args, PyObject *kwargs)
 {
     const char *kwlist[] = {
@@ -1024,78 +1116,67 @@ static int TypeTreeNode_init(TypeTreeNodeObject *self, PyObject *args, PyObject 
         "m_RefTypeHash",
         NULL};
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OOOOO|OOOOOO", (char **)kwlist,
-                                     &self->m_Level,
-                                     &self->m_Type,
-                                     &self->m_Name,
-                                     &self->m_ByteSize,
-                                     &self->m_Version,
-                                     &self->m_Children,
-                                     &self->m_TypeFlags,
-                                     &self->m_VariableCount,
-                                     &self->m_Index,
-                                     &self->m_MetaFlag,
-                                     &self->m_RefTypeHash))
+    // ensure all fields are set to 0
+    // in case init fails, so that dealloc doesn't segfault
+    self->m_Level = nullptr;
+    self->m_Type = nullptr;
+    self->m_Name = nullptr;
+    self->m_ByteSize = nullptr;
+    self->m_TypeFlags = nullptr;
+    self->m_Version = nullptr;
+    self->m_Children = nullptr;
+    self->m_VariableCount = nullptr;
+    self->m_Index = nullptr;
+    self->m_MetaFlag = nullptr;
+    self->m_RefTypeHash = nullptr;
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O!O!O!O!O!|O!O!O!O!O!O!", (char **)kwlist,
+                                     // required fields
+                                     &PyLong_Type, &self->m_Level,
+                                     &PyUnicode_Type, &self->m_Type,
+                                     &PyUnicode_Type, &self->m_Name,
+                                     &PyLong_Type, &self->m_ByteSize,
+                                     &PyLong_Type, &self->m_Version,
+                                     // optional fields
+                                     &PyList_Type, &self->m_Children,
+                                     &PyLong_Type, &self->m_TypeFlags,
+                                     &PyLong_Type, &self->m_VariableCount,
+                                     &PyLong_Type, &self->m_Index,
+                                     &PyLong_Type, &self->m_MetaFlag,
+                                     &PyLong_Type, &self->m_RefTypeHash))
     {
         return -1;
     }
 
+    // incref to keep values alive
     Py_INCREF(self->m_Level);
     Py_INCREF(self->m_Type);
     Py_INCREF(self->m_Name);
     Py_INCREF(self->m_ByteSize);
     Py_INCREF(self->m_Version);
-    // optional fields
+
+    // optional values - can still be nullptr
     if (self->m_Children == nullptr)
     {
         self->m_Children = PyList_New(0);
     }
     else
     {
-        Py_XINCREF(self->m_Children);
+        Py_INCREF(self->m_Children);
     }
+    set_none_if_null_n_incref(&self->m_TypeFlags);
+    set_none_if_null_n_incref(&self->m_VariableCount);
+    set_none_if_null_n_incref(&self->m_Index);
+    set_none_if_null_n_incref(&self->m_MetaFlag);
+    set_none_if_null_n_incref(&self->m_RefTypeHash);
 
-#define SET_NONE_IF_NULL(field)     \
-    {                               \
-        if (self->field == nullptr) \
-        {                           \
-            self->field = Py_None;  \
-        }                           \
-        Py_INCREF(self->field);     \
-    }
+    // set private fields required for fast access
+    self->_data_type = get_node_data_type(self->m_Type);
+    self->_align = (self->m_MetaFlag != Py_None && PyLong_AsLong(self->m_MetaFlag) & 0x4000);
 
-    SET_NONE_IF_NULL(m_TypeFlags);
-    SET_NONE_IF_NULL(m_VariableCount);
-    SET_NONE_IF_NULL(m_Index);
-    SET_NONE_IF_NULL(m_MetaFlag);
-    SET_NONE_IF_NULL(m_RefTypeHash);
-
-    if (self->m_MetaFlag != Py_None && PyLong_AsLong(self->m_MetaFlag) & 0x4000)
-    {
-        self->_align = true;
-    }
-
-    if (self->m_Type != Py_None)
-    {
-        const char *type = PyUnicode_AsUTF8(self->m_Type);
-        self->_data_type = NodeDataType::unk;
-        if (type[0] == 'P' && type[1] == 'P' && type[2] == 't' && type[3] == 'r' && type[4] == '<')
-        {
-            self->_data_type = NodeDataType::PPtr;
-        }
-        else
-        {
-            for (auto it = typeToNodeDataType.begin(); it != typeToNodeDataType.end(); ++it)
-            {
-                if (strcmp(it->first, type) == 0)
-                {
-                    self->_data_type = it->second;
-                    break;
-                }
-            }
-        }
-    }
-
+    std::string sname = PyUnicode_AsUTF8(self->m_Name);
+    std::string sclean_name = clean_name(sname);
+    self->_clean_name = PyUnicode_FromString(sclean_name.c_str());
     return 0;
 }
 
@@ -1111,6 +1192,7 @@ static PyMemberDef TypeTreeNode_members[] = {
     {"m_Index", T_OBJECT_EX, offsetof(TypeTreeNodeObject, m_Index), 0, ""},
     {"m_MetaFlag", T_OBJECT_EX, offsetof(TypeTreeNodeObject, m_MetaFlag), 0, ""},
     {"m_RefTypeHash", T_OBJECT_EX, offsetof(TypeTreeNodeObject, m_RefTypeHash), 0, ""},
+    {"_clean_name", T_OBJECT_EX, offsetof(TypeTreeNodeObject, _clean_name), 0, ""},
     {NULL} /* Sentinel */
 };
 

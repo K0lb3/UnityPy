@@ -1,6 +1,8 @@
 from __future__ import annotations
+
+import re
 from struct import Struct
-from typing import Optional, List, Tuple, TYPE_CHECKING, Dict, Iterator
+from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Tuple
 
 from attrs import define, field
 
@@ -27,6 +29,10 @@ except ImportError:
         m_Index: Optional[int] = None
         m_MetaFlag: Optional[int] = None
         m_RefTypeHash: Optional[int] = None
+        _clean_name: str = field(init=False)
+
+        def __attrs_post_init__(self):
+            self._clean_name = clean_name(self.m_Name)
 
 
 class TypeTreeNode(TypeTreeNodeC):
@@ -41,8 +47,8 @@ class TypeTreeNode(TypeTreeNodeC):
     def parse(cls, reader: EndianBinaryReader, version: int) -> TypeTreeNode:
         # stack approach is way faster than recursion
         # using a fake root node to avoid special case for root node
-        dummy_node = cls(-1, "", "", 0, 0, 0, [])
-        dummy_root = cls(-1, "", "", 0, 0, 0, [dummy_node])
+        dummy_node = cls(-1, "", "", 0, 0, [])
+        dummy_root = cls(-1, "", "", 0, 0, [dummy_node])
 
         stack: List[Tuple[TypeTreeNode, int]] = [(dummy_root, 1)]
         while stack:
@@ -262,3 +268,17 @@ def _get_blob_node_struct(endian: str, version: int) -> tuple[Struct, list[str]]
         keys.append("m_RefTypeHash")
 
     return Struct(struct_type), keys
+
+
+def clean_name(name: str) -> str:
+    # keep in sync with TypeTreeHelper.cpp
+    if name.startswith("(int&)"):
+        name = name[6:]
+    if name.endswith("?"):
+        name = name[:-1]
+    name = re.sub(r"[ \.:\-\[\]]", "_", name)
+    if name in ["pass", "from"]:
+        name += "_"
+    if name[0].isdigit():
+        name = f"x{name}"
+    return name

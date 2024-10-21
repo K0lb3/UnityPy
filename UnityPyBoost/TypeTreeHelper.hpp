@@ -33,9 +33,10 @@ typedef struct TypeTreeNodeObject
     PyObject_HEAD
         // helper field - simple hash of type for faster comparison
         unsigned int _data_type;
-        bool _align;
+    bool _align;
+    PyObject *_clean_name;
     // used filds for fast access
-    PyObject* m_Children;
+    PyObject *m_Children;
     PyObject *m_Name;
     // fields not used in C
     PyObject *m_Level;

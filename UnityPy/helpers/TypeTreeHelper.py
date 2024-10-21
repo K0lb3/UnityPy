@@ -11,6 +11,7 @@ from ..streams.EndianBinaryWriter import EndianBinaryWriter
 from .TypeTreeNode import TypeTreeNode
 
 Object = classes.Object
+UnknownObject = classes.UnknownObject
 PPtr = classes.PPtr
 
 if TYPE_CHECKING:
@@ -134,7 +135,7 @@ def read_typetree(
     if expected_read and read_typetree_boost:
         data = reader.read_bytes(expected_read)
         return read_typetree_boost(
-            data, root_node, reader.endian, as_dict, assetsfile, classes, clean_name
+            data, root_node, reader.endian, as_dict, assetsfile, classes
         )
 
     pos = reader.Position
@@ -218,7 +219,9 @@ def read_value(
                 else:
                     config = config.copy()
                     config.has_registry = True
-            value[child.m_Name] = read_value(child, reader, config)
+            value[child.m_Name if config.as_dict else child._clean_name] = read_value(
+                child, reader, config
+            )
 
         if not config.as_dict:
             if node.m_Type.startswith("PPtr<"):
@@ -228,21 +231,29 @@ def read_value(
                     m_PathID=value["m_PathID"],
                 )
             else:
-                clz = getattr(classes, node.m_Type, Object)
-                clz_kwargs = {clean_name(key): value for key, value in value.items()}
+                clz = getattr(classes, node.m_Type, UnknownObject)
                 try:
-                    value = clz(**clz_kwargs)
+                    value = clz(**value)
                 except TypeError:
-                    extra_keys = set(clz_kwargs.keys()) - set(clz.__annotations__)
-                    value = clz(
-                        **{
-                            key: value
-                            for key, value in clz_kwargs.items()
-                            if key in clz.__annotations__
-                        }
-                    )
-                    for key in extra_keys:
-                        setattr(value, key, clz_kwargs[key])
+                    keys = set(value.keys())
+                    annotation_keys = set(clz.__annotations__)
+                    missing_keys = annotation_keys - keys
+                    if clz is UnknownObject or missing_keys:
+                        value = UnknownObject(node, **value)
+                    else:
+                        extra_keys = keys - annotation_keys
+                        if extra_keys:
+                            value = clz(
+                                **{
+                                    key: value
+                                    for key, value in value.items()
+                                    if key in clz.__annotations__
+                                }
+                            )
+                            for key in extra_keys:
+                                setattr(value, key, value[key])
+                        else:
+                            value = UnknownObject(**value)
 
     if align:
         reader.align_stream()
@@ -313,53 +324,66 @@ def read_value_array(
                 }
                 for _ in range(size)
             ]
+        elif node.m_Type.startswith("PPtr<"):
+            value = [
+                PPtr[Any](
+                    assetsfile=config.assetsfile,
+                    **{
+                        child.m_Name: read_value(child, reader, config)
+                        for child in node.m_Children
+                    },
+                )
+                for _ in range(size)
+            ]
         else:
-            if node.m_Type.startswith("PPtr<"):
+            clz = getattr(
+                classes,
+                node.m_Type,
+                UnknownObject,
+            )
+            keys = set(child._clean_name for child in node.m_Children)
+            annotation_keys = set(clz.__annotations__)
+            missing_keys = annotation_keys - keys
+            extra_keys = keys - annotation_keys
+            if missing_keys or clz is UnknownObject:
                 value = [
-                    PPtr[Any](
-                        assetsfile=config.assetsfile,
+                    UnknownObject(
+                        node,
                         **{
-                            child.m_Name: read_value(child, reader, config)
+                            child._clean_name: read_value(child, reader, config)
                             for child in node.m_Children
                         },
                     )
                     for _ in range(size)
                 ]
+            elif extra_keys:
+                value = [None] * size
+                for i in range(size):
+                    value_i_d = {
+                        child._clean_name: read_value(child, reader, config)
+                        for child in node.m_Children
+                    }
+                    value_i = clz(
+                        **{
+                            key: value
+                            for key, value in value_i_d.items()
+                            if key in annotation_keys
+                        }
+                    )
+                    for key in extra_keys:
+                        setattr(value_i, key, value_i_d[key])
+                    value[i] = value_i
             else:
-                clz = getattr(
-                    classes,
-                    node.m_Type,
-                    Object,
-                )
-                clean_names = [clean_name(child.m_Name) for child in node.m_Children]
-                if all(name in clz.__annotations__ for name in clean_names):
-                    value = [
-                        clz(
-                            **{
-                                name: read_value(child, reader, config)
-                                for name, child in zip(clean_names, node.m_Children)
-                            }
-                        )
-                        for _ in range(size)
-                    ]
-                else:
-                    extra_keys = set(clean_names) - set(clz.__annotations__)
-                    value = [None] * size
-                    for i in range(size):
-                        value_i_d = {
-                            clean_name(child.m_Name): read_value(child, reader, config)
+                value = [
+                    clz(
+                        **{
+                            child._clean_name: read_value(child, reader, config)
                             for child in node.m_Children
                         }
-                        value_i = clz(
-                            **{
-                                key: value
-                                for key, value in value_i_d.items()
-                                if key in clz.__annotations__
-                            }
-                        )
-                        for key in extra_keys:
-                            setattr(value_i, key, value_i_d[key])
-                        value[i] = value_i
+                    )
+                    for _ in range(size)
+                ]
+
     if align:
         reader.align_stream()
     return value
@@ -409,7 +433,7 @@ FUNCTION_WRITE_MAP = {
 
 
 def write_value(
-    value: Any,
+    value: Union[dict[str, Any], Object],
     node: TypeTreeNode,
     writer: EndianBinaryWriter,
     config: TypeTreeConfig,
@@ -456,9 +480,7 @@ def write_value(
                     else:
                         config = config.copy()
                         config.has_registry = True
-                write_value(
-                    getattr(value, clean_name(child.m_Name)), child, writer, config
-                )
+                write_value(getattr(value, child._clean_name), child, writer, config)
 
     if align:
         writer.align_stream()
