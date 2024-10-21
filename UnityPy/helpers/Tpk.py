@@ -9,7 +9,8 @@ from typing import Any, Dict, List, Tuple
 from .TypeTreeHelper import TypeTreeNode
 
 TPKTYPETREE: TpkTypeTreeBlob = None
-NODES_CACHE: dict = {}
+CLASSES_CACHE: Dict[Tuple[int, tuple], TypeTreeNode] = {}
+NODES_CACHE: Dict[TpkUnityClass, TypeTreeNode] = {}
 
 
 def init():
@@ -22,10 +23,11 @@ def init():
 
 
 def get_typetree_node(class_id: int, version: tuple):
-    global NODES_CACHE
+    global CLASSES_CACHE
     key = (class_id, version)
-    if key in NODES_CACHE:
-        return NODES_CACHE[key]
+    cached = CLASSES_CACHE.get(key)
+    if cached:
+        return cached
 
     class_info = TPKTYPETREE.ClassInformation[class_id].getVersionedClass(
         UnityVersion.fromList(*version)
@@ -34,11 +36,16 @@ def get_typetree_node(class_id: int, version: tuple):
         raise ValueError("Could not find class info for class id {}".format(class_id))
 
     node = generate_node(class_info)
-    NODES_CACHE[key] = node
+    CLASSES_CACHE[key] = node
     return node
 
 
 def generate_node(class_info: TpkUnityClass) -> TypeTreeNode:
+    global NODES_CACHE
+    cached = NODES_CACHE.get(class_info)
+    if cached:
+        return cached
+
     nodes = []
     NODES = TPKTYPETREE.NodeBuffer.Nodes
     stack = [(class_info.ReleaseRootNode, 0)]
@@ -59,7 +66,9 @@ def generate_node(class_info: TpkUnityClass) -> TypeTreeNode:
         )
         stack = [(node_id, level + 1) for node_id in node.SubNodes] + stack
         index += 1
-    return TypeTreeNode.from_list(nodes)
+    result = TypeTreeNode.from_list(nodes)
+    NODES_CACHE[class_info] = result
+    return result
 
 
 ######################################################################################
