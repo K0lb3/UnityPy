@@ -527,7 +527,7 @@ inline PyObject *parse_class(PyObject *kwargs, TypeTreeNodeObject *node, TypeTre
         PyObject *extra_value = PyDict_GetItem(kwargs, child->_clean_name); // +1
         PyDict_SetItem(extras, child->_clean_name, extra_value);            // +1
         PyDict_DelItem(kwargs, child->_clean_name);                         // -1
-        Py_DECREF(extra_value);                                             // -1
+        //Py_DECREF(extra_value);                                             // -1
     }
 
     if (PyDict_Size(extras) == 0)
@@ -926,7 +926,7 @@ PyObject *read_typetree(PyObject *self, PyObject *args, PyObject *kwargs)
 {
     const char *kwlist[] = {"data", "node", "endian", "as_dict", "assetsfile", "classes", NULL};
     Py_buffer view;
-    PyObject *node;
+    PyObject *node = nullptr;
     int as_dict = 1;
     PyObject *value = nullptr;
     ReaderT reader;
@@ -1011,14 +1011,14 @@ PyObject *read_typetree(PyObject *self, PyObject *args, PyObject *kwargs)
 
     if (reader.ptr != reader.end)
     {
-        Py_DecRef(value);
+        Py_DECREF(value);
         value = PyErr_Format(PyExc_ValueError, "Read %ld bytes, %ld remaining", reader.ptr - reader.start, reader.end - reader.ptr);
     }
 
 READ_TYPETREE_CLEANUP:
     PyBuffer_Release(&view);
-    Py_DECREF(config.assetfile);
-    Py_DECREF(config.classes);
+    Py_XDECREF(config.assetfile);
+    Py_XDECREF(config.classes);
     return value;
 }
 
