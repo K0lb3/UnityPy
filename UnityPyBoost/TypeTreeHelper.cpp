@@ -543,8 +543,9 @@ inline PyObject *parse_class(PyObject *kwargs, TypeTreeNodeObject *node, TypeTre
         pos = 0;
         while (PyDict_Next(extras, &pos, &key, &value))
         {
-            PyObject_SetItem(instance, key, value);
+            PyObject_GenericSetAttr(instance, key, value);
         }
+        goto PARSE_CLASS_CLEANUP;
     }
     PyErr_Clear();
 
@@ -556,7 +557,7 @@ inline PyObject *parse_class(PyObject *kwargs, TypeTreeNodeObject *node, TypeTre
     pos = 0;
     while (PyDict_Next(extras, &pos, &key, &value))
     {
-        PyObject_SetItem(kwargs, key, value);
+        PyDict_SetItem(kwargs, key, value);
     }
     instance = PyObject_Call(clz, args, kwargs);
 
@@ -778,14 +779,14 @@ PyObject *read_typetree_value(ReaderT *reader, TypeTreeNodeObject *node, TypeTre
         }
         if (!config->as_dict)
         {
-            PyObject *clz = PyObject_GetAttrString(config->classes, "Object");
+            PyObject *clz = PyObject_GetAttrString(config->classes, "UnknownObject");
             if (clz == NULL)
             {
                 PyErr_SetString(PyExc_ValueError, "Failed to get class");
                 Py_DECREF(value);
                 return NULL;
             }
-            PyObject *args = PyTuple_New(0);
+            PyObject *args = PyTuple_Pack(1, (PyObject *)node);
             PyObject *instance = PyObject_Call(clz, args, value);
             Py_DECREF(clz);
             Py_DECREF(args);
@@ -943,7 +944,7 @@ PyObject *read_typetree(PyObject *self, PyObject *args, PyObject *kwargs)
     char endian;
     bool swap;
 
-    int parse_result = PyArg_ParseTupleAndKeywords(args, kwargs, "y*OC|pOO", (char **)kwlist, &view, &node, &endian, &as_dict, &config.assetfile, &config.classes);
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "y*OC|pOO", (char **)kwlist, &view, &node, &endian, &as_dict, &config.assetfile, &config.classes))
     {
         goto READ_TYPETREE_CLEANUP;
     }
@@ -1018,7 +1019,6 @@ READ_TYPETREE_CLEANUP:
     PyBuffer_Release(&view);
     Py_DECREF(config.assetfile);
     Py_DECREF(config.classes);
-
     return value;
 }
 
