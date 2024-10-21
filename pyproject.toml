@@ -65,7 +65,7 @@ version = { attr = "UnityPy.__version__" }
 
 [project.optional-dependencies]
 tests = [
-    "pytest >= 8",
+    "pytest >= 7",
     "pillow >= 8",
     "psutil >= 6",
 ]
