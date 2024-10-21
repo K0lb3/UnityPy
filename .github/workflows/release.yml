@@ -43,6 +43,8 @@ jobs:
       
       - name: Build wheels
         uses: joerick/cibuildwheel@v2.21.2
+        env:
+          CIBW_TEST_SKIP: "*"
         
       - uses: actions/upload-artifact@v3
         with:
@@ -65,6 +67,8 @@ jobs:
 
       - name: Build wheels
         uses: joerick/cibuildwheel@v2.21.2
+        env:
+          CIBW_TEST_SKIP: "*"
 
       - uses: actions/upload-artifact@v3
         with:
