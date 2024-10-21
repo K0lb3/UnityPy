@@ -384,7 +384,8 @@ inline PyObject *read_pair_array(ReaderT *reader, TypeTreeNodeObject *node, Type
             Py_DECREF(list);
             return NULL;
         }
-        PyList_SET_ITEM(list, i, PyTuple_Pack(2, first, second));
+        PyList_SET_ITEM(list, i, PyTuple_Pack(2, first, second)); // pack creates two strong references
+        // so we need to decref both values here to bring their ref count back to 1
         Py_DECREF(first);
         Py_DECREF(second);
     }
@@ -396,10 +397,10 @@ template <bool swap, bool as_dict>
 inline PyObject *read_class(ReaderT *reader, TypeTreeNodeObject *node, TypeTreeReaderConfigT *config)
 {
     bool changed_registry = false;
-    PyObject *value = PyDict_New();
+    PyObject *value = PyDict_New(); // value: 1 refcount
     for (int i = 0; i < PyList_GET_SIZE(node->m_Children); i++)
     {
-        TypeTreeNodeObject *child = (TypeTreeNodeObject *)PyList_GET_ITEM(node->m_Children, i);
+        TypeTreeNodeObject *child = (TypeTreeNodeObject *)PyList_GET_ITEM(node->m_Children, i); // no refcount change
         if (child->_data_type == NodeDataType::ManagedReferencesRegistry)
         {
             if (config->has_registry)
@@ -412,29 +413,29 @@ inline PyObject *read_class(ReaderT *reader, TypeTreeNodeObject *node, TypeTreeR
                 config->has_registry = true;
             }
         }
-        PyObject *child_value = read_typetree_value<swap>(reader, child, config);
+        PyObject *child_value = read_typetree_value<swap>(reader, child, config); // child_value: 1 refcount
         if (!child_value)
         {
-            Py_DECREF(value);
+            Py_DECREF(value); // value: 0 refcount
             return NULL;
         }
         int set_item_result;
         if constexpr (as_dict == true)
         {
-            set_item_result = PyDict_SetItem(value, child->m_Name, child_value);
+            set_item_result = PyDict_SetItem(value, child->m_Name, child_value); // child_value: 2 refcount
         }
         else
         {
-            set_item_result = PyDict_SetItem(value, child->_clean_name, child_value);
+            set_item_result = PyDict_SetItem(value, child->_clean_name, child_value); // child_value: 2 refcount
         }
         if (set_item_result != 0)
         {
-            Py_DECREF(value);
-            Py_DECREF(child_value);
+            Py_DECREF(value);       // value: 0 refcount
+            Py_DECREF(child_value); // child_value: 0 refcount
             return NULL;
         }
         // PyDict_SetItem increases ref count, so we need to decref here
-        Py_DECREF(child_value);
+        Py_DECREF(child_value); // child_value: 1 refcount
     }
 
     if (changed_registry)
@@ -1033,6 +1034,7 @@ static void TypeTreeNode_dealloc(TypeTreeNodeObject *self)
     Py_XDECREF(self->m_MetaFlag);
     Py_XDECREF(self->m_RefTypeHash);
     Py_XDECREF(self->m_Children);
+    Py_XDECREF(self->_clean_name);
     Py_TYPE(self)->tp_free((PyObject *)self);
 }
 
@@ -1129,6 +1131,7 @@ static int TypeTreeNode_init(TypeTreeNodeObject *self, PyObject *args, PyObject 
     self->m_Index = nullptr;
     self->m_MetaFlag = nullptr;
     self->m_RefTypeHash = nullptr;
+    self->_clean_name = nullptr;
 
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O!O!O!O!O!|O!O!O!O!O!O!", (char **)kwlist,
                                      // required fields
@@ -1176,7 +1179,7 @@ static int TypeTreeNode_init(TypeTreeNodeObject *self, PyObject *args, PyObject 
 
     std::string sname = PyUnicode_AsUTF8(self->m_Name);
     std::string sclean_name = clean_name(sname);
-    self->_clean_name = PyUnicode_FromString(sclean_name.c_str());
+    self->_clean_name = PyUnicode_FromString(sclean_name.c_str()); // comes with strong ref
     return 0;
 }
 
