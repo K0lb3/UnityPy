@@ -1,9 +1,10 @@
 from __future__ import annotations
-from typing import Union, TYPE_CHECKING, Literal, Optional, List, Any
+
+from typing import TYPE_CHECKING, Any, List, Optional, Union
 
 if TYPE_CHECKING:
-    from .files.SerializedFile import SerializedFile
     from .classes import Object
+    from .files.SerializedFile import SerializedFile
 
 def unpack_vertexdata(
     data: Union[bytes, bytearray],
@@ -17,7 +18,7 @@ def unpack_vertexdata(
 def read_typetree(
     data: Union[bytes, bytearray],
     node: TypeTreeNode,
-    endian: Literal["<", ">"],
+    endian: Union["<", ">"],
     as_dict: bool,
     assetsfile: SerializedFile,
     classes: dict,

@@ -23,6 +23,10 @@ class UnknownObject(Object):
                 return vstr[:97] + "..."
             return vstr
 
-        return f"<UnknownObject<{self.get_type()}> {', '.join(
-            f'{k}={format_value(v)}' for k, v in self.__dict__.items() if k != '__node__'
-        )}>"
+        inner_str = ", ".join(
+            f"{k}={format_value(v)}"
+            for k, v in self.__dict__.items()
+            if k != "__node__"
+        )
+
+        return f"<UnknownObject<{self.get_type()}> {inner_str}>"

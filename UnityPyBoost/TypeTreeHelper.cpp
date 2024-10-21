@@ -912,47 +912,59 @@ PyObject *read_typetree_value_array(ReaderT *reader, TypeTreeNodeObject *node, T
     return value;
 }
 
+static inline void set_none_if_null_n_incref(PyObject **field)
+{
+    if (*field == nullptr)
+    {
+        *field = Py_None;
+    }
+    Py_INCREF(*field);
+}
+
 PyObject *read_typetree(PyObject *self, PyObject *args, PyObject *kwargs)
 {
     const char *kwlist[] = {"data", "node", "endian", "as_dict", "assetsfile", "classes", NULL};
-    PyObject *data;
+    Py_buffer view;
     PyObject *node;
-    PyObject *as_dict = Py_True;
+    int as_dict = 1;
+    PyObject *value = nullptr;
+    ReaderT reader;
+
+    volatile uint16_t bint = 0x0100;
+    volatile bool is_big_endian = ((uint8_t *)&bint)[0] == 1;
 
     TypeTreeReaderConfigT config = {
         false,
-        Py_None,
-        Py_None,
+        nullptr,
+        nullptr,
         false,
     };
 
     char endian;
     bool swap;
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OOC|OOO", (char **)kwlist, &data, &node, &endian, &as_dict, &config.assetfile, &config.classes))
+    int parse_result = PyArg_ParseTupleAndKeywords(args, kwargs, "y*OC|pOO", (char **)kwlist, &view, &node, &endian, &as_dict, &config.assetfile, &config.classes);
     {
-        return NULL;
+        goto READ_TYPETREE_CLEANUP;
     }
 
-    config.as_dict = as_dict == Py_True;
+    set_none_if_null_n_incref(&config.assetfile);
+    set_none_if_null_n_incref(&config.classes);
+
+    config.as_dict = as_dict == 1;
     if (!config.as_dict)
     {
         if (config.assetfile == Py_None)
         {
             PyErr_SetString(PyExc_ValueError, "assetsfile must be set if not as dict");
-            return NULL;
+            goto READ_TYPETREE_CLEANUP;
         }
         if (config.classes == Py_None)
         {
             PyErr_SetString(PyExc_ValueError, "classes must be set if not as dict");
-            return NULL;
+            goto READ_TYPETREE_CLEANUP;
         }
     }
-    Py_INCREF(config.assetfile);
-    Py_INCREF(config.classes);
-
-    volatile uint16_t bint = 0x0100;
-    volatile bool is_big_endian = ((uint8_t *)&bint)[0] == 1;
 
     switch (endian)
     {
@@ -985,19 +997,8 @@ PyObject *read_typetree(PyObject *self, PyObject *args, PyObject *kwargs)
     }
     }
 
-    Py_buffer view;
+    reader = {static_cast<uint8_t *>(view.buf), static_cast<uint8_t *>(view.buf) + view.len, static_cast<uint8_t *>(view.buf)};
 
-    if (PyObject_GetBuffer(data, &view, PyBUF_SIMPLE) == -1)
-    {
-        Py_DECREF(config.assetfile);
-        Py_DECREF(config.classes);
-        PyErr_SetString(PyExc_ValueError, "Failed to get buffer");
-        return NULL;
-    }
-
-    ReaderT reader = {static_cast<uint8_t *>(view.buf), static_cast<uint8_t *>(view.buf) + view.len, static_cast<uint8_t *>(view.buf)};
-
-    PyObject *value;
     if (swap)
     {
         value = read_typetree_value<true>(&reader, (TypeTreeNodeObject *)node, &config);
@@ -1007,21 +1008,22 @@ PyObject *read_typetree(PyObject *self, PyObject *args, PyObject *kwargs)
         value = read_typetree_value<false>(&reader, (TypeTreeNodeObject *)node, &config);
     }
 
-    PyBuffer_Release(&view);
-    Py_DECREF(config.assetfile);
-    Py_DECREF(config.classes);
-
     if (reader.ptr != reader.end)
     {
         Py_DecRef(value);
-        return PyErr_Format(PyExc_ValueError, "Read %ld bytes, %ld remaining", reader.ptr - reader.start, reader.end - reader.ptr);
+        value = PyErr_Format(PyExc_ValueError, "Read %ld bytes, %ld remaining", reader.ptr - reader.start, reader.end - reader.ptr);
     }
+
+READ_TYPETREE_CLEANUP:
+    PyBuffer_Release(&view);
+    Py_DECREF(config.assetfile);
+    Py_DECREF(config.classes);
 
     return value;
 }
 
 // TypeTreeNode impl
-static void TypeTreeNode_dealloc(TypeTreeNodeObject *self)
+static void TypeTreeNode_finalize(TypeTreeNodeObject *self)
 {
     Py_XDECREF(self->m_Level);
     Py_XDECREF(self->m_Type);
@@ -1035,7 +1037,6 @@ static void TypeTreeNode_dealloc(TypeTreeNodeObject *self)
     Py_XDECREF(self->m_RefTypeHash);
     Py_XDECREF(self->m_Children);
     Py_XDECREF(self->_clean_name);
-    Py_TYPE(self)->tp_free((PyObject *)self);
 }
 
 static const std::map<const char *, NodeDataType> typeToNodeDataType = {
@@ -1091,15 +1092,6 @@ static inline NodeDataType get_node_data_type(PyObject *py_type)
         }
     }
     return NodeDataType::unk;
-}
-
-static inline void set_none_if_null_n_incref(PyObject **field)
-{
-    if (*field == nullptr)
-    {
-        *field = Py_None;
-    }
-    Py_INCREF(*field);
 }
 
 static int TypeTreeNode_init(TypeTreeNodeObject *self, PyObject *args, PyObject *kwargs)
@@ -1209,8 +1201,8 @@ static PyTypeObject TypeTreeNodeType = []() -> PyTypeObject
     type.tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE;
     type.tp_new = PyType_GenericNew;
     type.tp_init = (initproc)TypeTreeNode_init;
-    type.tp_dealloc = (destructor)TypeTreeNode_dealloc;
     type.tp_members = TypeTreeNode_members;
+    type.tp_finalize = (destructor)TypeTreeNode_finalize;
     return type;
 }();
 

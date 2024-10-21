@@ -2,7 +2,7 @@ import gc
 import math
 import os
 import random
-from typing import List, Literal, Tuple, TypeVar
+from typing import List, Tuple, TypeVar, Union, Type
 
 import psutil
 
@@ -73,7 +73,7 @@ INT_BYTESIZE_MAP = {
 
 def generate_sample_data(
     u_type: List[str],
-    py_typ: Literal[int, float, str],
+    py_typ: Type[Union[int, float, str]],
     bounds: Tuple[T, T],
     count: int = 10,
 ) -> List[T]:
