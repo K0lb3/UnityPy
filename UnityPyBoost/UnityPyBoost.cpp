@@ -1,5 +1,4 @@
 #define PY_SSIZE_T_CLEAN
-#pragma once
 #include <Python.h>
 #include "Mesh.hpp"
 #include "TypeTreeHelper.hpp"
