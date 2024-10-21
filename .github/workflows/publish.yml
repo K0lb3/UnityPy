@@ -57,7 +57,7 @@ jobs:
             # Disabled repair wheel since the fmob lib is not compatible
           CIBW_REPAIR_WHEEL_COMMAND: ''
           CIBW_REPAIR_WHEEL_COMMAND_LINUX: 'mv {wheel} {dest_dir}/"$(basename {wheel} | sed "s/-linux_/-manylinux_2_17_/")"'
-          CIBW_TEST_REQUIRES: pytest
+          CIBW_TEST_REQUIRES: pytest psutil
           CIBW_TEST_COMMAND: pytest -v -s {package}/tests
           CIBW_TEST_SKIP: "*-macosx* *-manylinux_i686 *-win32"
 
