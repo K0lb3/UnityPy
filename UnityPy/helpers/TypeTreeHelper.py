@@ -243,15 +243,12 @@ def read_value(
                     else:
                         extra_keys = keys - annotation_keys
                         if extra_keys:
-                            value = clz(
-                                **{
-                                    key: value
-                                    for key, value in value.items()
-                                    if key in clz.__annotations__
-                                }
+                            instance = clz(
+                                **{key: value[key] for key in annotation_keys}
                             )
                             for key in extra_keys:
-                                setattr(value, key, value[key])
+                                setattr(instance, key, value[key])
+                            value = instance
                         else:
                             value = UnknownObject(**value)
 
