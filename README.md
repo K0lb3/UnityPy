@@ -4,7 +4,7 @@
 [![PyPI supported Python versions](https://img.shields.io/pypi/pyversions/UnityPy.svg)](https://pypi.python.org/pypi/UnityPy)
 [![Win/Mac/Linux](https://img.shields.io/badge/platform-windows%20%7C%20macos%20%7C%20linux-informational)]()
 [![MIT](https://img.shields.io/github/license/K0lb3/UnityPy)](https://github.com/K0lb3/UnityPy/blob/master/LICENSE)
-![Test and Publish](https://github.com/K0lb3/UnityPy/workflows/Test%20and%20Publish/badge.svg)
+![Test](https://github.com/K0lb3/UnityPy/workflows/Test/badge.svg)
 
 A Unity asset extractor for Python based on [AssetStudio](https://github.com/Perfare/AssetStudio).
 
