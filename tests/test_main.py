@@ -1,5 +1,6 @@
 import io
 import os
+import platform
 
 from PIL import Image
 
@@ -59,6 +60,11 @@ def test_sprite():
             if obj.type.name == "Sprite":
                 obj.read().image.save(io.BytesIO(), format="PNG")
 
+
+if platform.system() == "Darwin":
+    # crunch issue on macos leading to segfault
+    del test_texture2d
+    del test_sprite
 
 # def test_audioclip():
 #     # as not platforms are supported by FMOD
