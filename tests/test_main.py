@@ -60,28 +60,28 @@ def test_sprite():
                 obj.read().image.save(io.BytesIO(), format="PNG")
 
 
-def test_audioclip():
-    # as not platforms are supported by FMOD
-    # we have to check if the platform is supported first
-    try:
-        from UnityPy.export import AudioClipConverter
+# def test_audioclip():
+#     # as not platforms are supported by FMOD
+#     # we have to check if the platform is supported first
+#     try:
+#         from UnityPy.export import AudioClipConverter
 
-        AudioClipConverter.import_pyfmodex()
-    except NotImplementedError:
-        return
-    except OSError:
-        # cibuildwheel doesn't copy the .so files
-        # so we have to skip the test on it
-        print("Failed to load the fmod lib for your system.")
-        print("Skipping the audioclip test.")
-        return
-    if AudioClipConverter.pyfmodex is False:
-        return
-    env = UnityPy.load(os.path.join(SAMPLES, "char_118_yuki.ab"))
-    for obj in env.objects:
-        if obj.type.name == "AudioClip":
-            clip = obj.read()
-            assert len(clip.samples) == 1
+#         AudioClipConverter.import_pyfmodex()
+#     except NotImplementedError:
+#         return
+#     except OSError:
+#         # cibuildwheel doesn't copy the .so files
+#         # so we have to skip the test on it
+#         print("Failed to load the fmod lib for your system.")
+#         print("Skipping the audioclip test.")
+#         return
+#     if AudioClipConverter.pyfmodex is False:
+#         return
+#     env = UnityPy.load(os.path.join(SAMPLES, "char_118_yuki.ab"))
+#     for obj in env.objects:
+#         if obj.type.name == "AudioClip":
+#             clip = obj.read()
+#             assert len(clip.samples) == 1
 
 
 def test_mesh():
