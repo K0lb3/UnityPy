@@ -102,6 +102,11 @@ setup(
                 for f in os.listdir(UNITYPYBOOST_DIR)
                 if f.endswith(".cpp")
             ],
+            depends = [
+                f"UnityPyBoost/{f}"
+                for f in os.listdir(UNITYPYBOOST_DIR)
+                if f.endswith(".hpp")
+            ],
             language="c++",
             include_dirs=[UNITYPYBOOST_DIR],
         )

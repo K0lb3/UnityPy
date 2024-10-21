@@ -1,2 +1,0 @@
-recursive-include UnityPyBoost *.c
-recursive-include UnityPyBoost *.h
