@@ -352,12 +352,28 @@ class TpkUnityClass:
         if self.Flags & TpkUnityClassFlags.HasReleaseRootNode:
             (self.ReleaseRootNode,) = UINT16.unpack(stream.read(UINT16.size))
 
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "Name": self.Name,
+            "Base": self.Base,
+            "Flags": self.Flags,
+            "EditorRootNode": self.EditorRootNode,
+            "ReleaseRootNode": self.ReleaseRootNode,
+        }
+
     def __eq__(self, other: TpkUnityClass) -> bool:
-        return self.__dict__ == other.__dict__
+        return self.to_dict() == other.to_dict()
 
     def __hash__(self) -> int:
-        # TODO
-        return hash(self.__dict__)
+        return hash(
+            (
+                self.Name,
+                self.Base,
+                self.Flags,
+                self.EditorRootNode,
+                self.ReleaseRootNode,
+            )
+        )
 
 
 class TpkClassInformation:
