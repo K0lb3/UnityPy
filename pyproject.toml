@@ -62,3 +62,13 @@ dynamic = ["version"]
 
 [tool.setuptools.dynamic]
 version = { attr = "UnityPy.__version__" }
+
+[project.optional-dependencies]
+tests = [
+    "pytest >= 8",
+    "pillow >= 9",
+    "psutil >= 6",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
