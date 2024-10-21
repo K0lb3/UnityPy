@@ -1055,7 +1055,7 @@ static const std::map<const char *, NodeDataType> typeToNodeDataType = {
     {"SInt64", NodeDataType::s64},
     {"unsigned long long", NodeDataType::u64},
     {"UInt64", NodeDataType::u64},
-    {"FileSignature", NodeDataType::u64},
+    {"FileSize", NodeDataType::u64},
     {"float", NodeDataType::f32},
     {"double", NodeDataType::f64},
     {"bool", NodeDataType::boolean},
