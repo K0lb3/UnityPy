@@ -45,13 +45,14 @@ jobs:
         uses: joerick/cibuildwheel@v2.21.2
         env:
           CIBW_TEST_SKIP: "*"
+          CIBW_SKIP: "pp*"
         
       - uses: actions/upload-artifact@v3
         with:
           path: ./wheelhouse/*.whl
   
   build_wheels_ubuntu:
-    name: Build x86 manylinux wheels on ubuntu-latest
+    name: Buld wheels on ubuntu-latest
     runs-on: ubuntu-latest
     needs: [build_sdist]
 
@@ -69,6 +70,7 @@ jobs:
         uses: joerick/cibuildwheel@v2.21.2
         env:
           CIBW_TEST_SKIP: "*"
+          CIBW_SKIP: "pp*"
 
       - uses: actions/upload-artifact@v3
         with:
