@@ -78,7 +78,9 @@ inline PyObject *read_bool(ReaderT *reader)
         PyErr_SetString(PyExc_ValueError, "read_bool out of bounds");
         return NULL;
     }
-    return *reader->ptr++ ? Py_True : Py_False;
+    PyObject *value = *reader->ptr++ ? Py_True : Py_False;
+    Py_INCREF(value);
+    return value;
 }
 
 inline PyObject *read_bool_array(ReaderT *reader, int32_t count)
@@ -91,7 +93,9 @@ inline PyObject *read_bool_array(ReaderT *reader, int32_t count)
     PyObject *list = PyList_New(count);
     for (auto i = 0; i < count; i++)
     {
-        PyList_SET_ITEM(list, i, *reader->ptr++ ? Py_True : Py_False);
+        PyObject *value = *reader->ptr++ ? Py_True : Py_False;
+        Py_INCREF(value);
+        PyList_SET_ITEM(list, i, value);
     }
     return list;
 }
@@ -1201,9 +1205,9 @@ static PyTypeObject TypeTreeNodeType = []() -> PyTypeObject
 {
     PyTypeObject type = {
 #if PY_VERSION_HEX >= 0x03080000
-    PyVarObject_HEAD_INIT(NULL, 0)
+        PyVarObject_HEAD_INIT(NULL, 0)
 #else
-    PyObject_HEAD_INIT(NULL) 0
+        PyObject_HEAD_INIT(NULL) 0
 #endif
     };
     type.tp_name = "TypeTreeHelper.TypeTreeNode";
