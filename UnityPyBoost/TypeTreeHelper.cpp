@@ -1201,9 +1201,9 @@ static PyTypeObject TypeTreeNodeType = []() -> PyTypeObject
 {
     PyTypeObject type = {
 #if PY_VERSION_HEX >= 0x03080000
-        PyObject_HEAD_INIT(NULL) 0
+    PyVarObject_HEAD_INIT(NULL, 0)
 #else
-        PyVarObject_HEAD_INIT(NULL, 0)
+    PyObject_HEAD_INIT(NULL) 0
 #endif
     };
     type.tp_name = "TypeTreeHelper.TypeTreeNode";
