@@ -5,6 +5,7 @@ import subprocess
 
 from setuptools import Extension, find_packages, setup
 from setuptools.command.build_ext import build_ext
+from setuptools.command.sdist import sdist
 
 INSTALL_DIR = os.path.dirname(os.path.realpath(__file__))
 UNITYPYBOOST_DIR = os.path.join(INSTALL_DIR, "UnityPyBoost")
@@ -40,6 +41,17 @@ class BuildExt(build_ext):
             ext.extra_compile_args = [cpp_version_flag]
 
         build_ext.build_extensions(self)
+
+
+class SDist(sdist):
+    def make_distribution(self) -> None:
+        # add all fmod libraries to the distribution
+        for root, dirs, files in os.walk("UnityPy/lib/FMOD"):
+            for file in files:
+                fp = f"{root}/{file}"
+                if fp not in self.filelist.files:
+                    self.filelist.files.append(fp)
+        return super().make_distribution()
 
 
 def get_fmod_library():
@@ -81,18 +93,9 @@ fmod_lib = get_fmod_library()
 if fmod_lib is not None:
     unitypy_package_data.append(fmod_lib)
 
-
-# These packages are missing __init__.py so setuptools will warn about unspecified packages
-extra_packages = [
-    "UnityPy.resources",
-    "UnityPy.tools",
-    "UnityPy.tools.libil2cpp_helper",
-]
-
-
 setup(
     name="UnityPy",
-    packages=find_packages() + extra_packages,
+    packages=find_packages(),
     package_data={"UnityPy": unitypy_package_data},
     ext_modules=[
         Extension(
@@ -102,7 +105,7 @@ setup(
                 for f in os.listdir(UNITYPYBOOST_DIR)
                 if f.endswith(".cpp")
             ],
-            depends = [
+            depends=[
                 f"UnityPyBoost/{f}"
                 for f in os.listdir(UNITYPYBOOST_DIR)
                 if f.endswith(".hpp")
@@ -111,5 +114,5 @@ setup(
             include_dirs=[UNITYPYBOOST_DIR],
         )
     ],
-    cmdclass={"build_ext": BuildExt},
+    cmdclass={"build_ext": BuildExt, "sdist": SDist},
 )
