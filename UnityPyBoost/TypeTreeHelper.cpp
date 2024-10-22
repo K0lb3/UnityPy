@@ -458,6 +458,7 @@ inline PyObject *get_annotations(PyObject *clz)
         // from annotationlib import get_annotations
         PyObject *annotationlib = PyImport_ImportModule("annotationlib");
         get_annotations = PyObject_GetAttrString(annotationlib, "get_annotations");
+        Py_INCREF(get_annotations);
         Py_DECREF(annotationlib);
     }
     return PyObject_CallFunctionObjArgs(get_annotations, clz, NULL);
@@ -519,21 +520,20 @@ inline PyObject *parse_class(PyObject *kwargs, TypeTreeNodeObject *node, TypeTre
     extras = PyDict_New();
     for (int i = 0; i < PyList_GET_SIZE(node->m_Children); i++)
     {
-        TypeTreeNodeObject *child = (TypeTreeNodeObject *)PyList_GET_ITEM(node->m_Children, i);
+        TypeTreeNodeObject *child = (TypeTreeNodeObject *)PyList_GET_ITEM(node->m_Children, i); // - borrowed ref +/- 0
         if (PyDict_Contains(annotations, child->_clean_name) == 1)
         {
             continue;
         }
-        PyObject *extra_value = PyDict_GetItem(kwargs, child->_clean_name); // +1
+        PyObject *extra_value = PyDict_GetItem(kwargs, child->_clean_name); // - borrowed ref +/- 0
         PyDict_SetItem(extras, child->_clean_name, extra_value);            // +1
         PyDict_DelItem(kwargs, child->_clean_name);                         // -1
-        //Py_DECREF(extra_value);                                             // -1
     }
 
     if (PyDict_Size(extras) == 0)
     {
-        Py_DECREF(clz);
-        clz = PyObject_GetAttrString(config->classes, "UnknownObject");
+        Py_DECREF(clz);                                                 // 1->0
+        clz = PyObject_GetAttrString(config->classes, "UnknownObject"); // 0->1
         PyDict_SetItemString(kwargs, "__node__", node->m_Type);
     }
 
@@ -754,6 +754,7 @@ PyObject *read_typetree_value(ReaderT *reader, TypeTreeNodeObject *node, TypeTre
                 }
                 else if (ref_node == (TypeTreeNodeObject *)Py_None)
                 {
+                    Py_DECREF(ref_node);
                     continue;
                 }
                 child_value = read_typetree_value<swap>(reader, ref_node, config);
@@ -763,6 +764,7 @@ PyObject *read_typetree_value(ReaderT *reader, TypeTreeNodeObject *node, TypeTre
             {
                 child_value = read_typetree_value<swap>(reader, child, config);
             }
+            
             if (!child_value)
             {
                 Py_DECREF(value);
