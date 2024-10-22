@@ -29,6 +29,10 @@ std::string clean_name(const std::string &name)
 {
     // # keep in sync with TypeTreeNode.py
     std::string cleaned_name = name;
+    if (cleaned_name.empty())
+    {
+        return cleaned_name;
+    }
 
     // Remove "(int&)" prefix
     if (cleaned_name.substr(0, 6) == "(int&)")
@@ -764,7 +768,7 @@ PyObject *read_typetree_value(ReaderT *reader, TypeTreeNodeObject *node, TypeTre
             {
                 child_value = read_typetree_value<swap>(reader, child, config);
             }
-            
+
             if (!child_value)
             {
                 Py_DECREF(value);

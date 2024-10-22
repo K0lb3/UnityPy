@@ -272,6 +272,8 @@ def _get_blob_node_struct(endian: str, version: int) -> tuple[Struct, list[str]]
 
 def clean_name(name: str) -> str:
     # keep in sync with TypeTreeHelper.cpp
+    if len(name) == 0:
+        return name
     if name.startswith("(int&)"):
         name = name[6:]
     if name.endswith("?"):
