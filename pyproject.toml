@@ -42,9 +42,9 @@ dependencies = [
     "brotli", # WebFile compression
     # Texture & Sprite handling
     "Pillow",
-    "texture2ddecoder", # texture decompression
-    "etcpak",           # ETC & DXT compression
-    "astc-encoder-py >= 0.1.8",  # ASTC compression
+    "texture2ddecoder",         # texture decompression
+    "etcpak",                   # ETC & DXT compression
+    "astc-encoder-py >= 0.1.8", # ASTC compression
     # audio extraction
     "pyfmodex >= 0.7.1",
     # filesystem handling
@@ -62,11 +62,7 @@ dynamic = ["version"]
 version = { attr = "UnityPy.__version__" }
 
 [project.optional-dependencies]
-tests = [
-    "pytest >= 7",
-    "pillow >= 8",
-    "psutil >= 6",
-]
+tests = ["pytest", "pillow", "psutil"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
