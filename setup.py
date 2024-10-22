@@ -1,9 +1,9 @@
 import os
-import platform
 import re
 import subprocess
 
 from setuptools import Extension, find_packages, setup
+from setuptools.command.bdist_wheel import bdist_wheel
 from setuptools.command.build_ext import build_ext
 from setuptools.command.sdist import sdist
 
@@ -54,49 +54,51 @@ class SDist(sdist):
         return super().make_distribution()
 
 
-def get_fmod_library():
-    # determine system - Windows, Darwin, Linux, Android
-    system = platform.system()
-    if system == "Linux" and "ANDROID_BOOTLOGO" in os.environ:
-        system = "Android"
-    # determine architecture
-    machine = platform.machine()
-    arch = platform.architecture()[0]
-
-    lib_name = ""
-    if system in ["Windows", "Darwin"]:
-        lib_name = "fmod.dll" if system == "Windows" else "libfmod.dylib"
-        if arch == "32bit":
-            arch = "x86"
-        elif arch == "64bit":
-            arch = "x64"
-    elif system == "Linux":
-        lib_name = "libfmod.so"
-        # Raspberry Pi and Linux on arm projects
-        if "arm" in machine:
-            if arch == "32bit":
-                arch = "armhf" if machine.endswith("l") else "arm"
-            elif arch == "64bit":
-                return None
-        elif arch == "32bit":
-            arch = "x86"
-        elif arch == "64bit":
-            arch = "x86_64"
-    else:
-        return None
-
-    return f"lib/FMOD/{system}/{arch}/{lib_name}"
+BDIST_TAG_FMOD_MAP = {
+    # Windows
+    "win32": "x86",
+    "win_amd64": "x64",
+    "win_arm64": "arm",
+    # Linux and Mac endings
+    "arm64": "arm",  # Mac
+    "x86_64": "x64",
+    "aarch64": "arm",  # Linux
+    "i686": "x86",
+    "armv7l": "arm",  # armhf
+}
 
 
-unitypy_package_data = ["resources/uncompressed.tpk"]
-fmod_lib = get_fmod_library()
-if fmod_lib is not None:
-    unitypy_package_data.append(fmod_lib)
+class BDistWheel(bdist_wheel):
+    def run(self):
+        from UnityPy.export.AudioClipConverter import get_fmod_path
+
+        platform_tag = self.get_tag()[2]
+        if platform_tag.startswith("win"):
+            system = "Windows"
+            arch = BDIST_TAG_FMOD_MAP[platform_tag]
+        else:
+            arch = next(
+                (v for k, v in BDIST_TAG_FMOD_MAP.items() if platform_tag.endswith(k)),
+                None,
+            )
+            if platform_tag.startswith("macosx"):
+                system = "Darwin"
+            else:
+                system = "Linux"
+
+        try:
+            self.distribution.package_data["UnityPy"].append(
+                get_fmod_path(system, arch)
+            )
+        except NotImplementedError:
+            pass
+        super().run()
+
 
 setup(
     name="UnityPy",
     packages=find_packages(),
-    package_data={"UnityPy": unitypy_package_data},
+    package_data={"UnityPy": ["resources/uncompressed.tpk"]},
     ext_modules=[
         Extension(
             "UnityPy.UnityPyBoost",
@@ -114,5 +116,5 @@ setup(
             include_dirs=[UNITYPYBOOST_DIR],
         )
     ],
-    cmdclass={"build_ext": BuildExt, "sdist": SDist},
+    cmdclass={"build_ext": BuildExt, "sdist": SDist, "bdist_wheel": BDistWheel},
 )

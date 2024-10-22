@@ -3,9 +3,7 @@ from __future__ import annotations
 import ctypes
 import os
 import platform
-import sys
-from importlib.resources import path
-from typing import TYPE_CHECKING, Dict
+from typing import TYPE_CHECKING, Dict, Union
 
 from UnityPy.streams import EndianBinaryWriter
 
@@ -22,6 +20,24 @@ if TYPE_CHECKING:
 pyfmodex = None
 
 
+def get_fmod_path(
+    system: Union["Windows", "Linux", "Darwin"], arch: ["x64", "x86", "arm"]
+) -> str:
+    if system == "Darwin":
+        # universal dylib
+        return "lib/FMOD/Darwin/libfmod.dylib"
+
+    if system == "Windows":
+        return f"lib/FMOD/Windows/{arch}/fmod.dll"
+
+    if system == "Linux":
+        if arch == "x64":
+            arch = "x86_64"
+        return f"lib/FMOD/Linux/{arch}/libfmod.so"
+
+    raise NotImplementedError(f"Unsupported system: {system}")
+
+
 def import_pyfmodex():
     global pyfmodex
     if pyfmodex is not None:
@@ -29,57 +45,27 @@ def import_pyfmodex():
 
     # determine system - Windows, Darwin, Linux, Android
     system = platform.system()
-    if system == "Linux" and "ANDROID_BOOTLOGO" in os.environ:
-        system = "Android"
-    # determine architecture
-    machine = platform.machine()
     arch = platform.architecture()[0]
+    machine = platform.machine()
 
-    if system in ["Windows", "Darwin"]:
-        if arch == "32bit":
-            arch = "x86"
-        elif arch == "64bit":
-            arch = "x64"
-    elif system == "Linux":
-        # Raspberry Pi and Linux on arm projects
-        if "arm" in machine:
-            if arch == "32bit":
-                arch = "armhf" if machine.endswith("l") else "arm"
-            elif arch == "64bit":
-                # Raise an exception for now; Once it gets supported by FMOD we can just modify the code here
-                pyfmodex = False
-                raise NotImplementedError(
-                    "ARM64 not supported by FMOD.\nUse a 32bit python version."
-                )
-        elif arch == "32bit":
-            arch = "x86"
-        elif arch == "64bit":
-            arch = "x86_64"
-    else:
-        pyfmodex = False
-        raise NotImplementedError(
-            "Couldn't find a correct FMOD library for your system ({system} - {arch})."
-        )
+    if "arm" in machine or "aarch64" in machine:
+        arch = "arm"
+    elif arch == "32bit":
+        arch = "x86"
+    elif arch == "64bit":
+        arch = "x64"
+
+    fmod_rel_path = get_fmod_path(system, arch)
+    fmod_path = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.realpath(__file__))), fmod_rel_path
+    )
+    os.environ["PYFMODEX_DLL_PATH"] = fmod_path
 
     # build path and load library
     # prepare the environment for pyfmodex
-    if system == "Windows":
-        libname = "fmod.dll"
-    else:
-        ext = "dylib" if system == "Darwin" else "so"
-        libname = f"libfmod.{ext}"
+    if system != "Windows":
         # hotfix ctypes for pyfmodex for non windows systems
         ctypes.windll = None
-
-    lib_path = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
-        "lib",
-        "FMOD",
-        system,
-        arch,
-        libname
-    )
-    os.environ["PYFMODEX_DLL_PATH"] = lib_path
 
     import pyfmodex
 
