@@ -51,8 +51,8 @@ jobs:
         with:
           path: ./wheelhouse/*.whl
   
-  build_wheels_ubuntu:
-    name: Buld wheels on ubuntu-latest
+  build_manylinux_wheels_ubuntu:
+    name: Build manylinux wheels on ubuntu-latest
     runs-on: ubuntu-latest
     needs: [build_sdist]
 
@@ -70,7 +70,33 @@ jobs:
         uses: joerick/cibuildwheel@v2.21.2
         env:
           CIBW_TEST_SKIP: "*"
-          CIBW_SKIP: "pp*"
+          CIBW_SKIP: "pp* *-musllinux*"
+
+      - uses: actions/upload-artifact@v3
+        with:
+          path: ./wheelhouse/*.whl
+
+  build_musllinux_wheels_ubuntu:
+    name: Build musllinux wheels on ubuntu-latest
+    runs-on: ubuntu-latest
+    needs: [build_sdist]
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: all
+
+      - name: Build wheels
+        uses: joerick/cibuildwheel@v2.21.2
+        env:
+          CIBW_TEST_SKIP: "*"
+          CIBW_SKIP: "pp* *-manylinux*"
+          CIBW_REPAIR_WHEEL_COMMAND: ''
 
       - uses: actions/upload-artifact@v3
         with:
@@ -79,7 +105,7 @@ jobs:
 
   upload_pypi:
     name: Publish to PyPI
-    needs: [build_wheels, build_wheels_ubuntu, build_sdist]
+    needs: [build_wheels, build_manylinux_wheels_ubuntu, build_musllinux_wheels_ubuntu, build_sdist]
     runs-on: ubuntu-latest
 
     permissions:

@@ -66,3 +66,12 @@ tests = ["pytest", "pillow", "psutil"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.cibuildwheel.linux]
+archs = ["x86_64", "i686", "aarch64", "armv7l"]
+
+[tool.cibuildwheel.macos]
+archs = ["x86_64", "arm64"]
+
+[tool.cibuildwheel.windows]
+archs = ["AMD64", "x86", "ARM64"]
