@@ -16,7 +16,6 @@ jobs:
       
       - name: Set up Python
         uses: actions/setup-python@v5
-        if: matrix.os == 'ubuntu-latest'
         with:
           python-version: '3.7'
 
@@ -24,4 +23,4 @@ jobs:
         run: pip install .[tests]
 
       - name: Run tests
-        run: pytest -vs ./tests
+        run: python -m pytest -vs ./tests
