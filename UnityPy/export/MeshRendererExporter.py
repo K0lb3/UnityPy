@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, List, Optional
 
+from ..classes.generated import SkinnedMeshRenderer
 from .MeshExporter import export_mesh_obj
 
 if TYPE_CHECKING:
@@ -11,7 +12,6 @@ if TYPE_CHECKING:
         MeshFilter,
         PPtr,
         Renderer,
-        SkinnedMeshRenderer,
         StaticBatchInfo,
         Texture2D,
     )
@@ -46,7 +46,7 @@ def get_mesh(meshR: Renderer) -> Optional[Mesh]:
 
 
 def export_mesh_renderer(renderer: Renderer, export_dir: str) -> None:
-    env = renderer.object_reader.assets_file.enviroment
+    env = renderer.object_reader.assets_file.environment
     env.fs.makedirs(export_dir, exist_ok=True)
     mesh = get_mesh(renderer)
     if not mesh:
