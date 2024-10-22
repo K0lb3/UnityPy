@@ -1,6 +1,7 @@
 import os
 import re
 import subprocess
+from typing import Union
 
 from setuptools import Extension, find_packages, setup
 from setuptools.command.build_ext import build_ext
@@ -73,10 +74,26 @@ BDIST_TAG_FMOD_MAP = {
 }
 
 
+def get_fmod_path(
+    system: Union["Windows", "Linux", "Darwin"], arch: ["x64", "x86", "arm"]
+) -> str:
+    if system == "Darwin":
+        # universal dylib
+        return "lib/FMOD/Darwin/libfmod.dylib"
+
+    if system == "Windows":
+        return f"lib/FMOD/Windows/{arch}/fmod.dll"
+
+    if system == "Linux":
+        if arch == "x64":
+            arch = "x86_64"
+        return f"lib/FMOD/Linux/{arch}/libfmod.so"
+
+    raise NotImplementedError(f"Unsupported system: {system}")
+
+
 class BDistWheel(bdist_wheel):
     def run(self):
-        from UnityPy.export.AudioClipConverter import get_fmod_path
-
         platform_tag = self.get_tag()[2]
         if platform_tag.startswith("win"):
             system = "Windows"
