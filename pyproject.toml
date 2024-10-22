@@ -68,7 +68,8 @@ tests = ["pytest", "pillow", "psutil"]
 testpaths = ["tests"]
 
 [tool.cibuildwheel.linux]
-archs = ["x86_64", "i686", "aarch64", "armv7l"]
+archs = ["x86_64", "i686"]
+# auditwheel issues with fmod on: "aarch64", "armv7l"
 
 [tool.cibuildwheel.macos]
 archs = ["x86_64", "arm64"]
