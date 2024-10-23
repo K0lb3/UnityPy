@@ -197,6 +197,16 @@ def test_class_node_clz():
     assert re_value == TEST_CLASS_NODE_OBJ
 
 
+def test_node_from_list_clz():
+    node = TypeTreeNode.from_list(list(TEST_CLASS_NODE.traverse()))
+    assert node == TEST_CLASS_NODE
+
+
+def test_node_from_list_dict():
+    node = TypeTreeNode.from_list(TEST_CLASS_NODE.to_dict_list())
+    assert node == TEST_CLASS_NODE
+
+
 if __name__ == "__main__":
     for x in list(locals()):
         if str(x)[:4] == "test":

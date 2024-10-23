@@ -35,13 +35,28 @@ except ImportError:
             self._clean_name = clean_name(self.m_Name)
 
 
+TYPETREENODE_KEYS = [
+    "m_Level",
+    "m_Type",
+    "m_Name",
+    "m_ByteSize",
+    "m_Version",
+    "m_Children",
+    "m_TypeFlags",
+    "m_VariableCount",
+    "m_Index",
+    "m_MetaFlag",
+    "m_RefTypeHash",
+]
+
+
 class TypeTreeNode(TypeTreeNodeC):
     def traverse(self) -> Iterator[TypeTreeNode]:
         stack: list[TypeTreeNode] = [self]
         while stack:
             node = stack.pop()
-            stack.extend(reversed(node.m_Children))
             yield node
+            stack.extend(reversed(node.m_Children))
 
     @classmethod
     def parse(cls, reader: EndianBinaryReader, version: int) -> TypeTreeNode:
@@ -132,7 +147,7 @@ class TypeTreeNode(TypeTreeNodeC):
 
         for node in nodes:
             if isinstance(node, dict):
-                node = cls(node)
+                node = cls(**node)
 
             if node.m_Level > prev.m_Level:
                 stack.append(parent)
@@ -224,6 +239,22 @@ class TypeTreeNode(TypeTreeNodeC):
             sb.append(child.dump_structure(indent + "  "))
         return "\n".join(sb)
 
+    def to_dict(self) -> dict:
+        return {
+            key: value
+            for key, value in ((key, getattr(self, key)) for key in TYPETREENODE_KEYS)
+            if value is not None
+        }
+
+    def to_dict_list(self) -> List[dict]:
+        return [
+            self.to_dict(),
+            *(item for child in self.m_Children for item in child.to_dict_list()),
+        ]
+
+    def __eq__(self, other: TypeTreeNode) -> bool:
+        return self.to_dict() == other.to_dict() and self.m_Children == other.m_Children
+
 
 COMMONSTRING_CACHE: Dict[Optional[UnityVersion], Dict[int, str]] = {}
 
@@ -284,3 +315,10 @@ def clean_name(name: str) -> str:
     if name[0].isdigit():
         name = f"x{name}"
     return name
+
+
+__all__ = (
+    "TypeTreeNode",
+    "get_common_strings",
+    "clean_name",
+)
