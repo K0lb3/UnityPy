@@ -46,10 +46,10 @@ def export_monobehaviours(asset_path: str, trees: dict):
                 continue
             for obj in env.objects:
                 if obj.type == "MonoBehaviour":
-                    d = obj.read()
                     if obj.serialized_type and obj.serialized_type.node:
                         tree = obj.read_typetree()
                     else:
+                        d = obj.read(check_read=False)
                         if not d.m_Script:
                             continue
                             # RIP, no referenced script

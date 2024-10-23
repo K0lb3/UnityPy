@@ -298,7 +298,7 @@ for obj in env.objects:
             # apply modifications to the data within the tree
             obj.save_typetree(tree)
         else:
-            data = obj.read()
+            data = obj.read(check_read=False)
             with open(os.path.join(replace_dir, data.m_Name)) as f:
                 data.save(raw_data = f.read())
 ```

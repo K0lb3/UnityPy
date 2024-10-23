@@ -115,7 +115,8 @@ def read_typetree(
     root_node: TypeTreeNode,
     reader: EndianBinaryReader,
     as_dict: bool = True,
-    expected_read: Optional[int] = None,
+    byte_size: Optional[int] = None,
+    check_read: bool = True,
     assetsfile: Optional[SerializedFile] = None,
 ) -> Union[dict[str, Any], Object]:
     """Reads the typetree of the object contained in the reader via the node list.
@@ -132,20 +133,21 @@ def read_typetree(
     dict | objects.Object
         The parsed typtree
     """
-    if expected_read and read_typetree_boost:
-        data = reader.read_bytes(expected_read)
-        return read_typetree_boost(
+    bytes_read: int
+    if byte_size and read_typetree_boost:
+        data = reader.read_bytes(byte_size)
+        obj, bytes_read = read_typetree_boost(
             data, root_node, reader.endian, as_dict, assetsfile, classes
         )
+    else:
+        pos = reader.Position
+        config = TypeTreeConfig(as_dict, assetsfile, False)
+        obj = read_value(root_node, reader, config)
+        bytes_read = reader.Position - pos
 
-    pos = reader.Position
-    config = TypeTreeConfig(as_dict, assetsfile, False)
-    obj = read_value(root_node, reader, config)
-
-    read = reader.Position - pos
-    if expected_read is not None and read != expected_read:
+    if check_read and bytes_read != byte_size:
         raise ValueError(
-            f"Expected to read {expected_read} bytes, but read {read} bytes"
+            f"Expected to read {byte_size} bytes, but only read {bytes_read} bytes"
         )
 
     return obj

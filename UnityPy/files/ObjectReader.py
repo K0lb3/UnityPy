@@ -170,8 +170,8 @@ class ObjectReader(Generic[T]):
     def reset(self):
         self.reader.Position = self.byte_start
 
-    def read(self) -> T:
-        obj = self.read_typetree(wrap=True)
+    def read(self, check_read: bool = True) -> T:
+        obj = self.read_typetree(wrap=True, check_read=check_read)
         self._read_until = self.reader.Position
         return obj
 
@@ -203,6 +203,7 @@ class ObjectReader(Generic[T]):
         self,
         nodes: Optional[Union[TypeTreeNode, List[dict]]] = None,
         wrap: bool = False,
+        check_read: bool = True,
     ) -> Union[dict, T]:
         self.reset()
         node = self._get_typetree_node(nodes)
@@ -211,7 +212,8 @@ class ObjectReader(Generic[T]):
             self.reader,
             as_dict=not wrap,
             assetsfile=self.assets_file,
-            expected_read=self.byte_size,
+            byte_size=self.byte_size,
+            check_read=check_read,
         )
         if wrap:
             ret.set_object_reader(self)

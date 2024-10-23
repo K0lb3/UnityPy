@@ -582,7 +582,7 @@ TypeTreeNodeObject *get_ref_type_node(PyObject *ref_object, PyObject *assetsfile
 {
     if (assetsfile == Py_None)
     {
-        PyErr_SetString(PyExc_ValueError, "No serialized file given!");
+        PyErr_SetString(PyExc_ValueError, "Reference Type found but no SerializedFile passed as assetsfile to read_typetree!");
         return NULL;
     }
     PyObject *ref_types = PyObject_GetAttrString(assetsfile, "ref_types");
@@ -656,7 +656,7 @@ TypeTreeNodeObject *get_ref_type_node(PyObject *ref_object, PyObject *assetsfile
             break;
         }
 
-        bool compare_cls = PyObject_RichCompareBool(cls, m_ClassName, Py_EQ) && PyObject_RichCompareBool(ns, m_NameSpace, Py_EQ) && PyObject_RichCompareBool(asm_, m_AssemblyName, Py_EQ);
+        bool compare_cls = (PyUnicode_Compare(cls, m_ClassName) == 0) && (PyUnicode_Compare(ns, m_NameSpace) == 0) && (PyUnicode_Compare(asm_, m_AssemblyName) == 0);
         Py_DECREF(m_ClassName);
         Py_DECREF(m_NameSpace);
         Py_DECREF(m_AssemblyName);
@@ -939,6 +939,7 @@ PyObject *read_typetree(PyObject *self, PyObject *args, PyObject *kwargs)
     PyObject *node = nullptr;
     int as_dict = 1;
     PyObject *value = nullptr;
+    Py_ssize_t bytes_read = 0;
     ReaderT reader;
 
     volatile uint16_t bint = 0x0100;
@@ -965,11 +966,6 @@ PyObject *read_typetree(PyObject *self, PyObject *args, PyObject *kwargs)
     config.as_dict = as_dict == 1;
     if (!config.as_dict)
     {
-        if (config.assetfile == Py_None)
-        {
-            PyErr_SetString(PyExc_ValueError, "assetsfile must be set if not as dict");
-            goto READ_TYPETREE_CLEANUP;
-        }
         if (config.classes == Py_None)
         {
             PyErr_SetString(PyExc_ValueError, "classes must be set if not as dict");
@@ -1019,17 +1015,14 @@ PyObject *read_typetree(PyObject *self, PyObject *args, PyObject *kwargs)
         value = read_typetree_value<false>(&reader, (TypeTreeNodeObject *)node, &config);
     }
 
-    if (reader.ptr != reader.end)
-    {
-        Py_DECREF(value);
-        value = PyErr_Format(PyExc_ValueError, "Read %ld bytes, %ld remaining", reader.ptr - reader.start, reader.end - reader.ptr);
-    }
+    bytes_read = reader.ptr - reader.start;
 
 READ_TYPETREE_CLEANUP:
     PyBuffer_Release(&view);
     Py_XDECREF(config.assetfile);
     Py_XDECREF(config.classes);
-    return value;
+
+    return Py_BuildValue("(Nn)", value, bytes_read);
 }
 
 // TypeTreeNode impl

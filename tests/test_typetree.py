@@ -125,6 +125,15 @@ def generate_sample_data(
     return sample_values
 
 
+def _test_read_typetree(node: TypeTreeNode, data: bytes, as_dict: bool):
+    reader = EndianBinaryReader(data, "<")
+    py_values = read_typetree(node, reader, as_dict=as_dict, check_read=False)
+    reader.Position = 0
+    cpp_values = read_typetree(node, reader, as_dict=as_dict, byte_size=len(data))
+    assert py_values == cpp_values
+    return py_values
+
+
 @check_leak
 def test_simple_nodes():
     for typs, py_typ, bounds in SIMPLE_NODE_SAMPLES:
@@ -135,7 +144,7 @@ def test_simple_nodes():
                 writer = EndianBinaryWriter(b"", "<")
                 write_typetree(value, node, writer)
                 raw = writer.bytes
-                re_value = read_typetree(node, EndianBinaryReader(raw, "<"))
+                re_value = _test_read_typetree(node, raw, as_dict=True)
                 assert (
                     abs(value - re_value) < 1e-5
                 ), f"Failed on {typ}: {value} != {re_value}"
@@ -158,7 +167,7 @@ def test_simple_nodes_array():
             writer = EndianBinaryWriter(b"", "<")
             write_typetree(values, array_node, writer)
             raw = writer.bytes
-            re_values = read_typetree(array_node, EndianBinaryReader(raw, "<"))
+            re_values = _test_read_typetree(array_node, raw, as_dict=True)
             assert all(
                 (abs(value - re_value) < 1e-5)
                 for value, re_value in zip(values, re_values)
@@ -176,9 +185,7 @@ def test_class_node_dict():
     writer = EndianBinaryWriter(b"", "<")
     write_typetree(TEST_CLASS_NODE_DICT, TEST_CLASS_NODE, writer)
     raw = writer.bytes
-    re_value = read_typetree(
-        TEST_CLASS_NODE, EndianBinaryReader(raw, "<"), as_dict=True
-    )
+    re_value = _test_read_typetree(TEST_CLASS_NODE, raw, as_dict=True)
     assert re_value == TEST_CLASS_NODE_DICT
 
 
@@ -186,9 +193,7 @@ def test_class_node_clz():
     writer = EndianBinaryWriter(b"", "<")
     write_typetree(TEST_CLASS_NODE_OBJ, TEST_CLASS_NODE, writer)
     raw = writer.bytes
-    re_value = read_typetree(
-        TEST_CLASS_NODE, EndianBinaryReader(raw, "<"), as_dict=False
-    )
+    re_value = _test_read_typetree(TEST_CLASS_NODE, raw, as_dict=False)
     assert re_value == TEST_CLASS_NODE_OBJ
 
 
