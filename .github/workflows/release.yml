@@ -76,36 +76,50 @@ jobs:
         with:
           path: ./wheelhouse/*.whl
 
-  # build_musllinux_wheels_ubuntu:
-  #   name: Build musllinux wheels on ubuntu-latest
-  #   runs-on: ubuntu-latest
-  #   needs: [build_sdist]
+  build_musllinux_wheels_ubuntu:
+    name: Build musllinux wheels on ubuntu-latest
+    runs-on: ubuntu-latest
+    needs: [build_sdist]
 
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #       with:
-  #         submodules: recursive
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
-  #     - name: Set up QEMU
-  #       uses: docker/setup-qemu-action@v3
-  #       with:
-  #         platforms: all
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: all
 
-  #     - name: Build wheels
-  #       uses: joerick/cibuildwheel@v2.21.2
-  #       env:
-  #         CIBW_TEST_SKIP: "*"
-  #         CIBW_SKIP: "pp* *-manylinux*"
-  #         CIBW_REPAIR_WHEEL_COMMAND: ''
+      - name: Build wheels
+        uses: joerick/cibuildwheel@v2.21.2
+        env:
+          CIBW_TEST_SKIP: "*"
+          CIBW_SKIP: "pp* *-manylinux*"
+          # fmod requires: 
+          # default via musl: -exclude flag
+          #   libdl.so.2 => /lib/ld-musl-x86_64.so.1 (0x7faeb127d000)
+          #   librt.so.1 => /lib/ld-musl-x86_64.so.1 (0x7faeb127d000)
+          #   libm.so.6 => /lib/ld-musl-x86_64.so.1 (0x7faeb127d000)
+          #   libpthread.so.0 => /lib/ld-musl-x86_64.so.1 (0x7faeb127d000)
+          #   libc.so.6 => /lib/ld-musl-x86_64.so.1 (0x7faeb127d000)
+          # deps:
+          #   libgcc
+          #   libgcc_s.so.1 => /usr/lib/libgcc_s.so.1 (0x7faeb1253000)
+          #   libstdc++
+          #   libstdc++.so.6 => /usr/lib/libstdc++.so.6 (0x7faeb0a00000)
+          CIBW_BEFORE_ALL: "apk add libgcc libstdc++"
+          CIBW_REPAIR_WHEEL_COMMAND: "auditwheel repair -w {dest_dir} {wheel} --exclude libdl.so.2 --exclude librt.so.1 --exclude libm.so.6 --exclude libpthread.so.0 --exclude libc.so.6"
 
-  #     - uses: actions/upload-artifact@v3
-  #       with:
-  #         path: ./wheelhouse/*.whl
+
+      - uses: actions/upload-artifact@v3
+        with:
+          path: ./wheelhouse/*.whl
 
 
   upload_pypi:
     name: Publish to PyPI
-    needs: [build_wheels, build_manylinux_wheels_ubuntu, build_sdist]
+    needs: [build_sdist, build_wheels, build_manylinux_wheels_ubuntu, build_musllinux_wheels_ubuntu]
     runs-on: ubuntu-latest
 
     permissions:
