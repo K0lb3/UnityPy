@@ -1,14 +1,17 @@
-import sys
-from struct import Struct, unpack
+from __future__ import annotations
+
 import re
-from typing import List, Union
-from io import BytesIO, BufferedIOBase, IOBase, BufferedReader
+import sys
+from abc import ABC, ABCMeta, abstractmethod
+from io import BufferedIOBase, BufferedReader, BytesIO, IOBase
+from struct import Struct, unpack
+from typing import List, Optional, Union
 
 reNot0 = re.compile(b"(.*?)\x00", re.S)
 
 SYS_ENDIAN = "<" if sys.byteorder == "little" else ">"
 
-from ..math import Color, Matrix4x4, Quaternion, Vector2, Vector3, Vector4, Rectangle
+from ..math import Color, Matrix4x4, Quaternion, Rectangle, Vector2, Vector3, Vector4
 
 # generate unpack and unpack_from functions
 TYPE_PARAM_SIZE_LIST = [
@@ -35,7 +38,7 @@ for endian_s, endian_l in (("<", "little"), (">", "big")):
         ).unpack_from
 
 
-class EndianBinaryReader:
+class EndianBinaryReader(ABC, metaclass=ABCMeta):
     endian: str
     Length: int
     Position: int
@@ -79,6 +82,26 @@ class EndianBinaryReader:
         self.endian = endian
         self.BaseOffset = offset
         self.Position = 0
+
+    def seek(self, offset: int, whence: int = 0):
+        if whence == 0:
+            self.Position = offset
+        elif whence == 1:
+            self.Position += offset
+        elif whence == 2:
+            self.Position = self.Length + offset
+        else:
+            raise ValueError("Invalid whence")
+
+    def tell(self) -> int:
+        return self.Position
+
+    def get_bytes(self) -> bytes:
+        return self.bytes
+
+    @abstractmethod
+    def create_sub_reader(self, offset: int, length: int) -> EndianBinaryReader:
+        pass
 
     @property
     def bytes(self):
@@ -125,16 +148,6 @@ class EndianBinaryReader:
     def read_boolean(self) -> bool:
         return bool(unpack(self.endian + "?", self.read(1))[0])
 
-    def read_string(self, size=None, encoding="utf8") -> str:
-        if size is None:
-            ret = self.read_string_to_null()
-        else:
-            ret = unpack(f"{self.endian}{size}is", self.read(size))[0]
-        try:
-            return ret.decode(encoding)
-        except UnicodeDecodeError:
-            return ret
-
     def read_string_to_null(self, max_length=32767) -> str:
         ret = []
         c = b""
@@ -145,14 +158,18 @@ class EndianBinaryReader:
                 raise ValueError("Unterminated string: %r" % ret)
         return b"".join(ret).decode("utf8", "surrogateescape")
 
-    def read_aligned_string(self) -> str:
-        length = self.read_int()
+    def read_string(self, size: Optional[int] = None, encoding: str = "utf8") -> str:
+        length = size if size is not None else self.read_int()
         if 0 < length <= self.Length - self.Position:
             string_data = bytes(self.read_bytes(length))
-            result = string_data.decode("utf8", "surrogateescape")
-            self.align_stream()
+            result = string_data.decode(encoding, "surrogateescape")
             return result
         return ""
+
+    def read_aligned_string(self) -> str:
+        ret = self.read_string()
+        self.align_stream()
+        return ret
 
     def align_stream(self, alignment=4):
         self.Position += (alignment - self.Position % alignment) % alignment
@@ -327,6 +344,11 @@ class EndianBinaryReader_Memoryview(EndianBinaryReader):
         ret = match[1].decode("utf8", "surrogateescape")
         self.Position = match.end()
         return ret
+
+    def create_sub_reader(self, offset: int, length: int) -> EndianBinaryReader:
+        return EndianBinaryReader_Memoryview(
+            self.view, self.endian, self.BaseOffset + offset
+        )
 
 
 class EndianBinaryReader_Memoryview_LittleEndian(EndianBinaryReader_Memoryview):
@@ -507,6 +529,9 @@ class EndianBinaryReader_Streamable(EndianBinaryReader):
     def dispose(self):
         self.stream.close()
         pass
+
+    def create_sub_reader(self, offset: int, length: int) -> EndianBinaryReader:
+        return EndianBinaryReader_Streamable(self.stream, self.endian, offset)
 
 
 class EndianBinaryReader_Streamable_LittleEndian(EndianBinaryReader_Streamable):

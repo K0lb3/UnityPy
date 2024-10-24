@@ -21,6 +21,22 @@ class EndianBinaryWriter:
         self.endian = endian
         self.Position = self.stream.tell()
 
+    def seek(self, offset: int, whence: int = 0):
+        if whence == 0:
+            self.Position = offset
+        elif whence == 1:
+            self.Position += offset
+        elif whence == 2:
+            self.Position = self.Length + offset
+        else:
+            raise ValueError("Invalid whence")
+
+    def tell(self) -> int:
+        return self.Position
+
+    def get_bytes(self) -> bytes:
+        return self.bytes
+
     @property
     def bytes(self):
         self.stream.seek(0)
@@ -85,10 +101,13 @@ class EndianBinaryWriter:
         self.write(value.encode("utf8", "surrogateescape"))
         self.write(b"\0")
 
-    def write_aligned_string(self, value: str):
+    def write_string(self, value: str):
         bstring = value.encode("utf8", "surrogateescape")
         self.write_int(len(bstring))
         self.write(bstring)
+
+    def write_aligned_string(self, value: str):
+        self.write_string(value)
         self.align_stream(4)
 
     def align_stream(self, alignment=4):
