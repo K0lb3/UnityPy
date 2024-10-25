@@ -2,4 +2,4 @@
 #pragma once
 #include <Python.h>
 
-PyObject* decrypt_block(PyObject* self, PyObject* args);
+PyObject *decrypt_block(PyObject *self, PyObject *args);
