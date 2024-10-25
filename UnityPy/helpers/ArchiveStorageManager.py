@@ -108,8 +108,7 @@ class ArchiveStorageDecryptor:
     def decrypt_block(self, data: bytes, index: int):
 
         if UnityPyBoost:
-            UnityPyBoost.decrypt_block(bytes(self.index), bytes(self.substitute), data, index)
-            return data
+            return UnityPyBoost.decrypt_block(bytes(self.index), bytes(self.substitute), data, index)
 
         offset = 0
         size = len(data)

@@ -3,7 +3,7 @@
 #include "ArchiveStorageDecryptor.hpp"
 #include <Python.h>
 
-inline unsigned char decrypt_byte(unsigned char* bytes, uint64_t& offset, uint64_t& index, unsigned char* index_data, unsigned char* substitute_data)
+inline unsigned char decrypt_byte(unsigned char *bytes, uint64_t& offset, uint64_t& index, unsigned char *index_data, unsigned char *substitute_data)
 {
     unsigned char count_byte = substitute_data[((index >> 2) & 3) + 4]
                             + substitute_data[index & 3]
@@ -15,7 +15,7 @@ inline unsigned char decrypt_byte(unsigned char* bytes, uint64_t& offset, uint64
     return count_byte;
 }
 
-inline uint64_t decrypt(unsigned char* bytes, uint64_t index, uint64_t remaining, unsigned char* index_data, unsigned char* substitute_data)
+inline uint64_t decrypt(unsigned char *bytes, uint64_t index, uint64_t remaining, unsigned char *index_data, unsigned char *substitute_data)
 {
     uint64_t offset = 0;
 
@@ -52,10 +52,10 @@ inline uint64_t decrypt(unsigned char* bytes, uint64_t index, uint64_t remaining
     return offset;
 }
 
-PyObject* decrypt_block(PyObject* self, PyObject* args) {
-    PyObject* py_index_bytes;
-    PyObject* py_substitute_bytes;
-    PyObject* py_data;
+PyObject *decrypt_block(PyObject *self, PyObject *args) {
+    PyObject *py_index_bytes;
+    PyObject *py_substitute_bytes;
+    PyObject *py_data;
     uint64_t index;
 
     if (!PyArg_ParseTuple(args, "OOOi", &py_index_bytes, &py_substitute_bytes, &py_data, &index)) {
@@ -73,17 +73,24 @@ PyObject* decrypt_block(PyObject* self, PyObject* args) {
         return NULL;
     }
 
-    unsigned char* data = (unsigned char*)view.buf;
+    const unsigned char *data = (unsigned char *)view.buf;
     uint64_t size = (uint64_t)view.len;
-    unsigned char* index_data = (unsigned char*)PyBytes_AS_STRING(py_index_bytes);
-    unsigned char* substitute_data = (unsigned char*)PyBytes_AS_STRING(py_substitute_bytes);
+    unsigned char *index_data = (unsigned char *)PyBytes_AS_STRING(py_index_bytes);
+    unsigned char *substitute_data = (unsigned char *)PyBytes_AS_STRING(py_substitute_bytes);
+
+    unsigned char *decrypted_data = (unsigned char *)PyMem_Malloc(size + 1);
+    decrypted_data[size] = 0;
+    memcpy(decrypted_data, data, size);
 
     uint64_t offset = 0;
     while (offset < size) {
-        offset += decrypt(data + offset, index++, size - offset, index_data, substitute_data);
+        offset += decrypt(decrypted_data + offset, index++, size - offset, index_data, substitute_data);
     }
 
+    PyObject* result = PyBytes_FromStringAndSize((const char*)decrypted_data, size);
+    PyMem_Free(decrypted_data);
     PyBuffer_Release(&view);
-    Py_RETURN_NONE;
+
+    return result;
 }
 
