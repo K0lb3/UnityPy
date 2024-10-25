@@ -37,3 +37,10 @@ class TypeTreeNode:
     m_MetaFlag: Optional[int] = None
     m_RefTypeHash: Optional[int] = None
     _clean_name: str
+
+def decrypt_block(
+    index_bytes: bytes,
+    substitute_bytes: bytes,
+    data: Union[bytes, bytearray],
+    index: int,
+) -> None: ...
