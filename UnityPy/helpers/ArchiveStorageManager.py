@@ -4,6 +4,11 @@ from typing import Tuple, Union
 
 from ..streams import EndianBinaryReader
 
+try:
+    from UnityPy import UnityPyBoost
+except ImportError:
+    UnityPyBoost = None
+
 UNITY3D_SIGNATURE = b"#$unity3dchina!@"
 DECRYPT_KEY: bytes = None
 
@@ -101,6 +106,11 @@ class ArchiveStorageDecryptor:
         )
 
     def decrypt_block(self, data: bytes, index: int):
+
+        if UnityPyBoost:
+            UnityPyBoost.decrypt_block(bytes(self.index), bytes(self.substitute), data, index)
+            return data
+
         offset = 0
         size = len(data)
         data = bytearray(data)

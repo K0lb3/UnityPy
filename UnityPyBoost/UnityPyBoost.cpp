@@ -2,6 +2,7 @@
 #include <Python.h>
 #include "Mesh.hpp"
 #include "TypeTreeHelper.hpp"
+#include "ArchiveStorageDecryptor.hpp"
 
 /* Mesh.py */
 
@@ -14,6 +15,10 @@ static struct PyMethodDef method_table[] = {
      (PyCFunction)read_typetree,
      METH_VARARGS | METH_KEYWORDS,
      "replacement for TypeTreeHelper.read_typetree"},
+     {"decrypt_block",
+     (PyCFunction)decrypt_block,
+     METH_VARARGS,
+     "replacement for ArchiveStorageDecryptor.decrypt_block"},
     {NULL,
      NULL,
      0,
