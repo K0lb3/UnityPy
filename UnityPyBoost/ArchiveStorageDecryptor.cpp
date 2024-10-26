@@ -62,8 +62,10 @@ PyObject *decrypt_block(PyObject *self, PyObject *args) {
         return NULL;
     }
 
+    PyObject *result = PyBytes_FromObject(py_data);
+
     Py_buffer view;
-    if (PyObject_GetBuffer(py_data, &view, PyBUF_SIMPLE) != 0) {
+    if (PyObject_GetBuffer(result, &view, PyBUF_SIMPLE) != 0) {
         return NULL;
     }
 
@@ -73,22 +75,16 @@ PyObject *decrypt_block(PyObject *self, PyObject *args) {
         return NULL;
     }
 
-    const unsigned char *data = (unsigned char *)view.buf;
+    unsigned char *data = (unsigned char *)view.buf;
     uint64_t size = (uint64_t)view.len;
     unsigned char *index_data = (unsigned char *)PyBytes_AS_STRING(py_index_bytes);
     unsigned char *substitute_data = (unsigned char *)PyBytes_AS_STRING(py_substitute_bytes);
 
-    unsigned char *decrypted_data = (unsigned char *)PyMem_Malloc(size + 1);
-    decrypted_data[size] = 0;
-    memcpy(decrypted_data, data, size);
-
     uint64_t offset = 0;
     while (offset < size) {
-        offset += decrypt(decrypted_data + offset, index++, size - offset, index_data, substitute_data);
+        offset += decrypt(data + offset, index++, size - offset, index_data, substitute_data);
     }
 
-    PyObject* result = PyBytes_FromStringAndSize((const char*)decrypted_data, size);
-    PyMem_Free(decrypted_data);
     PyBuffer_Release(&view);
 
     return result;
