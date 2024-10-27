@@ -39,8 +39,8 @@ class TypeTreeNode:
     _clean_name: str
 
 def decrypt_block(
-    index_bytes: bytes,
-    substitute_bytes: bytes,
+    index_bytes: Union[bytes, bytearray],
+    substitute_bytes: Union[bytes, bytearray],
     data: Union[bytes, bytearray],
     index: int,
-) -> bytearray: ...
+) -> bytes: ...
