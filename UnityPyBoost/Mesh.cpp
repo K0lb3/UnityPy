@@ -4,7 +4,7 @@
 
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
 
-enum
+enum VertexFormat
 {
     kVertexFormatFloat,
     kVertexFormatFloat16,
@@ -27,45 +27,41 @@ PyObject *unpack_vertexdata(PyObject *self, PyObject *args)
     uint32_t m_VertexCount;
     uint8_t swap;
     // char format;
-    PyObject *vertexDataPy;
     Py_buffer vertexDataView;
-    uint8_t *vertexData; // m_VertexData.m_DataSize
     uint32_t m_StreamOffset;
     uint32_t m_StreamStride;
     uint32_t m_ChannelOffset;
     uint32_t m_ChannelDimension;
-    Py_ssize_t vertexDataSize;
 
-    if (!PyArg_ParseTuple(args, "OiIIIIIb", &vertexDataPy, &componentByteSize, &m_VertexCount, &m_StreamOffset, &m_StreamStride, &m_ChannelOffset, &m_ChannelDimension, &swap))
-        return NULL;
-
-    // check type of src
-    if (!PyObject_CheckBuffer(vertexDataPy))
+    if (!PyArg_ParseTuple(args, "y*iIIIIIb", &vertexDataView, &componentByteSize, &m_VertexCount, &m_StreamOffset, &m_StreamStride, &m_ChannelOffset, &m_ChannelDimension, &swap))
     {
-        PyErr_SetString(PyExc_TypeError, "src must be of a type that supports the buffer protocol");
+        if (vertexDataView.buf)
+        {
+            PyBuffer_Release(&vertexDataView);
+        }
         return NULL;
     }
-    // get buffer from src
-    if (PyObject_GetBuffer(vertexDataPy, &vertexDataView, PyBUF_SIMPLE) == -1)
-    {
-        PyErr_SetString(PyExc_ValueError, "Failed to get buffer from src");
-        return NULL;
-    }
-    vertexData = (uint8_t *)vertexDataView.buf;
-    vertexDataSize = vertexDataView.len;
+
+    uint8_t *vertexData = (uint8_t *)vertexDataView.buf;
 
     Py_ssize_t componentBytesLength = m_VertexCount * m_ChannelDimension * componentByteSize;
-    uint8_t *componentBytes = (uint8_t *)PyMem_Malloc(componentBytesLength + 1);
-    componentBytes[componentBytesLength] = 0;
 
     // check if max values are ok
     uint32_t maxVertexDataAccess = (m_VertexCount - 1) * m_StreamStride + m_ChannelOffset + m_StreamOffset + componentByteSize * (m_ChannelDimension - 1) + componentByteSize;
-    if (maxVertexDataAccess > vertexDataSize)
+    if (maxVertexDataAccess > vertexDataView.len)
     {
         PyBuffer_Release(&vertexDataView);
         PyErr_SetString(PyExc_ValueError, "Vertex data access out of bounds");
         return NULL;
     }
+
+    PyObject *res = PyBytes_FromStringAndSize(nullptr, componentBytesLength);
+    if (!res)
+    {
+        PyBuffer_Release(&vertexDataView);
+        return NULL;
+    }
+    uint8_t *componentBytes = (uint8_t *)PyBytes_AS_STRING(res);
 
     for (uint32_t v = 0; v < m_VertexCount; v++)
     {
@@ -99,8 +95,6 @@ PyObject *unpack_vertexdata(PyObject *self, PyObject *args)
         }
     }
 
-    PyObject *res = PyByteArray_FromStringAndSize((const char *)componentBytes, componentBytesLength);
-    PyMem_Free(componentBytes);
     PyBuffer_Release(&vertexDataView);
     return res;
 
