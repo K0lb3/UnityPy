@@ -507,7 +507,7 @@ inline PyObject *parse_class(PyObject *kwargs, TypeTreeNodeObject *node, TypeTre
                 PyErr_SetString(PyExc_ValueError, "Failed to get UnknownObject class");
                 goto PARSE_CLASS_CLEANUP;
             }
-            PyDict_SetItemString(kwargs, "__node__", (PyObject *) node);
+            PyDict_SetItemString(kwargs, "__node__", (PyObject *)node);
         }
     }
 
@@ -542,7 +542,7 @@ inline PyObject *parse_class(PyObject *kwargs, TypeTreeNodeObject *node, TypeTre
     {
         Py_DECREF(clz);                                                 // 1->0
         clz = PyObject_GetAttrString(config->classes, "UnknownObject"); // 0->1
-        PyDict_SetItemString(kwargs, "__node__", (PyObject *) node);
+        PyDict_SetItemString(kwargs, "__node__", (PyObject *)node);
     }
 
     instance = PyObject_Call(clz, args, kwargs);
@@ -560,7 +560,7 @@ inline PyObject *parse_class(PyObject *kwargs, TypeTreeNodeObject *node, TypeTre
     // if we still failed to create an instance, fallback to UnknownObject
     Py_DECREF(clz);
     clz = PyObject_GetAttrString(config->classes, "UnknownObject");
-    PyDict_SetItemString(kwargs, "__node__", (PyObject *) node);
+    PyDict_SetItemString(kwargs, "__node__", (PyObject *)node);
     // merge extras back into kwargs
     pos = 0;
     while (PyDict_Next(extras, &pos, &key, &value))
@@ -1018,7 +1018,10 @@ PyObject *read_typetree(PyObject *self, PyObject *args, PyObject *kwargs)
     bytes_read = reader.ptr - reader.start;
 
 READ_TYPETREE_CLEANUP:
-    PyBuffer_Release(&view);
+    if (view.buf)
+    {
+        PyBuffer_Release(&view);
+    }
     Py_XDECREF(config.assetfile);
     Py_XDECREF(config.classes);
 
