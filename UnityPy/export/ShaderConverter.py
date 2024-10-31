@@ -68,11 +68,11 @@ def ConvertSerializedShader(m_Shader: Shader) -> str:
         decompressedSize = m_Shader.decompressedLengths[i]
 
         compressedBytes = compressed_blob[
-            int(m_Shader.offsets[i][0]) : int(m_Shader.offsets[i][0])
-            + compressedSize[0]
+            int(m_Shader.offsets[i]) : int(m_Shader.offsets[i])
+            + compressedSize
         ]
         decompressedBytes = CompressionHelper.decompress_lz4(
-            compressedBytes, decompressedSize[0]
+            compressedBytes, decompressedSize
         )
 
         shaderPrograms.append(
@@ -654,7 +654,7 @@ class ShaderSubProgram:
 
             sb.append("}\n")
 
-        if hasattr(self, "m_LocalKeywords") and len(self.m_LocalKeywords) > 0:
+        if hasattr(self, "m_LocalKeywords") and getattr(self, "m_LocalKeywords") is not None and len(self.m_LocalKeywords) > 0 :
             sb.append("Local Keywords { ")
             for keyword in self.m_LocalKeywords:
                 sb.append('"{0}" '.format(keyword))
