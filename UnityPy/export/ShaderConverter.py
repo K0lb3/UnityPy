@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 from itertools import groupby
-from typing import TYPE_CHECKING, List, Optional, Tuple
+from typing import TYPE_CHECKING, List, Optional, Tuple, TypeVar, Union
 
 from ..enums import (
     PassType,
@@ -35,6 +35,8 @@ HEADER = """
 ///////////////////////////////////////////
 """[1:]
 
+T = TypeVar("T")
+
 
 def export_shader(m_Shader: Shader) -> str:
     if m_Shader.m_SubProgramBlob:  # 5.3 - 5.4
@@ -58,21 +60,27 @@ def ConvertSerializedShader(m_Shader: Shader) -> str:
 
     platformNumber = len(m_Shader.platforms)
     compressed_blob = bytes(m_Shader.compressedBlob)
+
+    def get_entry(array: Union[List[T], List[List[T]]], index: int) -> T:
+        item = array[index]
+        if isinstance(item, List):
+            return item[0]
+        return item
+
     for i in range(platformNumber):
         if i >= len(m_Shader.compressedLengths) or i >= len(
             m_Shader.decompressedLengths
         ):
             # m_Shader.platforms shouldn't be longer than m_shader.[de]compressedLengths, but it is
             break
-        compressedSize = m_Shader.compressedLengths[i]
-        decompressedSize = m_Shader.decompressedLengths[i]
 
-        compressedBytes = compressed_blob[
-            int(m_Shader.offsets[i][0]) : int(m_Shader.offsets[i][0])
-            + compressedSize[0]
-        ]
+        compressedSize = get_entry(m_Shader.compressedLengths, i)
+        decompressedSize = get_entry(m_Shader.decompressedLengths, i)
+        offset = get_entry(m_Shader.offsets, i)
+
+        compressedBytes = compressed_blob[offset : offset + compressedSize]
         decompressedBytes = CompressionHelper.decompress_lz4(
-            compressedBytes, decompressedSize[0]
+            compressedBytes, decompressedSize
         )
 
         shaderPrograms.append(
@@ -654,7 +662,10 @@ class ShaderSubProgram:
 
             sb.append("}\n")
 
-        if hasattr(self, "m_LocalKeywords") and len(self.m_LocalKeywords) > 0:
+        if (
+            getattr(self, "m_LocalKeywords") is not None
+            and len(self.m_LocalKeywords) > 0
+        ):
             sb.append("Local Keywords { ")
             for keyword in self.m_LocalKeywords:
                 sb.append('"{0}" '.format(keyword))

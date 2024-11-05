@@ -179,7 +179,7 @@ def exportMesh(obj: Mesh, fp: str, extension=".obj") -> List[int]:
     return [(obj.assets_file, obj.path_id)]
 
 
-def exporShader(obj: Shader, fp: str, extension=".txt") -> List[int]:
+def exportShader(obj: Shader, fp: str, extension=".txt") -> List[int]:
     if not extension:
         extension = ".txt"
     with open(f"{fp}{extension}", "wt", encoding="utf8", newline="") as f:
@@ -295,7 +295,7 @@ EXPORT_TYPES = {
     ClassIDType.Font: exportFont,
     ClassIDType.Mesh: exportMesh,
     ClassIDType.MonoBehaviour: exportMonoBehaviour,
-    ClassIDType.Shader: exporShader,
+    ClassIDType.Shader: exportShader,
     ClassIDType.TextAsset: exportTextAsset,
     ClassIDType.Texture2D: exportTexture2D,
 }
