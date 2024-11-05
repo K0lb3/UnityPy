@@ -654,7 +654,7 @@ class ShaderSubProgram:
 
             sb.append("}\n")
 
-        if hasattr(self, "m_LocalKeywords") and getattr(self, "m_LocalKeywords") is not None and len(self.m_LocalKeywords) > 0 :
+        if getattr(self, "m_LocalKeywords") is not None and len(self.m_LocalKeywords) > 0 :
             sb.append("Local Keywords { ")
             for keyword in self.m_LocalKeywords:
                 sb.append('"{0}" '.format(keyword))
