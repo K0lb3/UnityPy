@@ -21,7 +21,7 @@ pyfmodex = None
 
 
 def get_fmod_path(
-    system: Union["Windows", "Linux", "Darwin"], arch: ["x64", "x86", "arm"]
+    system: Union["Windows", "Linux", "Darwin"], arch: ["x64", "x86", "arm", "arm64"]
 ) -> str:
     if system == "Darwin":
         # universal dylib
@@ -54,6 +54,9 @@ def import_pyfmodex():
         arch = "x86"
     elif arch == "64bit":
         arch = "x64"
+
+    if system == "Linux" and "aarch64" in platform.machine():
+        arch = "arm64"
 
     fmod_rel_path = get_fmod_path(system, arch)
     fmod_path = os.path.join(
@@ -135,33 +138,59 @@ def dump_samples(clip: AudioClip, audio_data: bytes) -> Dict[str, bytes]:
 
 def subsound_to_wav(subsound) -> bytes:
     # get sound settings
+    sound_format = subsound.format.format
     length = subsound.get_length(pyfmodex.enums.TIMEUNIT.PCMBYTES)
     channels = subsound.format.channels
     bits = subsound.format.bits
     sample_rate = int(subsound.default_frequency)
 
-    # write to buffer
-    w = EndianBinaryWriter(endian="<")
-    # riff chucnk
-    w.write(b"RIFF")
-    w.write_int(length + 36)  # sizeof(FmtChunk) + sizeof(RiffChunk) + length
-    w.write(b"WAVE")
-    # fmt chunck
-    w.write(b"fmt ")
-    w.write_int(16)  # sizeof(FmtChunk) - sizeof(RiffChunk)
-    w.write_short(1)
-    w.write_short(channels)
-    w.write_int(sample_rate)
-    w.write_int(sample_rate * channels * bits // 8)
-    w.write_short(channels * bits // 8)
-    w.write_short(bits)
-    # data chunck
-    w.write(b"data")
-    w.write_int(length)
-    # data
-    lock = subsound.lock(0, length)
-    for ptr, length in lock:
-        ptr_data = ctypes.string_at(ptr, length.value)
-        w.write(ptr_data)
-    subsound.unlock(*lock)
-    return w.bytes
+
+    if sound_format == pyfmodex.enums.SOUND_FORMAT.PCM16:
+        # write to buffer
+        w = EndianBinaryWriter(endian="<")
+        # riff chucnk
+        w.write(b"RIFF")
+        w.write_int(length + 36)  # sizeof(FmtChunk) + sizeof(RiffChunk) + length
+        w.write(b"WAVE")
+        # fmt chunck
+        w.write(b"fmt ")
+        w.write_int(16)  # sizeof(FmtChunk) - sizeof(RiffChunk)
+        w.write_short(1)
+        w.write_short(channels)
+        w.write_int(sample_rate)
+        w.write_int(sample_rate * channels * bits // 8)
+        w.write_short(channels * bits // 8)
+        w.write_short(bits)
+        # data chunck
+        w.write(b"data")
+        w.write_int(length)
+        # data
+        lock = subsound.lock(0, length)
+        for ptr, length in lock:
+            ptr_data = ctypes.string_at(ptr, length.value)
+            w.write(ptr_data)
+        subsound.unlock(*lock)
+        return w.bytes
+    elif sound_format== pyfmodex.enums.SOUND_FORMAT.PCMFLOAT:
+        w = EndianBinaryWriter(endian="<")
+        w.write(b"RIFF")
+        w.write_int(length + 44)
+        w.write(b"WAVE")
+        w.write(b"fmt ")
+        w.write_int(16)
+        w.write_short(3)
+        w.write_short(subsound.format.channels)
+        w.write_int(int(subsound.default_frequency))
+        w.write_int(int(subsound.default_frequency * subsound.format.channels * subsound.format.bits/8))
+        w.write_short(int(subsound.format.channels * subsound.format.bits/8))
+        w.write_short(32)
+        w.write(b"data")
+        w.write_int(length)
+        lock = subsound.lock(0, length)
+        for ptr, length in lock:
+            ptr_data = ctypes.string_at(ptr, length.value)
+            w.write(ptr_data)
+        subsound.unlock(*lock)
+        return w.bytes
+    else:
+        raise NotImplementedError("Sound format " + sound_format + " is not supported.")
