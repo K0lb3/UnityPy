@@ -9,6 +9,12 @@ from UnityPy.streams import EndianBinaryWriter
 
 from ..helpers.ResourceReader import get_resource_data
 
+try:
+    import numpy as np
+except ImportError:
+    np = None
+    import struct
+
 if TYPE_CHECKING:
     from ..classes import AudioClip
 
@@ -48,15 +54,17 @@ def import_pyfmodex():
     arch = platform.architecture()[0]
     machine = platform.machine()
 
-    if "arm" in machine or "aarch64" in machine:
+    if "arm" in machine:
         arch = "arm"
+    elif "aarch64" in machine:
+        if system == "Linux":
+            arch = "arm64"
+        else:
+            arch = "arm"
     elif arch == "32bit":
         arch = "x86"
     elif arch == "64bit":
         arch = "x64"
-
-    if system == "Linux" and "aarch64" in platform.machine():
-        arch = "arm64"
 
     fmod_rel_path = get_fmod_path(system, arch)
     fmod_path = os.path.join(
@@ -73,7 +81,9 @@ def import_pyfmodex():
     import pyfmodex
 
 
-def extract_audioclip_samples(audio: AudioClip) -> Dict[str, bytes]:
+def extract_audioclip_samples(
+    audio: AudioClip, convert_pcm_float: bool = True
+) -> Dict[str, bytes]:
     """extracts all the samples from an AudioClip
     :param audio: AudioClip
     :type audio: AudioClip
@@ -98,10 +108,12 @@ def extract_audioclip_samples(audio: AudioClip) -> Dict[str, bytes]:
         return {f"{audio.m_Name}.wav": audio_data}
     elif magic[4:8] == b"ftyp":
         return {f"{audio.m_Name}.m4a": audio_data}
-    return dump_samples(audio, audio_data)
+    return dump_samples(audio, audio_data, convert_pcm_float)
 
 
-def dump_samples(clip: AudioClip, audio_data: bytes) -> Dict[str, bytes]:
+def dump_samples(
+    clip: AudioClip, audio_data: bytes, convert_pcm_float: bool = True
+) -> Dict[str, bytes]:
     if pyfmodex is None:
         import_pyfmodex()
     if not pyfmodex:
@@ -128,7 +140,7 @@ def dump_samples(clip: AudioClip, audio_data: bytes) -> Dict[str, bytes]:
         else:
             filename = "%s.wav" % clip.m_Name
         subsound = sound.get_subsound(i)
-        samples[filename] = subsound_to_wav(subsound)
+        samples[filename] = subsound_to_wav(subsound, convert_pcm_float)
         subsound.release()
 
     sound.release()
@@ -136,61 +148,71 @@ def dump_samples(clip: AudioClip, audio_data: bytes) -> Dict[str, bytes]:
     return samples
 
 
-def subsound_to_wav(subsound) -> bytes:
+def subsound_to_wav(subsound, convert_pcm_float: bool = True) -> bytes:
     # get sound settings
     sound_format = subsound.format.format
-    length = subsound.get_length(pyfmodex.enums.TIMEUNIT.PCMBYTES)
+    sound_data_length = subsound.get_length(pyfmodex.enums.TIMEUNIT.PCMBYTES)
     channels = subsound.format.channels
     bits = subsound.format.bits
     sample_rate = int(subsound.default_frequency)
 
-
-    if sound_format == pyfmodex.enums.SOUND_FORMAT.PCM16:
-        # write to buffer
-        w = EndianBinaryWriter(endian="<")
-        # riff chucnk
-        w.write(b"RIFF")
-        w.write_int(length + 36)  # sizeof(FmtChunk) + sizeof(RiffChunk) + length
-        w.write(b"WAVE")
-        # fmt chunck
-        w.write(b"fmt ")
-        w.write_int(16)  # sizeof(FmtChunk) - sizeof(RiffChunk)
-        w.write_short(1)
-        w.write_short(channels)
-        w.write_int(sample_rate)
-        w.write_int(sample_rate * channels * bits // 8)
-        w.write_short(channels * bits // 8)
-        w.write_short(bits)
-        # data chunck
-        w.write(b"data")
-        w.write_int(length)
-        # data
-        lock = subsound.lock(0, length)
-        for ptr, length in lock:
-            ptr_data = ctypes.string_at(ptr, length.value)
-            w.write(ptr_data)
-        subsound.unlock(*lock)
-        return w.bytes
-    elif sound_format== pyfmodex.enums.SOUND_FORMAT.PCMFLOAT:
-        w = EndianBinaryWriter(endian="<")
-        w.write(b"RIFF")
-        w.write_int(length + 44)
-        w.write(b"WAVE")
-        w.write(b"fmt ")
-        w.write_int(16)
-        w.write_short(3)
-        w.write_short(subsound.format.channels)
-        w.write_int(int(subsound.default_frequency))
-        w.write_int(int(subsound.default_frequency * subsound.format.channels * subsound.format.bits/8))
-        w.write_short(int(subsound.format.channels * subsound.format.bits/8))
-        w.write_short(32)
-        w.write(b"data")
-        w.write_int(length)
-        lock = subsound.lock(0, length)
-        for ptr, length in lock:
-            ptr_data = ctypes.string_at(ptr, length.value)
-            w.write(ptr_data)
-        subsound.unlock(*lock)
-        return w.bytes
+    if sound_format in [
+        pyfmodex.enums.SOUND_FORMAT.PCM8,
+        pyfmodex.enums.SOUND_FORMAT.PCM16,
+        pyfmodex.enums.SOUND_FORMAT.PCM24,
+        pyfmodex.enums.SOUND_FORMAT.PCM32,
+    ]:
+        audio_format = 1
+        wav_data_length = sound_data_length
+        convert_pcm_float = False
+    elif sound_format == pyfmodex.enums.SOUND_FORMAT.PCMFLOAT:
+        if convert_pcm_float:
+            audio_format = 1
+            bits = 16
+            wav_data_length = sound_data_length // 2
+        else:
+            audio_format = 3
+            wav_data_length = sound_data_length
     else:
         raise NotImplementedError("Sound format " + sound_format + " is not supported.")
+
+    w = EndianBinaryWriter(endian="<")
+
+    # RIFF header
+    w.write(b"RIFF")  # chunk id
+    w.write_int(
+        wav_data_length + 36
+    )  # chunk size - 4 + (8 + 16 (sub chunk 1 size)) + (8 + length (sub chunk 2 size))
+    w.write(b"WAVE")  # format
+
+    # fmt chunk - sub chunk 1
+    w.write(b"fmt ")  # sub chunk 1 id
+    w.write_int(16)  # sub chunk 1 size, 16 for PCM
+    w.write_short(audio_format)  # audio format, 1: PCM integer, 3: IEEE 754 float
+    w.write_short(channels)  # number of channels
+    w.write_int(sample_rate)  # sample rate
+    w.write_int(sample_rate * channels * bits // 8)  # byte rate
+    w.write_short(channels * bits // 8)  # block align
+    w.write_short(bits)  # bits per sample
+
+    # data chunk - sub chunk 2
+    w.write(b"data")  # sub chunk 2 id
+    w.write_int(wav_data_length)  # sub chunk 2 size
+    # sub chunk 2 data
+    lock = subsound.lock(0, sound_data_length)
+    for ptr, sound_data_length in lock:
+        ptr_data = ctypes.string_at(ptr, sound_data_length.value)
+        if convert_pcm_float:
+            if np is not None:
+                ptr_data = np.frombuffer(ptr_data, dtype=np.float32)
+                ptr_data = (ptr_data * 2**15).astype(np.int16).tobytes()
+            else:
+                ptr_data = struct.unpack("<%df" % (len(ptr_data) // 4), ptr_data)
+                ptr_data = struct.pack(
+                    "<%dh" % len(ptr_data), *[int(f * 2**15) for f in ptr_data]
+                )
+
+        w.write(ptr_data)
+    subsound.unlock(*lock)
+
+    return w.bytes
