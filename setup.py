@@ -66,16 +66,16 @@ BDIST_TAG_FMOD_MAP = {
     "win_amd64": "x64",
     "win_arm64": "arm",
     # Linux and Mac endings
-    "arm64": "arm",  # Mac
+    "arm64": "arm64",  # Mac
     "x86_64": "x64",
-    "aarch64": "arm",  # Linux
+    "aarch64": "arm64",  # Linux
     "i686": "x86",
     "armv7l": "arm",  # armhf
 }
 
 
 def get_fmod_path(
-    system: Union["Windows", "Linux", "Darwin"], arch: ["x64", "x86", "arm"]
+    system: Union["Windows", "Linux", "Darwin"], arch: ["x64", "x86", "arm", "arm64"]
 ) -> str:
     if system == "Darwin":
         # universal dylib
