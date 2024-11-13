@@ -1,23 +1,24 @@
-from io import BytesIO
-import os
 import json
+import os
+from io import BytesIO
+from pathlib import Path
+from typing import Callable, Dict, List, Union
+
 import UnityPy
 from UnityPy.classes import (
+    AudioClip,
+    Font,
+    GameObject,
+    Mesh,
+    MonoBehaviour,
     Object,
     PPtr,
-    MonoBehaviour,
-    TextAsset,
-    Font,
     Shader,
-    Mesh,
     Sprite,
+    TextAsset,
     Texture2D,
-    AudioClip,
-    GameObject,
 )
 from UnityPy.enums.ClassIDType import ClassIDType
-from typing import Union, List, Dict, Callable
-from pathlib import Path
 
 
 def export_obj(
@@ -57,7 +58,7 @@ def export_obj(
         return []
 
     if append_name:
-        fp = os.path.join(fp, obj.name if obj.name else obj.type.name)
+        fp = os.path.join(fp, obj.m_Name if getattr(obj, "m_Name") else obj.type.name)
 
     fp, extension = os.path.splitext(fp)
 
@@ -114,7 +115,7 @@ def extract_assets(
             # the check of the various sub directories is required to avoid // in the path
             obj_dest = os.path.join(
                 dst,
-                *(x for x in obj_path.split("/")[:ignore_first_container_dirs] if x),
+                *(x for x in obj_path.split("/")[ignore_first_container_dirs:] if x),
             )
             os.makedirs(os.path.dirname(obj_dest), exist_ok=True)
             exported.extend(
@@ -156,8 +157,8 @@ def exportTextAsset(obj: TextAsset, fp: str, extension: str = ".txt") -> List[in
     if not extension:
         extension = ".txt"
     with open(f"{fp}{extension}", "wb") as f:
-        f.write(obj.script)
-    return [(obj.assets_file, obj.path_id)]
+        f.write(obj.m_Script.encode("utf-8", "surrogateescape"))
+    return [(obj.assets_file, obj.object_reader.path_id)]
 
 
 def exportFont(obj: Font, fp: str, extension: str = "") -> List[int]:
@@ -167,8 +168,8 @@ def exportFont(obj: Font, fp: str, extension: str = "") -> List[int]:
         if obj.m_FontData[0:4] == b"OTTO":
             extension = ".otf"
         with open(f"{fp}{extension}", "wb") as f:
-            f.write(obj.m_FontData)
-    return [(obj.assets_file, obj.path_id)]
+            f.write(bytes(obj.m_FontData))
+    return [(obj.assets_file, obj.object_reader.path_id)]
 
 
 def exportMesh(obj: Mesh, fp: str, extension=".obj") -> List[int]:
@@ -176,7 +177,7 @@ def exportMesh(obj: Mesh, fp: str, extension=".obj") -> List[int]:
         extension = ".obj"
     with open(f"{fp}{extension}", "wt", encoding="utf8", newline="") as f:
         f.write(obj.export())
-    return [(obj.assets_file, obj.path_id)]
+    return [(obj.assets_file, obj.object_reader.path_id)]
 
 
 def exportShader(obj: Shader, fp: str, extension=".txt") -> List[int]:
@@ -184,48 +185,43 @@ def exportShader(obj: Shader, fp: str, extension=".txt") -> List[int]:
         extension = ".txt"
     with open(f"{fp}{extension}", "wt", encoding="utf8", newline="") as f:
         f.write(obj.export())
-    return [(obj.assets_file, obj.path_id)]
+    return [(obj.assets_file, obj.object_reader.path_id)]
 
 
 def exportMonoBehaviour(
     obj: Union[MonoBehaviour, Object], fp: str, extension: str = ""
 ) -> List[int]:
     export = None
-    # TODO - add generic way to add external typetrees
-    if obj.serialized_type and obj.serialized_type.node:
-        extension = ".json"
-        export = json.dumps(obj.read_typetree(), indent=4, ensure_ascii=False).encode(
-            "utf8", errors="surrogateescape"
-        )
+
+    if obj.object_reader.serialized_type.node:
+        # a typetree is available from the SerializedFile for this object
+        export = obj.object_reader.read_typetree()
     elif isinstance(obj, MonoBehaviour):
-        # no set typetree
-        # check if we have a script
-        script = obj.m_Script
-        if script:
+        # try to get the typetree from the MonoBehavior script
+        script_ptr = obj.m_Script
+        if script_ptr:
             # looks like we have a script
-            script = script.read()
+            script = script_ptr.read()
             # check if there is a locally stored typetree for it
             nodes = MONOBEHAVIOUR_TYPETREES.get(script.m_AssemblyName, {}).get(
                 script.m_ClassName, None
             )
             if nodes:
-                # we have a typetree
-                # adjust the name
-                # name = (
-                #     f"{script.m_ClassName}-{obj.name}"
-                #     if obj.name
-                #     else script.m_ClassName
-                # )
-                extension = ".json"
-                export = json.dumps(
-                    obj.read_typetree(nodes), indent=4, ensure_ascii=False
-                ).encode("utf8", errors="surrogateescape")
+                export = obj.object_reader.read_typetree(nodes)
+    else:
+        export = obj.object_reader.read_typetree()
+
     if not export:
         extension = ".bin"
-        export = obj.raw_data
+        export = obj.object_reader.raw_data
+    else:
+        extension = ".json"
+        export = json.dumps(export, indent=4, ensure_ascii=False).encode(
+            "utf8", errors="surrogateescape"
+        )
     with open(f"{fp}{extension}", "wb") as f:
         f.write(export)
-    return [(obj.assets_file, obj.path_id)]
+    return [(obj.assets_file, obj.object_reader.path_id)]
 
 
 def exportAudioClip(obj: AudioClip, fp: str, extension: str = "") -> List[int]:
@@ -240,7 +236,7 @@ def exportAudioClip(obj: AudioClip, fp: str, extension: str = "") -> List[int]:
         for name, clip_data in samples.items():
             with open(os.path.join(fp, f"{name}.wav"), "wb") as f:
                 f.write(clip_data)
-    return [(obj.assets_file, obj.path_id)]
+    return [(obj.assets_file, obj.object_reader.path_id)]
 
 
 def exportSprite(obj: Sprite, fp: str, extension: str = ".png") -> List[int]:
@@ -248,8 +244,8 @@ def exportSprite(obj: Sprite, fp: str, extension: str = ".png") -> List[int]:
         extension = ".png"
     obj.image.save(f"{fp}{extension}")
     exported = [
-        (obj.assets_file, obj.path_id),
-        (obj.m_RD.texture.assets_file, obj.m_RD.texture.path_id),
+        (obj.assets_file, obj.object_reader.path_id),
+        (obj.m_RD.texture.assetsfile, obj.m_RD.texture.path_id),
     ]
     alpha_assets_file = getattr(obj.m_RD.alphaTexture, "assets_file", None)
     alpha_path_id = getattr(obj.m_RD.alphaTexture, "path_id", None)
@@ -322,8 +318,7 @@ def crawl_obj(obj: Object, ret: dict = None) -> Dict[int, Union[Object, PPtr]]:
     # MonoBehaviour really on their typetree
     # while Object denotes that the class of the object isn't implemented yet
     if isinstance(obj, (MonoBehaviour, Object)):
-        obj.read_typetree()
-        data = obj.type_tree.__dict__.values()
+        data = obj.read_typetree().__dict__.values()
     else:
         data = obj.__dict__.values()
 
