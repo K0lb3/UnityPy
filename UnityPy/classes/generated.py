@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from abc import ABC
-from typing import List, Optional, Tuple, TypeVar, Union
+from typing import List, Optional, Tuple, TypeVar, Union, TYPE_CHECKING
 
 from attrs import define as attrs_define
 
@@ -2041,6 +2041,10 @@ class Pipeline(Component):
 class Renderer(Component):
   m_GameObject: PPtr[GameObject]
 
+  if TYPE_CHECKING:
+    from .legacy_patch.Renderer import export as _export
+    export = _export
+
 
 @unitypy_define
 class BillboardRenderer(Renderer):
@@ -2743,6 +2747,32 @@ class GameObject(EditorExtension):
   m_Layer: int
   m_Name: str
   m_Tag: int
+
+  if TYPE_CHECKING:
+    from .legacy_patch.GameObject import (
+      _GameObject_Components, _GameObject_GetComponent
+    )
+    from ..enums import ClassIDType
+
+    m_Components = property(_GameObject_Components)
+    m_Animator = property(
+        lambda self: _GameObject_GetComponent(self, ClassIDType.Animator)
+    )
+    m_Animation = property(
+        lambda self: _GameObject_GetComponent(self, ClassIDType.Animation)
+    )
+    m_Transform = property(
+        lambda self: _GameObject_GetComponent(self, ClassIDType.Transform)
+    )
+    m_MeshRenderer = property(
+        lambda self: _GameObject_GetComponent(self, ClassIDType.MeshRenderer)
+    )
+    m_SkinnedMeshRenderer = property(
+        lambda self: _GameObject_GetComponent(self, ClassIDType.SkinnedMeshRenderer)
+    )
+    m_MeshFilter = property(
+        lambda self: _GameObject_GetComponent(self, ClassIDType.MeshFilter)
+    )
 
 
 @unitypy_define
@@ -4054,6 +4084,11 @@ class AudioClip(SampleClip):
   m_Type: Optional[int] = None
   m_UseHardware: Optional[bool] = None
 
+  if TYPE_CHECKING:
+    from .legacy_patch.AudioClip import _AudioClip_extension, _AudioClip_samples
+    extension = property(_AudioClip_extension)
+    samples = property(_AudioClip_samples)
+
 
 @unitypy_define
 class Avatar(NamedObject):
@@ -4451,6 +4486,10 @@ class Mesh(NamedObject):
   m_VertexData: Optional[VertexData] = None
   m_Vertices: Optional[List[Vector3f]] = None
 
+  if TYPE_CHECKING:
+    from .legacy_patch.Mesh import _Mesh_export
+    export = _Mesh_export
+
 
 @unitypy_define
 class Motion(NamedObject, ABC):
@@ -4657,6 +4696,10 @@ class Shader(NamedObject):
   platforms: Optional[List[int]] = None
   stageCounts: Optional[List[int]] = None
 
+  if TYPE_CHECKING:
+    from .legacy_patch.Shader import _Shader_export
+    export = _Shader_export
+
 
 @unitypy_define
 class ShaderVariantCollection(NamedObject):
@@ -4690,6 +4733,10 @@ class Sprite(NamedObject):
   m_RenderDataKey: Optional[Tuple[GUID, int]] = None
   m_ScriptableObjects: Optional[List[PPtr[MonoBehaviour]]] = None
   m_SpriteAtlas: Optional[PPtr[SpriteAtlas]] = None
+
+  if TYPE_CHECKING:
+    from .legacy_patch.Sprite import _Sprite_image
+    image = property(_Sprite_image)
 
 
 @unitypy_define
@@ -4988,6 +5035,14 @@ class Texture2D(Texture):
   m_StreamingMipmaps: Optional[bool] = None
   m_StreamingMipmapsPriority: Optional[int] = None
 
+  if TYPE_CHECKING:
+    from .legacy_patch.Texture2D import (
+      _Texture2d_get_image, _Texture2D_get_image_data, _Texture2d_set_image
+    )
+    image = property(_Texture2d_get_image, _Texture2d_set_image)
+    set_image = _Texture2d_set_image
+    get_image_data = _Texture2D_get_image_data
+
 
 @unitypy_define
 class Cubemap(Texture2D):
@@ -5042,6 +5097,10 @@ class Texture2DArray(Texture):
   m_MipsStripped: Optional[int] = None
   m_StreamData: Optional[StreamingInfo] = None
   m_UsageMode: Optional[int] = None
+
+  if TYPE_CHECKING:
+    from legacy_patch.Texture2DArray import _Texture2DArray_get_images
+    images = property(_Texture2DArray_get_images)
 
 
 @unitypy_define
