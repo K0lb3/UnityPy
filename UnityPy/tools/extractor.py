@@ -2,7 +2,7 @@ import json
 import os
 from io import BytesIO
 from pathlib import Path
-from typing import Callable, Dict, List, Union
+from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import UnityPy
 from UnityPy.classes import (
@@ -19,6 +19,7 @@ from UnityPy.classes import (
     Texture2D,
 )
 from UnityPy.enums.ClassIDType import ClassIDType
+from UnityPy.files import SerializedFile
 
 
 def export_obj(
@@ -27,8 +28,8 @@ def export_obj(
     append_name: bool = False,
     append_path_id: bool = False,
     export_unknown_as_typetree: bool = False,
-    asset_filter: Callable[[Object], bool] = None,
-) -> List[int]:
+    asset_filter: Optional[Callable[[Object], bool]] = None,
+) -> List[Tuple[SerializedFile, int]]:
     """Exports the given object to the given filepath.
 
     Args:
@@ -76,8 +77,8 @@ def extract_assets(
     ignore_first_container_dirs: int = 0,
     append_path_id: bool = False,
     export_unknown_as_typetree: bool = False,
-    asset_filter: Callable[[Object], bool] = None,
-) -> List[int]:
+    asset_filter: Optional[Callable[[Object], bool]] = None,
+) -> List[Tuple[SerializedFile, int]]:
     """Extracts some or all assets from the given source.
 
     Args:
@@ -90,7 +91,7 @@ def extract_assets(
         asset_filter (func(object)->bool, optional): Determines whether to export an object. Defaults to all objects.
 
     Returns:
-        List[int]: [description]
+        List[Tuple[SerializedFile, int]]: [description]
     """
     # load source
     env = UnityPy.load(src)
@@ -153,7 +154,7 @@ def extract_assets(
 ###############################################################################
 
 
-def exportTextAsset(obj: TextAsset, fp: str, extension: str = ".txt") -> List[int]:
+def exportTextAsset(obj: TextAsset, fp: str, extension: str = ".txt") -> List[Tuple[SerializedFile, int]]:
     if not extension:
         extension = ".txt"
     with open(f"{fp}{extension}", "wb") as f:
@@ -161,7 +162,7 @@ def exportTextAsset(obj: TextAsset, fp: str, extension: str = ".txt") -> List[in
     return [(obj.assets_file, obj.object_reader.path_id)]
 
 
-def exportFont(obj: Font, fp: str, extension: str = "") -> List[int]:
+def exportFont(obj: Font, fp: str, extension: str = "") -> List[Tuple[SerializedFile, int]]:
     # TODO - export glyphs
     if obj.m_FontData:
         extension = ".ttf"
@@ -172,7 +173,7 @@ def exportFont(obj: Font, fp: str, extension: str = "") -> List[int]:
     return [(obj.assets_file, obj.object_reader.path_id)]
 
 
-def exportMesh(obj: Mesh, fp: str, extension=".obj") -> List[int]:
+def exportMesh(obj: Mesh, fp: str, extension=".obj") -> List[Tuple[SerializedFile, int]]:
     if not extension:
         extension = ".obj"
     with open(f"{fp}{extension}", "wt", encoding="utf8", newline="") as f:
@@ -180,7 +181,7 @@ def exportMesh(obj: Mesh, fp: str, extension=".obj") -> List[int]:
     return [(obj.assets_file, obj.object_reader.path_id)]
 
 
-def exportShader(obj: Shader, fp: str, extension=".txt") -> List[int]:
+def exportShader(obj: Shader, fp: str, extension=".txt") -> List[Tuple[SerializedFile, int]]:
     if not extension:
         extension = ".txt"
     with open(f"{fp}{extension}", "wt", encoding="utf8", newline="") as f:
@@ -190,7 +191,7 @@ def exportShader(obj: Shader, fp: str, extension=".txt") -> List[int]:
 
 def exportMonoBehaviour(
     obj: Union[MonoBehaviour, Object], fp: str, extension: str = ""
-) -> List[int]:
+) -> List[Tuple[SerializedFile, int]]:
     export = None
 
     if obj.object_reader.serialized_type.node:
@@ -224,7 +225,7 @@ def exportMonoBehaviour(
     return [(obj.assets_file, obj.object_reader.path_id)]
 
 
-def exportAudioClip(obj: AudioClip, fp: str, extension: str = "") -> List[int]:
+def exportAudioClip(obj: AudioClip, fp: str, extension: str = "") -> List[Tuple[SerializedFile, int]]:
     samples = obj.samples
     if len(samples) == 0:
         pass
@@ -239,7 +240,7 @@ def exportAudioClip(obj: AudioClip, fp: str, extension: str = "") -> List[int]:
     return [(obj.assets_file, obj.object_reader.path_id)]
 
 
-def exportSprite(obj: Sprite, fp: str, extension: str = ".png") -> List[int]:
+def exportSprite(obj: Sprite, fp: str, extension: str = ".png") -> List[Tuple[SerializedFile, int]]:
     if not extension:
         extension = ".png"
     obj.image.save(f"{fp}{extension}")
@@ -254,7 +255,7 @@ def exportSprite(obj: Sprite, fp: str, extension: str = ".png") -> List[int]:
     return exported
 
 
-def exportTexture2D(obj: Texture2D, fp: str, extension: str = ".png") -> List[int]:
+def exportTexture2D(obj: Texture2D, fp: str, extension: str = ".png") -> List[Tuple[SerializedFile, int]]:
     if not extension:
         extension = ".png"
     if obj.m_Width:
@@ -262,8 +263,7 @@ def exportTexture2D(obj: Texture2D, fp: str, extension: str = ".png") -> List[in
         obj.image.save(f"{fp}{extension}")
     return [(obj.assets_file, obj.path_id)]
 
-
-def exportGameObject(obj: GameObject, fp: str, extension: str = "") -> List[int]:
+def exportGameObject(obj: GameObject, fp: str, extension: str = "") -> List[Tuple[SerializedFile, int]]:
     exported = [(obj.assets_file, obj.path_id)]
     refs = crawl_obj(obj)
     if refs:
@@ -299,7 +299,7 @@ EXPORT_TYPES = {
 MONOBEHAVIOUR_TYPETREES: Dict["Assembly-Name.dll", Dict["Class-Name", List[Dict]]] = {}
 
 
-def crawl_obj(obj: Object, ret: dict = None) -> Dict[int, Union[Object, PPtr]]:
+def crawl_obj(obj: Object, ret: Optional[dict] = None) -> Dict[int, Union[Object, PPtr]]:
     """Crawls through the data struture of the object and returns a list of all the components."""
     if not ret:
         ret = {}
