@@ -257,3 +257,10 @@ class ObjectReader(Generic[T]):
         if not node:
             raise TypeTreeError("There are no TypeTree nodes for this object.")
         return node
+
+    # UnityPy 2 syntax early implementation
+    def parse_as_object(self) -> T:
+        return self.read()
+
+    def parse_as_dict(self) -> dict:
+        return self.read_typetree()

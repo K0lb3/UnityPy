@@ -32,9 +32,13 @@ class PPtr(Generic[T]):
     def type(self) -> ClassIDType:
         return self.deref().type
 
+    # backwards compatibility - to be removed in UnityPy 2
     def read(self):
-        # backwards compatibility
         return self.deref_parse_as_object()
+
+    # backwards compatibility - to be removed in UnityPy 2
+    def read_typetree(self):
+        return self.deref_parse_as_dict()
 
     def deref(self, assetsfile: Optional[SerializedFile] = None) -> ObjectReader[T]:
         assetsfile = assetsfile or self.assetsfile
@@ -85,14 +89,12 @@ class PPtr(Generic[T]):
         return cast("ObjectReader[T]", assetsfile.objects[self.m_PathID])
 
     def deref_parse_as_object(self, assetsfile: Optional[SerializedFile] = None) -> T:
-        return self.deref(assetsfile).read()
+        return self.deref(assetsfile).parse_as_object()
 
     def deref_parse_as_dict(
         self, assetsfile: Optional[SerializedFile] = None
     ) -> dict[str, Any]:
-        ret = self.deref(assetsfile).parse_as_dict()
-        assert isinstance(ret, dict)
-        return ret
+        return self.deref(assetsfile).parse_as_dict()
 
     def __bool__(self):
         return self.m_PathID != 0
