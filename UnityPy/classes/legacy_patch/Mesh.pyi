@@ -9,8 +9,6 @@ from UnityPy.classes.generated import (AABB, BlendShapeData, BoneInfluence,
 from UnityPy.classes.math import (ColorRGBA, Matrix4x4f, Vector2f, Vector3f,
                                   Vector4f)
 
-def _Mesh_export(self: Mesh, format: str = "obj") -> str: ...
-
 class Mesh(NamedObject):
   m_BindPose: List[Matrix4x4f]
   m_CompressedMesh: CompressedMesh
@@ -48,5 +46,5 @@ class Mesh(NamedObject):
   m_VariableBoneCountWeights: Optional[VariableBoneCountWeights] = None
   m_VertexData: Optional[VertexData] = None
   m_Vertices: Optional[List[Vector3f]] = None
-  export = _Mesh_export
-  ...
+
+  def export(self, format: str = "obj") -> str: ...

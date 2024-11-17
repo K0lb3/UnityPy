@@ -1,9 +1,6 @@
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from UnityPy.classes.generated import SampleClip, StreamedResource
-
-def _AudioClip_extension(self: AudioClip) -> str: ...
-def _AudioClip_samples(self: AudioClip) -> dict: ...
 
 class AudioClip(SampleClip):
   m_Name: str
@@ -26,6 +23,9 @@ class AudioClip(SampleClip):
   m_SubsoundIndex: Optional[int] = None
   m_Type: Optional[int] = None
   m_UseHardware: Optional[bool] = None
-  extension = property(_AudioClip_extension)
-  samples = property(_AudioClip_samples)
-  ...
+
+  @property
+  def extension(self) -> str: ...
+
+  @property
+  def samples(self) -> Dict[str, bytes]: ...

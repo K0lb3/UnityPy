@@ -4,8 +4,6 @@ from PIL.Image import Image
 
 from UnityPy.classes.generated import GLTextureSettings, StreamingInfo, Texture
 
-def _Texture2DArray_get_images(self: Texture2DArray) -> List[Image]: ...
-
 class Texture2DArray(Texture):
   image_data: bytes
   m_ColorSpace: int
@@ -26,5 +24,6 @@ class Texture2DArray(Texture):
   m_MipsStripped: Optional[int] = None
   m_StreamData: Optional[StreamingInfo] = None
   m_UsageMode: Optional[int] = None
-  images = property(_Texture2DArray_get_images)
-  ...
+
+  @property
+  def images(self: Texture2DArray) -> List[Image]: ...

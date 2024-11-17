@@ -4,15 +4,6 @@ from PIL.Image import Image
 
 from UnityPy.classes.generated import GLTextureSettings, StreamingInfo, Texture
 
-def _Texture2d_get_image(self: Texture2D) -> Image: ...
-def _Texture2d_set_image(
-    self: Texture2D,
-    img: Union[Image, str, BinaryIO],
-    target_format: Optional[int] = None,
-    mipmap_count: int = 1,
-) -> None: ...
-def _Texture2D_get_image_data(self: Texture2D) -> bytes: ...
-
 class Texture2D(Texture):
   image_data: bytes
   m_CompleteImageSize: int
@@ -41,7 +32,14 @@ class Texture2D(Texture):
   m_StreamData: Optional[StreamingInfo] = None
   m_StreamingMipmaps: Optional[bool] = None
   m_StreamingMipmapsPriority: Optional[int] = None
-  image = property(_Texture2d_get_image, _Texture2d_set_image)
-  set_image = _Texture2d_set_image
-  get_image_data = _Texture2D_get_image_data
-  ...
+
+  @property
+  def image(self) -> Image: ...
+  def set_image(
+      self,
+      img: Union[Image, str, BinaryIO],
+      target_format: Optional[int] = None,
+      mipmap_count: int = 1,
+  ) -> None: ...
+  def get_image_data(self) -> bytes: ...
+

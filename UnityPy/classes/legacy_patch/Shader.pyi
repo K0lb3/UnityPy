@@ -4,8 +4,6 @@ from UnityPy.classes import PPtr
 from UnityPy.classes.generated import (GUID, NamedObject, SerializedShader,
                                        Texture)
 
-def _Shader_export(self: Shader) -> str: ...
-
 class Shader(NamedObject):
   m_Name: str
   compressedBlob: Optional[List[int]] = None
@@ -23,6 +21,5 @@ class Shader(NamedObject):
   offsets: Optional[Union[List[int], List[List[int]]]] = None
   platforms: Optional[List[int]] = None
   stageCounts: Optional[List[int]] = None
-  export = _Shader_export
-  ...
 
+  def export(self) -> str: ...

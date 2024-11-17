@@ -26,5 +26,6 @@ class Sprite(NamedObject):
   m_RenderDataKey: Optional[Tuple[GUID, int]] = None
   m_ScriptableObjects: Optional[List[PPtr[MonoBehaviour]]] = None
   m_SpriteAtlas: Optional[PPtr[SpriteAtlas]] = None
-  image = property(_Sprite_image)
-  ...
+
+  @property
+  def image(self) -> Image: ...
