@@ -8,8 +8,6 @@ from UnityPy.classes.generated import (GUID, MonoBehaviour, NamedObject, Rectf,
                                        SpriteRenderData)
 from UnityPy.classes.math import Vector2f, Vector4f
 
-def _Sprite_image(self: Sprite) -> Image: ...
-
 class Sprite(NamedObject):
   m_Extrude: int
   m_Name: str
