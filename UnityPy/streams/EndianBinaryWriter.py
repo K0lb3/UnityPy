@@ -1,16 +1,20 @@
 import io
 from struct import pack
+from typing import Union
 
-from ..math import Color, Matrix4x4, Quaternion, Vector2, Vector3, Vector4, Rectangle
+from ..math import Color, Matrix4x4, Quaternion, Rectangle, Vector2, Vector3, Vector4
+from ._defines import Endianess
 
 
 class EndianBinaryWriter:
-    endian: str
+    endian: Endianess
     Length: int
     Position: int
     stream: io.BufferedReader
 
-    def __init__(self, input_=b"", endian=">"):
+    def __init__(
+        self, input_: Union[bytes, bytearray, io.IOBase] = b"", endian: Endianess = ">"
+    ):
         if isinstance(input_, (bytes, bytearray)):
             self.stream = io.BytesIO(input_)
             self.stream.seek(0, 2)

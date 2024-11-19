@@ -1,33 +1,20 @@
 from __future__ import annotations
 
 import re
-import sys
 from abc import ABC, ABCMeta, abstractmethod
 from io import BufferedIOBase, BufferedReader, BytesIO, IOBase
 from struct import Struct, unpack
 from typing import List, Optional, Union
 
+from ._defines import TYPE_PARAM_SIZE_LIST, Endianess
+
 reNot0 = re.compile(b"(.*?)\x00", re.S)
 
-SYS_ENDIAN = "<" if sys.byteorder == "little" else ">"
 
 from ..math import Color, Matrix4x4, Quaternion, Rectangle, Vector2, Vector3, Vector4
 
 # generate unpack and unpack_from functions
-TYPE_PARAM_SIZE_LIST = [
-    ("short", "h", 2),
-    ("u_short", "H", 2),
-    ("int", "i", 4),
-    ("u_int", "I", 4),
-    ("long", "q", 8),
-    ("u_long", "Q", 8),
-    ("half", "e", 2),
-    ("float", "f", 4),
-    ("double", "d", 8),
-    ("vector2", "2f", 8),
-    ("vector3", "3f", 12),
-    ("vector4", "4f", 16),
-]
+
 
 LOCALS = locals()
 for endian_s, endian_l in (("<", "little"), (">", "big")):
@@ -39,7 +26,7 @@ for endian_s, endian_l in (("<", "little"), (">", "big")):
 
 
 class EndianBinaryReader(ABC, metaclass=ABCMeta):
-    endian: str
+    endian: Endianess
     Length: int
     Position: int
     BaseOffset: int
@@ -47,7 +34,7 @@ class EndianBinaryReader(ABC, metaclass=ABCMeta):
     def __new__(
         cls,
         item: Union[bytes, bytearray, memoryview, BytesIO, str],
-        endian: str = ">",
+        endian: Endianess = ">",
         offset: int = 0,
     ):
         if isinstance(item, (bytes, bytearray, memoryview)):
@@ -279,6 +266,10 @@ class EndianBinaryReader(ABC, metaclass=ABCMeta):
     def read_the_rest(self, obj_start: int, obj_size: int) -> bytes:
         """Returns the rest of the current reader bytes."""
         return self.read_bytes(obj_size - (self.Position - obj_start))
+
+    def unpack_array(self, string: str, count: int) -> list:
+        struct = Struct(f"{self.endian}{string}")
+        return list(struct.iter_unpack(self.read(count * struct.size)))
 
 
 class EndianBinaryReader_Memoryview(EndianBinaryReader):
