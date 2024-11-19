@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from enum import IntEnum, IntFlag
 from importlib.resources import open_binary
 from io import BytesIO
@@ -300,7 +301,11 @@ class UnityVersion(int):
 
     @staticmethod
     def fromString(version: str) -> UnityVersion:
-        return UnityVersion(version.split("."))
+        match = re.match(r"(\d+)\.(\d+)\.(\d+)(([a-zA-Z]+)(\d+))?", version)
+        if not match:
+            raise ValueError("Invalid version string")
+        major, minor, patch, _, type, build = match.groups()
+        return UnityVersion.fromList(int(major), int(minor), int(patch), int(build))
 
     @staticmethod
     def fromList(
