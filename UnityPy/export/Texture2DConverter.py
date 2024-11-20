@@ -268,9 +268,24 @@ def astc(image_data: bytes, width: int, height: int, block_size: tuple) -> Image
         context = ASTC_CONTEXTS[block_size] = astc_encoder.ASTCContext(config)
 
     image = astc_encoder.ASTCImage(astc_encoder.ASTCType.U8, width, height, 1)
-    context.decompress(image_data, image, astc_encoder.ASTCSwizzle.from_str("RGBA"))
+    texture_size = calculate_astc_compressed_size(width, height, block_size)
+    if len(image_data) < texture_size:
+        raise ValueError(f"Invalid ASTC data size: {len(image_data)} < {texture_size}")
+    context.decompress(
+        image_data[:texture_size], image, astc_encoder.ASTCSwizzle.from_str("RGBA")
+    )
 
     return Image.frombytes("RGBA", (width, height), image.data, "raw", "RGBA")
+
+
+def calculate_astc_compressed_size(width: int, height: int, block_size: tuple) -> int:
+    """Calculate the size of the compressed data for ASTC."""
+    # calculate the number of blocks
+    block_count_x = (width + block_size[0] - 1) // block_size[0]
+    block_count_y = (height + block_size[1] - 1) // block_size[1]
+    # ignore depth for 2D textures
+    # calculate the size of the compressed data
+    return block_count_x * block_count_y * 16
 
 
 def pvrtc(image_data: bytes, width: int, height: int, fmt: bool) -> Image.Image:
