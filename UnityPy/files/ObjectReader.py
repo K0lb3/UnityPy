@@ -11,7 +11,12 @@ from ..streams import EndianBinaryReader, EndianBinaryWriter
 
 if TYPE_CHECKING:
     from ..enums import BuildTarget
-    from ..files.SerializedFile import BuildType, SerializedFile, SerializedType
+    from ..files.SerializedFile import (
+        BuildType,
+        SerializedFile,
+        SerializedFileHeader,
+        SerializedType,
+    )
 
 T = TypeVar("T")
 
@@ -103,7 +108,10 @@ class ObjectReader(Generic[T]):
             self.stripped = reader.read_byte()
 
     def write(
-        self, header, writer: EndianBinaryWriter, data_writer: EndianBinaryWriter
+        self,
+        header: SerializedFileHeader,
+        writer: EndianBinaryWriter,
+        data_writer: EndianBinaryWriter,
     ):
         if self.assets_file.big_id_enabled:
             writer.write_long(self.path_id)

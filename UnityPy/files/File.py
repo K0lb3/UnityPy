@@ -20,7 +20,8 @@ from attrs import define
 from ..streams import EndianBinaryReader, EndianBinaryWriter
 
 if TYPE_CHECKING:
-    from .ObjectInfo import ObjectInfo
+    from ..classes import Object, PPtr
+    from .ObjectReader import ObjectReader
 
 PARSEABLE_FILETYPES: List[Type[File]] = []
 
@@ -37,7 +38,7 @@ def parseable_filetype(cls: Type[T]) -> Type[T]:
 def parse_file(
     reader: EndianBinaryReader,
     name: str,
-    path: str,
+    path: Optional[str] = None,
     parent: Optional[ContainerFile] = None,
     is_dependency: bool = False,
 ) -> Optional[File]:
@@ -72,7 +73,7 @@ class File(ABC, metaclass=ABCMeta):
         reader: Optional[EndianBinaryReader] = None,
     ):
         self.name = name
-        self.path = path
+        self.path = path or name
         self.parent = parent
         self.is_dependency = is_dependency
         self.reader = reader
@@ -115,7 +116,7 @@ class File(ABC, metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def get_objects(self) -> List[ObjectInfo[Any]]:
+    def get_objects(self) -> List[ObjectReader[Any]]:
         """Get all objects contained in this file and its childs.
 
         Returns:
@@ -124,7 +125,7 @@ class File(ABC, metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def get_containers(self) -> Dict[str, List[ObjectInfo[Any]]]:
+    def get_containers(self) -> Dict[str, List[PPtr[Object]]]:
         """Get all containers contained in this file and its childs.
 
         Returns:
@@ -160,10 +161,10 @@ class ResourceFile(File):
         writer.write_bytes(self.reader.get_bytes())
         return writer
 
-    def get_objects(self) -> List[ObjectInfo[Any]]:
+    def get_objects(self) -> List[ObjectReader[Any]]:
         raise ValueError("ResourceFile does not contain objects")
 
-    def get_containers(self) -> Dict[str, List[ObjectInfo[Any]]]:
+    def get_containers(self) -> Dict[str, List[ObjectReader[Any]]]:
         raise ValueError("ResourceFile does not contain containers")
 
 
@@ -234,13 +235,13 @@ class ContainerFile(File, ABC, metaclass=ABCMeta):
                 continue
             yield child
 
-    def get_objects(self) -> List[ObjectInfo[Any]]:
+    def get_objects(self) -> List[ObjectReader[Any]]:
         return [obj for child in self.traverse() for obj in child.get_objects()]
 
-    def get_containers(self) -> Dict[str, List[ObjectInfo[Any]]]:
-        containers: Dict[str, List[ObjectInfo[Any]]] = defaultdict(list)
+    def get_containers(self) -> Dict[str, List[ObjectReader[Any]]]:
+        containers: Dict[str, List[ObjectReader[Any]]] = defaultdict(list)
         for child in self.traverse():
             for container_path, obj in child.get_containers().items():
                 containers[container_path].extend(obj)
 
-        return cast(Dict[str, List[ObjectInfo[Any]]], containers)
+        return cast(Dict[str, List[ObjectReader[Any]]], containers)
