@@ -50,7 +50,7 @@ class BundleFile(ContainerFile, ABC, metaclass=ABCMeta):
     stream_version: int
     unity_version: str
     minimum_revision: str
-    block_infos = List[BlockInfo]
+    block_infos: List[BlockInfo]
     block_reader: EndianBinaryReader
 
     def parse(self, reader: Optional[EndianBinaryReader] = None) -> Self:
