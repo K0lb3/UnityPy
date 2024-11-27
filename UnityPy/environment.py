@@ -1,17 +1,14 @@
 import io
-import os
 import ntpath
+import os
 import re
-from typing import List, Callable, Dict, Union
+from typing import Callable, Dict, List, Union
 from zipfile import ZipFile
 
 from fsspec import AbstractFileSystem
 from fsspec.implementations.local import LocalFileSystem
 
-
-from .files import File, ObjectReader, SerializedFile
-from .enums import FileType
-from .helpers import ImportHelper
+from .files import File, ObjectReader, SerializedFile, parse_file
 from .streams import EndianBinaryReader
 
 reSplit = re.compile(r"(.*?([^\/\\]+?))\.split\d+")
@@ -119,14 +116,12 @@ class Environment:
                         file = self._load_split_file(file)
                     # Unity paths are case insensitive, so we need to find "Resources/Foo.asset" when the record says "resources/foo.asset"
                     elif not os.path.exists(file):
-                        file = ImportHelper.find_sensitive_path(self.path, file)
+                        file = find_sensitive_path(self.path, file)
                     # nonexistent files might be packaging errors or references to Unity's global Library/
                     if file is None:
                         return
-                if type(file) == str:
+                if isinstance(file, str):
                     file = self.fs.open(file, "rb")
-
-        typ, reader = ImportHelper.check_file_type(file)
 
         stream_name = (
             name
@@ -138,18 +133,17 @@ class Environment:
             )
         )
 
-        if typ == FileType.ZIP:
-            f = self.load_zip_file(file)
-        else:
-            f = ImportHelper.parse_file(
-                reader, self, name=stream_name, typ=typ, is_dependency=is_dependency
-            )
-        
+        reader = EndianBinaryReader(file)
+        path = stream_name if not parent else f"{parent.path}/{stream_name}"
+        f = parse_file(reader, stream_name, path, parent=self)
+
+        if f is None:
+            f = reader
+
         if isinstance(f, (SerializedFile, EndianBinaryReader)):
             self.register_cab(stream_name, f)
 
         self.files[stream_name] = f
-
 
     def load_zip_file(self, value):
         buffer = None
@@ -330,3 +324,57 @@ def simplify_name(name: str) -> str:
     - converting to lowercase
     """
     return ntpath.basename(name).lower()
+
+
+def file_name_without_extension(file_name: str) -> str:
+    return os.path.join(
+        os.path.dirname(file_name), os.path.splitext(os.path.basename(file_name))[0]
+    )
+
+
+def list_all_files(directory: str) -> List[str]:
+    return [
+        val
+        for sublist in [
+            [os.path.join(dir_path, filename) for filename in filenames]
+            for (dir_path, dirn_ames, filenames) in os.walk(directory)
+            if ".git" not in dir_path
+        ]
+        for val in sublist
+    ]
+
+
+def find_all_files(directory: str, search_str: str) -> List[str]:
+    return [
+        val
+        for sublist in [
+            [
+                os.path.join(dir_path, filename)
+                for filename in filenames
+                if search_str in filename
+            ]
+            for (dir_path, dirn_ames, filenames) in os.walk(directory)
+            if ".git" not in dir_path
+        ]
+        for val in sublist
+    ]
+
+
+def find_sensitive_path(dir: str, insensitive_path: str) -> Union[str, None]:
+    parts = os.path.split(insensitive_path.strip(os.path.sep))
+
+    sensitive_path = dir
+    for part in parts:
+        part_lower = part.lower()
+        part = next(
+            (name for name in os.listdir(sensitive_path) if name.lower() == part_lower),
+            None,
+        )
+        if part is None:
+            return None
+        sensitive_path = os.path.join(sensitive_path, part)
+
+    return sensitive_path
+
+
+__all__ = ["Environment"]
