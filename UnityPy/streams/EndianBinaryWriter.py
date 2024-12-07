@@ -1,6 +1,6 @@
-import io
+from io import BytesIO
 from struct import pack
-from typing import Union
+from typing import BinaryIO, Union
 
 from ..math import Color, Matrix4x4, Quaternion, Rectangle, Vector2, Vector3, Vector4
 from ._defines import Endianess
@@ -10,15 +10,15 @@ class EndianBinaryWriter:
     endian: Endianess
     Length: int
     Position: int
-    stream: io.BufferedReader
+    stream: BinaryIO
 
     def __init__(
-        self, input_: Union[bytes, bytearray, io.IOBase] = b"", endian: Endianess = ">"
+        self, input_: Union[bytes, bytearray, BinaryIO] = b"", endian: Endianess = ">"
     ):
         if isinstance(input_, (bytes, bytearray)):
-            self.stream = io.BytesIO(input_)
+            self.stream = BytesIO(input_)
             self.stream.seek(0, 2)
-        elif isinstance(input_, io.IOBase):
+        elif isinstance(input_, BinaryIO):
             self.stream = input_
         else:
             raise ValueError("Invalid input type - %s." % type(input_))
@@ -50,9 +50,9 @@ class EndianBinaryWriter:
     def Length(self) -> int:
         pos = self.stream.tell()
         self.stream.seek(0, 2)
-        l = self.stream.tell()
+        length = self.stream.tell()
         self.stream.seek(pos)
-        return l
+        return length
 
     def dispose(self):
         self.stream.close()
@@ -119,49 +119,6 @@ class EndianBinaryWriter:
         align = (alignment - pos % alignment) % alignment
         self.write(b"\0" * align)
 
-    def write_quaternion(self, value: Quaternion):
-        self.write_float(value.X)
-        self.write_float(value.Y)
-        self.write_float(value.Z)
-        self.write_float(value.W)
-
-    def write_vector2(self, value: Vector2):
-        self.write_float(value.X)
-        self.write_float(value.Y)
-
-    def write_vector3(self, value: Vector3):
-        self.write_float(value.X)
-        self.write_float(value.Y)
-        self.write_float(value.Z)
-
-    def write_vector4(self, value: Vector4):
-        self.write_float(value.X)
-        self.write_float(value.Y)
-        self.write_float(value.Z)
-        self.write_float(value.W)
-
-    def write_rectangle_f(self, value: Rectangle):
-        self.write_float(value.x)
-        self.write_float(value.y)
-        self.write_float(value.width)
-        self.write_float(value.height)
-
-    def write_color_uint(self, value: Color):
-        self.write_u_byte(value.R * 255)
-        self.write_u_byte(value.G * 255)
-        self.write_u_byte(value.B * 255)
-        self.write_u_byte(value.A * 255)
-
-    def write_color4(self, value: Color):
-        self.write_float(value.R)
-        self.write_float(value.G)
-        self.write_float(value.B)
-        self.write_float(value.A)
-
-    def write_matrix(self, value: Matrix4x4):
-        for val in value.M:
-            self.write_float(val)
-
     def write_array(self, command, value: list, write_length: bool = True):
         if write_length:
             self.write_int(len(value))
@@ -186,15 +143,3 @@ class EndianBinaryWriter:
 
     def write_float_array(self, value: list, write_length: bool = False):
         return self.write_array(self.write_float, value, write_length)
-
-    def write_string_array(self, value: list):
-        self.write_array(self.write_aligned_string, value)
-
-    def write_vector2_array(self, value: list):
-        self.write_array(self.write_vector2, value)
-
-    def write_vector4_array(self, value: list):
-        self.write_array(self.write_vector4, value)
-
-    def write_matrix_array(self, value: list):
-        self.write_array(self.write_matrix, value)

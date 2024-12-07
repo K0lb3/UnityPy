@@ -16,7 +16,4 @@ TYPE_PARAM_SIZE_LIST = [
     ("half", "e", 2),
     ("float", "f", 4),
     ("double", "d", 8),
-    ("vector2", "2f", 8),
-    ("vector3", "3f", 12),
-    ("vector4", "4f", 16),
 ]
