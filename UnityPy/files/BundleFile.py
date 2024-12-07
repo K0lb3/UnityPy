@@ -342,7 +342,24 @@ class BundleFileFS(BundleFile):
         size = writer.Position + 8 + 12  # total size, block header sizes & flag
         if self.stream_version >= 7 or self.uses_block_alignment:
             size += align(16, size)
-        size += len(compressed_block_info) + len(compressed_block_info)
+        if (
+            self.dataflags & ArchiveFlags.BlocksInfoAtTheEnd
+        ):  # kArchiveBlocksInfoAtTheEnd
+            if (
+                isinstance(self.dataflags, ArchiveFlags)
+                and self.dataflags & ArchiveFlags.BlockInfoNeedPaddingAtStart
+            ):
+                size += align(16, size)
+            size += len(compressed_directory_datas)
+            size += len(compressed_block_info)
+        else:
+            size += len(compressed_block_info)
+            if (
+                isinstance(self.dataflags, ArchiveFlags)
+                and self.dataflags & ArchiveFlags.BlockInfoNeedPaddingAtStart
+            ):
+                size += align(16, size)
+            size += len(compressed_directory_datas)
 
         # write file
         writer.write_long(size)
@@ -359,10 +376,20 @@ class BundleFileFS(BundleFile):
         if (
             self.dataflags & ArchiveFlags.BlocksInfoAtTheEnd
         ):  # kArchiveBlocksInfoAtTheEnd
+            if (
+                isinstance(self.dataflags, ArchiveFlags)
+                and self.dataflags & ArchiveFlags.BlockInfoNeedPaddingAtStart
+            ):
+                writer.align_stream(16)
             writer.write_bytes(compressed_directory_datas)
             writer.write_bytes(compressed_block_info)
         else:
             writer.write_bytes(compressed_block_info)
+            if (
+                isinstance(self.dataflags, ArchiveFlags)
+                and self.dataflags & ArchiveFlags.BlockInfoNeedPaddingAtStart
+            ):
+                writer.align_stream(16)
             writer.write_bytes(compressed_directory_datas)
 
         return writer
