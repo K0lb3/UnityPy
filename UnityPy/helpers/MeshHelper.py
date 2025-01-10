@@ -23,6 +23,7 @@ from ..enums.VertexFormat import (
     VERTEX_FORMAT_2017_STRUCT_TYPE_MAP,
     VERTEX_FORMAT_STRUCT_TYPE_MAP,
 )
+from .ResourceReader import get_resource_data
 
 try:
     from UnityPy import UnityPyBoost
@@ -144,9 +145,13 @@ class MeshHandler:
         if stream_data and stream_data.path:
             vertex_data = self.src.m_VertexData
             if vertex_data and vertex_data.m_VertexCount > 0:
-                raise NotImplementedError("External data is not yet supported")
-                # resourceReader = new ResourceReader(m_StreamData.path, assetsFile, m_StreamData.offset, m_StreamData.size)
-                # m_VertexData.m_DataSize = resourceReader.GetData()
+                data = get_resource_data(
+                    stream_data.path,
+                    self.src.object_reader.assets_file,
+                    stream_data.offset,
+                    stream_data.size,
+                )
+                vertex_data.m_DataSize = data
 
         # try to copy data directly from mesh
         if isinstance(mesh, Mesh):
