@@ -4,7 +4,7 @@ import ctypes
 import os
 import platform
 from threading import Lock
-from typing import TYPE_CHECKING, Dict, Union
+from typing import TYPE_CHECKING, Dict
 
 from UnityPy.streams import EndianBinaryWriter
 
@@ -28,15 +28,14 @@ pyfmodex = None
 
 
 def get_fmod_path(
-    system: Union["Windows", "Linux", "Darwin"], arch: ["x64", "x86", "arm", "arm64"]
+    system: str,  # "Windows", "Linux", "Darwin"
+    arch: str,  # "x64", "x86", "arm", "arm64"
 ) -> str:
     if system == "Darwin":
         # universal dylib
         return "lib/FMOD/Darwin/libfmod.dylib"
-
     if system == "Windows":
         return f"lib/FMOD/Windows/{arch}/fmod.dll"
-
     if system == "Linux":
         if arch == "x64":
             arch = "x86_64"
@@ -127,6 +126,7 @@ def get_pyfmodex_system_instance(channels: int, flags: int):
         lock = Lock()
         SYSTEM_INSTANCES[instance_key] = (system, lock)
         return system, lock
+
 
 def dump_samples(
     clip: AudioClip, audio_data: bytes, convert_pcm_float: bool = True
