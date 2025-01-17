@@ -3,6 +3,7 @@ from __future__ import annotations
 import ctypes
 import os
 import platform
+from threading import Lock
 from typing import TYPE_CHECKING, Dict, Union
 
 from UnityPy.streams import EndianBinaryWriter
@@ -111,6 +112,7 @@ def extract_audioclip_samples(
     return dump_samples(audio, audio_data, convert_pcm_float)
 
 
+system_lock = Lock()
 system_param = ()
 system_instance = None
 
@@ -137,31 +139,33 @@ def dump_samples(
     if not pyfmodex:
         return {}
 
-    # init system
-    system = get_pyfmodex_system_instance(clip.m_Channels, pyfmodex.flags.INIT_FLAGS.NORMAL)
+    # avoid asynchronous access to pyfmodex
+    with system_lock:
+        # init system
+        system = get_pyfmodex_system_instance(clip.m_Channels, pyfmodex.flags.INIT_FLAGS.NORMAL)
 
-    sound = system.create_sound(
-        bytes(audio_data),
-        pyfmodex.flags.MODE.OPENMEMORY,
-        exinfo=pyfmodex.structure_declarations.CREATESOUNDEXINFO(
-            length=len(audio_data),
-            numchannels=clip.m_Channels,
-            defaultfrequency=clip.m_Frequency,
-        ),
-    )
+        sound = system.create_sound(
+            bytes(audio_data),
+            pyfmodex.flags.MODE.OPENMEMORY,
+            exinfo=pyfmodex.structure_declarations.CREATESOUNDEXINFO(
+                length=len(audio_data),
+                numchannels=clip.m_Channels,
+                defaultfrequency=clip.m_Frequency,
+            ),
+        )
 
-    # iterate over subsounds
-    samples = {}
-    for i in range(sound.num_subsounds):
-        if i > 0:
-            filename = "%s-%i.wav" % (clip.m_Name, i)
-        else:
-            filename = "%s.wav" % clip.m_Name
-        subsound = sound.get_subsound(i)
-        samples[filename] = subsound_to_wav(subsound, convert_pcm_float)
-        subsound.release()
+        # iterate over subsounds
+        samples = {}
+        for i in range(sound.num_subsounds):
+            if i > 0:
+                filename = "%s-%i.wav" % (clip.m_Name, i)
+            else:
+                filename = "%s.wav" % clip.m_Name
+            subsound = sound.get_subsound(i)
+            samples[filename] = subsound_to_wav(subsound, convert_pcm_float)
+            subsound.release()
 
-    sound.release()
+        sound.release()
     return samples
 
 
