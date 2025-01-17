@@ -111,6 +111,23 @@ def extract_audioclip_samples(
     return dump_samples(audio, audio_data, convert_pcm_float)
 
 
+system_param = ()
+system_instance = None
+
+def get_pyfmodex_system_instance(maxchannels, flags):
+    global pyfmodex, system_param, system_instance
+    # cache strategy check
+    new_system_param = (maxchannels, flags, None)
+    if system_param != new_system_param or system_instance is None:
+        system_param = new_system_param
+        if system_instance is not None:
+            system_instance.release()
+        # create a new instance
+        system_instance = pyfmodex.System()
+        system_instance.init(*system_param)
+    return system_instance
+
+
 def dump_samples(
     clip: AudioClip, audio_data: bytes, convert_pcm_float: bool = True
 ) -> Dict[str, bytes]:
@@ -119,8 +136,7 @@ def dump_samples(
     if not pyfmodex:
         return {}
     # init system
-    system = pyfmodex.System()
-    system.init(clip.m_Channels, pyfmodex.flags.INIT_FLAGS.NORMAL, None)
+    system = get_pyfmodex_system_instance(clip.m_Channels, pyfmodex.flags.INIT_FLAGS.NORMAL)
 
     sound = system.create_sound(
         bytes(audio_data),
@@ -144,7 +160,6 @@ def dump_samples(
         subsound.release()
 
     sound.release()
-    system.release()
     return samples
 
 
