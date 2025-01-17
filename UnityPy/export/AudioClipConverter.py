@@ -114,7 +114,7 @@ def extract_audioclip_samples(
 system_param = ()
 system_instance = None
 
-def get_pyfmodex_system_instance(maxchannels, flags):
+def get_pyfmodex_system_instance(maxchannels: int, flags: int):
     global pyfmodex, system_param, system_instance
     # cache strategy check
     new_system_param = (maxchannels, flags, None)
@@ -131,10 +131,12 @@ def get_pyfmodex_system_instance(maxchannels, flags):
 def dump_samples(
     clip: AudioClip, audio_data: bytes, convert_pcm_float: bool = True
 ) -> Dict[str, bytes]:
+    global pyfmodex
     if pyfmodex is None:
         import_pyfmodex()
     if not pyfmodex:
         return {}
+
     # init system
     system = get_pyfmodex_system_instance(clip.m_Channels, pyfmodex.flags.INIT_FLAGS.NORMAL)
 
@@ -177,10 +179,12 @@ def subsound_to_wav(subsound, convert_pcm_float: bool = True) -> bytes:
         pyfmodex.enums.SOUND_FORMAT.PCM24,
         pyfmodex.enums.SOUND_FORMAT.PCM32,
     ]:
+        # format is PCM integer
         audio_format = 1
         wav_data_length = sound_data_length
         convert_pcm_float = False
     elif sound_format == pyfmodex.enums.SOUND_FORMAT.PCMFLOAT:
+        # format is IEEE 754 float
         if convert_pcm_float:
             audio_format = 1
             bits = 16
@@ -220,11 +224,11 @@ def subsound_to_wav(subsound, convert_pcm_float: bool = True) -> bytes:
         if convert_pcm_float:
             if np is not None:
                 ptr_data = np.frombuffer(ptr_data, dtype=np.float32)
-                ptr_data = (ptr_data * 2**15).astype(np.int16).tobytes()
+                ptr_data = (ptr_data * (1 << 15)).astype(np.int16).tobytes()
             else:
                 ptr_data = struct.unpack("<%df" % (len(ptr_data) // 4), ptr_data)
                 ptr_data = struct.pack(
-                    "<%dh" % len(ptr_data), *[int(f * 2**15) for f in ptr_data]
+                    "<%dh" % len(ptr_data), *[int(f * (1 << 15)) for f in ptr_data]
                 )
 
         w.write(ptr_data)
