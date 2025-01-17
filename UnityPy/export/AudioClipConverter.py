@@ -112,23 +112,21 @@ def extract_audioclip_samples(
     return dump_samples(audio, audio_data, convert_pcm_float)
 
 
-system_lock = Lock()
-system_param = ()
-system_instance = None
+SYSTEM_INSTANCES = {}  # (channels, flags) -> (pyfmodex_system_instance, lock)
+SYSTEM_GLOBAL_LOCK = Lock()
 
-def get_pyfmodex_system_instance(maxchannels: int, flags: int):
-    global pyfmodex, system_param, system_instance
-    # cache strategy check
-    new_system_param = (maxchannels, flags, None)
-    if system_param != new_system_param or system_instance is None:
-        system_param = new_system_param
-        if system_instance is not None:
-            system_instance.release()
-        # create a new instance
-        system_instance = pyfmodex.System()
-        system_instance.init(*system_param)
-    return system_instance
+def get_pyfmodex_system_instance(channels: int, flags: int):
+    global pyfmodex, SYSTEM_INSTANCES, SYSTEM_GLOBAL_LOCK
+    with SYSTEM_GLOBAL_LOCK:
+        instance_key = (channels, flags)
+        if instance_key in SYSTEM_INSTANCES:
+            return SYSTEM_INSTANCES[instance_key]
 
+        system = pyfmodex.System()
+        system.init(channels, flags, None)
+        lock = Lock()
+        SYSTEM_INSTANCES[instance_key] = (system, lock)
+        return system, lock
 
 def dump_samples(
     clip: AudioClip, audio_data: bytes, convert_pcm_float: bool = True
@@ -139,11 +137,8 @@ def dump_samples(
     if not pyfmodex:
         return {}
 
-    # avoid asynchronous access to pyfmodex
-    with system_lock:
-        # init system
-        system = get_pyfmodex_system_instance(clip.m_Channels, pyfmodex.flags.INIT_FLAGS.NORMAL)
-
+    system, lock = get_pyfmodex_system_instance(clip.m_Channels, pyfmodex.flags.INIT_FLAGS.NORMAL)
+    with lock:
         sound = system.create_sound(
             bytes(audio_data),
             pyfmodex.flags.MODE.OPENMEMORY,
