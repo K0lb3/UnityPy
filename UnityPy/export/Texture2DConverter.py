@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import struct
 from copy import copy
@@ -177,7 +177,7 @@ def parse_image_data(
 
     if len(selection) == 0:
         raise NotImplementedError(
-            f"Not implemented texture format: {texture_format.name}"
+            f"Not implemented texture format: {texture_format}"
         )
 
     if platform == BuildTarget.XBOX360 and texture_format in XBOX_SWAP_FORMATS:
@@ -356,7 +356,7 @@ def rg(
     padding = bytes(padding_size)
     rgb_data = b"".join(
         stream.read(padding_size * 2) + padding
-        for _ in range(image_data / (2 * padding_size))
+        for _ in range(len(image_data) // (2 * padding_size))
     )
     if codec == "RGE":
         return half(rgb_data, width, height, mode, "RGB", args)
