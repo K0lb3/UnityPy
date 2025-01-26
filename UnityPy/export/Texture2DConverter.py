@@ -76,7 +76,7 @@ def image_to_texture2d(
         )
 
         config = astc_encoder.ASTCConfig(
-            astc_encoder.ASTCProfile.LDR, *block_size, 1, 100
+            astc_encoder.ASTCProfile.LDR, *block_size, block_z=1, quality=100
         )
         context = astc_encoder.ASTCContext(config)
         raw_img = astc_encoder.ASTCImage(
@@ -166,7 +166,7 @@ def parse_image_data(
     texture_format: Union[int, TextureFormat],
     version: tuple,
     platform: int,
-    platform_blob: bytes = None,
+    platform_blob: Union[bytes, None] = None,
     flip: bool = True,
 ) -> Image.Image:
     image_data = copy(bytes(image_data))
@@ -230,7 +230,7 @@ def pillow(
     mode: str,
     codec: str,
     args,
-    swap: tuple = None,
+    swap: Union[tuple, None] = None,
 ) -> Image.Image:
     img = (
         Image.frombytes(mode, (width, height), image_data, codec, args)
@@ -327,7 +327,7 @@ def half(
     mode: str,
     codec: str,
     args,
-    swap: tuple = None,
+    swap: Union[tuple, None] = None,
 ) -> Image.Image:
     # convert half-float to int8
     stream = BytesIO(image_data)
