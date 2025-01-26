@@ -1,8 +1,9 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import struct
 from copy import copy
 from io import BytesIO
+from threading import Lock
 from typing import TYPE_CHECKING, Dict, Tuple, Union
 
 import astc_encoder
@@ -74,22 +75,20 @@ def image_to_texture2d(
         block_size = tuple(
             map(int, target_texture_format.name.rsplit("_", 1)[1].split("x"))
         )
+        context, lock = get_astc_context(block_size)
 
-        config = astc_encoder.ASTCConfig(
-            astc_encoder.ASTCProfile.LDR, *block_size, block_z=1, quality=100
-        )
-        context = astc_encoder.ASTCContext(config)
-        raw_img = astc_encoder.ASTCImage(
-            astc_encoder.ASTCType.U8, img.width, img.height, 1, raw_img
-        )
-        if img.mode == "RGB":
-            tex_format = getattr(TF, f"ASTC_RGB_{block_size[0]}x{block_size[1]}")
-        else:
-            tex_format = getattr(TF, f"ASTC_RGBA_{block_size[0]}x{block_size[1]}")
+        with lock:
+            raw_img = astc_encoder.ASTCImage(
+                astc_encoder.ASTCType.U8, img.width, img.height, 1, raw_img
+            )
+            if img.mode == "RGB":
+                tex_format = getattr(TF, f"ASTC_RGB_{block_size[0]}x{block_size[1]}")
+            else:
+                tex_format = getattr(TF, f"ASTC_RGBA_{block_size[0]}x{block_size[1]}")
 
-        swizzle = astc_encoder.ASTCSwizzle.from_str("RGBA")
-        enc_img = context.compress(raw_img, swizzle)
-        tex_format = target_texture_format
+            swizzle = astc_encoder.ASTCSwizzle.from_str("RGBA")
+            enc_img = context.compress(raw_img, swizzle)
+            tex_format = target_texture_format
     # A
     elif target_texture_format == TF.Alpha8:
         enc_img = img.tobytes("raw", "A")
@@ -252,30 +251,38 @@ def atc(image_data: bytes, width: int, height: int, alpha: bool) -> Image.Image:
     return Image.frombytes("RGBA", (width, height), image_data, "raw", "BGRA")
 
 
-ASTC_CONTEXTS: Dict[Tuple[int, int], astc_encoder.ASTCContext] = {}
-
-
 def astc(image_data: bytes, width: int, height: int, block_size: tuple) -> Image.Image:
-    context = ASTC_CONTEXTS.get(block_size)
-    if context is None:
+    context, lock = get_astc_context(block_size)
+
+    with lock:
+        image = astc_encoder.ASTCImage(astc_encoder.ASTCType.U8, width, height, 1)
+        texture_size = calculate_astc_compressed_size(width, height, block_size)
+        if len(image_data) < texture_size:
+            raise ValueError(f"Invalid ASTC data size: {len(image_data)} < {texture_size}")
+        context.decompress(
+            image_data[:texture_size], image, astc_encoder.ASTCSwizzle.from_str("RGBA")
+        )
+
+    return Image.frombytes("RGBA", (width, height), image.data, "raw", "RGBA")
+
+
+ASTC_CONTEXTS: Dict[Tuple[int, int], Tuple[astc_encoder.ASTCContext, Lock]] = {}
+
+
+def get_astc_context(block_size: tuple):
+    """Get the ASTC context and its lock using the given `block_size`."""
+    if block_size not in ASTC_CONTEXTS:
         config = astc_encoder.ASTCConfig(
             astc_encoder.ASTCProfile.LDR,
             *block_size,
-            1,
-            100,
-            astc_encoder.ASTCConfigFlags.USE_DECODE_UNORM8,
+            block_z=1,
+            quality=100,
+            flags=astc_encoder.ASTCConfigFlags.USE_DECODE_UNORM8,
         )
-        context = ASTC_CONTEXTS[block_size] = astc_encoder.ASTCContext(config)
-
-    image = astc_encoder.ASTCImage(astc_encoder.ASTCType.U8, width, height, 1)
-    texture_size = calculate_astc_compressed_size(width, height, block_size)
-    if len(image_data) < texture_size:
-        raise ValueError(f"Invalid ASTC data size: {len(image_data)} < {texture_size}")
-    context.decompress(
-        image_data[:texture_size], image, astc_encoder.ASTCSwizzle.from_str("RGBA")
-    )
-
-    return Image.frombytes("RGBA", (width, height), image.data, "raw", "RGBA")
+        context = astc_encoder.ASTCContext(config)
+        lock = Lock()
+        ASTC_CONTEXTS[block_size] = (context, lock)
+    return ASTC_CONTEXTS[block_size]
 
 
 def calculate_astc_compressed_size(width: int, height: int, block_size: tuple) -> int:
