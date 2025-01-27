@@ -4,7 +4,7 @@ import struct
 from copy import copy
 from io import BytesIO
 from threading import Lock
-from typing import TYPE_CHECKING, Dict, Tuple, Union
+from typing import TYPE_CHECKING, Dict, Optional, Tuple, Union
 
 import astc_encoder
 import texture2ddecoder
@@ -165,7 +165,7 @@ def parse_image_data(
     texture_format: Union[int, TextureFormat],
     version: tuple,
     platform: int,
-    platform_blob: Union[bytes, None] = None,
+    platform_blob: Optional[bytes] = None,
     flip: bool = True,
 ) -> Image.Image:
     image_data = copy(bytes(image_data))
@@ -229,7 +229,7 @@ def pillow(
     mode: str,
     codec: str,
     args,
-    swap: Union[tuple, None] = None,
+    swap: Optional[tuple] = None,
 ) -> Image.Image:
     img = (
         Image.frombytes(mode, (width, height), image_data, codec, args)
@@ -334,7 +334,7 @@ def half(
     mode: str,
     codec: str,
     args,
-    swap: Union[tuple, None] = None,
+    swap: Optional[tuple] = None,
 ) -> Image.Image:
     # convert half-float to int8
     stream = BytesIO(image_data)
