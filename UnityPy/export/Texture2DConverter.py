@@ -3,7 +3,8 @@
 import struct
 from copy import copy
 from io import BytesIO
-from typing import TYPE_CHECKING, Dict, Tuple, Union
+from threading import Lock
+from typing import TYPE_CHECKING, Dict, Optional, Tuple, Union
 
 import astc_encoder
 import texture2ddecoder
@@ -70,15 +71,6 @@ def image_to_texture2d(
     # ASTC
     elif target_texture_format.name.startswith("ASTC"):
         raw_img = img.tobytes("raw", "RGBA")
-
-        block_size = tuple(
-            map(int, target_texture_format.name.rsplit("_", 1)[1].split("x"))
-        )
-
-        config = astc_encoder.ASTCConfig(
-            astc_encoder.ASTCProfile.LDR, *block_size, 1, 100
-        )
-        context = astc_encoder.ASTCContext(config)
         raw_img = astc_encoder.ASTCImage(
             astc_encoder.ASTCType.U8, img.width, img.height, 1, raw_img
         )
@@ -88,7 +80,14 @@ def image_to_texture2d(
             tex_format = getattr(TF, f"ASTC_RGBA_{block_size[0]}x{block_size[1]}")
 
         swizzle = astc_encoder.ASTCSwizzle.from_str("RGBA")
-        enc_img = context.compress(raw_img, swizzle)
+
+        block_size = tuple(
+            map(int, target_texture_format.name.rsplit("_", 1)[1].split("x"))
+        )
+        context, lock = get_astc_context(block_size)
+        with lock:
+            enc_img = context.compress(raw_img, swizzle)
+
         tex_format = target_texture_format
     # A
     elif target_texture_format == TF.Alpha8:
@@ -166,7 +165,7 @@ def parse_image_data(
     texture_format: Union[int, TextureFormat],
     version: tuple,
     platform: int,
-    platform_blob: bytes = None,
+    platform_blob: Optional[bytes] = None,
     flip: bool = True,
 ) -> Image.Image:
     image_data = copy(bytes(image_data))
@@ -177,7 +176,7 @@ def parse_image_data(
 
     if len(selection) == 0:
         raise NotImplementedError(
-            f"Not implemented texture format: {texture_format.name}"
+            f"Not implemented texture format: {texture_format}"
         )
 
     if platform == BuildTarget.XBOX360 and texture_format in XBOX_SWAP_FORMATS:
@@ -230,7 +229,7 @@ def pillow(
     mode: str,
     codec: str,
     args,
-    swap: tuple = None,
+    swap: Optional[tuple] = None,
 ) -> Image.Image:
     img = (
         Image.frombytes(mode, (width, height), image_data, codec, args)
@@ -252,30 +251,38 @@ def atc(image_data: bytes, width: int, height: int, alpha: bool) -> Image.Image:
     return Image.frombytes("RGBA", (width, height), image_data, "raw", "BGRA")
 
 
-ASTC_CONTEXTS: Dict[Tuple[int, int], astc_encoder.ASTCContext] = {}
-
-
 def astc(image_data: bytes, width: int, height: int, block_size: tuple) -> Image.Image:
-    context = ASTC_CONTEXTS.get(block_size)
-    if context is None:
-        config = astc_encoder.ASTCConfig(
-            astc_encoder.ASTCProfile.LDR,
-            *block_size,
-            1,
-            100,
-            astc_encoder.ASTCConfigFlags.USE_DECODE_UNORM8,
-        )
-        context = ASTC_CONTEXTS[block_size] = astc_encoder.ASTCContext(config)
-
     image = astc_encoder.ASTCImage(astc_encoder.ASTCType.U8, width, height, 1)
     texture_size = calculate_astc_compressed_size(width, height, block_size)
     if len(image_data) < texture_size:
         raise ValueError(f"Invalid ASTC data size: {len(image_data)} < {texture_size}")
-    context.decompress(
-        image_data[:texture_size], image, astc_encoder.ASTCSwizzle.from_str("RGBA")
-    )
+
+    context, lock = get_astc_context(block_size)
+    with lock:
+        context.decompress(
+            image_data[:texture_size], image, astc_encoder.ASTCSwizzle.from_str("RGBA")
+        )
 
     return Image.frombytes("RGBA", (width, height), image.data, "raw", "RGBA")
+
+
+ASTC_CONTEXTS: Dict[Tuple[int, int], Tuple[astc_encoder.ASTCContext, Lock]] = {}
+
+
+def get_astc_context(block_size: tuple):
+    """Get the ASTC context and its lock using the given `block_size`."""
+    if block_size not in ASTC_CONTEXTS:
+        config = astc_encoder.ASTCConfig(
+            astc_encoder.ASTCProfile.LDR,
+            *block_size,
+            block_z=1,
+            quality=100,
+            flags=astc_encoder.ASTCConfigFlags.USE_DECODE_UNORM8,
+        )
+        context = astc_encoder.ASTCContext(config)
+        lock = Lock()
+        ASTC_CONTEXTS[block_size] = (context, lock)
+    return ASTC_CONTEXTS[block_size]
 
 
 def calculate_astc_compressed_size(width: int, height: int, block_size: tuple) -> int:
@@ -327,7 +334,7 @@ def half(
     mode: str,
     codec: str,
     args,
-    swap: tuple = None,
+    swap: Optional[tuple] = None,
 ) -> Image.Image:
     # convert half-float to int8
     stream = BytesIO(image_data)
@@ -356,7 +363,7 @@ def rg(
     padding = bytes(padding_size)
     rgb_data = b"".join(
         stream.read(padding_size * 2) + padding
-        for _ in range(image_data / (2 * padding_size))
+        for _ in range(len(image_data) // (2 * padding_size))
     )
     if codec == "RGE":
         return half(rgb_data, width, height, mode, "RGB", args)
