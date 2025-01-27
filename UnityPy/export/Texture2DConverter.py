@@ -71,24 +71,24 @@ def image_to_texture2d(
     # ASTC
     elif target_texture_format.name.startswith("ASTC"):
         raw_img = img.tobytes("raw", "RGBA")
-
+        raw_img = astc_encoder.ASTCImage(
+            astc_encoder.ASTCType.U8, img.width, img.height, 1, raw_img
+        )
         block_size = tuple(
             map(int, target_texture_format.name.rsplit("_", 1)[1].split("x"))
         )
+        if img.mode == "RGB":
+            tex_format = getattr(TF, f"ASTC_RGB_{block_size[0]}x{block_size[1]}")
+        else:
+            tex_format = getattr(TF, f"ASTC_RGBA_{block_size[0]}x{block_size[1]}")
+
+        swizzle = astc_encoder.ASTCSwizzle.from_str("RGBA")
+
         context, lock = get_astc_context(block_size)
-
         with lock:
-            raw_img = astc_encoder.ASTCImage(
-                astc_encoder.ASTCType.U8, img.width, img.height, 1, raw_img
-            )
-            if img.mode == "RGB":
-                tex_format = getattr(TF, f"ASTC_RGB_{block_size[0]}x{block_size[1]}")
-            else:
-                tex_format = getattr(TF, f"ASTC_RGBA_{block_size[0]}x{block_size[1]}")
-
-            swizzle = astc_encoder.ASTCSwizzle.from_str("RGBA")
             enc_img = context.compress(raw_img, swizzle)
-            tex_format = target_texture_format
+
+        tex_format = target_texture_format
     # A
     elif target_texture_format == TF.Alpha8:
         enc_img = img.tobytes("raw", "A")
@@ -252,13 +252,13 @@ def atc(image_data: bytes, width: int, height: int, alpha: bool) -> Image.Image:
 
 
 def astc(image_data: bytes, width: int, height: int, block_size: tuple) -> Image.Image:
-    context, lock = get_astc_context(block_size)
+    image = astc_encoder.ASTCImage(astc_encoder.ASTCType.U8, width, height, 1)
+    texture_size = calculate_astc_compressed_size(width, height, block_size)
+    if len(image_data) < texture_size:
+        raise ValueError(f"Invalid ASTC data size: {len(image_data)} < {texture_size}")
 
+    context, lock = get_astc_context(block_size)
     with lock:
-        image = astc_encoder.ASTCImage(astc_encoder.ASTCType.U8, width, height, 1)
-        texture_size = calculate_astc_compressed_size(width, height, block_size)
-        if len(image_data) < texture_size:
-            raise ValueError(f"Invalid ASTC data size: {len(image_data)} < {texture_size}")
         context.decompress(
             image_data[:texture_size], image, astc_encoder.ASTCSwizzle.from_str("RGBA")
         )
