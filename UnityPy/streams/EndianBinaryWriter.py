@@ -9,7 +9,6 @@ from ..math import Color, Matrix4x4, Quaternion, Vector2, Vector3, Vector4, Rect
 
 class EndianBinaryWriter:
     endian: str
-    Length: int
     Position: int
     stream: IOBase
 
@@ -43,7 +42,6 @@ class EndianBinaryWriter:
 
     def dispose(self):
         self.stream.close()
-        pass
 
     def write(self, *args):
         if self.Position != self.stream.tell():
@@ -131,10 +129,10 @@ class EndianBinaryWriter:
         self.write_float(value.height)
 
     def write_color_uint(self, value: Color):
-        self.write_u_byte(value.R * 255)
-        self.write_u_byte(value.G * 255)
-        self.write_u_byte(value.B * 255)
-        self.write_u_byte(value.A * 255)
+        self.write_u_byte(int(value.R * 255))
+        self.write_u_byte(int(value.G * 255))
+        self.write_u_byte(int(value.B * 255))
+        self.write_u_byte(int(value.A * 255))
 
     def write_color4(self, value: Color):
         self.write_float(value.R)
