@@ -1,160 +1,83 @@
+from dataclasses import dataclass
+from math import sqrt
+
+
+kEpsilon = 0.00001
+
+
+@dataclass
 class Vector2:
-    X: float
-    Y: float
+    '''https://github.com/Unity-Technologies/UnityCsReference/blob/master/Runtime/Export/Math/Vector2.cs'''
 
-    def __init__(self, x: float, y: float):
-        self.X = x
-        self.Y = y
+    X: float = 0.0
+    Y: float = 0.0
 
+    def __init__(self, x: float = 0.0, y: float = 0.0):
+        if not all(isinstance(v, (int, float)) for v in (x, y)):
+            raise TypeError("All components must be numeric.")
+        self.X = float(x)
+        self.Y = float(y)
 
-"""
-using System;
-using System.Runtime.InteropServices;
+    def __getitem__(self, index):
+        return (self.X, self.Y)[index]
 
-namespace AssetStudio
-{
-    [StructLayout(LayoutKind.Sequential, Pack = 4)]
-    public struct Vector2 : IEquatable<Vector2>
-    {
-        public float X;
-        public float Y;
+    def __setitem__(self, index, value):
+        if index == 0:
+            self.X = value
+        elif index == 1:
+            self.Y = value
+        else:
+            raise IndexError("Index out of range")
 
-        public Vector2(float x, float y)
-        {
-            X = x;
-            Y = y;
-        }
+    def __hash__(self):
+        return self.X.__hash__() ^ (self.Y.__hash__() << 2)
 
-        public float this[int index]
-        {
-            get
-            {
-                switch (index)
-                {
-                    case 0: return X;
-                    case 1: return Y;
-                    default: throw new ArgumentOutOfRangeException(nameof(index), "Invalid Vector2 index!");
-                }
-            }
+    def normalize(self):
+        length = self.length()
+        if length > kEpsilon:
+            invNorm = 1.0 / length
+            self.X *= invNorm
+            self.Y *= invNorm
+        else:
+            self.X = self.Y = 0.0
 
-            set
-            {
-                switch (index)
-                {
-                    case 0: X = value; break;
-                    case 1: Y = value; break;
-                    default: throw new ArgumentOutOfRangeException(nameof(index), "Invalid Vector2 index!");
-                }
-            }
-        }
+    Normalize = normalize
 
-        public override int GetHashCode()
-        {
-            return X.GetHashCode() ^ (Y.GetHashCode() << 2);
-        }
+    def length(self):
+        return sqrt(self.lengthSquared())
 
-        public override bool Equals(object other)
-        {
-            if (!(other is Vector2))
-                return false;
-            return Equals((Vector2)other);
-        }
+    Length = length
 
-        public bool Equals(Vector2 other)
-        {
-            return X.Equals(other.X) && Y.Equals(other.Y);
-        }
+    def lengthSquared(self):
+        return self.X ** 2 + self.Y ** 2
 
-        public void Normalize()
-        {
-            var length = Length();
-            if (length > kEpsilon)
-            {
-                var invNorm = 1.0f / length;
-                X *= invNorm;
-                Y *= invNorm;
-            }
-            else
-            {
-                X = 0;
-                Y = 0;
-            }
-        }
+    LengthSquared = lengthSquared
 
-        public float Length()
-        {
-            return (float)Math.Sqrt(LengthSquared());
-        }
+    @staticmethod
+    def Zero():
+        return Vector2(0, 0)
 
-        public float LengthSquared()
-        {
-            return X * X + Y * Y;
-        }
+    @staticmethod
+    def One():
+        return Vector2(1, 1)
 
-        public static Vector2 Zero => new Vector2();
+    def __add__(a, b):
+        return Vector2(a.X + b.X, a.Y + b.Y)
 
-        public static Vector2 operator +(Vector2 a, Vector2 b)
-        {
-            return new Vector2(a.X + b.X, a.Y + b.Y);
-        }
+    def __sub__(a, b):
+        return Vector2(a.X - b.X, a.Y - b.Y)
 
-        public static Vector2 operator -(Vector2 a, Vector2 b)
-        {
-            return new Vector2(a.X - b.X, a.Y - b.Y);
-        }
+    def __mul__(a, d):
+        return Vector2(a.X * d, a.Y * d)
 
-        public static Vector2 operator *(Vector2 a, Vector2 b)
-        {
-            return new Vector2(a.X * b.X, a.Y * b.Y);
-        }
+    def __truediv__(a, d):
+        return Vector2(a.X / d, a.Y / d)
 
-        public static Vector2 operator /(Vector2 a, Vector2 b)
-        {
-            return new Vector2(a.X / b.X, a.Y / b.Y);
-        }
+    def __eq__(lhs, rhs):
+        if isinstance(rhs, Vector2):
+            diff = lhs - rhs
+            return diff.lengthSquared() < kEpsilon * kEpsilon
+        return False
 
-        public static Vector2 operator -(Vector2 a)
-        {
-            return new Vector2(-a.X, -a.Y);
-        }
-
-        public static Vector2 operator *(Vector2 a, float d)
-        {
-            return new Vector2(a.X * d, a.Y * d);
-        }
-
-        public static Vector2 operator *(float d, Vector2 a)
-        {
-            return new Vector2(a.X * d, a.Y * d);
-        }
-
-        public static Vector2 operator /(Vector2 a, float d)
-        {
-            return new Vector2(a.X / d, a.Y / d);
-        }
-
-        public static bool operator ==(Vector2 lhs, Vector2 rhs)
-        {
-            return (lhs - rhs).LengthSquared() < kEpsilon * kEpsilon;
-        }
-
-        public static bool operator !=(Vector2 lhs, Vector2 rhs)
-        {
-            return !(lhs == rhs);
-        }
-
-        public static implicit operator Vector3(Vector2 v)
-        {
-            return new Vector3(v.X, v.Y, 0);
-        }
-
-        public static implicit operator Vector4(Vector2 v)
-        {
-            return new Vector4(v.X, v.Y, 0.0F, 0.0F);
-        }
-
-        private const float kEpsilon = 0.00001F;
-    }
-}
-
-"""
+    def __ne__(lhs, rhs):
+        return not (lhs == rhs)
