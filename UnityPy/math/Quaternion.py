@@ -3,48 +3,26 @@ class Quaternion:
     Y: float
     Z: float
     W: float
-    
-    def __init__(self, x: float = 0.0, y: float = 0.0, z: float = 0.0, w: float = 0.0):
-        self._data = [0.0] * 4
-        self.X = x
-        self.Y = y
-        self.Z = z
-        self.W = w
-    
-    @property
-    def X(self) -> float:
-        return self._data[0]
-    
-    @X.setter
-    def X(self, value: float):
-        self._data[0] = value
-    
-    @property
-    def Y(self) -> float:
-        return self._data[1]
-    
-    @Y.setter
-    def Y(self, value: float):
-        self._data[1] = value
-    
-    @property
-    def Z(self) -> float:
-        return self._data[2]
-    
-    @Z.setter
-    def Z(self, value: float):
-        self._data[2] = value
-    
-    @property
-    def W(self) -> float:
-        return self._data[3]
-    
-    @W.setter
-    def W(self, value: float):
-        self._data[3] = value
-    
-    def __getitem__(self, value):
-        return self._data[value]
-    
+
+    def __init__(self, x: float = 0.0, y: float = 0.0, z: float = 0.0, w: float = 1.0):
+        if not all(isinstance(v, (int, float)) for v in (x, y, z, w)):
+            raise TypeError("All components must be numeric.")
+        self.X = float(x)
+        self.Y = float(y)
+        self.Z = float(z)
+        self.W = float(w)
+
+    def __getitem__(self, index):
+        return (self.X, self.Y, self.Z, self.W)[index]
+
     def __setitem__(self, index, value):
-        self._data[index] = value
+        if index == 0:
+            self.X = value
+        elif index == 1:
+            self.Y = value
+        elif index == 2:
+            self.Z = value
+        elif index == 3:
+            self.W = value
+        else:
+            raise IndexError("Index out of range")
