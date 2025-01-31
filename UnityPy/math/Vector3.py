@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from math import sqrt
+from typing import Sequence
 
 
 kEpsilon = 0.00001
@@ -7,16 +8,28 @@ kEpsilon = 0.00001
 
 @dataclass
 class Vector3:
+    '''https://github.com/Unity-Technologies/UnityCsReference/blob/master/Runtime/Export/Math/Vector3.cs'''
+
     X: float = 0.0
     Y: float = 0.0
     Z: float = 0.0
 
     def __init__(self, *args):
-        if len(args) == 3 or len(args) == 1 and isinstance(args[0], (tuple, list)):
-            self.X, self.Y, self.Z = args
-        elif len(args) == 1:
-            # dirty patch for Vector4
-            self.__dict__ = args[0].__dict__
+        if len(args) == 1:
+            args = args[0]
+
+        if isinstance(args, Sequence):
+            if len(args) == 3:  # args=(x, y, z)
+                self.X, self.Y, self.Z = args
+                return
+            if len(args) == 0:  # args=()
+                self.X = self.Y = self.Z = 0.0
+                return
+        else:  # dirty patch for Vector4
+            self.X, self.Y, self.Z = args.X, args.Y, args.Z
+            return
+
+        raise TypeError("Invalid arguments for Vector3")
 
     def __getitem__(self, index):
         return (self.X, self.Y, self.Z)[index]
@@ -32,13 +45,11 @@ class Vector3:
             raise IndexError("Index out of range")
 
     def __hash__(self):
-        return self.X.__hash__() ^ (self.Y.__hash__() << 2) ^ (self.Z.__hash__() >> 2)
-
-    def __eq__(self, other):
-        if isinstance(other, Vector3):
-            return self.X == other.X and self.Y == other.Y and self.Z == other.Z
-        else:
-            return False
+        return (
+            self.X.__hash__() ^
+            (self.Y.__hash__() << 2) ^
+            (self.Z.__hash__() >> 2)
+        )
 
     def normalize(self):
         length = self.length()
@@ -48,21 +59,19 @@ class Vector3:
             self.Y *= invNorm
             self.Z *= invNorm
         else:
-            X = 0
-            Y = 0
-            Z = 0
+            self.X = self.Y = self.Z = 0.0
 
-    def Normalize(self):
-        self.normalize()
+    Normalize = normalize
 
     def length(self):
-        return sqrt(self.LengthSquared())
+        return sqrt(self.lengthSquared())
 
-    def Length(self):
-        return self.length()
+    Length = length
 
-    def LengthSquared(self):
-        return self.X ** 2 + self.Y ** 2 + self.Y ** 2
+    def lengthSquared(self):
+        return self.X ** 2 + self.Y ** 2 + self.Z ** 2
+
+    LengthSquared = lengthSquared
 
     @staticmethod
     def Zero():
@@ -81,11 +90,14 @@ class Vector3:
     def __mul__(a, d):
         return Vector3(a.X * d, a.Y * d, a.Z * d)
 
-    def __div__(a, d):
+    def __truediv__(a, d):
         return Vector3(a.X / d, a.Y / d, a.Z / d)
 
     def __eq__(lhs, rhs):
-        return (lhs - rhs).LengthSquared() < kEpsilon
+        if isinstance(rhs, Vector3):
+            diff = lhs - rhs
+            return diff.lengthSquared() < kEpsilon * kEpsilon
+        return False
 
     def __ne__(lhs, rhs):
         return not (lhs == rhs)
