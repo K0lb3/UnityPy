@@ -1,3 +1,7 @@
+from dataclasses import dataclass
+
+
+@dataclass
 class Rectangle:
     height: int
     width: int

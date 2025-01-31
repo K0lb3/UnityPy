@@ -1,6 +1,8 @@
+from dataclasses import dataclass
 from .Vector4 import Vector4
 
 
+@dataclass
 class Color:
     R: float
     G: float
