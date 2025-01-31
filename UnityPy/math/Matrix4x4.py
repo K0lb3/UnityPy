@@ -1,31 +1,41 @@
+from typing import MutableSequence, Sequence, Union
 from .Vector3 import Vector3
 
 
 class Matrix4x4:
-    M: list
+    M: MutableSequence[float]
 
-    def __init__(self, values):
-        if len(values) != 16:
-            raise ValueError(
-                "There must be sixteen and only sixteen input values for Matrix."
-            )
-        self.M = values
+    def __init__(self, values: Sequence[Union[int, float]]):
+        if not isinstance(values, Sequence) or len(values) != 16:
+            raise ValueError("Values must be a sequence with 16 elements.")
+        if not all(isinstance(v, (int, float)) for v in values):
+            raise TypeError("All values must be numeric.")
+        self.M = [float(v) for v in values]
 
     def __getitem__(self, index):
         if isinstance(index, tuple):
-            index = index[0] + index[1] * 4
+            row, col = index
+            if not (0 <= row < 4 and 0 <= col < 4):
+                raise IndexError("Row and column indices must in range [0, 3].")
+            index = row + col * 4
+        if not (0 <= index < 16):
+            raise IndexError("Index out of range for Matrix4x4.")
         return self.M[index]
 
     def __setitem__(self, index, value):
         if isinstance(index, tuple):
-            # row, column
-            index = index[0] + index[1] * 4
+            row, col = index
+            if not (0 <= row < 4 and 0 <= col < 4):
+                raise IndexError("Row and column indices must in range [0, 3].")
+            index = row + col * 4
+        if not (0 <= index < 16):
+            raise IndexError("Index out of range for Matrix4x4.")
         self.M[index] = value
 
     def __eq__(self, other):
         if not isinstance(other, Matrix4x4):
             return False
-        print()
+        return all(abs(a - b) < 1e-6 for a, b in zip(self.M, other.M))
 
     def __mul__(lhs, rhs):
         res = Matrix4x4([0] * 16)
@@ -134,7 +144,10 @@ class Matrix4x4:
     @staticmethod
     def Scale(vector: Vector3):
         return Matrix4x4(
-            [vector.X, 0, 0, 0, 0, vector.Y, 0, 0, 0, 0, vector.Z, 0, 0, 0, 0, 1]
+            [vector.X, 0, 0, 0,
+             0, vector.Y, 0, 0,
+             0, 0, vector.Z, 0,
+             0, 0, 0, 1]
         )
 
     @property
