@@ -1,7 +1,9 @@
+from dataclasses import dataclass
 from typing import MutableSequence, Sequence, Union
 from .Vector3 import Vector3
 
 
+@dataclass
 class Matrix4x4:
     M: MutableSequence[float]
 
