@@ -59,12 +59,12 @@ def export_obj(
         return []
 
     if append_name:
-        fp = os.path.join(fp, obj.m_Name if getattr(obj, "m_Name") else obj.type.name)
+        fp = os.path.join(fp, obj.m_Name if getattr(obj, "m_Name") else obj.object_reader.type.name)
 
     fp, extension = os.path.splitext(fp)
 
     if append_path_id:
-        fp = f"{fp}_{obj.path_id}"
+        fp = f"{fp}_{obj.object_reader.path_id}"
 
     # export
     return export_func(obj, fp, extension)
@@ -261,10 +261,10 @@ def exportTexture2D(obj: Texture2D, fp: str, extension: str = ".png") -> List[Tu
     if obj.m_Width:
         # textures can be empty
         obj.image.save(f"{fp}{extension}")
-    return [(obj.assets_file, obj.path_id)]
+    return [(obj.assets_file, obj.object_reader.path_id)]
 
 def exportGameObject(obj: GameObject, fp: str, extension: str = "") -> List[Tuple[SerializedFile, int]]:
-    exported = [(obj.assets_file, obj.path_id)]
+    exported = [(obj.assets_file, obj.object_reader.path_id)]
     refs = crawl_obj(obj)
     if refs:
         os.makedirs(fp, exist_ok=True)
