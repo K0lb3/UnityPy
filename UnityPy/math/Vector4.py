@@ -22,15 +22,15 @@ class Vector4:
         if isinstance(args, Sequence):
             if len(args) == 4:  # args=(x, y, z, w)
                 self.X, self.Y, self.Z, self.W = args
-                return
-            if len(args) == 2:  # args=(Vector3, w)
+            elif len(args) == 2:  # args=(Vector3, w)
                 self.X, self.Y, self.Z = args[0]
                 self.W = args[1]
-            if len(args) == 0:  # args=()
+            elif len(args) == 0:  # args=()
                 self.X = self.Y = self.Z = self.W = 0.0
-                return
-
-        raise TypeError("Invalid arguments for Vector4")
+            else:
+                raise TypeError("Invalid argument length for Vector4")
+        else:
+            raise TypeError("If only 1 argument passed, it must be a sequence")
 
     def __getitem__(self, index):
         return (self.X, self.Y, self.Z, self.W)[index]

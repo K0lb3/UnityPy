@@ -15,21 +15,22 @@ class Vector3:
     Z: float = 0.0
 
     def __init__(self, *args):
+        from .Vector4 import Vector4
         if len(args) == 1:
             args = args[0]
 
         if isinstance(args, Sequence):
             if len(args) == 3:  # args=(x, y, z)
                 self.X, self.Y, self.Z = args
-                return
-            if len(args) == 0:  # args=()
+            elif len(args) == 0:  # args=()
                 self.X = self.Y = self.Z = 0.0
-                return
-        else:  # dirty patch for Vector4
+            else:
+                raise TypeError("Invalid argument length for Vector3")
+        elif isinstance(args, Vector4):
+            # dirty patch for Vector4
             self.X, self.Y, self.Z = args.X, args.Y, args.Z
-            return
-
-        raise TypeError("Invalid arguments for Vector3")
+        else:
+            raise TypeError("If only 1 argument passed, it must be a sequence or Vector4")
 
     def __getitem__(self, index):
         return (self.X, self.Y, self.Z)[index]
