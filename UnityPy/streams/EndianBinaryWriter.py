@@ -1,20 +1,26 @@
-import io
 from struct import pack
+from io import BytesIO, IOBase
+
+import builtins
+from typing import Callable, Union
 
 from ..math import Color, Matrix4x4, Quaternion, Vector2, Vector3, Vector4, Rectangle
 
 
 class EndianBinaryWriter:
     endian: str
-    Length: int
     Position: int
-    stream: io.BufferedReader
+    stream: IOBase
 
-    def __init__(self, input_=b"", endian=">"):
+    def __init__(
+        self,
+        input_: Union[bytes, bytearray, IOBase] = b"",
+        endian: str = ">"
+    ):
         if isinstance(input_, (bytes, bytearray)):
-            self.stream = io.BytesIO(input_)
+            self.stream = BytesIO(input_)
             self.stream.seek(0, 2)
-        elif isinstance(input_, io.IOBase):
+        elif isinstance(input_, IOBase):
             self.stream = input_
         else:
             raise ValueError("Invalid input type - %s." % type(input_))
@@ -36,7 +42,6 @@ class EndianBinaryWriter:
 
     def dispose(self):
         self.stream.close()
-        pass
 
     def write(self, *args):
         if self.Position != self.stream.tell():
@@ -51,7 +56,7 @@ class EndianBinaryWriter:
     def write_u_byte(self, value: int):
         self.write(pack(self.endian + "B", value))
 
-    def write_bytes(self, value: bytes):
+    def write_bytes(self, value: builtins.bytes):
         return self.write(value)
 
     def write_short(self, value: int):
@@ -91,7 +96,7 @@ class EndianBinaryWriter:
         self.write(bstring)
         self.align_stream(4)
 
-    def align_stream(self, alignment=4):
+    def align_stream(self, alignment:int = 4):
         pos = self.stream.tell()
         align = (alignment - pos % alignment) % alignment
         self.write(b"\0" * align)
@@ -124,10 +129,10 @@ class EndianBinaryWriter:
         self.write_float(value.height)
 
     def write_color_uint(self, value: Color):
-        self.write_u_byte(value.R * 255)
-        self.write_u_byte(value.G * 255)
-        self.write_u_byte(value.B * 255)
-        self.write_u_byte(value.A * 255)
+        self.write_u_byte(int(value.R * 255))
+        self.write_u_byte(int(value.G * 255))
+        self.write_u_byte(int(value.B * 255))
+        self.write_u_byte(int(value.A * 255))
 
     def write_color4(self, value: Color):
         self.write_float(value.R)
@@ -139,13 +144,13 @@ class EndianBinaryWriter:
         for val in value.M:
             self.write_float(val)
 
-    def write_array(self, command, value: list, write_length: bool = True):
+    def write_array(self, command: Callable, value: list, write_length: bool = True):
         if write_length:
             self.write_int(len(value))
         for val in value:
             command(val)
 
-    def write_byte_array(self, value: bytes):
+    def write_byte_array(self, value: builtins.bytes):
         self.write_int(len(value))
         self.write(value)
 
