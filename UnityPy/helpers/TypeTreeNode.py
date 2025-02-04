@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 from struct import Struct
-from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Tuple
+from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Tuple, Any, Union
 
 from attrs import define, field
 
@@ -139,16 +139,32 @@ class TypeTreeNode(TypeTreeNodeC):
         return fake_root.m_Children[0]
 
     @classmethod
-    def from_list(cls, nodes: List[dict]) -> TypeTreeNode:
+    def from_list(
+        cls, nodes: Union[List[Dict[str, Union[str, int]]], List[TypeTreeNode]]
+    ) -> TypeTreeNode:
         fake_root: TypeTreeNode = cls(-1, "", "", 0, 0, [])
         stack: List[TypeTreeNode] = [fake_root]
         parent = fake_root
         prev = fake_root
 
-        for node in nodes:
-            if isinstance(node, dict):
-                node = cls(**node)
+        # check if the nodes contain all required fields
+        if isinstance(nodes[0], dict):
+            if (
+                "m_Level" not in nodes[0]
+                or "m_Type" not in nodes[0]
+                or "m_Name" not in nodes[0]
+            ):
+                raise ValueError(
+                    "Nodes must contain at least m_Level, m_Type and m_Name"
+                )
+            patch_dict = {}
+            if "m_ByteSize" not in nodes[0]:
+                patch_dict["m_ByteSize"] = 0
+            if "m_Version" not in nodes[0]:
+                patch_dict["m_Version"] = 0
+            nodes = [cls(**node, **patch_dict) for node in nodes]
 
+        for node in nodes:
             if node.m_Level > prev.m_Level:
                 stack.append(parent)
                 parent = prev
