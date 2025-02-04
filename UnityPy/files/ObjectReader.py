@@ -1,7 +1,9 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Generic, List, Optional, Tuple, TypeVar, Union
+from typing import TYPE_CHECKING, Generic, List, Optional, Tuple, Type, TypeVar, Union
 
+from ..classes import NamedObject
+from ..classes.ClassIDTypeToClassMap import ClassIDTypeToClassMap
 from ..enums import ClassIDType
 from ..exceptions import TypeTreeError
 from ..helpers import TypeTreeHelper
@@ -154,6 +156,24 @@ class ObjectReader(Generic[T]):
         self.data = data
         if self.assets_file:
             self.assets_file.mark_changed()
+
+    def get_class(self) -> Union[Type[T], None]:
+        return ClassIDTypeToClassMap.get(self.type)
+
+    def peek_name(self) -> Union[str, None]:
+        """Peeks the name of the object without reading/parsing the whole object."""
+        # TODO: EditorExtension might be enough
+        clz = self.get_class()
+        if clz and issubclass(clz, NamedObject):
+            self.reset()
+            if self.platform == BuildTarget.NoTarget:
+                # 2x PPtr
+                raise NotImplementedError(
+                    "Directly fetching the name for 'NoTarget' platform is not supported"
+                )
+            return self.reader.read_aligned_string()
+        else:
+            return None
 
     @property
     def container(self):
