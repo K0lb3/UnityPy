@@ -23,8 +23,9 @@ jobs:
       - name: Install sdist
         run: pip install dist/*.tar.gz
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
+          name: "sdist"
           path: dist/*.tar.gz
   
   build_wheels:
@@ -47,9 +48,11 @@ jobs:
           CIBW_TEST_SKIP: "*"
           CIBW_SKIP: "pp*"
         
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
+          name: "${{ matrix.os }}"
           path: ./wheelhouse/*.whl
+          retention-days: 1
   
   build_manylinux_wheels_ubuntu:
     name: Build manylinux wheels on ubuntu-latest
@@ -72,9 +75,11 @@ jobs:
           CIBW_TEST_SKIP: "*"
           CIBW_SKIP: "pp* *-musllinux*"
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
+          name: "manylinux"
           path: ./wheelhouse/*.whl
+          retention-days: 1
 
   build_musllinux_wheels_ubuntu:
     name: Build musllinux wheels on ubuntu-latest
@@ -112,9 +117,11 @@ jobs:
           CIBW_REPAIR_WHEEL_COMMAND: "auditwheel repair -w {dest_dir} {wheel} --exclude libdl.so.2 --exclude librt.so.1 --exclude libm.so.6 --exclude libpthread.so.0 --exclude libc.so.6"
 
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
+          name: "musllinux"
           path: ./wheelhouse/*.whl
+          retention-days: 1
 
 
   upload_pypi:
@@ -125,10 +132,12 @@ jobs:
     permissions:
         id-token: write
     steps:
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
-          name: artifact
           path: dist
+          merge-multiple: true
 
       - name: Publish package distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          skip-existing: true
