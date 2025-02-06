@@ -61,14 +61,6 @@ def brute_force_key(
     return None
 
 
-def to_uint4_array(source: bytes, offset: int = 0):
-    buffer = bytearray(len(source) * 2)
-    for j in range(len(source)):
-        buffer[j * 2] = source[offset + j] >> 4
-        buffer[j * 2 + 1] = source[offset + j] & 15
-    return buffer
-
-
 class ArchiveStorageDecryptor:
     unknown_1: int
     index: bytes
@@ -99,7 +91,9 @@ class ArchiveStorageDecryptor:
             raise Exception(f"Invalid signature {signature} != {UNITY3D_SIGNATURE}")
 
         data = decrypt_key(self.key, self.data, DECRYPT_KEY)
-        data = to_uint4_array(data)
+        data = bytes(
+            nibble for byte in data for nibble in (byte >> 4, byte & 0xF)
+        )
         self.index = data[:0x10]
         self.substitute = bytes(
             data[0x10 + i * 4 + j] for j in range(4) for i in range(4)
