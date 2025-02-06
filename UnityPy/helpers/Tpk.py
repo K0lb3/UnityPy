@@ -287,7 +287,7 @@ class TpkJsonBlob(TpkDataBlob):
 class UnityVersion(int):
     # https://github.com/AssetRipper/VersionUtilities/blob/master/VersionUtilities/UnityVersion.cs
     """
-    use following static methos instead of the constructor(__init__):
+    use following static methods instead of the constructor(__init__):
         UnityVersion.fromStream(stream: BytesIO)
         UnityVersion.fromString(version: str)
         UnityVersion.fromList(major: int, minor: int, patch: int, build: int)
@@ -300,7 +300,7 @@ class UnityVersion(int):
 
     @staticmethod
     def fromString(version: str) -> UnityVersion:
-        return UnityVersion(version.split("."))
+        return UnityVersion.fromList(*map(int, version.split(".")))
 
     @staticmethod
     def fromList(
