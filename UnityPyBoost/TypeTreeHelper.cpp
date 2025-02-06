@@ -533,6 +533,11 @@ inline PyObject *parse_class(PyObject *kwargs, TypeTreeNodeObject *node, TypeTre
         {
             continue;
         }
+        if (PyObject_HasAttrString(clz, "__slots__"))
+        {
+            // if __slots__ is defined, setattr for non-slots attributes will fail
+            goto PARSE_CLASS_UNKNOWN;
+        }
         PyObject *extra_value = PyDict_GetItem(kwargs, child->_clean_name); // - borrowed ref +/- 0
         PyDict_SetItem(extras, child->_clean_name, extra_value);            // +1
         PyDict_DelItem(kwargs, child->_clean_name);                         // -1
@@ -540,9 +545,7 @@ inline PyObject *parse_class(PyObject *kwargs, TypeTreeNodeObject *node, TypeTre
 
     if (PyDict_Size(extras) == 0)
     {
-        Py_DECREF(clz);                                                 // 1->0
-        clz = PyObject_GetAttrString(config->classes, "UnknownObject"); // 0->1
-        PyDict_SetItemString(kwargs, "__node__", (PyObject *)node);
+        goto PARSE_CLASS_UNKNOWN;
     }
 
     instance = PyObject_Call(clz, args, kwargs);
@@ -551,23 +554,29 @@ inline PyObject *parse_class(PyObject *kwargs, TypeTreeNodeObject *node, TypeTre
         pos = 0;
         while (PyDict_Next(extras, &pos, &key, &value))
         {
-            PyObject_GenericSetAttr(instance, key, value);
+            if (PyObject_GenericSetAttr(instance, key, value) != 0)
+            {
+                Py_DECREF(instance);
+                goto PARSE_CLASS_UNKNOWN;
+            }
         }
-        goto PARSE_CLASS_CLEANUP;
     }
-    PyErr_Clear();
-
-    // if we still failed to create an instance, fallback to UnknownObject
-    Py_DECREF(clz);
-    clz = PyObject_GetAttrString(config->classes, "UnknownObject");
-    PyDict_SetItemString(kwargs, "__node__", (PyObject *)node);
-    // merge extras back into kwargs
-    pos = 0;
-    while (PyDict_Next(extras, &pos, &key, &value))
+    else
     {
-        PyDict_SetItem(kwargs, key, value);
+    PARSE_CLASS_UNKNOWN:
+        PyErr_Clear();
+        // if we still failed to create an instance, fallback to UnknownObject
+        Py_DECREF(clz);
+        clz = PyObject_GetAttrString(config->classes, "UnknownObject");
+        PyDict_SetItemString(kwargs, "__node__", (PyObject *)node);
+        // merge extras back into kwargs
+        pos = 0;
+        while (PyDict_Next(extras, &pos, &key, &value))
+        {
+            PyDict_SetItem(kwargs, key, value);
+        }
+        instance = PyObject_Call(clz, args, kwargs);
     }
-    instance = PyObject_Call(clz, args, kwargs);
 
 PARSE_CLASS_CLEANUP:
     Py_DECREF(args);
@@ -852,7 +861,7 @@ PyObject *read_typetree_value(ReaderT *reader, TypeTreeNodeObject *node, TypeTre
             {
                 value = read_class<swap, true>(reader, node, config);
             }
-            if (!config->as_dict)
+            else
             {
                 value = read_class<swap, false>(reader, node, config);
                 value = parse_class(value, node, config);
