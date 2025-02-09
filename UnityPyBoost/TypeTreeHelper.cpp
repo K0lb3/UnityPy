@@ -485,6 +485,8 @@ inline PyObject *parse_class(PyObject *kwargs, TypeTreeNodeObject *node, TypeTre
     // dict iterator values
     PyObject *key, *value = nullptr;
     Py_ssize_t pos;
+    // slots check
+    PyObject *slots = nullptr;
 
     if (node->_data_type == NodeDataType::PPtr)
     {
@@ -518,6 +520,16 @@ inline PyObject *parse_class(PyObject *kwargs, TypeTreeNodeObject *node, TypeTre
     }
     PyErr_Clear();
 
+    // if __slots__ is defined, setattr for non-slots attributes will fail
+    // so we can skip the extra field check
+    slots = PyObject_GetAttrString(clz, "__slots__");
+    if (PyTuple_Check(slots) && PyTuple_GET_SIZE(slots) > 0)
+    {
+        Py_XDECREF(slots);
+        goto PARSE_CLASS_UNKNOWN;
+    }
+    Py_XDECREF(slots);
+
     // possibly extra fields
     annotations = get_annotations(clz);
     if (annotations == nullptr)
@@ -532,11 +544,6 @@ inline PyObject *parse_class(PyObject *kwargs, TypeTreeNodeObject *node, TypeTre
         if (PyDict_Contains(annotations, child->_clean_name) == 1)
         {
             continue;
-        }
-        if (PyObject_HasAttrString(clz, "__slots__"))
-        {
-            // if __slots__ is defined, setattr for non-slots attributes will fail
-            goto PARSE_CLASS_UNKNOWN;
         }
         PyObject *extra_value = PyDict_GetItem(kwargs, child->_clean_name); // - borrowed ref +/- 0
         PyDict_SetItem(extras, child->_clean_name, extra_value);            // +1
@@ -570,10 +577,13 @@ inline PyObject *parse_class(PyObject *kwargs, TypeTreeNodeObject *node, TypeTre
         clz = PyObject_GetAttrString(config->classes, "UnknownObject");
         PyDict_SetItemString(kwargs, "__node__", (PyObject *)node);
         // merge extras back into kwargs
-        pos = 0;
-        while (PyDict_Next(extras, &pos, &key, &value))
+        if (extras != nullptr)
         {
-            PyDict_SetItem(kwargs, key, value);
+            pos = 0;
+            while (PyDict_Next(extras, &pos, &key, &value))
+            {
+                PyDict_SetItem(kwargs, key, value);
+            }
         }
         instance = PyObject_Call(clz, args, kwargs);
     }
