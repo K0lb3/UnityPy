@@ -50,7 +50,7 @@ VERTEX_CHANNEL_FORMAT_STRUCT_TYPE_MAP = {
 
 VERTEX_FORMAT_2017_STRUCT_TYPE_MAP = {
     VertexFormat2017.kVertexFormatFloat: "f",
-    VertexFormat2017.kVertexFormatFloat16: "h",
+    VertexFormat2017.kVertexFormatFloat16: "e",
     VertexFormat2017.kVertexFormatColor: "B",
     VertexFormat2017.kVertexFormatUNorm8: "B",
     VertexFormat2017.kVertexFormatSNorm8: "b",
@@ -66,7 +66,7 @@ VERTEX_FORMAT_2017_STRUCT_TYPE_MAP = {
 
 VERTEX_FORMAT_STRUCT_TYPE_MAP = {
     VertexFormat.kVertexFormatFloat: "f",
-    VertexFormat.kVertexFormatFloat16: "h",
+    VertexFormat.kVertexFormatFloat16: "e",
     VertexFormat.kVertexFormatUNorm8: "B",
     VertexFormat.kVertexFormatSNorm8: "b",
     VertexFormat.kVertexFormatUNorm16: "H",
