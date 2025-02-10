@@ -252,10 +252,7 @@ class MeshHandler:
     def get_streams(
         self, m_Channels: list[ChannelInfo], m_VertexCount: int
     ) -> list[StreamInfo]:
-        streamCount = 1
-        if m_Channels:
-            streamCount += max(x.stream for x in m_Channels)
-
+        streamCount = 1 + max(x.stream for x in m_Channels)
         m_Streams: list[StreamInfo] = []
         offset = 0
         for s in range(streamCount):
@@ -266,7 +263,7 @@ class MeshHandler:
                     if m_Channel.dimension > 0:
                         chnMask |= 1 << chn
                         component_size = self.get_channel_component_size(m_Channel)
-                        stride += m_Channel.dimension * component_size
+                        stride += (m_Channel.dimension & 0xF) * component_size
 
             m_Streams.append(
                 StreamInfo(
@@ -358,6 +355,7 @@ class MeshHandler:
                 # channel_byte_size = m_Channel.dimension * component_byte_size
 
                 swap = self.endianess == "<" and component_byte_size > 1
+                channel_dimension = m_Channel.dimension & 0xF
 
                 if UnityPyBoost:
                     componentBytes = UnityPyBoost.unpack_vertexdata(
@@ -367,22 +365,22 @@ class MeshHandler:
                         m_Stream.offset,
                         m_Stream.stride,
                         m_Channel.offset,
-                        m_Channel.dimension,
+                        channel_dimension,
                         swap,
                     )
                 else:
                     componentBytes = bytearray(
-                        m_VertexCount * m_Channel.dimension * component_byte_size
+                        m_VertexCount * channel_dimension * component_byte_size
                     )
 
                     vertexBaseOffset = m_Stream.offset + m_Channel.offset
                     for v in range(m_VertexCount):
                         vertexOffset = vertexBaseOffset + m_Stream.stride * v
-                        for d in range(m_Channel.dimension):
+                        for d in range(channel_dimension):
                             componentOffset = vertexOffset + component_byte_size * d
                             vertexDataSrc = componentOffset
                             componentDataSrc = component_byte_size * (
-                                v * m_Channel.dimension + d
+                                v * channel_dimension + d
                             )
                             buff = m_VertexData.m_DataSize[
                                 vertexDataSrc : vertexDataSrc + component_byte_size
@@ -399,7 +397,7 @@ class MeshHandler:
                     f">{count}{component_dtype}", componentBytes
                 )
                 component_data = flat_list_to_tuples(
-                    component_data, m_Channel.dimension
+                    component_data, channel_dimension
                 )
 
                 self.assign_channel_vertex_data(chn, component_data)
