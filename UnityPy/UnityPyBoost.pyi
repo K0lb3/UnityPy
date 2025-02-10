@@ -8,6 +8,7 @@ if TYPE_CHECKING:
 
 def unpack_vertexdata(
     data: Union[bytes, bytearray],
+    component_byte_size: int,
     vertex_count: int,
     stream_offset: int,
     stream_stride: int,
