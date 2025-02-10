@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 from struct import Struct
-from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Tuple, Any, Union
+from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Tuple, Union
 
 from attrs import define, field
 

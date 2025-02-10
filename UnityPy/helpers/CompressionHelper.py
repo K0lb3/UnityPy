@@ -1,10 +1,9 @@
+import brotli
 import gzip
 import lzma
+import lz4.block
 import struct
 from typing import Tuple
-
-import brotli
-import lz4.block
 
 GZIP_MAGIC: bytes = b"\x1f\x8b"
 BROTLI_MAGIC: bytes = b"brotli"

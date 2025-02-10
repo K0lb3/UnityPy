@@ -1,6 +1,5 @@
 from typing import Optional, List, TYPE_CHECKING, Tuple
 
-# from ..objects.math import Quaternionf
 if TYPE_CHECKING:
     from ..classes.generated import PackedBitVector
 

@@ -1,6 +1,6 @@
 # based on: https://github.com/Razmoth/PGRStudio/blob/master/AssetStudio/PGR/PGR.cs
 import re
-from typing import Tuple, Union
+from typing import Optional, Tuple, Union
 
 from ..streams import EndianBinaryReader
 
@@ -10,7 +10,7 @@ except ImportError:
     UnityPyBoost = None
 
 UNITY3D_SIGNATURE = b"#$unity3dchina!@"
-DECRYPT_KEY: bytes = None
+DECRYPT_KEY: Optional[bytes] = None
 
 
 def set_assetbundle_decrypt_key(key: Union[bytes, str]):
@@ -66,7 +66,7 @@ class ArchiveStorageDecryptor:
     index: bytes
     substitute: bytes = bytes(0x10)
 
-    def __init__(self, reader: EndianBinaryReader) -> None:
+    def __init__(self, reader: EndianBinaryReader):
         self.unknown_1 = reader.read_u_int()
 
         # read vector data/key vectors
@@ -100,7 +100,6 @@ class ArchiveStorageDecryptor:
         )
 
     def decrypt_block(self, data: bytes, index: int):
-
         if UnityPyBoost:
             return UnityPyBoost.decrypt_block(self.index, self.substitute, data, index)
 
@@ -113,7 +112,7 @@ class ArchiveStorageDecryptor:
             index += 1
         return data
 
-    def decrypt_byte(self, view: bytearray, offset: int, index: int):
+    def decrypt_byte(self, view: Union[bytearray, memoryview], offset: int, index: int):
         b = (
             self.substitute[((index >> 2) & 3) + 4]
             + self.substitute[index & 3]
@@ -127,7 +126,7 @@ class ArchiveStorageDecryptor:
         b = view[offset]
         return b, offset + 1, index + 1
 
-    def decrypt(self, data: bytearray, index: int, remaining: int):
+    def decrypt(self, data: Union[bytearray, memoryview], index: int, remaining: int):
         offset = 0
 
         curByte, offset, index = self.decrypt_byte(data, offset, index)
