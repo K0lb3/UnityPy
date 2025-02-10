@@ -1,9 +1,9 @@
 from __future__ import annotations
+
 import math
 import struct
-from typing import Optional, List, Tuple, Union, TypeVar
+from typing import Optional, List, Sequence, Tuple, Union, TypeVar
 
-from ..enums.MeshTopology import MeshTopology
 from ..classes.generated import (
     ChannelInfo,
     StreamInfo,
@@ -13,8 +13,7 @@ from ..classes.generated import (
     Vector3f,
     Vector4f,
 )
-from .PackedBitVector import unpack_floats, unpack_ints
-
+from ..enums.MeshTopology import MeshTopology
 from ..enums.VertexFormat import (
     VertexChannelFormat,
     VertexFormat2017,
@@ -23,6 +22,7 @@ from ..enums.VertexFormat import (
     VERTEX_FORMAT_2017_STRUCT_TYPE_MAP,
     VERTEX_FORMAT_STRUCT_TYPE_MAP,
 )
+from .PackedBitVector import unpack_floats, unpack_ints
 from .ResourceReader import get_resource_data
 
 try:
@@ -37,11 +37,11 @@ Tuple4f = Tuple[float, float, float, float]
 T = TypeVar("T")
 
 
-def flat_list_to_tuples(data: List[T], item_size: int) -> List[tuple[T]]:
+def flat_list_to_tuples(data: Sequence[T], item_size: int) -> List[tuple[T, ...]]:
     return [tuple(data[i : i + item_size]) for i in range(0, len(data), item_size)]
 
 
-def vector_list_to_tuples(data: List[Vector2f, Vector3f, Vector4f]) -> List[tuple]:
+def vector_list_to_tuples(data: List[Union[Vector2f, Vector3f, Vector4f]]) -> List[tuple]:
     if isinstance(data[0], Vector2f):
         return [(v.x, v.y) for v in data]
     elif isinstance(data[0], Vector3f):
@@ -52,7 +52,7 @@ def vector_list_to_tuples(data: List[Vector2f, Vector3f, Vector4f]) -> List[tupl
         raise ValueError("Unknown vector type")
 
 
-def zeros(shape: Tuple[int, ...]) -> list:
+def zeros(shape: Union[Tuple[int], Tuple[int, int]]) -> Union[List, List[List]]:
     if len(shape) == 1:
         return [0] * shape[0]
     elif len(shape) == 2:
@@ -97,7 +97,7 @@ class MeshHandler:
         src: Union[Mesh, SpriteRenderData],
         version: Optional[Tuple[int, int, int, int]] = None,
         endianess: str = "<",
-    ) -> None:
+    ):
         self.src = src
         self.endianess = endianess
         if version is not None:

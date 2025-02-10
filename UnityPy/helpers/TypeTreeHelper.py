@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import re
 from typing import TYPE_CHECKING, Any, Optional, Union
@@ -49,6 +49,7 @@ FUNCTION_READ_MAP = {
     "string": EndianBinaryReader.read_aligned_string,
     "TypelessData": EndianBinaryReader.read_byte_array,
 }
+
 FUNCTION_READ_MAP_ARRAY = {
     "SInt8": EndianBinaryReader.read_byte_array,
     "UInt8": EndianBinaryReader.read_u_byte_array,
@@ -83,7 +84,7 @@ class TypeTreeConfig:
         return TypeTreeConfig(self.as_dict, self.assetsfile, self.has_registry)
 
 
-def get_ref_type_node(ref_object: dict, assetfile: SerializedFile) -> TypeTreeNode:
+def get_ref_type_node(ref_object: dict, assetfile: SerializedFile) -> Optional[TypeTreeNode]:
     typ = ref_object["type"]
     if isinstance(typ, dict):
         cls = typ["class"]

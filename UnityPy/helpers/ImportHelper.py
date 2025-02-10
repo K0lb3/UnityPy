@@ -1,6 +1,7 @@
 from __future__ import annotations
+
 import os
-from typing import Union, List
+from typing import Union, List, Optional, Tuple
 from .CompressionHelper import BROTLI_MAGIC, GZIP_MAGIC
 from ..enums import FileType
 from ..streams import EndianBinaryReader
@@ -18,7 +19,7 @@ def list_all_files(directory: str) -> List[str]:
         val
         for sublist in [
             [os.path.join(dir_path, filename) for filename in filenames]
-            for (dir_path, dirn_ames, filenames) in os.walk(directory)
+            for (dir_path, dirnames, filenames) in os.walk(directory)
             if ".git" not in dir_path
         ]
         for val in sublist
@@ -34,14 +35,14 @@ def find_all_files(directory: str, search_str: str) -> List[str]:
                 for filename in filenames
                 if search_str in filename
             ]
-            for (dir_path, dirn_ames, filenames) in os.walk(directory)
+            for (dir_path, dirnames, filenames) in os.walk(directory)
             if ".git" not in dir_path
         ]
         for val in sublist
     ]
 
 
-def check_file_type(input_) -> Union[FileType, EndianBinaryReader]:
+def check_file_type(input_) -> Tuple[Optional[FileType], Optional[EndianBinaryReader]]:
     if isinstance(input_, str) and os.path.isfile(input_):
         reader = EndianBinaryReader(open(input_, "rb"))
     elif isinstance(input_, EndianBinaryReader):
@@ -124,10 +125,10 @@ def check_file_type(input_) -> Union[FileType, EndianBinaryReader]:
 
 def parse_file(
     reader: EndianBinaryReader,
-    parent,
+    parent: files.File,
     name: str,
-    typ: FileType = None,
-    is_dependency=False,
+    typ: Optional[FileType] = None,
+    is_dependency: bool = False
 ) -> Union[files.File, EndianBinaryReader]:
     if typ is None:
         typ, _ = check_file_type(reader)

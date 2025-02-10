@@ -4,7 +4,7 @@ from enum import IntEnum, IntFlag
 from importlib.resources import open_binary
 from io import BytesIO
 from struct import Struct
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from .TypeTreeHelper import TypeTreeNode
 
@@ -19,7 +19,9 @@ def init():
 
     global TPKTYPETREE
     with BytesIO(data) as stream:
-        TPKTYPETREE = TpkFile(stream).GetDataBlob()
+        blob = TpkFile(stream).GetDataBlob()
+        assert isinstance(blob, TpkTypeTreeBlob)
+        TPKTYPETREE = blob
 
 
 def get_typetree_node(class_id: int, version: tuple):
@@ -338,8 +340,8 @@ class TpkUnityClass:
     Name: int
     Base: int
     Flags: TpkUnityClassFlags
-    EditorRootNode: int
-    ReleaseRootNode: int
+    EditorRootNode: Optional[int]
+    ReleaseRootNode: Optional[int]
 
     def __init__(self, stream: BytesIO) -> None:
         self.Name, self.Base, Flags = TpkUnityClass.Struct.unpack(
@@ -473,7 +475,7 @@ class TpkStringBuffer:
 class TpkCommonString:
     __slots__ = ("VersionInformation", "StringBufferIndices")
     VersionInformation: List[Tuple[UnityVersion, int]]
-    StringBufferIndices: List[int]
+    StringBufferIndices: Tuple[int]
 
     def __init__(self, stream: BytesIO) -> None:
         (versionCount,) = INT32.unpack(stream.read(INT32.size))
