@@ -84,7 +84,9 @@ class TypeTreeConfig:
         return TypeTreeConfig(self.as_dict, self.assetsfile, self.has_registry)
 
 
-def get_ref_type_node(ref_object: dict, assetfile: SerializedFile) -> Optional[TypeTreeNode]:
+def get_ref_type_node(
+    ref_object: dict, assetfile: SerializedFile
+) -> Optional[TypeTreeNode]:
     typ = ref_object["type"]
     if isinstance(typ, dict):
         cls = typ["class"]
@@ -209,7 +211,7 @@ def read_value(
         size = reader.read_int()
         subtype = node.m_Children[0].m_Children[1]
         if metaflag_is_aligned(subtype.m_MetaFlag):
-            value = read_value_array(subtype, reader, config)
+            value = read_value_array(subtype, reader, config, size)
         else:
             value = [read_value(subtype, reader, config) for _ in range(size)]
 
