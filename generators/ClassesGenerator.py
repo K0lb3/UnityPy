@@ -75,7 +75,7 @@ def unitypy_define(cls: T) -> T:
   which would make type-hinting more tricky, and breaks attrs.define.
 
   Therefore this function bypasses the issue
-  by redifining the bases for problematic classes for the attrs.define call.
+  by redefining the bases for problematic classes for the attrs.define call.
   \"\"\"
   bases = cls.__bases__
   if bases[0] in (object, Object, ABC):
