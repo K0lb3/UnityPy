@@ -5,10 +5,7 @@ from .helpers.ArchiveStorageManager import (
     set_assetbundle_decrypt_key as set_assetbundle_decrypt_key,
 )
 
-
-def load(*args, fs=None, **kwargs):
-    return Environment(*args, fs=fs, **kwargs)
-
+load = Environment
 
 # backward compatibility
 AssetsManager = Environment
