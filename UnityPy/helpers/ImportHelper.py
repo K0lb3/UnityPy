@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import io
 import os
 from typing import Union, List, Optional, Tuple
 from .CompressionHelper import BROTLI_MAGIC, GZIP_MAGIC
@@ -7,6 +8,8 @@ from ..enums import FileType
 from ..streams import EndianBinaryReader
 from .. import files
 
+
+FileSourceType = Union[str, bytes, bytearray, io.IOBase]
 
 def file_name_without_extension(file_name: str) -> str:
     return os.path.join(
@@ -42,7 +45,7 @@ def find_all_files(directory: str, search_str: str) -> List[str]:
     ]
 
 
-def check_file_type(input_) -> Tuple[Optional[FileType], Optional[EndianBinaryReader]]:
+def check_file_type(input_: FileSourceType) -> Tuple[Optional[FileType], Optional[EndianBinaryReader]]:
     if isinstance(input_, str) and os.path.isfile(input_):
         reader = EndianBinaryReader(open(input_, "rb"))
     elif isinstance(input_, EndianBinaryReader):

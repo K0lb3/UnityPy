@@ -1,30 +1,34 @@
 import io
-import os
 import ntpath
+import os
 import re
-from typing import List, Callable, Dict, Union
+from typing import Callable, Dict, List, Optional, Union
 from zipfile import ZipFile
 
 from fsspec import AbstractFileSystem
 from fsspec.implementations.local import LocalFileSystem
 
-
-from .files import File, ObjectReader, SerializedFile
 from .enums import FileType
-from .helpers import ImportHelper
+from .files import BundleFile, File, ObjectReader, SerializedFile, WebFile
+from .helpers.ImportHelper import (
+    FileSourceType,
+    check_file_type,
+    find_sensitive_path,
+    parse_file,
+)
 from .streams import EndianBinaryReader
 
 reSplit = re.compile(r"(.*?([^\/\\]+?))\.split\d+")
 
 
 class Environment:
-    files: dict
-    cabs: dict
+    files: Dict[str, Union[SerializedFile, BundleFile, WebFile, EndianBinaryReader]]
+    cabs: Dict[str, Union[SerializedFile, EndianBinaryReader]]
     path: str
     local_files: List[str]
     local_files_simple: List[str]
 
-    def __init__(self, *args, fs: AbstractFileSystem = None):
+    def __init__(self, *args: FileSourceType, fs: Optional[AbstractFileSystem] = None):
         self.files = {}
         self.cabs = {}
         self.path = None
@@ -71,7 +75,7 @@ class Environment:
             ]
         )
 
-    def load(self, files: list):
+    def load(self, files: List[str]):
         """Loads all files into the Environment."""
         self.files.update(
             {
@@ -81,8 +85,8 @@ class Environment:
             }
         )
 
-    def _load_split_file(self, basename):
-        file = []
+    def _load_split_file(self, basename: str) -> bytes:
+        file: list[str] = []
         for i in range(0, 999):
             item = f"{basename}.split{i}"
             if self.fs.exists(item):
@@ -94,9 +98,9 @@ class Environment:
 
     def load_file(
         self,
-        file: Union[io.IOBase, str],
-        parent: Union["Environment", File] = None,
-        name: str = None,
+        file: FileSourceType,
+        parent: Optional[Union["Environment", File]] = None,
+        name: Optional[str] = None,
         is_dependency: bool = False,
     ):
         if not parent:
@@ -105,9 +109,10 @@ class Environment:
         if isinstance(file, str):
             split_match = reSplit.match(file)
             if split_match:
-                basepath, basename = split_match.groups()
+                basepath, _basename = split_match.groups()
+                assert isinstance(basepath, str)
                 name = basepath
-                file = self._load_split_file(name)
+                file = self._load_split_file(basepath)
             else:
                 name = file
                 if not os.path.exists(file):
@@ -119,14 +124,14 @@ class Environment:
                         file = self._load_split_file(file)
                     # Unity paths are case insensitive, so we need to find "Resources/Foo.asset" when the record says "resources/foo.asset"
                     elif not os.path.exists(file):
-                        file = ImportHelper.find_sensitive_path(self.path, file)
+                        file = find_sensitive_path(self.path, file)
                     # nonexistent files might be packaging errors or references to Unity's global Library/
                     if file is None:
                         return
                 if type(file) == str:
                     file = self.fs.open(file, "rb")
 
-        typ, reader = ImportHelper.check_file_type(file)
+        typ, reader = check_file_type(file)
 
         stream_name = (
             name
@@ -141,15 +146,15 @@ class Environment:
         if typ == FileType.ZIP:
             f = self.load_zip_file(file)
         else:
-            f = ImportHelper.parse_file(
+            f = parse_file(
                 reader, self, name=stream_name, typ=typ, is_dependency=is_dependency
             )
-        
+
         if isinstance(f, (SerializedFile, EndianBinaryReader)):
             self.register_cab(stream_name, f)
 
         self.files[stream_name] = f
-
+        return f
 
     def load_zip_file(self, value):
         buffer = None
@@ -274,7 +279,7 @@ class Environment:
         for path in assets:
             splitMatch = reSplit.match(path)
             if splitMatch:
-                basepath, basename = splitMatch.groups()
+                basepath, _basename = splitMatch.groups()
 
                 if basepath in split_files:
                     continue
@@ -306,21 +311,33 @@ class Environment:
         cab = self.get_cab(simple_name)
         if cab:
             return cab
+        fp = self.fs.sep.join([self.path, name])
+        if self.fs.exists(fp):
+            return self.load_file(fp, name=name, is_dependency=is_dependency)
 
         if len(self.local_files) == 0 and self.path:
             for root, _, files in self.fs.walk(self.path):
-                for name in files:
-                    self.local_files.append(self.fs.sep.join([root, name]))
+                for f in files:
+                    self.local_files.append(self.fs.sep.join([root, f]))
+                    self.local_files_simple.append(
+                        self.fs.sep.join([root, simplify_name(f)])
+                    )
 
         if name in self.local_files:
             fp = name
         elif simple_name in self.local_files_simple:
             fp = self.local_files[self.local_files_simple.index(simple_name)]
         else:
-            raise FileNotFoundError(f"File {name} not found in {self.path}")
+            fp = next((f for f in self.local_files if f.endswith(name)), None)
+            if not fp:
+                fp = next(
+                    (f for f in self.local_files_simple if f.endswith(simple_name)),
+                    None,
+                )
+            if not fp:
+                raise FileNotFoundError(f"File {name} not found in {self.path}")
 
-        f = self.load_file(fp, name=name, is_dependency=is_dependency)
-        return f
+        return self.load_file(fp, name=name, is_dependency=is_dependency)
 
 
 def simplify_name(name: str) -> str:
