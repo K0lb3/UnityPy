@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Generic, List, Optional, Tuple, Type, TypeVar,
 
 from ..classes import NamedObject
 from ..classes.ClassIDTypeToClassMap import ClassIDTypeToClassMap
-from ..enums import ClassIDType
+from ..enums import ClassIDType, BuildTarget
 from ..exceptions import TypeTreeError
 from ..helpers import TypeTreeHelper
 from ..helpers.Tpk import get_typetree_node
@@ -12,7 +12,6 @@ from ..helpers.TypeTreeNode import TypeTreeNode
 from ..streams import EndianBinaryReader, EndianBinaryWriter
 
 if TYPE_CHECKING:
-    from ..enums import BuildTarget
     from ..files.SerializedFile import BuildType, SerializedFile, SerializedType
 
 T = TypeVar("T")
