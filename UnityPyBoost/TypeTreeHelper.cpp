@@ -834,6 +834,12 @@ PyObject *read_typetree_value(ReaderT *reader, TypeTreeNodeObject *node, TypeTre
         if (child && child->_data_type == NodeDataType::Array)
         {
             // array
+            if (PyList_GET_SIZE(node->m_Children) != 2)
+            {
+                PyErr_SetString(PyExc_ValueError, "Array node must have 2 children");
+                return NULL;
+            }
+
             if (child->_align)
             {
                 align = true;
