@@ -105,7 +105,10 @@ class ColorRGBA:
     @property
     def rgba(self) -> int:
         return (
-            self.r * 255 << 24 | self.g * 255 << 16 | self.b * 255 << 8 | self.a * 255
+            int(self.r * 255) << 24
+            | int(self.g * 255) << 16
+            | int(self.b * 255) << 8
+            | int(self.a * 255)
         )
 
     @rgba.setter
