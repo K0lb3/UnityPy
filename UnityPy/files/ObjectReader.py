@@ -159,20 +159,23 @@ class ObjectReader(Generic[T]):
     def get_class(self) -> Union[Type[T], None]:
         return ClassIDTypeToClassMap.get(self.type)
 
-    def peek_name(self) -> Union[str, None]:
+    def peek_name(self, max_name_length: int = 256) -> Union[str, None]:
         """Peeks the name of the object without reading/parsing the whole object."""
         # TODO: EditorExtension might be enough
+        if self.platform == BuildTarget.NoTarget:
+            # 2x PPtr
+            raise NotImplementedError(
+                "Directly fetching the name for 'NoTarget' platform is not supported"
+            )
         clz = self.get_class()
-        if clz and issubclass(clz, NamedObject):
-            self.reset()
-            if self.platform == BuildTarget.NoTarget:
-                # 2x PPtr
-                raise NotImplementedError(
-                    "Directly fetching the name for 'NoTarget' platform is not supported"
-                )
-            return self.reader.read_aligned_string()
-        else:
+        if "m_Name" not in clz.__annotations__:
             return None
+        self.reset()
+        len = self.reader.read_int()
+        if len < 0 or len > max_name_length or len + 4 > self.byte_size:
+            return None
+        string_data = bytes(self.reader.read_bytes(len))
+        return string_data.decode("utf8", "surrogateescape")
 
     @property
     def container(self):
