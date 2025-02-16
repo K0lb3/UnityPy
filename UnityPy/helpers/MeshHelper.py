@@ -41,7 +41,9 @@ def flat_list_to_tuples(data: Sequence[T], item_size: int) -> List[tuple[T, ...]
     return [tuple(data[i : i + item_size]) for i in range(0, len(data), item_size)]
 
 
-def vector_list_to_tuples(data: List[Union[Vector2f, Vector3f, Vector4f]]) -> List[tuple]:
+def vector_list_to_tuples(
+    data: List[Union[Vector2f, Vector3f, Vector4f]],
+) -> List[tuple]:
     if isinstance(data[0], Vector2f):
         return [(v.x, v.y) for v in data]
     elif isinstance(data[0], Vector3f):
@@ -396,9 +398,7 @@ class MeshHandler:
                 component_data = struct.unpack(
                     f">{count}{component_dtype}", componentBytes
                 )
-                component_data = flat_list_to_tuples(
-                    component_data, channel_dimension
-                )
+                component_data = flat_list_to_tuples(component_data, channel_dimension)
 
                 self.assign_channel_vertex_data(chn, component_data)
 
@@ -653,16 +653,17 @@ class MeshHandler:
             indexCount = m_SubMesh.indexCount
             topology = m_SubMesh.topology
 
-            triangles: List[int]
+            triangles: List[Tuple[int, ...]]
 
             if topology == MeshTopology.Triangles:
-                triangles = self.m_IndexBuffer[firstIndex : firstIndex + indexCount]
+                triangles = self.m_IndexBuffer[firstIndex : firstIndex + indexCount]  # type: ignore
+                triangles = [triangles[i : i + 3] for i in range(0, len(triangles), 3)]  # type: ignore
             elif (
                 self.version[0] < 4 or topology == MeshTopology.TriangleStrip
             ):  # TriangleStrip
                 # todo: use as_strided, then fix winding, finally remove degenerates
                 triIndex = 0
-                triangles = list((indexCount - 2) * 3)
+                triangles = [None] * (indexCount - 2) # type: ignore
 
                 for i in range(indexCount - 2):
                     a, b, c = self.m_IndexBuffer[firstIndex + i : firstIndex + i + 3]
@@ -682,11 +683,10 @@ class MeshHandler:
             elif topology == MeshTopology.Quads:
                 # one quad is two triangles, so // 4 * 2 = // 2
                 # TODO: use as_strided
-                triangles = list(indexCount // 2, 3)
+                triangles = [None] * (indexCount // 2) # type: ignore
                 triIndex = 0
-                for a, b, c, d in self.m_IndexBuffer[
-                    firstIndex : firstIndex + indexCount : 4
-                ]:
+                for i in range(firstIndex, firstIndex+indexCount,4):
+                    a,b,c,d = self.m_IndexBuffer[i:i+4]
                     triangles[triIndex] = a, b, c
                     triangles[triIndex + 1] = a, c, d
                     triIndex += 2
@@ -695,7 +695,6 @@ class MeshHandler:
                     "Failed getting triangles. Submesh topology is lines or points."
                 )
 
-            triangles = [triangles[i : i + 3] for i in range(0, len(triangles), 3)]
             submeshes.append(triangles)
 
         return submeshes
