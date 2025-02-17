@@ -78,7 +78,9 @@ class MeshHandler:
     version: Tuple[int, int, int, int]
     m_VertexCount: int = 0
     m_Vertices: Optional[List[Tuple3f]] = None
-    m_Normals: Optional[List[Tuple3f]] = None
+    # normals can be stored as Tuple4f,
+    # in such cases the 4th dimension is always 0 and can be discarded
+    m_Normals: Optional[Union[List[Tuple3f], List[Tuple4f]]] = None
     m_Colors: Optional[List[Tuple4f]] = None
     m_UV0: Optional[List[Tuple2f]] = None
     m_UV1: Optional[List[Tuple2f]] = None
@@ -88,7 +90,7 @@ class MeshHandler:
     m_UV5: Optional[List[Tuple2f]] = None
     m_UV6: Optional[List[Tuple2f]] = None
     m_UV7: Optional[List[Tuple2f]] = None
-    m_Tangents: Optional[List[float]] = None
+    m_Tangents: Optional[List[Tuple4f]] = None
     m_BoneIndices: Optional[List[int]] = None
     m_BoneWeights: Optional[List[float]] = None
     m_IndexBuffer: Optional[List[int]] = None
@@ -663,7 +665,7 @@ class MeshHandler:
             ):  # TriangleStrip
                 # todo: use as_strided, then fix winding, finally remove degenerates
                 triIndex = 0
-                triangles = [None] * (indexCount - 2) # type: ignore
+                triangles = [None] * (indexCount - 2)  # type: ignore
 
                 for i in range(indexCount - 2):
                     a, b, c = self.m_IndexBuffer[firstIndex + i : firstIndex + i + 3]
@@ -683,10 +685,10 @@ class MeshHandler:
             elif topology == MeshTopology.Quads:
                 # one quad is two triangles, so // 4 * 2 = // 2
                 # TODO: use as_strided
-                triangles = [None] * (indexCount // 2) # type: ignore
+                triangles = [None] * (indexCount // 2)  # type: ignore
                 triIndex = 0
-                for i in range(firstIndex, firstIndex+indexCount,4):
-                    a,b,c,d = self.m_IndexBuffer[i:i+4]
+                for i in range(firstIndex, firstIndex + indexCount, 4):
+                    a, b, c, d = self.m_IndexBuffer[i : i + 4]
                     triangles[triIndex] = a, b, c
                     triangles[triIndex + 1] = a, c, d
                     triIndex += 2
