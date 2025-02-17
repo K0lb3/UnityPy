@@ -55,9 +55,10 @@ dependencies = [
 dynamic = ["version"]
 
 [project.optional-dependencies]
-typetree_api = ["TypeTreeAPI"]
-full = ["UnityPy[typetree_api]"]
-tests = ["pytest", "pillow", "psutil", "UnityPy[full]"]
+# optional dependencies must be lowercase/normalized
+ttgen = ["typetreegeneratorapi"]
+full = ["unitypy[ttgen]"]
+tests = ["pytest", "pillow", "psutil", "unitypy[full]"]
 
 [project.urls]
 "Homepage" = "https://github.com/K0lb3/UnityPy"
