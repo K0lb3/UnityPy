@@ -54,15 +54,17 @@ dependencies = [
 ]
 dynamic = ["version"]
 
+[project.optional-dependencies]
+typetree_api = ["TypeTreeAPI"]
+full = ["UnityPy[typetree_api]"]
+tests = ["pytest", "pillow", "psutil", "UnityPy[full]"]
+
 [project.urls]
 "Homepage" = "https://github.com/K0lb3/UnityPy"
 "Bug Tracker" = "https://github.com/K0lb3/UnityPy/issues"
 
 [tool.setuptools.dynamic]
 version = { attr = "UnityPy.__version__" }
-
-[project.optional-dependencies]
-tests = ["pytest", "pillow", "psutil"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

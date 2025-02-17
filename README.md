@@ -8,13 +8,18 @@
 
 A Unity asset extractor for Python based on [AssetStudio](https://github.com/Perfare/AssetStudio).
 
-Next to extraction, it also supports editing Unity assets.
-So far following obj types can be edited:
-
--   Texture2D
--   Sprite(indirectly via linked Texture2D)
--   TextAsset
--   MonoBehaviour (and all other types that you have the typetree of)
+Next to extraction, UnityPy also supports editing Unity assets.
+Via the typetree structure all objects types can be edited.
+```py
+# modification via dict:
+    raw_dict = obj.read_typetree()
+    # modify raw dict
+    obj.save_typetree(raw_dict)
+# modification via parsed class
+    instance = obj.read()
+    # modify instance
+    obj.save(instance)
+```
 
 If you need advice or if you want to talk about (game) data-mining,
 feel free to join the [UnityPy Discord](https://discord.gg/C6txv7M).
@@ -270,9 +275,8 @@ for obj in env.objects:
 ### [MonoBehaviour](UnityPy/classes/MonoBehaviour.py)
 
 MonoBehaviour assets are usually used to save the class instances with their values.
-If a type tree exists, it can be used to read the whole data,
-but if it doesn't exist, then it is usually necessary to investigate the class that loads the specific MonoBehaviour to extract the data.
-([example](examples/CustomMonoBehaviour/get_scriptable_texture.py))
+The structure/typetree for these classes might not be contained in the asset files.
+In such cases see the 2nd example (TypeTreeGenerator) below.
 
 -   `.m_Name`
 -   `.m_Script`
@@ -302,6 +306,39 @@ for obj in env.objects:
             with open(os.path.join(replace_dir, data.m_Name)) as f:
                 data.save(raw_data = f.read())
 ```
+
+**TypeTreeGenerator**
+
+UnityPy can generate the typetrees of MonoBehaviours from the game assemblies using an optional package, ``TypeTreeGeneratorAPI``, which has to be installed via pip.
+UnityPy will automatically try to generate the typetree of MonoBehaviours if the typetree is missing in the assets and ``env.typetree_generator`` is set.
+
+```py
+import UnityPy
+from UnityPy.helpers.TypeTreeGenerator import TypeTreeGenerator
+
+# create generator
+GAME_ROOT_DIR: str
+# e.g. r"D:\Program Files (x86)\Steam\steamapps\common\Aethermancer Demo"
+GAME_UNITY_VERSION: str
+# you can get the version via an object
+# e.g. objects[0].assets_file.unity_version
+
+generator = TypeTreeGenerator(GAME_UNITY_VERSION)
+generator.load_local_game(GAME_ROOT_DIR)
+# generator.load_local_game(root_dir: str) - for a Windows game
+# generator.load_dll_folder(dll_dir: str) - for mono / non-il2cpp or generated dummies
+# generator.load_dll(dll: bytes)
+# generator.load_il2cpp(il2cpp: bytes, metadata: bytes)
+
+env = UnityPy.load(fp)
+# assign generator to env
+env.typetree_generator = generator
+for obj in objects:
+    if obj.type.name == "MonoBehaviour":
+        # automatically tries to use the generator in the background if necessary
+        x = obj.read()
+```
+
 
 ### [AudioClip](UnityPy/classes/AudioClip.py)
 

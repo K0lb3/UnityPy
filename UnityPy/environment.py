@@ -2,7 +2,7 @@ import io
 import ntpath
 import os
 import re
-from typing import Callable, Dict, List, Optional, Union
+from typing import Callable, Dict, List, Optional, Union, TYPE_CHECKING
 from zipfile import ZipFile
 
 from fsspec import AbstractFileSystem
@@ -18,6 +18,9 @@ from .helpers.ImportHelper import (
 )
 from .streams import EndianBinaryReader
 
+if TYPE_CHECKING:
+    from UnityPy.helpers.TypeTreeGenerator import TypeTreeGenerator
+
 reSplit = re.compile(r"(.*?([^\/\\]+?))\.split\d+")
 
 
@@ -27,6 +30,7 @@ class Environment:
     path: str
     local_files: List[str]
     local_files_simple: List[str]
+    typetree_generator: Optional["TypeTreeGenerator"] = None
 
     def __init__(self, *args: FileSourceType, fs: Optional[AbstractFileSystem] = None):
         self.files = {}
