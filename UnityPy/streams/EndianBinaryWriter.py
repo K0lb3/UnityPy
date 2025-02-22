@@ -2,7 +2,7 @@ from struct import pack
 from io import BytesIO, IOBase
 
 import builtins
-from typing import Callable, Union
+from typing import Callable, Sequence, Union
 
 from ..math import Color, Matrix4x4, Quaternion, Vector2, Vector3, Vector4, Rectangle
 
@@ -144,7 +144,7 @@ class EndianBinaryWriter:
         for val in value.M:
             self.write_float(val)
 
-    def write_array(self, command: Callable, value: list, write_length: bool = True):
+    def write_array(self, command: Callable, value: Sequence, write_length: bool = True):
         if write_length:
             self.write_int(len(value))
         for val in value:
@@ -154,29 +154,29 @@ class EndianBinaryWriter:
         self.write_int(len(value))
         self.write(value)
 
-    def write_boolean_array(self, value: list):
+    def write_boolean_array(self, value: Sequence):
         self.write_array(self.write_boolean, value)
 
-    def write_u_short_array(self, value: list):
+    def write_u_short_array(self, value: Sequence):
         self.write_array(self.write_u_short, value)
 
-    def write_int_array(self, value: list, write_length: bool = False):
+    def write_int_array(self, value: Sequence, write_length: bool = False):
         return self.write_array(self.write_int, value, write_length)
 
-    def write_u_int_array(self, value: list, write_length: bool = False):
+    def write_u_int_array(self, value: Sequence, write_length: bool = False):
         return self.write_array(self.write_u_int, value, write_length)
 
-    def write_float_array(self, value: list, write_length: bool = False):
+    def write_float_array(self, value: Sequence, write_length: bool = False):
         return self.write_array(self.write_float, value, write_length)
 
-    def write_string_array(self, value: list):
+    def write_string_array(self, value: Sequence):
         self.write_array(self.write_aligned_string, value)
 
-    def write_vector2_array(self, value: list):
+    def write_vector2_array(self, value: Sequence):
         self.write_array(self.write_vector2, value)
 
-    def write_vector4_array(self, value: list):
+    def write_vector4_array(self, value: Sequence):
         self.write_array(self.write_vector4, value)
 
-    def write_matrix_array(self, value: list):
+    def write_matrix_array(self, value: Sequence):
         self.write_array(self.write_matrix, value)

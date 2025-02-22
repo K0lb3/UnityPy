@@ -208,39 +208,39 @@ class EndianBinaryReader:
         struct = Struct(f"{self.endian}{length}{param}")
         return struct.unpack(self.read(struct.size))
 
-    def read_boolean_array(self, length: Optional[int] = None) -> Tuple[bool]:
+    def read_boolean_array(self, length: Optional[int] = None) -> Tuple[bool, ...]:
         return self.read_array_struct("?", length)
 
-    def read_u_byte_array(self, length: Optional[int] = None) -> Tuple[int]:
+    def read_u_byte_array(self, length: Optional[int] = None) -> Tuple[int, ...]:
         return self.read_array_struct("B", length)
 
-    def read_u_short_array(self, length: Optional[int] = None) -> Tuple[int]:
+    def read_u_short_array(self, length: Optional[int] = None) -> Tuple[int, ...]:
         return self.read_array_struct("h", length)
 
-    def read_short_array(self, length: Optional[int] = None) -> Tuple[int]:
+    def read_short_array(self, length: Optional[int] = None) -> Tuple[int, ...]:
         return self.read_array_struct("H", length)
 
-    def read_int_array(self, length: Optional[int] = None) -> Tuple[int]:
+    def read_int_array(self, length: Optional[int] = None) -> Tuple[int, ...]:
         return self.read_array_struct("i", length)
 
-    def read_u_int_array(self, length: Optional[int] = None) -> Tuple[int]:
+    def read_u_int_array(self, length: Optional[int] = None) -> Tuple[int, ...]:
         return self.read_array_struct("I", length)
 
-    def read_long_array(self, length: Optional[int] = None) -> Tuple[int]:
+    def read_long_array(self, length: Optional[int] = None) -> Tuple[int, ...]:
         return self.read_array_struct("q", length)
 
-    def read_u_long_array(self, length: Optional[int] = None) -> Tuple[int]:
+    def read_u_long_array(self, length: Optional[int] = None) -> Tuple[int, ...]:
         return self.read_array_struct("Q", length)
 
-    def read_u_int_array_array(self, length: Optional[int] = None) -> List[Tuple[int]]:
+    def read_u_int_array_array(self, length: Optional[int] = None) -> List[Tuple[int, ...]]:
         return self.read_array(
             self.read_u_int_array, length if length is not None else self.read_int()
         )
 
-    def read_float_array(self, length: Optional[int] = None) -> Tuple[float]:
+    def read_float_array(self, length: Optional[int] = None) -> Tuple[float, ...]:
         return self.read_array_struct("f", length)
 
-    def read_double_array(self, length: Optional[int] = None) -> Tuple[float]:
+    def read_double_array(self, length: Optional[int] = None) -> Tuple[float, ...]:
         return self.read_array_struct("d", length)
 
     def read_string_array(self) -> List[str]:

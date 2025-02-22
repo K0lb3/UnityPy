@@ -475,7 +475,7 @@ class TpkStringBuffer:
 class TpkCommonString:
     __slots__ = ("VersionInformation", "StringBufferIndices")
     VersionInformation: List[Tuple[UnityVersion, int]]
-    StringBufferIndices: Tuple[int]
+    StringBufferIndices: Tuple[int, ...]
 
     def __init__(self, stream: BytesIO) -> None:
         (versionCount,) = INT32.unpack(stream.read(INT32.size))
