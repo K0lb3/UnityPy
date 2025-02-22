@@ -152,9 +152,11 @@ class ObjectReader(Generic[T]):
             writer.write_u_short(self.class_id)
 
         if header.version < 11:
+            assert self.is_destroyed is not None
             writer.write_u_short(self.is_destroyed)
 
         if 11 <= header.version < 17:
+            assert self.serialized_type is not None
             writer.write_short(self.serialized_type.script_type_index)
 
         if header.version == 15 or header.version == 16:

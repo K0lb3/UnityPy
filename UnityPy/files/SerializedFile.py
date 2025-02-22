@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import re
 from ntpath import basename
@@ -83,8 +83,13 @@ class FileIdentifier:  # external
 
     def write(self, header: SerializedFileHeader, writer: EndianBinaryWriter):
         if header.version >= 6:
+            assert self.temp_empty is not None
             writer.write_string_to_null(self.temp_empty)
         if header.version >= 5:
+            assert (
+                self.guid is not None
+                and self.type is not None
+            )
             writer.write_bytes(self.guid)
             writer.write_int(self.type)
         writer.write_string_to_null(self.path)
@@ -170,9 +175,11 @@ class SerializedType:
         writer.write_int(self.class_id)
 
         if version >= 16:
+            assert self.is_stripped_type is not None
             writer.write_boolean(self.is_stripped_type)
 
         if version >= 17:
+            assert self.script_type_index is not None
             writer.write_short(self.script_type_index)
 
         if version >= 13:
@@ -181,7 +188,9 @@ class SerializedType:
                 or (version < 16 and self.class_id < 0)
                 or (version >= 16 and self.class_id == 114)
             ):
+                assert self.script_id is not None
                 writer.write_bytes(self.script_id)  # Hash128
+            assert self.old_type_hash is not None
             writer.write_bytes(self.old_type_hash)  # Hash128
 
         if serialized_file._enable_type_tree:
@@ -193,10 +202,16 @@ class SerializedType:
 
             if version >= 21:
                 if is_ref_type:
+                    assert (
+                        self.m_ClassName is not None
+                        and self.m_NameSpace is not None
+                        and self.m_AssemblyName is not None
+                    )
                     writer.write_string_to_null(self.m_ClassName)
                     writer.write_string_to_null(self.m_NameSpace)
                     writer.write_string_to_null(self.m_AssemblyName)
                 else:
+                    assert self.type_dependencies is not None
                     writer.write_int_array(self.type_dependencies, True)
 
     @property
@@ -443,11 +458,13 @@ class SerializedFile(File.File):
             external.write(header, meta_writer)
 
         if header.version >= 20:
+            assert self.ref_types is not None
             meta_writer.write_int(len(self.ref_types))
             for ref_type in self.ref_types:
                 ref_type.write(self, meta_writer, True)
 
         if header.version >= 5:
+            assert self.userInformation is not None
             meta_writer.write_string_to_null(self.userInformation)
 
         # prepare header
