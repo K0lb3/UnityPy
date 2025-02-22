@@ -1,4 +1,6 @@
-﻿from . import File
+﻿from typing import Optional
+
+from . import File
 from ..helpers import CompressionHelper
 from ..streams import EndianBinaryReader, EndianBinaryWriter
 
@@ -55,7 +57,7 @@ class WebFile(File.File):
 
     def save(
         self,
-        files: dict = None,
+        files: Optional[dict] = None,
         packer: str = "none",
         signature: str = "UnityWebData1.0",
     ) -> bytes:

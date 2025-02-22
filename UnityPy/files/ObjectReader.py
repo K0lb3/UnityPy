@@ -256,7 +256,7 @@ class ObjectReader(Generic[T]):
         self,
         tree: dict,
         nodes: Optional[Union[TypeTreeNode, List[dict[str, Union[str, int]]]]] = None,
-        writer: EndianBinaryWriter = None,
+        writer: Optional[EndianBinaryWriter] = None,
     ):
         node = self._get_typetree_node(nodes)
         if not writer:
