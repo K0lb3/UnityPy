@@ -201,8 +201,8 @@ class BundleFile(File.File):
                 original - uses the original flags
         """
         # file_header
-        #     signature    (string_to_null)
-        #     format        (int)
+        #     signature         (string_to_null)
+        #     format            (int)
         #     version_player    (string_to_null)
         #     version_engine    (string_to_null)
         writer = EndianBinaryWriter()
@@ -252,11 +252,11 @@ class BundleFile(File.File):
         # data_flag
 
         # header:
-        #     bundle_size        (long)
-        #     compressed_size    (int)
-        #     uncompressed_size    (int)
-        #     flag                (int)
-        #     ?padding?            (bool)
+        #     bundle_size       (long)
+        #     compressed_size   (int)
+        #     uncompressed_size (int)
+        #     flag              (int)
+        #     ?padding?         (bool)
         #   This will be written at the end,
         #   because the size can only be calculated after the data compression,
 
@@ -266,21 +266,21 @@ class BundleFile(File.File):
         #     *read compressed_size -> uncompressed_size
         #     0x10 offset
         #     *read blocks infos of the data stream
-        #     count            (int)
+        #     count                 (int)
         #     (
-        #         uncompressed_size(uint)
-        #         compressed_size (uint)
-        #         flag(short)
+        #         uncompressed_size (uint)
+        #         compressed_size   (uint)
+        #         flag              (short)
         #     )
         #     *decompression via info.flag & 0x3F
 
         #     *afterwards the file positions
-        #     file_count        (int)
+        #     file_count    (int)
         #     (
         #         offset    (long)
-        #         size        (long)
-        #         flag        (int)
-        #         name        (string_to_null)
+        #         size      (long)
+        #         flag      (int)
+        #         name      (string_to_null)
         #     )
 
         # file list & file data
