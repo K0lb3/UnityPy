@@ -95,7 +95,7 @@ class File:
             f.flags = getattr(node, "flags", 0)
             self.files[name] = f
 
-    def get_writeable_cab(self, name: str = None):
+    def get_writeable_cab(self, name: Optional[str] = None):
         """
         Creates a new cab file in the bundle that contains the given data.
         This is useful for asset types that use resource files.

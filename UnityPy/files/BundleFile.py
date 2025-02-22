@@ -1,7 +1,7 @@
 # TODO: implement encryption for saving files
 from collections import namedtuple
 import re
-from typing import Tuple, Union
+from typing import Optional, Tuple, Union
 
 from . import File
 from ..enums import ArchiveFlags, ArchiveFlagsOld, CompressionFlags
@@ -21,12 +21,12 @@ class BundleFile(File.File):
     signature: str
     version_engine: str
     version_player: str
-    dataflags: Tuple[ArchiveFlags, ArchiveFlagsOld]
-    decryptor: ArchiveStorageManager.ArchiveStorageDecryptor = None
+    dataflags: Union[ArchiveFlags, ArchiveFlagsOld]
+    decryptor: Optional[ArchiveStorageManager.ArchiveStorageDecryptor] = None
     _uses_block_alignment: bool = False
 
     def __init__(
-        self, reader: EndianBinaryReader, parent: File, name: str = None, **kwargs
+        self, reader: EndianBinaryReader, parent: File, name: Optional[str] = None, **kwargs
     ):
         super().__init__(parent=parent, name=name, **kwargs)
         signature = self.signature = reader.read_string_to_null()
@@ -92,7 +92,7 @@ class BundleFile(File.File):
         # header
         compressedSize = reader.read_u_int()
         uncompressedSize = reader.read_u_int()
-        self.dataflags = reader.read_u_int()
+        dataflagsValue = reader.read_u_int()
 
         version = self.get_version_tuple()
         # https://issuetracker.unity3d.com/issues/files-within-assetbundles-do-not-start-on-aligned-boundaries-breaking-patching-on-nintendo-switch
@@ -105,9 +105,9 @@ class BundleFile(File.File):
             or (version[0] == 2021 and version < (2021, 3, 2))
             or (version[0] == 2022 and version < (2022, 1, 1))
         ):
-            self.dataflags = ArchiveFlagsOld(self.dataflags)
+            self.dataflags = ArchiveFlagsOld(dataflagsValue)
         else:
-            self.dataflags = ArchiveFlags(self.dataflags)
+            self.dataflags = ArchiveFlags(dataflagsValue)
 
         if self.dataflags & self.dataflags.UsesAssetBundleEncryption:
             self.decryptor = ArchiveStorageManager.ArchiveStorageDecryptor(reader)
@@ -523,6 +523,14 @@ class BundleFile(File.File):
     def get_version_tuple(self) -> Tuple[int, int, int]:
         """Returns the version as a tuple."""
         version = self.version_engine
-        if not version or version == "0.0.0":
-            version = config.get_fallback_version()
-        return tuple(map(int, reVersion.match(version).groups()))
+        match = None
+        if version and version != "0.0.0":
+            match = reVersion.match(version)
+            if not match or len(match.groups()) < 3:
+                match = None
+        if not match:
+            match = reVersion.match(config.get_fallback_version())
+            if not match or len(match.groups()) < 3:
+                raise ValueError("Illegal fallback version format")
+        map_ = map(int, match.groups())
+        return (next(map_), next(map_), next(map_))

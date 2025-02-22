@@ -1,8 +1,8 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import re
 from ntpath import basename
-from typing import TYPE_CHECKING, Dict, Generator, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Dict, Generator, Iterator, List, Optional, Tuple
 
 from attrs import define
 
@@ -24,7 +24,7 @@ class SerializedFileHeader:
     file_size: int
     version: int
     data_offset: int
-    endian: bytes
+    endian: str
     reserved: bytes
 
     def __init__(self, reader: EndianBinaryReader):
@@ -115,7 +115,7 @@ class BuildType:
 class SerializedType:
     class_id: int
     is_stripped_type: Optional[bool] = None
-    script_type_index: Optional[int] = -1
+    script_type_index: int = -1
     script_id: Optional[bytes] = None  # Hash128
     old_type_hash: Optional[bytes] = None  # Hash128
     node: Optional[TypeTreeNode] = None
@@ -124,7 +124,7 @@ class SerializedType:
     m_NameSpace: Optional[str] = None
     m_AssemblyName: Optional[str] = None
     # 21+
-    type_dependencies: Optional[List[int]] = None
+    type_dependencies: Optional[Tuple[int, ...]] = None
 
     def __init__(
         self,
@@ -215,7 +215,7 @@ class SerializedType:
                     writer.write_int_array(self.type_dependencies, True)
 
     @property
-    def nodes(self) -> Union[TypeTreeNode, None]:
+    def nodes(self) -> Optional[TypeTreeNode]:
         # for compatibility with old versions
         return self.node
 
@@ -236,8 +236,7 @@ class SerializedFile(File.File):
     _m_target_platform: int
     big_id_enabled: int
     userInformation: Optional[str]
-    assetbundle: AssetBundle
-    container: ContainerHelper
+    assetbundle: Optional[AssetBundle]
     _cache: Dict[str, Object]
 
     @property
@@ -414,7 +413,7 @@ class SerializedFile(File.File):
 
         return cab
 
-    def save(self, packer: str = None) -> bytes:
+    def save(self, packer: Optional[str] = None) -> bytes:
         # 1. header -> has to be delayed until the very end
         # 2. data -> types, objects, scripts, ...
 
@@ -567,7 +566,7 @@ class ContainerHelper:
     def __delitem__(self, key) -> None:
         raise NotImplementedError("Deleting from the container is not allowed!")
 
-    def __iter__(self) -> Generator[str, None, None]:
+    def __iter__(self) -> Iterator[str]:
         return iter(self.keys())
 
     def __len__(self) -> int:
