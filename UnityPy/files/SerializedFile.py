@@ -576,9 +576,6 @@ class ContainerHelper:
     def __getattr__(self, name: str) -> PPtr[Object]:
         return self.container_dict[name]
 
-    def __or__(self, other: ContainerHelper):
-        return ContainerHelper(list(set(self.container + other.container)))
-
     def __str__(self) -> str:
         return f'{{{", ".join(f"{key}: {value}" for key, value in self.items())}}}'
 

@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 DirectoryInfo = namedtuple("DirectoryInfo", "path offset size")
 
 
-class File(object):
+class File:
     name: str
     files: Dict[str, File]
     environment: Environment
@@ -34,7 +34,7 @@ class File(object):
         self.is_changed = False
         self.cab_file = "CAB-UnityPy_Mod.resS"
         self.parent = parent
-        self.environment = self.environment = (
+        self.environment = (
             getattr(parent, "environment", parent) if parent else None
         )
         self.name = basename(name) if isinstance(name, str) else ""
@@ -98,7 +98,7 @@ class File(object):
     def get_writeable_cab(self, name: str = None):
         """
         Creates a new cab file in the bundle that contains the given data.
-        This is usefull for asset types that use resource files.
+        This is useful for asset types that use resource files.
         """
 
         if not name:
