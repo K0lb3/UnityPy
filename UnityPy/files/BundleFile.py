@@ -5,6 +5,7 @@ from typing import Optional, Tuple, Union
 
 from . import File
 from ..enums import ArchiveFlags, ArchiveFlagsOld, CompressionFlags
+from ..exceptions import UnityVersionFallbackError
 from ..helpers import ArchiveStorageManager, CompressionHelper
 from ..streams import EndianBinaryReader, EndianBinaryWriter
 
@@ -531,6 +532,6 @@ class BundleFile(File.File):
         if not match:
             match = reVersion.match(config.get_fallback_version())
             if not match or len(match.groups()) < 3:
-                raise ValueError("Illegal fallback version format")
+                raise UnityVersionFallbackError("Illegal fallback version format")
         map_ = map(int, match.groups())
         return (next(map_), next(map_), next(map_))
