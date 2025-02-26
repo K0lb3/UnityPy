@@ -1,16 +1,15 @@
-import sys
-import re
-from struct import Struct, unpack
-from io import IOBase, BufferedReader
-
 import builtins
+import re
+import sys
+from io import BufferedReader, IOBase
+from struct import Struct, unpack
 from typing import Callable, List, Optional, Tuple, Union
 
 reNot0 = re.compile(b"(.*?)\x00", re.S)
 
 SYS_ENDIAN = "<" if sys.byteorder == "little" else ">"
 
-from ..math import Color, Matrix4x4, Quaternion, Vector2, Vector3, Vector4, Rectangle
+from ..math import Color, Matrix4x4, Quaternion, Rectangle, Vector2, Vector3, Vector4
 
 # generate unpack and unpack_from functions
 TYPE_PARAM_SIZE_LIST = [
@@ -127,7 +126,7 @@ class EndianBinaryReader:
     def read_boolean(self) -> bool:
         return bool(unpack(self.endian + "?", self.read(1))[0])
 
-    def read_string(self, size=None, encoding="utf8") -> str:
+    def read_string(self, size: Optional[int] = None, encoding: str = "utf8") -> str:
         if size is None:
             ret = self.read_string_to_null()
         else:
@@ -137,7 +136,7 @@ class EndianBinaryReader:
         except UnicodeDecodeError:
             return ret
 
-    def read_string_to_null(self, max_length=32767) -> str:
+    def read_string_to_null(self, max_length: int = 32767) -> str:
         ret = []
         c = b""
         while c != b"\0" and len(ret) < max_length and self.Position != self.Length:
@@ -232,7 +231,9 @@ class EndianBinaryReader:
     def read_u_long_array(self, length: Optional[int] = None) -> Tuple[int, ...]:
         return self.read_array_struct("Q", length)
 
-    def read_u_int_array_array(self, length: Optional[int] = None) -> List[Tuple[int, ...]]:
+    def read_u_int_array_array(
+        self, length: Optional[int] = None
+    ) -> List[Tuple[int, ...]]:
         return self.read_array(
             self.read_u_int_array, length if length is not None else self.read_int()
         )
