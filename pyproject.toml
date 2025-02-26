@@ -56,7 +56,7 @@ dynamic = ["version"]
 
 [project.optional-dependencies]
 # optional dependencies must be lowercase/normalized
-ttgen = ["typetreegeneratorapi"]
+ttgen = ["typetreegeneratorapi>=0.0.5"]
 full = ["unitypy[ttgen]"]
 tests = ["pytest", "pillow", "psutil", "unitypy[full]"]
 
