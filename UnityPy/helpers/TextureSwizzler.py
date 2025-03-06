@@ -49,38 +49,37 @@ def deswizzle(
     return new_data
 
 
-# def switch_swizzle(
-#     src_image: Image.Image, block_size: Tuple[int, int], texels_per_block: int
-# ) -> Image.Image:
-#     dstImage = Image.new(src_image.mode, src_image.size)
+def swizzle(
+    data: bytes,
+    width: int,
+    height: int,
+    block_width: int,
+    block_height: int,
+    texels_per_block: int,
+) -> bytearray:
+    block_count_x = ceil_divide(width, block_width)
+    block_count_y = ceil_divide(height, block_height)
+    gob_count_x = block_count_x // GOB_X_TEXEL_COUNT
+    gob_count_y = block_count_y // GOB_Y_TEXEL_COUNT
+    new_data = bytearray(len(data))
+    data_view = memoryview(new_data)
 
-#     blockCountX, blockCountY = map(ceil_divide, zip(src_image.size, block_size))
+    for i in range(gob_count_y // texels_per_block):
+        for j in range(gob_count_x):
+            base_gob_dst_x = j * 4
+            for k in range(texels_per_block):
+                base_gob_dst_y = (i * texels_per_block + k) * GOB_Y_TEXEL_COUNT
+                for gob_x, gob_y in GOB_MAP:
+                    src_offset = (
+                        (base_gob_dst_y + gob_y) * block_count_x
+                        + (base_gob_dst_x + gob_x)
+                    ) * TEXEL_BYTE_SIZE
+                    data_view[:TEXEL_BYTE_SIZE] = data[
+                        src_offset : src_offset + TEXEL_BYTE_SIZE
+                    ]
+                    data_view = data_view[TEXEL_BYTE_SIZE:]
 
-#     gob_count_x = blockCountX / GOB_X_BLOCK_COUNT
-#     gob_count_y = blockCountY / GOB_Y_BLOCK_COUNT
-
-#     dstX = 0
-#     dstY = 0
-
-#     for i in range(gob_count_y):
-#         for j in range(gob_count_x):
-#             for k in range(texels_per_block):
-#                 for l in range(BLOCKS_IN_GOB):
-#                     # todo: use table for speedy boi
-#                     gobX = ((l >> 3) & 0b10) | ((l >> 1) & 0b1)
-#                     gobY = ((l >> 1) & 0b110) | (l & 0b1)
-#                     gobSrcX = j * GOB_X_BLOCK_COUNT + gobX
-#                     gobSrcY = (i * texels_per_block + k) * GOB_Y_BLOCK_COUNT + gobY
-#                     CopyBlock(
-#                         src_image, dstImage, gobSrcX, gobSrcY, dstX, dstY, *block_size
-#                     )
-
-#                     dstX += 1
-#                     if dstX >= blockCountX:
-#                         dstX = 0
-#                         dstY += 1
-
-#     return dstImage
+    return new_data
 
 
 # this should be the amount of pixels that can fit 16 bytes
