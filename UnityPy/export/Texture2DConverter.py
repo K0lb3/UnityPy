@@ -19,80 +19,184 @@ if TYPE_CHECKING:
 
 TF = TextureFormat
 
+TEXTURE_FORMAT_BLOCK_SIZE_TABLE: Dict[TF, Optional[Tuple[int, int]]] = {}
+for tf in TF:
+    if tf.name.startswith("ASTC"):
+        split = tf.name.rsplit("_", 1)[1].split("x")
+        block_size = (int(split[0]), int(split[1]))
+    elif tf.name.startswith(("DXT", "BC", "ETC", "EAC")):
+        block_size = (4, 4)
+    elif tf.name.startswith("PVRTC"):
+        block_size = (8 if tf.name.endswith("2") else 4, 4)
+    else:
+        block_size = None
+    TEXTURE_FORMAT_BLOCK_SIZE_TABLE[tf] = block_size
+
+
+def get_compressed_image_size(width: int, height: int, texture_format: TextureFormat):
+    block_size = TEXTURE_FORMAT_BLOCK_SIZE_TABLE[texture_format]
+    if block_size is None:
+        return (width, height)
+    block_width, block_height = block_size
+
+    def pad(value: int, pad_by: int) -> int:
+        to_pad = value % pad_by
+        if to_pad:
+            value += pad_by - to_pad
+        return value
+
+    width = pad(width, block_width)
+    height = pad(height, block_height)
+    return width, height
+
+
+def pad_image(img: Image.Image, pad_width: int, pad_height: int) -> Image.Image:
+    ori_width, ori_height = img.size
+    if pad_width == ori_width and pad_height == ori_height:
+        return img
+
+    pad_img = Image.new(img.mode, (pad_width, pad_height))
+    pad_img.paste(img)
+
+    # Paste the original image at the top-left corner
+    pad_img.paste(img, (0, 0))
+
+    # Fill the right border: duplicate the last column
+    if pad_width != ori_width:
+        right_strip = img.crop((ori_width - 1, 0, ori_width, ori_height))
+        right_strip = right_strip.resize(
+            (pad_width - ori_width, ori_height), resample=Image.NEAREST
+        )
+        pad_img.paste(right_strip, (ori_width, 0))
+
+    # Fill the bottom border: duplicate the last row
+    if pad_height != ori_height:
+        bottom_strip = img.crop((0, ori_height - 1, ori_width, ori_height))
+        bottom_strip = bottom_strip.resize(
+            (ori_width, pad_height - ori_height), resample=Image.NEAREST
+        )
+        pad_img.paste(bottom_strip, (0, ori_height))
+
+    # Fill the bottom-right corner with the bottom-right pixel
+    if pad_width != ori_width and pad_height != ori_height:
+        corner = img.getpixel((ori_width - 1, ori_height - 1))
+        corner_img = Image.new(
+            img.mode, (pad_width - ori_width, pad_height - ori_height), color=corner
+        )
+        pad_img.paste(corner_img, (ori_width, ori_height))
+
+    return pad_img
+
+
+def compress_etcpak(
+    data: bytes, width: int, height: int, target_texture_format: TextureFormat
+) -> bytes:
+    import etcpak
+
+    if target_texture_format in [TF.DXT1, TF.DXT1Crunched]:
+        return etcpak.compress_bc1(data, width, height)
+    elif target_texture_format in [TF.DXT5, TF.DXT5Crunched]:
+        return etcpak.compress_bc3(data, width, height)
+    elif target_texture_format == TF.BC4:
+        return etcpak.compress_bc4(data, width, height)
+    elif target_texture_format == TF.BC5:
+        return etcpak.compress_bc5(data, width, height)
+    elif target_texture_format == TF.BC7:
+        return etcpak.compress_bc7(data, width, height, None)
+    elif target_texture_format in [TF.ETC_RGB4, TF.ETC_RGB4Crunched, TF.ETC_RGB4_3DS]:
+        return etcpak.compress_etc1_rgb(data, width, height)
+    elif target_texture_format == TF.ETC2_RGB:
+        return etcpak.compress_etc2_rgb(data, width, height)
+    elif target_texture_format in [TF.ETC2_RGBA8, TF.ETC2_RGBA8Crunched, TF.ETC2_RGBA1]:
+        return etcpak.compress_etc2_rgba(data, width, height)
+    else:
+        raise NotImplementedError(
+            f"etcpak has no compress function for {target_texture_format.name}"
+        )
+
+
+def compress_astc(
+    data: bytes, width: int, height: int, target_texture_format: TextureFormat
+) -> bytes:
+    astc_image = astc_encoder.ASTCImage(
+        astc_encoder.ASTCType.U8, width, height, 1, data
+    )
+    block_size = TEXTURE_FORMAT_BLOCK_SIZE_TABLE[target_texture_format]
+    assert block_size is not None, (
+        f"failed to get block size for {target_texture_format.name}"
+    )
+    swizzle = astc_encoder.ASTCSwizzle.from_str("RGBA")
+
+    context, lock = get_astc_context(block_size)
+    with lock:
+        enc_img = context.compress(astc_image, swizzle)
+
+    return enc_img
+
 
 def image_to_texture2d(
-    img: Image.Image, target_texture_format: Union[TF, int], flip: bool = True
+    img: Image.Image,
+    target_texture_format: Union[TF, int],
+    platform: int = 0,
+    platform_blob: Optional[bytes] = None,
+    flip: bool = True,
 ) -> Tuple[bytes, TextureFormat]:
-    if isinstance(target_texture_format, int):
+    if not isinstance(target_texture_format, TextureFormat):
         target_texture_format = TextureFormat(target_texture_format)
-
-    import etcpak
 
     if flip:
         img = img.transpose(Image.FLIP_TOP_BOTTOM)
 
+    # defaults
+    compress_func = None
+    tex_format = TF.RGBA32
+    pil_mode = "RGBA"
+
     # DXT
     if target_texture_format in [TF.DXT1, TF.DXT1Crunched]:
-        raw_img = img.tobytes("raw", "RGBA")
-        enc_img = etcpak.compress_bc1(raw_img, img.width, img.height)
         tex_format = TF.DXT1
+        compress_func = compress_etcpak
     elif target_texture_format in [TF.DXT5, TF.DXT5Crunched]:
-        raw_img = img.tobytes("raw", "RGBA")
-        enc_img = etcpak.compress_bc3(raw_img, img.width, img.height)
         tex_format = TF.DXT5
+        compress_func = compress_etcpak
     elif target_texture_format in [TF.BC4]:
-        raw_img = img.tobytes("raw", "RGBA")
-        enc_img = etcpak.compress_bc4(raw_img, img.width, img.height)
         tex_format = TF.BC4
+        compress_func = compress_etcpak
     elif target_texture_format in [TF.BC5]:
-        raw_img = img.tobytes("raw", "RGBA")
-        enc_img = etcpak.compress_bc5(raw_img, img.width, img.height)
         tex_format = TF.BC5
+        compress_func = compress_etcpak
     elif target_texture_format in [TF.BC7]:
-        raw_img = img.tobytes("raw", "RGBA")
-        enc_img = etcpak.compress_bc7(raw_img, img.width, img.height)
         tex_format = TF.BC7
-    # ETC
-    elif target_texture_format in [TF.ETC_RGB4, TF.ETC_RGB4Crunched, TF.ETC_RGB4_3DS]:
-        raw_img = img.tobytes("raw", "RGBA")
-        enc_img = etcpak.compress_etc1_rgb(raw_img, img.width, img.height)
-        tex_format = TF.ETC_RGB4
-    elif target_texture_format == TF.ETC2_RGB:
-        raw_img = img.tobytes("raw", "RGBA")
-        enc_img = etcpak.compress_etc2_rgb(raw_img, img.width, img.height)
-        tex_format = TF.ETC2_RGB
-    elif (
-        target_texture_format in [TF.ETC2_RGBA8, TF.ETC2_RGBA8Crunched, TF.ETC2_RGBA1]
-        or "_RGB_" in target_texture_format.name
-    ):
-        raw_img = img.tobytes("raw", "RGBA")
-        enc_img = etcpak.compress_etc2_rgba(raw_img, img.width, img.height)
-        tex_format = TF.ETC2_RGBA8
+        compress_func = compress_etcpak
     # ASTC
     elif target_texture_format.name.startswith("ASTC"):
-        raw_img = img.tobytes("raw", "RGBA")
-        raw_img = astc_encoder.ASTCImage(
-            astc_encoder.ASTCType.U8, img.width, img.height, 1, raw_img
-        )
-        block_size = tuple(
-            map(int, target_texture_format.name.rsplit("_", 1)[1].split("x"))
-        )
-        if img.mode == "RGB":
-            tex_format = getattr(TF, f"ASTC_RGB_{block_size[0]}x{block_size[1]}")
+        if "_HDR_" in target_texture_format.name:
+            block_size = TEXTURE_FORMAT_BLOCK_SIZE_TABLE[target_texture_format]
+            assert block_size is not None
+            if img.mode == "RGB":
+                tex_format = getattr(TF, f"ASTC_RGB_{block_size[0]}x{block_size[1]}")
+            else:
+                tex_format = getattr(TF, f"ASTC_RGBA_{block_size[0]}x{block_size[1]}")
         else:
-            tex_format = getattr(TF, f"ASTC_RGBA_{block_size[0]}x{block_size[1]}")
-
-        swizzle = astc_encoder.ASTCSwizzle.from_str("RGBA")
-
-        context, lock = get_astc_context(block_size)
-        with lock:
-            enc_img = context.compress(raw_img, swizzle)
-
-        tex_format = target_texture_format
+            tex_format = target_texture_format
+        compress_func = compress_astc
+    # ETC
+    elif target_texture_format in [TF.ETC_RGB4, TF.ETC_RGB4Crunched, TF.ETC_RGB4_3DS]:
+        if target_texture_format == TF.ETC_RGB4_3DS:
+            tex_format = TF.ETC_RGB4_3DS
+        else:
+            tex_format = target_texture_format
+        compress_func = compress_etcpak
+    elif target_texture_format == TF.ETC2_RGB:
+        tex_format = TF.ETC2_RGB
+        compress_func = compress_etcpak
+    elif target_texture_format in [TF.ETC2_RGBA8, TF.ETC2_RGBA8Crunched, TF.ETC2_RGBA1]:
+        tex_format = TF.ETC2_RGBA8
+        compress_func = compress_etcpak
     # A
     elif target_texture_format == TF.Alpha8:
-        enc_img = img.tobytes("raw", "A")
         tex_format = TF.Alpha8
+        pil_mode = "A"
     # R - should probably be moerged into #A, as pure R is used as Alpha
     # but need test data for this first
     elif target_texture_format in [
@@ -103,23 +207,51 @@ def image_to_texture2d(
         TF.EAC_R,
         TF.EAC_R_SIGNED,
     ]:
-        enc_img = img.tobytes("raw", "R")
         tex_format = TF.R8
+        pil_mode = "R"
     # RGBA
     elif target_texture_format in [
         TF.RGB565,
         TF.RGB24,
+        TF.BGR24,
         TF.RGB9e5Float,
         TF.PVRTC_RGB2,
         TF.PVRTC_RGB4,
         TF.ATC_RGB4,
     ]:
-        enc_img = img.tobytes("raw", "RGB")
         tex_format = TF.RGB24
+        pil_mode = "RGB"
     # everything else defaulted to RGBA
+
+    if platform == BuildTarget.Switch and platform_blob is not None:
+        gobsPerBlock = TextureSwizzler.get_switch_gobs_per_block(platform_blob)
+        s_tex_format = tex_format
+        if tex_format == TextureFormat.RGB24:
+            s_tex_format = TextureFormat.RGBA32
+            pil_mode = "RGBA"
+        # elif tex_format == TextureFormat.BGR24:
+        #     s_tex_format = TextureFormat.BGRA32
+        block_size = TextureSwizzler.TEXTUREFORMAT_BLOCK_SIZE_MAP[s_tex_format]
+        width, height = TextureSwizzler.get_padded_texture_size(
+            img.width, img.height, *block_size, gobsPerBlock
+        )
+        img = pad_image(img, width, height)
+        img = Image.frombytes(
+            "RGBA",
+            img.size,
+            TextureSwizzler.swizzle(
+                img.tobytes("raw", "RGBA"), width, height, *block_size, gobsPerBlock
+            ),
+        )
+
+    if compress_func:
+        width, height = get_compressed_image_size(img.width, img.height, tex_format)
+        img = pad_image(img, width, height)
+        enc_img = compress_func(
+            img.tobytes("raw", "RGBA"), img.width, img.height, tex_format
+        )
     else:
-        enc_img = img.tobytes("raw", "RGBA")
-        tex_format = TF.RGBA32
+        enc_img = img.tobytes("raw", pil_mode)
 
     return enc_img, tex_format
 
@@ -127,9 +259,9 @@ def image_to_texture2d(
 def assert_rgba(img: Image.Image, target_texture_format: TextureFormat) -> Image.Image:
     if img.mode == "RGB":
         img = img.convert("RGBA")
-    assert (
-        img.mode == "RGBA"
-    ), f"{target_texture_format} compression only supports RGB & RGBA images"  # noqa: E501
+    assert img.mode == "RGBA", (
+        f"{target_texture_format} compression only supports RGB & RGBA images"
+    )  # noqa: E501
     return img
 
 
@@ -163,36 +295,45 @@ def parse_image_data(
     width: int,
     height: int,
     texture_format: Union[int, TextureFormat],
-    version: tuple,
+    version: Tuple[int, int, int, int],
     platform: int,
     platform_blob: Optional[bytes] = None,
     flip: bool = True,
 ) -> Image.Image:
+    if not width or not height:
+        return Image.new("RGBA", (0, 0))
+
     image_data = copy(bytes(image_data))
     if not image_data:
         raise ValueError("Texture2D has no image data")
 
-    selection = CONV_TABLE[texture_format]
-
-    if len(selection) == 0:
-        raise NotImplementedError(
-            f"Not implemented texture format: {texture_format}"
-        )
+    if not isinstance(texture_format, TextureFormat):
+        texture_format = TextureFormat(texture_format)
 
     if platform == BuildTarget.XBOX360 and texture_format in XBOX_SWAP_FORMATS:
         image_data = swap_bytes_for_xbox(image_data)
-    elif platform == BuildTarget.Switch and platform_blob is not None:
+
+    original_width, original_height = (width, height)
+    switch_swizzle = None
+    if platform == BuildTarget.Switch and platform_blob is not None:
         gobsPerBlock = TextureSwizzler.get_switch_gobs_per_block(platform_blob)
+        if texture_format == TextureFormat.RGB24:
+            texture_format = TextureFormat.RGBA32
+        elif texture_format == TextureFormat.BGR24:
+            texture_format = TextureFormat.BGRA32
         block_size = TextureSwizzler.TEXTUREFORMAT_BLOCK_SIZE_MAP[texture_format]
-        padded_size = TextureSwizzler.get_padded_texture_size(
+        width, height = TextureSwizzler.get_padded_texture_size(
             width, height, *block_size, gobsPerBlock
         )
-        image_data = TextureSwizzler.deswizzle(
-            image_data, *padded_size, *block_size, gobsPerBlock
-        )
+        switch_swizzle = (block_size, gobsPerBlock)
+    else:
+        width, height = get_compressed_image_size(width, height, texture_format)
 
-    if not isinstance(texture_format, TextureFormat):
-        texture_format = TextureFormat(texture_format)
+    selection = CONV_TABLE[texture_format]
+
+    if len(selection) == 0:
+        raise NotImplementedError(f"Not implemented texture format: {texture_format}")
+
     if "Crunched" in texture_format.name:
         version = version
         if (
@@ -206,6 +347,15 @@ def parse_image_data(
             image_data = texture2ddecoder.unpack_crunch(image_data)
 
     img = selection[0](image_data, width, height, *selection[1:])
+
+    if switch_swizzle is not None:
+        image_data = TextureSwizzler.deswizzle(
+            img.tobytes("raw", "RGBA"), width, height, *block_size, gobsPerBlock
+        )
+        img = Image.frombytes(img.mode, (width, height), image_data, "raw", "RGBA")
+
+    if original_width != width or original_height != height:
+        img = img.crop((0, 0, original_width, original_height))
 
     if img and flip:
         return img.transpose(Image.FLIP_TOP_BOTTOM)
@@ -229,7 +379,7 @@ def pillow(
     mode: str,
     codec: str,
     args,
-    swap: Optional[tuple] = None,
+    swap: Optional[Tuple[int, ...]] = None,
 ) -> Image.Image:
     img = (
         Image.frombytes(mode, (width, height), image_data, codec, args)
