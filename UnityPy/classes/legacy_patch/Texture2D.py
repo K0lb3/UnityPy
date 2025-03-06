@@ -25,7 +25,10 @@ def _Texture2d_set_image(
     if not isinstance(img, Image.Image):
         img = Image.open(img)
 
-    img_data, tex_format = Texture2DConverter.image_to_texture2d(img, target_format)
+    platform = self.object_reader.platform if self.object_reader is not None else 0
+    img_data, tex_format = Texture2DConverter.image_to_texture2d(
+        img, target_format, platform, self.m_PlatformBlob
+    )
     self.m_Width = img.width
     self.m_Height = img.height
 
