@@ -38,7 +38,7 @@ class WebFile(File.File):
 
         # signature check
         signature = reader.read_string_to_null()
-        if signature != "UnityWebData1.0":
+        if not signature.startswith(("UnityWebData", "TuanjieWebData")):
             return
         self.signature = signature
 
@@ -79,16 +79,14 @@ class WebFile(File.File):
         writer.write_string_to_null(signature)
 
         # data offset
-        offset = sum(
-            [
-                writer.Position,  # signature
-                sum(
-                    len(path.encode("utf-8")) for path in files.keys()
-                ),  # path of each file
-                4 * 3 * len(files),  # 3 ints per file
-                4,  # offset int
-            ]
-        )
+        offset = sum([
+            writer.Position,  # signature
+            sum(
+                len(path.encode("utf-8")) for path in files.keys()
+            ),  # path of each file
+            4 * 3 * len(files),  # 3 ints per file
+            4,  # offset int
+        ])
 
         writer.write_int(offset)
 
