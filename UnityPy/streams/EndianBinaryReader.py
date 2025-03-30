@@ -96,7 +96,7 @@ class EndianBinaryReader:
     def read_u_byte(self) -> int:
         return unpack(self.endian + "B", self.read(1))[0]
 
-    def read_bytes(self, num) -> builtins.bytes:
+    def read_bytes(self, num: int) -> builtins.bytes:
         return self.read(num)
 
     def read_short(self) -> int:
