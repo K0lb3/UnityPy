@@ -42,7 +42,7 @@ dependencies = [
     "brotli", # WebFile compression
     # Texture & Sprite handling
     "Pillow",
-    "texture2ddecoder",         # texture decompression
+    "texture2ddecoder >= 1.0.5",         # texture decompression
     "etcpak",                   # ETC & DXT compression
     "astc-encoder-py >= 0.1.8", # ASTC compression
     # audio extraction
