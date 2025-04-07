@@ -1,8 +1,8 @@
 ﻿from typing import Optional
 
-from . import File
 from ..helpers import CompressionHelper
 from ..streams import EndianBinaryReader, EndianBinaryWriter
+from . import File
 
 
 class WebFile(File.File):

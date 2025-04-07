@@ -1,4 +1,4 @@
-from typing import Union, BinaryIO, Optional
+from typing import BinaryIO, Optional, Union
 
 from PIL import Image
 

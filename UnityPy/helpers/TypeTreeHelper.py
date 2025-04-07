@@ -248,9 +248,9 @@ def read_value(
                     else:
                         extra_keys = keys - annotation_keys
                         if extra_keys:
-                            instance = clz(
-                                **{key: value[key] for key in annotation_keys}
-                            )
+                            instance = clz(**{
+                                key: value[key] for key in annotation_keys
+                            })
                             for key in extra_keys:
                                 setattr(instance, key, value[key])
                             value = instance
@@ -365,24 +365,20 @@ def read_value_array(
                         child._clean_name: read_value(child, reader, config)
                         for child in node.m_Children
                     }
-                    value_i = clz(
-                        **{
-                            key: value
-                            for key, value in value_i_d.items()
-                            if key in annotation_keys
-                        }
-                    )
+                    value_i = clz(**{
+                        key: value
+                        for key, value in value_i_d.items()
+                        if key in annotation_keys
+                    })
                     for key in extra_keys:
                         setattr(value_i, key, value_i_d[key])
                     value[i] = value_i
             else:
                 value = [
-                    clz(
-                        **{
-                            child._clean_name: read_value(child, reader, config)
-                            for child in node.m_Children
-                        }
-                    )
+                    clz(**{
+                        child._clean_name: read_value(child, reader, config)
+                        for child in node.m_Children
+                    })
                     for _ in range(size)
                 ]
 

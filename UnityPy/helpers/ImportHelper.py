@@ -2,14 +2,14 @@ from __future__ import annotations
 
 import io
 import os
-from typing import Union, List, Optional, Tuple
-from .CompressionHelper import BROTLI_MAGIC, GZIP_MAGIC
+from typing import List, Optional, Tuple, Union
+
+from .. import files
 from ..enums import FileType
 from ..streams import EndianBinaryReader
-from .. import files
+from .CompressionHelper import BROTLI_MAGIC, GZIP_MAGIC
 
-
-FileSourceType = Union[str, bytes, bytearray, io.IOBase]
+FileSourceType = Union[str, bytes, bytearray, io.IOBase, EndianBinaryReader]
 
 
 def file_name_without_extension(file_name: str) -> str:
@@ -101,7 +101,8 @@ def check_file_type(
         data_offset = reader.read_u_int()
 
         if version >= 22:
-            endian = ">" if reader.read_boolean() else "<"
+            raw_endian = reader.read_u_byte()
+            endian = ">" if raw_endian else "<"
             reserved = reader.read_bytes(3)
             metadata_size = reader.read_u_int()
             file_size = reader.read_long()

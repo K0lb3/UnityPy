@@ -2,7 +2,7 @@ import io
 import ntpath
 import os
 import re
-from typing import Callable, Dict, List, Optional, Union, TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Union
 from zipfile import ZipFile
 
 from fsspec import AbstractFileSystem
@@ -71,23 +71,19 @@ class Environment:
 
     def load_folder(self, path: str):
         """Loads all files in the given path and its subdirs into the Environment."""
-        self.load_files(
-            [
-                self.fs.sep.join([root, f])
-                for root, dirs, files in self.fs.walk(path)
-                for f in files
-            ]
-        )
+        self.load_files([
+            self.fs.sep.join([root, f])
+            for root, dirs, files in self.fs.walk(path)
+            for f in files
+        ])
 
     def load(self, files: List[str]):
         """Loads all files into the Environment."""
-        self.files.update(
-            {
-                ntpath.basename(f): self.load_file(self.fs.open(f, "rb"), self, f)
-                for f in files
-                if self.fs.exists(f)
-            }
-        )
+        self.files.update({
+            ntpath.basename(f): self.load_file(self.fs.open(f, "rb"), self, f)
+            for f in files
+            if self.fs.exists(f)
+        })
 
     def _load_split_file(self, basename: str) -> bytes:
         file: list[str] = []

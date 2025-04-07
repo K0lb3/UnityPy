@@ -75,15 +75,13 @@ class ArchiveStorageDecryptor:
 
         if DECRYPT_KEY is None:
             raise LookupError(
-                "\n".join(
-                    [
-                        "The BundleFile is encrypted, but no key was provided!",
-                        "You can set the key via UnityPy.set_assetbundle_decrypt_key(key).",
-                        "To try brute-forcing the key, use UnityPy.helpers.ArchiveStorageManager.brute_force_key(fp, key_sig, data_sig)",
-                        f"with  key_sig = {self.key_sig}, data_sig = {self.data_sig},"
-                        "and fp being the path to global-metadata.dat or a memory dump.",
-                    ]
-                )
+                "\n".join([
+                    "The BundleFile is encrypted, but no key was provided!",
+                    "You can set the key via UnityPy.set_assetbundle_decrypt_key(key).",
+                    "To try brute-forcing the key, use UnityPy.helpers.ArchiveStorageManager.brute_force_key(fp, key_sig, data_sig)",
+                    f"with  key_sig = {self.key_sig}, data_sig = {self.data_sig},"
+                    "and fp being the path to global-metadata.dat or a memory dump.",
+                ])
             )
 
         signature = decrypt_key(self.key_sig, self.data_sig, DECRYPT_KEY)
@@ -91,9 +89,7 @@ class ArchiveStorageDecryptor:
             raise Exception(f"Invalid signature {signature} != {UNITY3D_SIGNATURE}")
 
         data = decrypt_key(self.key, self.data, DECRYPT_KEY)
-        data = bytes(
-            nibble for byte in data for nibble in (byte >> 4, byte & 0xF)
-        )
+        data = bytes(nibble for byte in data for nibble in (byte >> 4, byte & 0xF))
         self.index = data[:0x10]
         self.substitute = bytes(
             data[0x10 + i * 4 + j] for j in range(4) for i in range(4)

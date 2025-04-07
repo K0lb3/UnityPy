@@ -34,9 +34,7 @@ class File:
         self.is_changed = False
         self.cab_file = "CAB-UnityPy_Mod.resS"
         self.parent = parent
-        self.environment = (
-            getattr(parent, "environment", parent) if parent else None
-        )
+        self.environment = getattr(parent, "environment", parent) if parent else None
         self.name = basename(name) if isinstance(name, str) else ""
         self.is_dependency = is_dependency
 

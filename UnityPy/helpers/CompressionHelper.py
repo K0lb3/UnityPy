@@ -1,9 +1,10 @@
-import brotli
 import gzip
 import lzma
-import lz4.block
 import struct
 from typing import Tuple
+
+import brotli
+import lz4.block
 
 GZIP_MAGIC: bytes = b"\x1f\x8b"
 BROTLI_MAGIC: bytes = b"brotli"
@@ -183,42 +184,34 @@ def chunk_based_compress(data: bytes, block_info_flag: int) -> Tuple[bytes, list
         compressed_data = compress_func(data[p : p + chunk_size])
         if len(compressed_data) > chunk_size:
             compressed_file_data.extend(data[p : p + chunk_size])
-            block_info.append(
-                (
-                    chunk_size,
-                    chunk_size,
-                    block_info_flag ^ switch,
-                )
-            )
+            block_info.append((
+                chunk_size,
+                chunk_size,
+                block_info_flag ^ switch,
+            ))
         else:
             compressed_file_data.extend(compressed_data)
-            block_info.append(
-                (
-                    chunk_size,
-                    len(compressed_data),
-                    block_info_flag,
-                )
-            )
+            block_info.append((
+                chunk_size,
+                len(compressed_data),
+                block_info_flag,
+            ))
         p += chunk_size
         uncompressed_data_size -= chunk_size
     if uncompressed_data_size > 0:
         compressed_data = compress_func(data[p:])
         if len(compressed_data) > uncompressed_data_size:
             compressed_file_data.extend(data[p:])
-            block_info.append(
-                (
-                    uncompressed_data_size,
-                    uncompressed_data_size,
-                    block_info_flag ^ switch,
-                )
-            )
+            block_info.append((
+                uncompressed_data_size,
+                uncompressed_data_size,
+                block_info_flag ^ switch,
+            ))
         else:
             compressed_file_data.extend(compressed_data)
-            block_info.append(
-                (
-                    uncompressed_data_size,
-                    len(compressed_data),
-                    block_info_flag,
-                )
-            )
+            block_info.append((
+                uncompressed_data_size,
+                len(compressed_data),
+                block_info_flag,
+            ))
     return bytes(compressed_file_data), block_info

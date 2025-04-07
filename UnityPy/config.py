@@ -2,7 +2,6 @@ import warnings
 
 from .exceptions import UnityVersionFallbackError, UnityVersionFallbackWarning
 
-
 FALLBACK_UNITY_VERSION = None
 """The Unity version to use when no version is defined
    by the SerializedFile or its BundleFile.
@@ -35,7 +34,7 @@ def get_fallback_version():
     warnings.warn(
         f"No valid Unity version found, defaulting to UnityPy.config.FALLBACK_UNITY_VERSION ({FALLBACK_UNITY_VERSION})",  # noqa: E501
         category=UnityVersionFallbackWarning,
-        stacklevel=2
+        stacklevel=2,
     )
 
     return FALLBACK_UNITY_VERSION

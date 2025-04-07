@@ -2,25 +2,25 @@ from __future__ import annotations
 
 import math
 import struct
-from typing import Optional, List, Sequence, Tuple, Union, TypeVar
+from typing import List, Optional, Sequence, Tuple, TypeVar, Union
 
 from ..classes.generated import (
     ChannelInfo,
-    StreamInfo,
     Mesh,
     SpriteRenderData,
+    StreamInfo,
     Vector2f,
     Vector3f,
     Vector4f,
 )
 from ..enums.MeshTopology import MeshTopology
 from ..enums.VertexFormat import (
-    VertexChannelFormat,
-    VertexFormat2017,
-    VertexFormat,
     VERTEX_CHANNEL_FORMAT_STRUCT_TYPE_MAP,
     VERTEX_FORMAT_2017_STRUCT_TYPE_MAP,
     VERTEX_FORMAT_STRUCT_TYPE_MAP,
+    VertexChannelFormat,
+    VertexFormat,
+    VertexFormat2017,
 )
 from .PackedBitVector import unpack_floats, unpack_ints
 from .ResourceReader import get_resource_data

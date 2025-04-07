@@ -1,5 +1,6 @@
 from enum import IntEnum
 
+
 class SpritePackingRotation(IntEnum):
     kSPRNone = 0
     kSPRFlipHorizontal = 1

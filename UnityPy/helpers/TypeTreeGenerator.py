@@ -1,5 +1,6 @@
 import os
 from typing import Dict, List, Tuple
+
 from .TypeTreeNode import TypeTreeNode
 
 try:

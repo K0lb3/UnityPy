@@ -1,10 +1,9 @@
-from struct import pack
-from io import BytesIO, IOBase
-
 import builtins
+from io import BytesIO, IOBase
+from struct import pack
 from typing import Callable, Sequence, TypeVar, Union
 
-from ..math import Color, Matrix4x4, Quaternion, Vector2, Vector3, Vector4, Rectangle
+from ..math import Color, Matrix4x4, Quaternion, Rectangle, Vector2, Vector3, Vector4
 
 T = TypeVar("T")
 
@@ -15,9 +14,7 @@ class EndianBinaryWriter:
     stream: IOBase
 
     def __init__(
-        self,
-        input_: Union[bytes, bytearray, IOBase] = b"",
-        endian: str = ">"
+        self, input_: Union[bytes, bytearray, IOBase] = b"", endian: str = ">"
     ):
         if isinstance(input_, (bytes, bytearray)):
             self.stream = BytesIO(input_)
@@ -98,7 +95,7 @@ class EndianBinaryWriter:
         self.write(bstring)
         self.align_stream(4)
 
-    def align_stream(self, alignment:int = 4):
+    def align_stream(self, alignment: int = 4):
         pos = self.stream.tell()
         align = (alignment - pos % alignment) % alignment
         self.write(b"\0" * align)
@@ -146,7 +143,12 @@ class EndianBinaryWriter:
         for val in value.M:
             self.write_float(val)
 
-    def write_array(self, command: Callable[[T], None], value: Sequence[T], write_length: bool = True):
+    def write_array(
+        self,
+        command: Callable[[T], None],
+        value: Sequence[T],
+        write_length: bool = True,
+    ):
         if write_length:
             self.write_int(len(value))
         for val in value:

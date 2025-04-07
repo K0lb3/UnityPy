@@ -367,15 +367,13 @@ class TpkUnityClass:
         return self.to_dict() == other.to_dict()
 
     def __hash__(self) -> int:
-        return hash(
-            (
-                self.Name,
-                self.Base,
-                self.Flags,
-                self.EditorRootNode,
-                self.ReleaseRootNode,
-            )
-        )
+        return hash((
+            self.Name,
+            self.Base,
+            self.Flags,
+            self.EditorRootNode,
+            self.ReleaseRootNode,
+        ))
 
 
 class TpkClassInformation:

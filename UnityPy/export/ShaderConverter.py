@@ -343,25 +343,21 @@ def ConvertSerializedShaderRTBlendState(rbBlend):
 
 def ConvertSerializedTagMap(m_Tags: SerializedTagMap, intent: int) -> str:
     if m_Tags.tags:
-        return "".join(
-            [
-                " " * intent,
-                "Tags { ",
-                *[f'"{key}" = "{value}" ' for key, value in m_Tags.tags],
-                "}\n",
-            ]
-        )
+        return "".join([
+            " " * intent,
+            "Tags { ",
+            *[f'"{key}" = "{value}" ' for key, value in m_Tags.tags],
+            "}\n",
+        ])
     return ""
 
 
 def ConvertSerializedProperties(m_PropInfo: SerializedProperties) -> str:
-    return "\n".join(
-        [
-            "Properties {\n",
-            *[ConvertSerializedProperty(m_Prop) for m_Prop in m_PropInfo.m_Props],
-            "}\n",
-        ]
-    )
+    return "\n".join([
+        "Properties {\n",
+        *[ConvertSerializedProperty(m_Prop) for m_Prop in m_PropInfo.m_Props],
+        "}\n",
+    ])
 
 
 def ConvertSerializedProperty(m_Prop: SerializedProperty) -> str:

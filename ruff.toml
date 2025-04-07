@@ -1,0 +1,9 @@
+target-version = "py37"
+
+[lint.pydocstyle]
+# Enforce numpy-style docstrings
+convention = "numpy"
+
+[lint.per-file-ignores]
+# Ignore docstring requirements for test files
+"tests/**/*.py" = ["D"]

@@ -2,13 +2,12 @@ from dataclasses import dataclass
 from math import sqrt
 from typing import Sequence
 
-
 kEpsilon = 0.00001
 
 
 @dataclass
 class Vector4:
-    '''https://github.com/Unity-Technologies/UnityCsReference/blob/master/Runtime/Export/Math/Vector4.cs'''
+    """https://github.com/Unity-Technologies/UnityCsReference/blob/master/Runtime/Export/Math/Vector4.cs"""
 
     X: float = 0.0
     Y: float = 0.0
@@ -49,10 +48,10 @@ class Vector4:
 
     def __hash__(self):
         return (
-            self.X.__hash__() ^
-            (self.Y.__hash__() << 2) ^
-            (self.Z.__hash__() >> 2) ^
-            (self.W.__hash__() >> 1)
+            self.X.__hash__()
+            ^ (self.Y.__hash__() << 2)
+            ^ (self.Z.__hash__() >> 2)
+            ^ (self.W.__hash__() >> 1)
         )
 
     def normalize(self):
@@ -74,7 +73,7 @@ class Vector4:
     Length = length
 
     def lengthSquared(self):
-        return self.X ** 2 + self.Y ** 2 + self.Z ** 2 + self.W ** 2
+        return self.X**2 + self.Y**2 + self.Z**2 + self.W**2
 
     LengthSquared = lengthSquared
 
@@ -109,4 +108,5 @@ class Vector4:
 
     def Vector3(self):
         from .Vector3 import Vector3
+
         return Vector3(self.X, self.Y, self.Z)

@@ -59,6 +59,7 @@ dynamic = ["version"]
 ttgen = ["typetreegeneratorapi>=0.0.5"]
 full = ["unitypy[ttgen]"]
 tests = ["pytest", "pillow", "psutil", "unitypy[full]"]
+dev = ["ruff", "unitypy[tests]"]
 
 [project.urls]
 "Homepage" = "https://github.com/K0lb3/UnityPy"
@@ -79,3 +80,6 @@ archs = ["x86_64", "arm64"]
 
 [tool.cibuildwheel.windows]
 archs = ["AMD64", "x86", "ARM64"]
+
+[tool.pyright]
+pythonVersion = "3.7"

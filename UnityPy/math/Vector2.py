@@ -1,13 +1,12 @@
 from dataclasses import dataclass
 from math import sqrt
 
-
 kEpsilon = 0.00001
 
 
 @dataclass
 class Vector2:
-    '''https://github.com/Unity-Technologies/UnityCsReference/blob/master/Runtime/Export/Math/Vector2.cs'''
+    """https://github.com/Unity-Technologies/UnityCsReference/blob/master/Runtime/Export/Math/Vector2.cs"""
 
     X: float = 0.0
     Y: float = 0.0
@@ -49,7 +48,7 @@ class Vector2:
     Length = length
 
     def lengthSquared(self):
-        return self.X ** 2 + self.Y ** 2
+        return self.X**2 + self.Y**2
 
     LengthSquared = lengthSquared
 

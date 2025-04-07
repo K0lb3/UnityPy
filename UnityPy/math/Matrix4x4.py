@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from typing import MutableSequence, Sequence, Union
+
 from .Vector3 import Vector3
 
 
@@ -145,12 +146,24 @@ class Matrix4x4:
 
     @staticmethod
     def Scale(vector: Vector3):
-        return Matrix4x4(
-            [vector.X, 0, 0, 0,
-             0, vector.Y, 0, 0,
-             0, 0, vector.Z, 0,
-             0, 0, 0, 1]
-        )
+        return Matrix4x4([
+            vector.X,
+            0,
+            0,
+            0,
+            0,
+            vector.Y,
+            0,
+            0,
+            0,
+            0,
+            vector.Z,
+            0,
+            0,
+            0,
+            0,
+            1,
+        ])
 
     @property
     def M00(self):

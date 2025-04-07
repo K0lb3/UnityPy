@@ -1,15 +1,14 @@
 # TODO: implement encryption for saving files
-from collections import namedtuple
 import re
+from collections import namedtuple
 from typing import Optional, Tuple, Union
 
-from . import File
+from .. import config
 from ..enums import ArchiveFlags, ArchiveFlagsOld, CompressionFlags
 from ..exceptions import UnityVersionFallbackError
 from ..helpers import ArchiveStorageManager, CompressionHelper
 from ..streams import EndianBinaryReader, EndianBinaryWriter
-
-from .. import config
+from . import File
 
 BlockInfo = namedtuple("BlockInfo", "uncompressedSize compressedSize flags")
 DirectoryInfoFS = namedtuple("DirectoryInfoFS", "offset size flags path")
@@ -27,7 +26,11 @@ class BundleFile(File.File):
     _uses_block_alignment: bool = False
 
     def __init__(
-        self, reader: EndianBinaryReader, parent: File, name: Optional[str] = None, **kwargs
+        self,
+        reader: EndianBinaryReader,
+        parent: File,
+        name: Optional[str] = None,
+        **kwargs,
     ):
         super().__init__(parent=parent, name=name, **kwargs)
         signature = self.signature = reader.read_string_to_null()
@@ -72,7 +75,9 @@ class BundleFile(File.File):
 
         uncompressedBytes = reader.read_bytes(compressedSize)
         if self.signature == "UnityWeb":
-            uncompressedBytes = CompressionHelper.decompress_lzma(uncompressedBytes, True)
+            uncompressedBytes = CompressionHelper.decompress_lzma(
+                uncompressedBytes, True
+            )
 
         blocksReader = EndianBinaryReader(uncompressedBytes, offset=headerSize)
         nodesCount = blocksReader.read_int()
@@ -391,7 +396,6 @@ class BundleFile(File.File):
         writer.write_long(writer_end_pos)
         writer.Position = writer_end_pos
 
-
     def save_web_raw(self, writer: EndianBinaryWriter):
         # (version >= 4) hash
         # (version >= 4) crc
@@ -406,16 +410,22 @@ class BundleFile(File.File):
         # compressed assets
 
         if self.version > 3:
-            raise NotImplementedError("Saving Unity Web bundles with version > 3 is not supported")
+            raise NotImplementedError(
+                "Saving Unity Web bundles with version > 3 is not supported"
+            )
 
         # Calculate fileInfoHeaderSize for set offsets
         file_info_header_size = 4  # for nodesCount
 
         for file_name in self.files.keys():
-            file_info_header_size += len(file_name.encode()) + 1  # +1 for null terminator
+            file_info_header_size += (
+                len(file_name.encode()) + 1
+            )  # +1 for null terminator
             file_info_header_size += 4 * 2  # 4 bytes each for offset and size
 
-        file_info_header_padding_size = 4 - (file_info_header_size % 4) if file_info_header_size % 4 != 0 else 0
+        file_info_header_padding_size = (
+            4 - (file_info_header_size % 4) if file_info_header_size % 4 != 0 else 0
+        )
         file_info_header_size += file_info_header_padding_size
 
         # Prepare directory info
@@ -441,7 +451,7 @@ class BundleFile(File.File):
             file_content_writer.write_bytes(file_data)
             current_offset += file_size
 
-        directory_info_writer.write(b'\x00' * file_info_header_padding_size)
+        directory_info_writer.write(b"\x00" * file_info_header_padding_size)
         uncompressed_directory_info = directory_info_writer.bytes
         uncompressed_file_content = file_content_writer.bytes
 
@@ -449,10 +459,12 @@ class BundleFile(File.File):
         uncompressed_content = uncompressed_directory_info + uncompressed_file_content
         compressed_content = uncompressed_content
         if self.signature == "UnityWeb":
-            compressed_content = CompressionHelper.compress_lzma(uncompressed_content, True)
+            compressed_content = CompressionHelper.compress_lzma(
+                uncompressed_content, True
+            )
 
         # Write header
-        header_size = writer.Position + 24 # assuming levelCount = 1
+        header_size = writer.Position + 24  # assuming levelCount = 1
         if self.version >= 2:
             header_size += 4
         if self.version >= 3:
@@ -466,7 +478,9 @@ class BundleFile(File.File):
             writer.write_bytes(self._hash)
             writer.write_u_int(self.crc)
 
-        writer.write_u_int(header_size + len(compressed_content))  # minimumStreamedBytes (same as completeFileSize)
+        writer.write_u_int(
+            header_size + len(compressed_content)
+        )  # minimumStreamedBytes (same as completeFileSize)
         writer.write_u_int(header_size)  # headerSize
         writer.write_u_int(1)  # numberOfLevelsToDownloadBeforeStreaming (always 1)
         writer.write_int(1)  # levelCount (always 1)
@@ -475,7 +489,9 @@ class BundleFile(File.File):
         writer.write_u_int(len(uncompressed_content))  # uncompressedSize
 
         if self.version >= 2:
-            writer.write_u_int(header_size + len(compressed_content))  # completeFileSize
+            writer.write_u_int(
+                header_size + len(compressed_content)
+            )  # completeFileSize
 
         if self.version >= 3:
             writer.write_u_int(file_info_header_size)  # file_info_header_size
@@ -485,7 +501,6 @@ class BundleFile(File.File):
 
         # Write compressed content
         writer.write(compressed_content)
-
 
     def decompress_data(
         self,

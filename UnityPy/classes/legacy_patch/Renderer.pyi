@@ -3,6 +3,6 @@ from UnityPy.classes.generated import Component
 from UnityPy.classes.legacy_patch import GameObject
 
 class Renderer(Component):
-  m_GameObject: PPtr[GameObject]
+    m_GameObject: PPtr[GameObject]
 
-  def export(self, export_dir: str) -> None: ...
+    def export(self, export_dir: str) -> None: ...

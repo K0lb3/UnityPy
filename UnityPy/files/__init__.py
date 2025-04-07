@@ -1,5 +1,5 @@
-from .File import File, DirectoryInfo
-from .SerializedFile import SerializedFile
 from .BundleFile import BundleFile
-from .WebFile import WebFile
+from .File import DirectoryInfo, File
 from .ObjectReader import ObjectReader
+from .SerializedFile import SerializedFile
+from .WebFile import WebFile

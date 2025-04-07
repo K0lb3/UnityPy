@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+
 from .Vector4 import Vector4
 
 

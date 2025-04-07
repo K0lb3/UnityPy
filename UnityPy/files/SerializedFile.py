@@ -86,10 +86,7 @@ class FileIdentifier:  # external
             assert self.temp_empty is not None
             writer.write_string_to_null(self.temp_empty)
         if header.version >= 5:
-            assert (
-                self.guid is not None
-                and self.type is not None
-            )
+            assert self.guid is not None and self.type is not None
             writer.write_bytes(self.guid)
             writer.write_int(self.type)
         writer.write_string_to_null(self.path)
@@ -222,6 +219,7 @@ class SerializedType:
 
 class SerializedFile(File.File):
     reader: EndianBinaryReader
+    version: Tuple[int, int, int, int]
     unity_version: str
     build_type: BuildType
     target_platform: BuildTarget
@@ -576,7 +574,7 @@ class ContainerHelper:
         return self.container_dict[name]
 
     def __str__(self) -> str:
-        return f'{{{", ".join(f"{key}: {value}" for key, value in self.items())}}}'
+        return f"{{{', '.join(f'{key}: {value}' for key, value in self.items())}}}"
 
     def __dict__(self) -> Dict[str, PPtr[Object]]:
         return self.container_dict

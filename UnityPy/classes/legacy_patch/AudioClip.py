@@ -1,5 +1,5 @@
-from ..generated import AudioClip
 from ...enums import AUDIO_TYPE_EXTEMSION
+from ..generated import AudioClip
 
 
 def _AudioClip_extension(self: AudioClip) -> str:

@@ -114,6 +114,7 @@ def extract_audioclip_samples(
 SYSTEM_INSTANCES = {}  # (channels, flags) -> (pyfmodex_system_instance, lock)
 SYSTEM_GLOBAL_LOCK = Lock()
 
+
 def get_pyfmodex_system_instance(channels: int, flags: int):
     global pyfmodex, SYSTEM_INSTANCES, SYSTEM_GLOBAL_LOCK
     with SYSTEM_GLOBAL_LOCK:
@@ -137,7 +138,9 @@ def dump_samples(
     if not pyfmodex:
         return {}
 
-    system, lock = get_pyfmodex_system_instance(clip.m_Channels, pyfmodex.flags.INIT_FLAGS.NORMAL)
+    system, lock = get_pyfmodex_system_instance(
+        clip.m_Channels, pyfmodex.flags.INIT_FLAGS.NORMAL
+    )
     with lock:
         sound = system.create_sound(
             bytes(audio_data),
