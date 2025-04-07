@@ -2,7 +2,17 @@ from __future__ import annotations
 
 import re
 from struct import Struct
-from typing import TYPE_CHECKING, Dict, Iterator, List, Optional, Tuple, Union
+from threading import Lock
+from typing import (
+    TYPE_CHECKING,
+    Dict,
+    Iterator,
+    List,
+    Optional,
+    Tuple,
+    Union,
+    cast,
+)
 
 from attrs import define, field
 
@@ -13,7 +23,7 @@ if TYPE_CHECKING:
     from .Tpk import UnityVersion
 
 try:
-    from ..UnityPyBoost import TypeTreeNode as TypeTreeNodeC
+    from ..UnityPyBoost import TypeTreeNode as TypeTreeNodeC  # type: ignore
 except ImportError:
 
     @define(slots=True)
@@ -48,6 +58,11 @@ TYPETREENODE_KEYS = [
     "m_MetaFlag",
     "m_RefTypeHash",
 ]
+
+SYSTEM_GLOBAL_LOCK = Lock()
+NAME_PEEK_NODE_CACHE: dict[
+    Tuple[str, str, int], Union[Tuple[TypeTreeNode, str], None]
+] = {}
 
 
 class TypeTreeNode(TypeTreeNodeC):
@@ -162,7 +177,10 @@ class TypeTreeNode(TypeTreeNodeC):
                 patch_dict["m_ByteSize"] = 0
             if "m_Version" not in nodes[0]:
                 patch_dict["m_Version"] = 0
-            nodes = [cls(**node, **patch_dict) for node in nodes]
+            nodes = [cls(**node, **patch_dict) for node in nodes]  # type: ignore
+
+        if TYPE_CHECKING:
+            nodes = cast(List[TypeTreeNode], nodes)
 
         for node in nodes:
             if node.m_Level > prev.m_Level:
@@ -176,6 +194,29 @@ class TypeTreeNode(TypeTreeNodeC):
             prev = node
 
         return fake_root.m_Children[0]
+
+    def get_name_peek_node(self) -> Union[Tuple[TypeTreeNode, str], None]:
+        global SYSTEM_GLOBAL_LOCK
+        with SYSTEM_GLOBAL_LOCK:
+            key = (self.m_Name, self.m_Type, self.m_Version)
+            if key in NAME_PEEK_NODE_CACHE:
+                return NAME_PEEK_NODE_CACHE[key]
+
+            result: Union[Tuple[TypeTreeNode, str], None] = None
+            for i, child in enumerate(self.m_Children):
+                if child.m_Name in ("m_Name", "name"):
+                    peek_node = TypeTreeNode(
+                        self.m_Level,
+                        self.m_Type,
+                        self.m_Name,
+                        self.m_ByteSize,
+                        self.m_Version,
+                        self.m_Children[: i + 1],
+                    )
+                    result = peek_node, child.m_Name
+                    break
+            NAME_PEEK_NODE_CACHE[key] = result
+            return result
 
     def dump(self, writer: EndianBinaryWriter, version: int):
         stack: list[TypeTreeNode] = [self]
@@ -191,7 +232,7 @@ class TypeTreeNode(TypeTreeNodeC):
             if version != 3:
                 assert self.m_Index is not None
                 writer.write_int(self.m_Index)
-            writer.write_int(self.m_TypeFlags)
+            writer.write_int(self.m_TypeFlags or 0)
             writer.write_int(self.m_Version)
             if version != 3:
                 assert self.m_MetaFlag is not None
@@ -268,7 +309,7 @@ class TypeTreeNode(TypeTreeNodeC):
             *(item for child in self.m_Children for item in child.to_dict_list()),
         ]
 
-    def __eq__(self, other: TypeTreeNode) -> bool:
+    def __eq__(self, other: TypeTreeNode) -> bool:  # type: ignore
         return self.to_dict() == other.to_dict() and self.m_Children == other.m_Children
 
 

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import (
     TYPE_CHECKING,
+    Any,
+    Dict,
     Generic,
     List,
     Optional,
@@ -9,11 +11,12 @@ from typing import (
     Type,
     TypeVar,
     Union,
-    Any,
+    cast,
 )
 
+from ..classes import MonoBehaviour
 from ..classes.ClassIDTypeToClassMap import ClassIDTypeToClassMap
-from ..enums import ClassIDType, BuildTarget
+from ..enums import BuildTarget, ClassIDType
 from ..exceptions import TypeTreeError
 from ..helpers import TypeTreeHelper
 from ..helpers.Tpk import get_typetree_node
@@ -24,6 +27,7 @@ if TYPE_CHECKING:
     from ..files.SerializedFile import BuildType, SerializedFile, SerializedType
 
 T = TypeVar("T")
+NodeInput = Union[TypeTreeNode, List[Dict[str, Union[str, int]]]]
 
 
 class ObjectReader(Generic[T]):
@@ -168,25 +172,17 @@ class ObjectReader(Generic[T]):
             self.assets_file.mark_changed()
 
     def get_class(self) -> Union[Type[T], None]:
-        return ClassIDTypeToClassMap.get(self.type)
+        return ClassIDTypeToClassMap.get(self.type)  # type: ignore
 
-    def peek_name(self, max_name_length: int = 256) -> Union[str, None]:
+    def peek_name(self) -> Union[str, None]:
         """Peeks the name of the object without reading/parsing the whole object."""
-        # TODO: EditorExtension might be enough
-        if self.platform == BuildTarget.NoTarget:
-            # 2x PPtr
-            raise NotImplementedError(
-                "Directly fetching the name for 'NoTarget' platform is not supported"
-            )
-        clz = self.get_class()
-        if "m_Name" not in clz.__annotations__:
+        node = self._get_typetree_node()
+        peek_node = node.get_name_peek_node()
+        if peek_node:
+            node, key = peek_node
+            return self.parse_as_dict(node, check_read=False)[key]
+        else:
             return None
-        self.reset()
-        len = self.reader.read_int()
-        if len < 0 or len > max_name_length or len + 4 > self.byte_size:
-            return None
-        string_data = bytes(self.reader.read_bytes(len))
-        return string_data.decode("utf8", "surrogateescape")
 
     @property
     def container(self):
@@ -206,7 +202,7 @@ class ObjectReader(Generic[T]):
     def read(self, check_read: bool = True) -> T:
         obj = self.read_typetree(wrap=True, check_read=check_read)
         self._read_until = self.reader.Position
-        return obj
+        return obj  # type: ignore
 
     def get(self, key, default=None):
         return getattr(self, key, default)
@@ -226,7 +222,7 @@ class ObjectReader(Generic[T]):
 
     def dump_typetree_structure(
         self,
-        nodes: Optional[Union[TypeTreeNode, List[dict[str, Union[str, int]]]]] = None,
+        nodes: Optional[NodeInput] = None,
         indent: str = "  ",
     ) -> str:
         node = self._get_typetree_node(nodes)
@@ -234,7 +230,7 @@ class ObjectReader(Generic[T]):
 
     def read_typetree(
         self,
-        nodes: Optional[Union[TypeTreeNode, List[dict[str, Union[str, int]]]]] = None,
+        nodes: Optional[NodeInput] = None,
         wrap: bool = False,
         check_read: bool = True,
     ) -> Union[dict, T]:
@@ -249,13 +245,13 @@ class ObjectReader(Generic[T]):
             check_read=check_read,
         )
         if wrap:
-            ret.set_object_reader(self)
-        return ret
+            ret.set_object_reader(self)  # type: ignore
+        return ret  # type: ignore
 
     def save_typetree(
         self,
         tree: dict,
-        nodes: Optional[Union[TypeTreeNode, List[dict[str, Union[str, int]]]]] = None,
+        nodes: Optional[NodeInput] = None,
         writer: Optional[EndianBinaryWriter] = None,
     ):
         node = self._get_typetree_node(nodes)
@@ -275,7 +271,7 @@ class ObjectReader(Generic[T]):
 
     def _get_typetree_node(
         self,
-        node: Optional[Union[TypeTreeNode, List[dict[str, Union[str, int]]]]] = None,
+        node: Optional[NodeInput] = None,
     ) -> TypeTreeNode:
         if isinstance(node, TypeTreeNode):
             return node
@@ -298,18 +294,24 @@ class ObjectReader(Generic[T]):
         return node
 
     # UnityPy 2 syntax early implementation
-    def parse_as_object(self, check_read: bool = True) -> T:
-        return self.read(check_read)
+    def parse_as_object(
+        self, node: Optional[NodeInput] = None, check_read: bool = True
+    ) -> T:
+        return self.read_typetree(nodes=node, wrap=True, check_read=check_read)  # type: ignore
 
-    def parse_as_dict(self, check_read: bool = True) -> Union[dict[str, Any], T]:
-        return self.read_typetree(check_read=check_read)
+    def parse_as_dict(
+        self, node: Optional[NodeInput] = None, check_read: bool = True
+    ) -> dict[str, Any]:
+        return self.read_typetree(nodes=node, wrap=False, check_read=check_read)  # type: ignore
 
     def _try_monobehaviour_node(self, base_node: TypeTreeNode) -> TypeTreeNode:
         env = self.assets_file.environment
         generator = env.typetree_generator
         if generator is None:
             raise ValueError("No typetree generator set!")
-        monobehaviour = self.read_typetree(base_node, check_read=False, wrap=True)
+        monobehaviour = cast(
+            MonoBehaviour, self.parse_as_object(base_node, check_read=False)
+        )
         script = monobehaviour.m_Script.deref_parse_as_object()
         node = generator.get_nodes_up(
             script.m_AssemblyName, f"{script.m_Namespace}.{script.m_ClassName}"
