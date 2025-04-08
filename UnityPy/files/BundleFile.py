@@ -1,7 +1,7 @@
 # TODO: implement encryption for saving files
 import re
 from collections import namedtuple
-from typing import Optional, Tuple, Union
+from typing import Optional, Tuple, Union, cast
 
 from .. import config
 from ..enums import ArchiveFlags, ArchiveFlagsOld, CompressionFlags
@@ -351,12 +351,12 @@ class BundleFile(File.File):
         uncompressed_block_data_size = len(block_data)
 
         switch = data_flag & 0x3F
-        if switch == 1:  # LZMA
-            block_data = CompressionHelper.compress_lzma(block_data)
-        elif switch in [2, 3]:  # LZ4, LZ4HC
-            block_data = CompressionHelper.compress_lz4(block_data)
-        elif switch == 4:  # LZHAM
-            raise NotImplementedError
+        if switch in CompressionHelper.COMPRESSION_MAP:
+            block_data = CompressionHelper.COMPRESSION_MAP[switch](block_data)
+        else:
+            raise NotImplementedError(
+                f"No compression function in the CompressionHelper.COMPRESSION_MAP for {switch}"
+            )
 
         compressed_block_data_size = len(block_data)
 
@@ -525,16 +525,20 @@ class BundleFile(File.File):
             The decompressed data."""
         comp_flag = CompressionFlags(flags & ArchiveFlags.CompressionTypeMask)
 
-        if comp_flag == CompressionFlags.LZMA:  # LZMA
-            return CompressionHelper.decompress_lzma(compressed_data)
-        elif comp_flag in [CompressionFlags.LZ4, CompressionFlags.LZ4HC]:  # LZ4, LZ4HC
-            if self.decryptor is not None and flags & 0x100:
-                compressed_data = self.decryptor.decrypt_block(compressed_data, index)
-            return CompressionHelper.decompress_lz4(compressed_data, uncompressed_size)
-        elif comp_flag == CompressionFlags.LZHAM:  # LZHAM
-            raise NotImplementedError("LZHAM decompression not implemented")
+        if self.decryptor is not None and flags & 0x100:
+            compressed_data = self.decryptor.decrypt_block(compressed_data, index)
+
+        if comp_flag in CompressionHelper.DECOMPRESSION_MAP:
+            return cast(
+                bytes,
+                CompressionHelper.DECOMPRESSION_MAP[comp_flag](
+                    compressed_data, uncompressed_size
+                ),
+            )
         else:
-            return compressed_data
+            raise ValueError(
+                f"Unknown compression! flag: {flags}, compression flag: {comp_flag.value}"
+            )
 
     def get_version_tuple(self) -> Tuple[int, int, int]:
         """Returns the version as a tuple."""
