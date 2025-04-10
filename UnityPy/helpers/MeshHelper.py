@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import math
 import struct
-from typing import List, Optional, Sequence, Tuple, TypeVar, Union
+from typing import TYPE_CHECKING, List, Optional, Sequence, Tuple, TypeVar, Union, cast
 
 from ..classes.generated import (
     ChannelInfo,
@@ -42,13 +42,17 @@ def flat_list_to_tuples(data: Sequence[T], item_size: int) -> List[tuple[T, ...]
 
 
 def vector_list_to_tuples(
-    data: List[Union[Vector2f, Vector3f, Vector4f]],
+    data: Union[List[Vector2f], List[Vector3f], List[Vector4f]],
 ) -> List[tuple]:
     if isinstance(data[0], Vector2f):
         return [(v.x, v.y) for v in data]
     elif isinstance(data[0], Vector3f):
+        if TYPE_CHECKING:
+            data = cast(List[Vector3f], data)
         return [(v.x, v.y, v.z) for v in data]
     elif isinstance(data[0], Vector4f):
+        if TYPE_CHECKING:
+            data = cast(List[Vector4f], data)
         return [(v.x, v.y, v.z, v.w) for v in data]
     else:
         raise ValueError("Unknown vector type")
@@ -91,8 +95,8 @@ class MeshHandler:
     m_UV6: Optional[List[Tuple2f]] = None
     m_UV7: Optional[List[Tuple2f]] = None
     m_Tangents: Optional[List[Tuple4f]] = None
-    m_BoneIndices: Optional[List[int]] = None
-    m_BoneWeights: Optional[List[float]] = None
+    m_BoneIndices: Optional[List[Tuple[int, int, int, int]]] = None
+    m_BoneWeights: Optional[List[Tuple4f]] = None
     m_IndexBuffer: Optional[List[int]] = None
     m_Use16BitIndices: bool = True
 
@@ -106,7 +110,7 @@ class MeshHandler:
         self.endianess = endianess
         if version is not None:
             self.version = version
-        elif getattr(src, "object_reader", None):
+        elif not isinstance(src, SpriteRenderData) and src.object_reader is not None:
             self.version = src.object_reader.version
         else:
             raise ValueError("No version provided and no object reader found")
@@ -145,21 +149,24 @@ class MeshHandler:
             m_Channels = vertex_data.m_Channels
             m_Streams = self.get_streams(m_Channels, vertex_data.m_VertexCount)
 
-        stream_data = getattr(mesh, "m_StreamData", None)
-        if stream_data and stream_data.path:
-            vertex_data = self.src.m_VertexData
-            if vertex_data and vertex_data.m_VertexCount > 0:
-                data = get_resource_data(
-                    stream_data.path,
-                    self.src.object_reader.assets_file,
-                    stream_data.offset,
-                    stream_data.size,
-                )
-                vertex_data.m_DataSize = data
+        if (
+            isinstance(mesh, Mesh) and mesh.m_StreamData and mesh.m_StreamData.path
+            # and mesh.m_VertexData
+            # and mesh.m_VertexData.m_VertexCount
+        ):
+            stream_data = mesh.m_StreamData
+            assert mesh.object_reader, "No object reader assigned to the input Mesh!"
+            data = get_resource_data(
+                stream_data.path,
+                mesh.object_reader.assets_file,
+                stream_data.offset,
+                stream_data.size,
+            )
+            vertex_data.m_DataSize = data
 
         # try to copy data directly from mesh
         if isinstance(mesh, Mesh):
-            if self.src.m_Use16BitIndices is False:
+            if mesh.m_Use16BitIndices is False:
                 self.m_Use16BitIndices = False
             self.copy_from_mesh()
         elif isinstance(mesh, SpriteRenderData):
@@ -176,8 +183,9 @@ class MeshHandler:
                 char = "I"
                 index_size = 4
 
-            self.m_IndexBuffer = struct.unpack(
-                f"<{len(raw_indices) // index_size}{char}", raw_indices
+            self.m_IndexBuffer = cast(
+                List[int],
+                struct.unpack(f"<{len(raw_indices) // index_size}{char}", raw_indices),
             )
 
         if self.version >= (3, 5):
@@ -192,6 +200,8 @@ class MeshHandler:
     def copy_from_mesh(self):
         """Copy data from mesh to handler if it's not already set."""
         mesh = self.src
+        if TYPE_CHECKING:
+            assert isinstance(mesh, Mesh)
 
         if self.m_IndexBuffer is None and mesh.m_IndexBuffer:
             self.m_IndexBuffer = mesh.m_IndexBuffer
@@ -212,7 +222,10 @@ class MeshHandler:
             self.m_UV1 = vector_list_to_tuples(mesh.m_UV1)
 
         if self.m_Colors is None and mesh.m_Colors:
-            self.m_Colors = vector_list_to_tuples(mesh.m_Colors)
+            self.m_Colors = [
+                (color.r / 255.0, color.g / 255.0, color.b / 255.0, color.a / 255.0)
+                for color in mesh.m_Colors
+            ]
 
         if self.m_BoneWeights is None and mesh.m_Skin:
             # BoneInfluence == BoneWeight in terms of usage in UnityPy due to int simplification
@@ -236,6 +249,8 @@ class MeshHandler:
 
     def copy_from_spriterenderdata(self):
         rd = self.src
+        if TYPE_CHECKING:
+            assert isinstance(rd, SpriteRenderData)
 
         if self.m_IndexBuffer is None:
             if rd.m_IndexBuffer:
@@ -244,11 +259,11 @@ class MeshHandler:
                 self.m_IndexBuffer = rd.indices
 
         if self.m_Vertices is None and rd.vertices:
-            vertices = [rd.vertices]
+            vertices = rd.vertices
             self.m_Vertices = [(v.pos.x, v.pos.y, v.pos.z) for v in vertices]
 
             if vertices[0].uv is not None:
-                self.m_UV0 = [(v.uv.x, v.uv.y) for v in vertices]
+                self.m_UV0 = [(v.uv.x, v.uv.y) for v in vertices]  # type: ignore
 
         # if self.m_BindPose is None and rd.m_BindPose:
         #     self.m_BindPose = rd.m_BindPose
@@ -544,7 +559,7 @@ class MeshHandler:
             normalData = unpack_floats(m_CompressedMesh.m_Normals, shape=(2,))
             signs = unpack_ints(m_CompressedMesh.m_NormalSigns)
 
-            self.m_Normals = zeros((m_CompressedMesh.m_Normals.m_NumItems // 2, 3))
+            self.m_Normals = zeros((self.m_VertexCount, 3))
             for srcNrm, sign, dstNrm in zip(normalData, signs, self.m_Normals):
                 x, y = srcNrm
                 zsqr = 1 - x * x - y * y
@@ -561,7 +576,7 @@ class MeshHandler:
         if m_CompressedMesh.m_Tangents.m_NumItems > 0:
             tangentData = unpack_floats(m_CompressedMesh.m_Tangents, shape=(2,))
             signs = unpack_ints(m_CompressedMesh.m_TangentSigns)
-            self.m_Tangents = zeros((m_CompressedMesh.m_Tangents.m_NumItems // 2, 4))
+            self.m_Tangents = zeros((self.m_VertexCount, 4))
             for srcTan, (sign_z, sign_w), dstTan in zip(
                 tangentData, signs, self.m_Tangents
             ):
@@ -590,26 +605,26 @@ class MeshHandler:
             boneIndicesData = unpack_ints(m_CompressedMesh.m_BoneIndices)
 
             vertexIndex = 0
-            boneIndecesIndex = 0
             j = 0
             sum = 0
 
-            self.m_BoneWeights = zeros((m_CompressedMesh.m_Weights.m_NumItems // 4, 4))
-            self.m_BoneIndices = zeros((m_CompressedMesh.m_Weights.m_NumItems // 4, 4))
+            self.m_BoneWeights = zeros((self.m_VertexCount, 4))
+            self.m_BoneIndices = zeros((self.m_VertexCount, 4))
 
-            for weight in weightsData:
+            boneIndicesIterator = iter(boneIndicesData)
+            for weight, boneIndex in zip(weightsData, boneIndicesIterator):
                 # read bone index and weight
                 self.m_BoneWeights[vertexIndex][j] = weight
-                self.m_BoneIndices[vertexIndex][j] = boneIndicesData[boneIndecesIndex]
+                self.m_BoneIndices[vertexIndex][j] = boneIndex
 
-                boneIndecesIndex += 1
                 j += 1
                 sum += weight
 
                 # the weights add up to one, continue with the next vertex.
                 if sum >= 1.0:
                     j = 4
-
+                    # set weights and boneIndices to 0,
+                    # already done on init
                     vertexIndex += 1
                     j = 0
                     sum = 0
@@ -617,11 +632,8 @@ class MeshHandler:
                 # missing bone index. continue with next vertex.
                 elif j == 3:  #
                     self.m_BoneWeights[vertexIndex][j] = 1 - sum
-                    self.m_BoneIndices[vertexIndex][j] = boneIndicesData[
-                        boneIndecesIndex
-                    ]
+                    self.m_BoneIndices[vertexIndex][j] = next(boneIndicesIterator)
 
-                    boneIndecesIndex += 1
                     vertexIndex += 1
                     j = 0
                     sum = 0
@@ -647,6 +659,7 @@ class MeshHandler:
 
         submeshes: List[List[Tuple[int, ...]]] = []
 
+        assert self.src and self.src.m_SubMeshes is not None, "No submesh data!"
         for m_SubMesh in self.src.m_SubMeshes:
             firstIndex = m_SubMesh.firstByte // 2
             if not self.m_Use16BitIndices:
