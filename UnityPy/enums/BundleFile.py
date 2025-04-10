@@ -23,4 +23,4 @@ class ArchiveFlags(IntFlag):
     BlocksInfoAtTheEnd = 0x80
     OldWebPluginCompatibility = 0x100
     BlockInfoNeedPaddingAtStart = 0x200
-    UsesAssetBundleEncryption = 0x400
+    UsesAssetBundleEncryption = 0x1400  # old: 0x400, new: 0x1000

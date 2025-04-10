@@ -75,13 +75,15 @@ class ArchiveStorageDecryptor:
 
         if DECRYPT_KEY is None:
             raise LookupError(
-                "\n".join([
-                    "The BundleFile is encrypted, but no key was provided!",
-                    "You can set the key via UnityPy.set_assetbundle_decrypt_key(key).",
-                    "To try brute-forcing the key, use UnityPy.helpers.ArchiveStorageManager.brute_force_key(fp, key_sig, data_sig)",
-                    f"with  key_sig = {self.key_sig}, data_sig = {self.data_sig},"
-                    "and fp being the path to global-metadata.dat or a memory dump.",
-                ])
+                "\n".join(
+                    [
+                        "The BundleFile is encrypted, but no key was provided!",
+                        "You can set the key via UnityPy.set_assetbundle_decrypt_key(key).",
+                        "To try brute-forcing the key, use UnityPy.helpers.ArchiveStorageManager.brute_force_key(fp, key_sig, data_sig)",
+                        f"with  key_sig = {self.key_sig}, data_sig = {self.data_sig},"
+                        "and fp being the path to global-metadata.dat or a memory dump.",
+                    ]
+                )
             )
 
         signature = decrypt_key(self.key_sig, self.data_sig, DECRYPT_KEY)
@@ -146,3 +148,6 @@ class ArchiveStorageDecryptor:
                     b, offset, index = self.decrypt_byte(data, offset, index)
 
         return offset
+
+    # def encrypt(self, data: bytes):
+    #     # TODO: patch BundleFile encryption flag to keep either 0x1000 or 0x400
