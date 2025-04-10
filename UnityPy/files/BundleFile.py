@@ -308,6 +308,12 @@ class BundleFile(File.File):
         file_data = data_writer.bytes
         data_writer.dispose()
 
+        # remove encryption flag, as encryption isn't done
+        if block_info_flag & self.dataflags.UsesAssetBundleEncryption:
+            block_info_flag ^= self.dataflags.UsesAssetBundleEncryption
+        if data_flag & self.dataflags.UsesAssetBundleEncryption:
+            data_flag ^= self.dataflags.UsesAssetBundleEncryption
+
         file_data, block_info = CompressionHelper.chunk_based_compress(
             file_data, block_info_flag
         )
