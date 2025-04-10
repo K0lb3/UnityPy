@@ -50,9 +50,9 @@ def unpack_ints(
     #     raise ValueError("Invalid bit size")
 
     # data = np.zeros(packed.m_NumItems, dtype=dtype)
-    data = [0] * packed.m_NumItems
+    data = [0] * count
 
-    for i in range(packed.m_NumItems):
+    for i in range(count):
         bits = 0
         value = 0
         while bits < m_BitSize:
