@@ -43,7 +43,7 @@ if UnityPy.__version__ != '1.9.6':
 2. [Example](#example)
 3. [Important Classes](#important-classes)
 4. [Important Object Types](#important-object-types)
-5. [Custom Filesystem](#custom-filesystem)
+5. [Configurations](#configurations)
 6. [Credits](#credits)
 
 ## Installation
@@ -73,15 +73,10 @@ In case a new(ish) Python version is used, it can happen that the C-dependencies
 In such cases the user either has to report this as issue or follow the steps of [this issue](https://github.com/K0lb3/UnityPy/issues/223) to compile it oneself.
 Another option for the user is downgrading Python to the latest version supported by UnityPy. For this see the Python version badge at the top of the README.
 
-### Crash without warning/error
+#### Crash without warning/error
 
 The C-implementation of the typetree reader can directly crash Python.
-In case this happens, the usage of the C-typetree reader can be disabled by adding these two lines to your main file.
-
-```python
-from UnityPy.helpers import TypeTreeHelper
-TypeTreeHelper.read_typetree_boost = False
-```
+In case this happens, the usage of the C-typetree reader can be disabled. Read [this section](#disable-typetree-c-implementation) for more details.
 
 ## Example
 
@@ -135,13 +130,8 @@ def unpack_all_assets(source_folder: str, destination_folder: str):
 You probably have to read [Important Classes](#important-classes)
 and [Important Object Types](#important-object-types) to understand how it works.
 
-People with slightly advanced Python skills should look at [UnityPy/tools/extractor.py](UnityPy/tools/extractor.py) for a more advanced example.
+Users with slightly advanced Python skills should look at [UnityPy/tools/extractor.py](UnityPy/tools/extractor.py) for a more advanced example.
 It can also be used as a general template or as an importable tool.
-
-### Setting the decryption key for Unity CN's AssetBundle encryption
-
-The Chinese version of Unity has its own builtin option to encrypt AssetBundles/BundleFiles. As it's a feature of Unity itself, and not a game specific protection, it is included in UnityPy as well.
-To enable encryption simply use `UnityPy.set_assetbundle_decrypt_key(key)`, with key being the value that the game that loads the bundles passes to `AssetBundle.SetAssetBundleDecryptKey`.
 
 ## Important Classes
 
@@ -350,7 +340,7 @@ The samples are converted into the .wav format.
 The sample data is a .wav file in bytes.
 
 ```python
-clip : AudioClip
+clip: AudioClip
 for name, data in clip.samples.items():
     with open(name, "wb") as f:
         f.write(data)
@@ -362,7 +352,7 @@ for name, data in clip.samples.items():
 
 ```python
 if obj.type.name == "Font":
-    font : Font = obj.read()
+    font: Font = obj.read()
     if font.m_FontData:
         extension = ".ttf"
         if font.m_FontData[0:4] == b"OTTO":
@@ -427,7 +417,55 @@ for obj in env.objects:
         # editing isn't supported yet!
 ```
 
-## Custom Filesystem
+## Configurations
+
+There're several configurations and interfaces that provide the customizability to UnityPy.
+
+### Unity CN Decryption
+
+The Chinese version of Unity has its own builtin option to encrypt AssetBundles/BundleFiles. As it's a feature of Unity itself, and not a game specific protection, it is included in UnityPy as well.
+To enable encryption simply use the code as follow, with `key` being the value that the game that loads the bundles passes to `AssetBundle.SetAssetBundleDecryptKey`.
+
+```python
+import UnityPy
+UnityPy.set_assetbundle_decrypt_key(key)
+```
+
+### Unity Fallback Version
+
+In case UnityPy failed to detect the Unity version of the game assets, you can set a fallback version. e.g.
+
+```python
+import UnityPy.config
+UnityPy.config.FALLBACK_UNITY_VERSION = "2.5.0f5"
+```
+
+### Disable Typetree C-Implementation
+
+The [C-implementation](UnityPyBoost/) of typetree reader can boost the parsing of typetree by a lot. If you want to disable it and use pure Python reader, you can put the following 2 lines in your main file.
+
+```python
+from UnityPy.helpers import TypeTreeHelper
+TypeTreeHelper.read_typetree_boost = False
+```
+
+### Custom Block (De)compression
+
+Some game assets have non-standard compression/decompression algorithm applied on the block data. If you wants to customize the compression/decompression function, you can modify the corresponding function mapping. e.g.
+
+```python
+from UnityPy.enums.BundleFile import CompressionFlags
+flag = CompressionFlags.LZHAM
+
+from UnityPy.helpers import CompressionHelper
+CompressionHelper.COMPRESSION_MAP[flag] = custom_compress
+CompressionHelper.DECOMPRESSION_MAP[flag] = custom_decompress
+```
+
+-   `custom_compress(data: bytes) -> bytes` (where bytes can also be bytearray or memoryview)
+-   `custom_decompress(data: bytes, uncompressed_size: int) -> bytes`
+
+### Custom Filesystem
 
 UnityPy uses [fsspec](https://github.com/fsspec/filesystem_spec) under the hood to manage all filesystem interactions.
 This allows using various different types of filesystems without having to change UnityPy's code.
@@ -435,13 +473,13 @@ It also means that you can use your own custom filesystem to e.g. handle indirec
 
 Following methods of the filesystem have to be implemented for using it in UnityPy.
 
--   sep (not a function, just the separator as character)
--   isfile(self, path: str) -> bool
--   isdir(self, path: str) -> bool
--   exists(self, path: str, \*\*kwargs) -> bool
--   walk(self, path: str, \*\*kwargs) -> Iterable[List[str], List[str], List[str]]
--   open(self, path: str, mode: str = "rb", \*\*kwargs) -> file ("rb" mode required, "wt" required for ModelExporter)
--   makedirs(self, path: str, exist_ok: bool = False) -> bool
+-   `sep` (not a function, just the separator as character)
+-   `isfile(self, path: str) -> bool`
+-   `isdir(self, path: str) -> bool`
+-   `exists(self, path: str, **kwargs) -> bool`
+-   `walk(self, path: str, **kwargs) -> Iterable[List[str], List[str], List[str]]`
+-   `open(self, path: str, mode: str = "rb", **kwargs) -> file` ("rb" mode required, "wt" required for ModelExporter)
+-   `makedirs(self, path: str, exist_ok: bool = False) -> bool`
 
 ## Credits
 
