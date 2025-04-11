@@ -9,8 +9,9 @@
 A Unity asset extractor for Python based on [AssetStudio](https://github.com/Perfare/AssetStudio).
 
 Next to extraction, UnityPy also supports editing Unity assets.
-Via the typetree structure all objects types can be edited.
-```py
+Via the typetree structure all object types can be edited.
+
+```python
 # modification via dict:
     raw_dict = obj.read_typetree()
     # modify raw dict
@@ -24,11 +25,11 @@ Via the typetree structure all objects types can be edited.
 If you need advice or if you want to talk about (game) data-mining,
 feel free to join the [UnityPy Discord](https://discord.gg/C6txv7M).
 
-If you're using UnityPy a commercial project,
+If you're using UnityPy for a commercial project,
 a donation to a charitable cause or a sponsorship of this project is expected.
 
-**As UnityPy is still in active development breaking changes can happen.**
-Those changes are usually limited to minor versions (x.y) and not to patch versions (x.y.z).
+**As UnityPy is still in active development, breaking changes can happen.**
+These changes are usually limited to minor versions (x.y) and not to patch versions (x.y.z).
 So in case that you don't want to actively maintain your project,
 make sure to make a note of the used UnityPy version in your README or add a check in your code.
 e.g.
@@ -42,22 +43,22 @@ if UnityPy.__version__ != '1.9.6':
 2. [Example](#example)
 3. [Important Classes](#important-classes)
 4. [Important Object Types](#important-object-types)
-5. [Custom Fileystem](#custom-filesystem)
+5. [Configurations](#configurations)
 6. [Credits](#credits)
 
 ## Installation
 
-**Python 3.7.0 or higher is required**
+**Python 3.7.0 or higher is required.**
 
-via pypi
+Install via PyPI:
 
-```cmd
+```bash
 pip install UnityPy
 ```
 
-from source
+Install from source code:
 
-```cmd
+```bash
 git clone https://github.com/K0lb3/UnityPy.git
 cd UnityPy
 python -m pip install .
@@ -70,17 +71,12 @@ python -m pip install .
 Visual C++ Redistributable is required for the brotli dependency.
 In case a new(ish) Python version is used, it can happen that the C-dependencies of UnityPy might not be precompiled for this version.
 In such cases the user either has to report this as issue or follow the steps of [this issue](https://github.com/K0lb3/UnityPy/issues/223) to compile it oneself.
-Another option for the user is downgrading Python to the latest version supported by UnityPy. For this see the python version badge at the top of the README.
+Another option for the user is downgrading Python to the latest version supported by UnityPy. For this see the Python version badge at the top of the README.
 
-### Crash without warning/error
+#### Crash without warning/error
 
-The C-implementation of the typetree reader can directly crash python.
-In case this happens, the usage of the C-typetree reader can be disabled by adding these two lines to your main file.
-
-```python
-from UnityPy.helpers import TypeTreeHelper
-TypeTreeHelper.read_typetree_boost = False
-```
+The C-implementation of the typetree reader can directly crash Python.
+In case this happens, the usage of the C-typetree reader can be disabled. Read [this section](#disable-typetree-c-implementation) for more details.
 
 ## Example
 
@@ -90,7 +86,7 @@ The following is a simple example.
 import os
 import UnityPy
 
-def unpack_all_assets(source_folder : str, destination_folder : str):
+def unpack_all_assets(source_folder: str, destination_folder: str):
     # iterate over all files in source folder
     for root, dirs, files in os.walk(source_folder):
         for file_name in files:
@@ -134,24 +130,19 @@ def unpack_all_assets(source_folder : str, destination_folder : str):
 You probably have to read [Important Classes](#important-classes)
 and [Important Object Types](#important-object-types) to understand how it works.
 
-People with slightly advanced python skills should look at [UnityPy/tools/extractor.py](UnityPy/tools/extractor.py) for a more advanced example.
+Users with slightly advanced Python skills should look at [UnityPy/tools/extractor.py](UnityPy/tools/extractor.py) for a more advanced example.
 It can also be used as a general template or as an importable tool.
-
-### Setting the decryption key for Unity CN's AssetBundle encryption
-
-The chinese version of Unity has its own inbuild option to encrypt AssetBundles/BundleFiles. As it's a feature of Unity itself, and not a game specific protection, it is included in UnityPy as well.
-To enable encryption simply use `UnityPy.set_assetbundle_decrypt_key(key)`, with key being the value that the game that loads the budles passes to `AssetBundle.SetAssetBundleDecryptKey`.
 
 ## Important Classes
 
-### [Environment](UnityPy/environment.py)
+### Environment
 
-Environment loads and parses the given files.
+[Environment](UnityPy/environment.py) loads and parses the given files.
 It can be initialized via:
 
 -   a file path - apk files can be loaded as well
 -   a folder path - loads all files in that folder (bad idea for folders with a lot of files)
--   a stream - e.g., io.BytesIO, file stream,...
+-   a stream - e.g., `io.BytesIO`, file stream,...
 -   a bytes object - will be loaded into a stream
 
 UnityPy can detect if the file is a WebFile, BundleFile, Asset, or APK.
@@ -183,26 +174,26 @@ with open(dst, "wb") as f:
     f.write(env.file.save())
 ```
 
-### [Asset](UnityPy/files/SerializedFile.py)
+### Asset
 
-Assets are a container that contains multiple objects.
+Assets \([SerializedFile class](UnityPy/files/SerializedFile.py)\) are a container that contains multiple objects.
 One of these objects can be an AssetBundle, which contains a file path for some of the objects in the same asset.
 
 All objects can be found in the `.objects` dict - `{ID : object}`.
 
 The objects with a file path can be found in the `.container` dict - `{path : object}`.
 
-### [Object](UnityPy/files/ObjectReader.py)
+### Object
 
-Objects contain the _actual_ files, e.g., textures, text files, meshes, settings, ...
+Objects \([ObjectReader class](UnityPy/files/ObjectReader.py)\) contain the _actual_ files, e.g., textures, text files, meshes, settings, ...
 
 To acquire the actual data of an object it has to be read first. This happens via the `.read()` function. This isn't done automatically to save time because only a small part of the objects are of interest. Serialized objects can be set with raw data using `.set_raw_data(data)` or modified with `.save()` function, if supported.
 
 ## Important Object Types
 
-All object types can be found in [UnityPy/classes](UnityPy/classes/).
+Now UnityPy uses [auto generated classes](UnityPy/classes/generated.py). You can search for a specific classes in the module `UnityPy.classes`.
 
-### [Texture2D](UnityPy/classes/Texture2D.py)
+### Texture2D
 
 -   `.m_Name`
 -   `.image` converts the texture into a `PIL.Image`
@@ -226,7 +217,7 @@ for obj in env.objects:
         data.save()
 ```
 
-### [Sprite](UnityPy/classes/Sprite.py)
+### Sprite
 
 Sprites are part of a texture and can have a separate alpha-image as well.
 Unlike most other extractors (including AssetStudio), UnityPy merges those two images by itself.
@@ -246,7 +237,7 @@ for obj in env.objects:
         data.image.save(path)
 ```
 
-### [TextAsset](UnityPy/classes/TextAsset.py)
+### TextAsset
 
 TextAssets are usually normal text files.
 
@@ -272,7 +263,7 @@ for obj in env.objects:
         data.save()
 ```
 
-### [MonoBehaviour](UnityPy/classes/MonoBehaviour.py)
+### MonoBehaviour
 
 MonoBehaviour assets are usually used to save the class instances with their values.
 The structure/typetree for these classes might not be contained in the asset files.
@@ -312,7 +303,7 @@ for obj in env.objects:
 UnityPy can generate the typetrees of MonoBehaviours from the game assemblies using an optional package, ``TypeTreeGeneratorAPI``, which has to be installed via pip.
 UnityPy will automatically try to generate the typetree of MonoBehaviours if the typetree is missing in the assets and ``env.typetree_generator`` is set.
 
-```py
+```python
 import UnityPy
 from UnityPy.helpers.TypeTreeGenerator import TypeTreeGenerator
 
@@ -340,7 +331,7 @@ for obj in objects:
 ```
 
 
-### [AudioClip](UnityPy/classes/AudioClip.py)
+### AudioClip
 
 -   `.samples` - `{sample-name : sample-data}`
 
@@ -348,17 +339,19 @@ The samples are converted into the .wav format.
 The sample data is a .wav file in bytes.
 
 ```python
-clip : AudioClip
+clip: AudioClip
 for name, data in clip.samples.items():
     with open(name, "wb") as f:
         f.write(data)
 ```
 
-### [Font](UnityPy/classes/Font.py)
+### Font
+
+**Export**
 
 ```python
 if obj.type.name == "Font":
-    font : Font = obj.read()
+    font: Font = obj.read()
     if font.m_FontData:
         extension = ".ttf"
         if font.m_FontData[0:4] == b"OTTO":
@@ -368,14 +361,14 @@ if obj.type.name == "Font":
         f.write(font.m_FontData)
 ```
 
-### [Mesh](UnityPy/classes/Mesh.py)
+### Mesh
 
 -   `.export()` - mesh exported as .obj (str)
 
 The mesh will be converted to the Wavefront .obj file format.
 
 ```python
-mesh : Mesh
+mesh: Mesh
 with open(f"{mesh.m_Name}.obj", "wt", newline = "") as f:
     # newline = "" is important
     f.write(mesh.export())
@@ -390,7 +383,7 @@ ALPHA-VERSION
 The mesh and materials will be in the Wavefront formats.
 
 ```python
-mesh_renderer : Renderer
+mesh_renderer: Renderer
 export_dir: str
 
 if mesh_renderer.m_GameObject:
@@ -400,7 +393,7 @@ if mesh_renderer.m_GameObject:
 mesh_renderer.export(export_dir)
 ```
 
-### [Texture2DArray](UnityPy/classes/Texture2DArray.py)
+### Texture2DArray
 
 WARNING - not well tested
 
@@ -423,7 +416,52 @@ for obj in env.objects:
         # editing isn't supported yet!
 ```
 
-## Custom-Filesystem
+## Configurations
+
+There're several configurations and interfaces that provide the customizability to UnityPy.
+
+### Unity CN Decryption
+
+The Chinese version of Unity has its own builtin option to encrypt AssetBundles/BundleFiles. As it's a feature of Unity itself, and not a game specific protection, it is included in UnityPy as well.
+To enable encryption simply use the code as follow, with `key` being the value that the game that loads the bundles passes to `AssetBundle.SetAssetBundleDecryptKey`.
+
+```python
+import UnityPy
+UnityPy.set_assetbundle_decrypt_key(key)
+```
+
+### Unity Fallback Version
+
+In case UnityPy failed to detect the Unity version of the game assets, you can set a fallback version. e.g.
+
+```python
+import UnityPy.config
+UnityPy.config.FALLBACK_UNITY_VERSION = "2.5.0f5"
+```
+
+### Disable Typetree C-Implementation
+
+The [C-implementation](UnityPyBoost/) of typetree reader can boost the parsing of typetree by a lot. If you want to disable it and use pure Python reader, you can put the following 2 lines in your main file.
+
+```python
+from UnityPy.helpers import TypeTreeHelper
+TypeTreeHelper.read_typetree_boost = False
+```
+
+### Custom Block (De)compression
+
+Some game assets have non-standard compression/decompression algorithm applied on the block data. If you wants to customize the compression/decompression function, you can modify the corresponding function mapping. e.g.
+
+```python
+from UnityPy.enums.BundleFile import CompressionFlags
+flag = CompressionFlags.LZHAM
+
+from UnityPy.helpers import CompressionHelper
+CompressionHelper.COMPRESSION_MAP[flag] = some_function
+CompressionHelper.DECOMPRESSION_MAP[flag] = another_function
+```
+
+### Custom Filesystem
 
 UnityPy uses [fsspec](https://github.com/fsspec/filesystem_spec) under the hood to manage all filesystem interactions.
 This allows using various different types of filesystems without having to change UnityPy's code.
@@ -431,21 +469,20 @@ It also means that you can use your own custom filesystem to e.g. handle indirec
 
 Following methods of the filesystem have to be implemented for using it in UnityPy.
 
--   sep (not a function, just the seperator as character)
--   isfile(self, path: str) -> bool
--   isdir(self, path: str) -> bool
--   exists(self, path: str, \*\*kwargs) -> bool
--   walk(self, path: str, \*\*kwargs) -> Iterable[List[str], List[str], List[str]]
--   open(self, path: str, mode: str = "rb", \*\*kwargs) -> file ("rb" mode required, "wt" required for ModelExporter)
--   makedirs(self, path: str, exist_ok: bool = False) -> bool
+-   `sep` (not a function, just the separator as character)
+-   `isfile(self, path: str) -> bool`
+-   `isdir(self, path: str) -> bool`
+-   `exists(self, path: str, **kwargs) -> bool`
+-   `walk(self, path: str, **kwargs) -> Iterable[List[str], List[str], List[str]]`
+-   `open(self, path: str, mode: str = "rb", **kwargs) -> file` ("rb" mode required, "wt" required for ModelExporter)
+-   `makedirs(self, path: str, exist_ok: bool = False) -> bool`
 
 ## Credits
 
 First of all,
 thanks a lot to all contributors of UnityPy and all of its users.
 
-Also,
-many thanks to:
+Also, many thanks to:
 
 -   [Perfare](https://github.com/Perfare) for creating and maintaining and every contributor of [AssetStudio](https://github.com/Perfare/AssetStudio)
 -   [ds5678](https://github.com/ds5678) for the [TypeTreeDumps](https://github.com/AssetRipper/TypeTreeDumps) and the [custom minimal Tpk format](https://github.com/AssetRipper/Tpk)
