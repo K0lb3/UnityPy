@@ -222,9 +222,9 @@ def render_sprite_mesh(
 
 def copy_triangle(
     src_img: Image.Image,
-    src_tri: Tuple[float, float],
+    src_tri: Tuple[Tuple[float, float], Tuple[float, float], Tuple[float, float]],
     dst_img: Image.Image,
-    dst_tri: Tuple[float, float],
+    dst_tri: Tuple[Tuple[float, float], Tuple[float, float], Tuple[float, float]],
 ) -> None:
     src_off = (
         (src_tri[1][0] - src_tri[0][0], src_tri[1][1] - src_tri[0][1]),
@@ -240,7 +240,15 @@ def copy_triangle(
         # no transform necessary, just copy the triangle
 
         # make rectangle that contains the triangle
-        upper_left, _, lower_right = sorted(src_tri)
+        # upper_left, _, lower_right = sorted(src_tri)
+        upper_left = (
+            min(src_tri[0][0], src_tri[1][0], src_tri[2][0]),
+            min(src_tri[0][1], src_tri[1][1], src_tri[2][1]),
+        )
+        lower_right = (
+            max(src_tri[0][0], src_tri[1][0], src_tri[2][0]),
+            max(src_tri[0][1], src_tri[1][1], src_tri[2][1]),
+        )
         src_part = src_img.crop((*upper_left, *lower_right))
 
         # create mask for triangle
@@ -250,7 +258,11 @@ def copy_triangle(
         maskdraw.polygon(mask_box, fill=255)
 
         # paste triangle into destination image
-        dst_img.paste(src_part, min(dst_tri), mask=mask)
+        dst = (
+            int(min(dst_tri[0][0], dst_tri[1][0], dst_tri[2][0])),
+            int(min(dst_tri[0][1], dst_tri[1][1], dst_tri[2][1])),
+        )
+        dst_img.paste(src_part, dst, mask=mask)
     else:
         # transform is necessary, use affine transformation
         # https://stackoverflow.com/a/6959111
