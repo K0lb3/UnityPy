@@ -1,4 +1,5 @@
 target-version = "py37"
+include = ["UnityPy", "tests", "setup.py", "generators", "examples"]
 
 [lint.pydocstyle]
 # Enforce numpy-style docstrings
