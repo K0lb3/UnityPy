@@ -52,7 +52,9 @@ class TypeTreeGenerator(TypeTreeGeneratorBase):
         if root is not None:
             return root
 
-        base_nodes = self.get_nodes(f"{assembly}.dll", fullname)
+        if not assembly.endswith(".dll"):
+            assembly = f"{assembly}.dll"
+        base_nodes = self.get_nodes(assembly, fullname)
 
         base_root = base_nodes[0]
         root = TypeTreeNode(
