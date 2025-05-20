@@ -66,6 +66,7 @@ if platform.system() == "Darwin":
     del test_texture2d
     del test_sprite
 
+
 def test_audioclip():
     # as not platforms are supported by FMOD
     # we have to check if the platform is supported first

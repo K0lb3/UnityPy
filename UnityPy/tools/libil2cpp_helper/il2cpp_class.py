@@ -165,7 +165,9 @@ class Il2CppGenericClass(MetaDataClass):
     typeDefinitionIndex: Union[long, Version(Max=24.4)]  # the generic type definition
     type: Union[ulong, Version(Min=27)]  # the generic type definition
     context: Il2CppGenericContext  # a context that contains the type instantiation doesn't contain any method instantiation
-    cached_class: ulong  # if present, the Il2CppClass corresponding to the instantiation.
+    cached_class: (
+        ulong  # if present, the Il2CppClass corresponding to the instantiation.
+    )
 
 
 class Il2CppGenericInst(MetaDataClass):

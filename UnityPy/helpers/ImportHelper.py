@@ -113,16 +113,18 @@ def check_file_type(
         reader.endian = old_endian
         reader.Position = 0
         # check info
-        if any((
-            version < 0,
-            version > 100,
-            *[
-                x < 0 or x > reader.Length
-                for x in [file_size, metadata_size, version, data_offset]
-            ],
-            file_size < metadata_size,
-            file_size < data_offset,
-        )):
+        if any(
+            (
+                version < 0,
+                version > 100,
+                *[
+                    x < 0 or x > reader.Length
+                    for x in [file_size, metadata_size, version, data_offset]
+                ],
+                file_size < metadata_size,
+                file_size < data_offset,
+            )
+        ):
             return FileType.ResourceFile, reader
         else:
             return FileType.AssetsFile, reader
@@ -137,13 +139,15 @@ def parse_file(
 ) -> Union[files.File, EndianBinaryReader]:
     if typ is None:
         typ, _ = check_file_type(reader)
-    if typ == FileType.AssetsFile and not name.endswith((
-        ".resS",
-        ".resource",
-        ".config",
-        ".xml",
-        ".dat",
-    )):
+    if typ == FileType.AssetsFile and not name.endswith(
+        (
+            ".resS",
+            ".resource",
+            ".config",
+            ".xml",
+            ".dat",
+        )
+    ):
         f = files.SerializedFile(reader, parent, name=name, is_dependency=is_dependency)
     elif typ == FileType.BundleFile:
         f = files.BundleFile(reader, parent, name=name, is_dependency=is_dependency)

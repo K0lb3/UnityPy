@@ -59,7 +59,9 @@ def export_obj(
         return []
 
     if append_name:
-        fp = os.path.join(fp, obj.m_Name if getattr(obj, "m_Name") else obj.object_reader.type.name)
+        fp = os.path.join(
+            fp, obj.m_Name if getattr(obj, "m_Name") else obj.object_reader.type.name
+        )
 
     fp, extension = os.path.splitext(fp)
 
@@ -154,7 +156,9 @@ def extract_assets(
 ###############################################################################
 
 
-def exportTextAsset(obj: TextAsset, fp: str, extension: str = ".txt") -> List[Tuple[SerializedFile, int]]:
+def exportTextAsset(
+    obj: TextAsset, fp: str, extension: str = ".txt"
+) -> List[Tuple[SerializedFile, int]]:
     if not extension:
         extension = ".txt"
     with open(f"{fp}{extension}", "wb") as f:
@@ -162,7 +166,9 @@ def exportTextAsset(obj: TextAsset, fp: str, extension: str = ".txt") -> List[Tu
     return [(obj.assets_file, obj.object_reader.path_id)]
 
 
-def exportFont(obj: Font, fp: str, extension: str = "") -> List[Tuple[SerializedFile, int]]:
+def exportFont(
+    obj: Font, fp: str, extension: str = ""
+) -> List[Tuple[SerializedFile, int]]:
     # TODO - export glyphs
     if obj.m_FontData:
         extension = ".ttf"
@@ -173,7 +179,9 @@ def exportFont(obj: Font, fp: str, extension: str = "") -> List[Tuple[Serialized
     return [(obj.assets_file, obj.object_reader.path_id)]
 
 
-def exportMesh(obj: Mesh, fp: str, extension=".obj") -> List[Tuple[SerializedFile, int]]:
+def exportMesh(
+    obj: Mesh, fp: str, extension=".obj"
+) -> List[Tuple[SerializedFile, int]]:
     if not extension:
         extension = ".obj"
     with open(f"{fp}{extension}", "wt", encoding="utf8", newline="") as f:
@@ -181,7 +189,9 @@ def exportMesh(obj: Mesh, fp: str, extension=".obj") -> List[Tuple[SerializedFil
     return [(obj.assets_file, obj.object_reader.path_id)]
 
 
-def exportShader(obj: Shader, fp: str, extension=".txt") -> List[Tuple[SerializedFile, int]]:
+def exportShader(
+    obj: Shader, fp: str, extension=".txt"
+) -> List[Tuple[SerializedFile, int]]:
     if not extension:
         extension = ".txt"
     with open(f"{fp}{extension}", "wt", encoding="utf8", newline="") as f:
@@ -225,7 +235,9 @@ def exportMonoBehaviour(
     return [(obj.assets_file, obj.object_reader.path_id)]
 
 
-def exportAudioClip(obj: AudioClip, fp: str, extension: str = "") -> List[Tuple[SerializedFile, int]]:
+def exportAudioClip(
+    obj: AudioClip, fp: str, extension: str = ""
+) -> List[Tuple[SerializedFile, int]]:
     samples = obj.samples
     if len(samples) == 0:
         pass
@@ -240,7 +252,9 @@ def exportAudioClip(obj: AudioClip, fp: str, extension: str = "") -> List[Tuple[
     return [(obj.assets_file, obj.object_reader.path_id)]
 
 
-def exportSprite(obj: Sprite, fp: str, extension: str = ".png") -> List[Tuple[SerializedFile, int]]:
+def exportSprite(
+    obj: Sprite, fp: str, extension: str = ".png"
+) -> List[Tuple[SerializedFile, int]]:
     if not extension:
         extension = ".png"
     obj.image.save(f"{fp}{extension}")
@@ -255,7 +269,9 @@ def exportSprite(obj: Sprite, fp: str, extension: str = ".png") -> List[Tuple[Se
     return exported
 
 
-def exportTexture2D(obj: Texture2D, fp: str, extension: str = ".png") -> List[Tuple[SerializedFile, int]]:
+def exportTexture2D(
+    obj: Texture2D, fp: str, extension: str = ".png"
+) -> List[Tuple[SerializedFile, int]]:
     if not extension:
         extension = ".png"
     if obj.m_Width:
@@ -263,7 +279,10 @@ def exportTexture2D(obj: Texture2D, fp: str, extension: str = ".png") -> List[Tu
         obj.image.save(f"{fp}{extension}")
     return [(obj.assets_file, obj.object_reader.path_id)]
 
-def exportGameObject(obj: GameObject, fp: str, extension: str = "") -> List[Tuple[SerializedFile, int]]:
+
+def exportGameObject(
+    obj: GameObject, fp: str, extension: str = ""
+) -> List[Tuple[SerializedFile, int]]:
     exported = [(obj.assets_file, obj.object_reader.path_id)]
     refs = crawl_obj(obj)
     if refs:
@@ -296,10 +315,15 @@ EXPORT_TYPES = {
     ClassIDType.Texture2D: exportTexture2D,
 }
 
-MONOBEHAVIOUR_TYPETREES: Dict["Assembly-Name.dll", Dict["Class-Name", List[Dict]]] = {}
+ASSEMBLY_NAME_DLL = str
+CLASS_NAME = str
+
+MONOBEHAVIOUR_TYPETREES: Dict[ASSEMBLY_NAME_DLL, Dict[CLASS_NAME, List[Dict]]] = {}
 
 
-def crawl_obj(obj: Object, ret: Optional[dict] = None) -> Dict[int, Union[Object, PPtr]]:
+def crawl_obj(
+    obj: Object, ret: Optional[dict] = None
+) -> Dict[int, Union[Object, PPtr]]:
     """Crawls through the data struture of the object and returns a list of all the components."""
     if not ret:
         ret = {}

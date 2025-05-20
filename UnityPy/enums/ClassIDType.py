@@ -1,4 +1,4 @@
-﻿# https://docs.unity3d.com/Manual/ClassIDReference.html
+# https://docs.unity3d.com/Manual/ClassIDReference.html
 from .ExtendableEnum import ExtendableEnum
 
 

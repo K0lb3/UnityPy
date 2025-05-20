@@ -258,9 +258,9 @@ class Metadata:
                 decodedIndex = self.GetDecodedMethodIndex(
                     metadataUsagePair.encodedSourceIndex
                 )
-                metadataUsageDic[usage][
-                    metadataUsagePair.destinationIndex
-                ] = decodedIndex
+                metadataUsageDic[usage][metadataUsagePair.destinationIndex] = (
+                    decodedIndex
+                )
 
         self.maxMetadataUsages = (
             max(y for x in metadataUsageDic.values() for y in x.keys()) + 1
