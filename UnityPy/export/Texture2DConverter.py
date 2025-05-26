@@ -1,7 +1,6 @@
 ﻿from __future__ import annotations
 
 import struct
-from copy import copy
 from io import BytesIO
 from threading import Lock
 from typing import TYPE_CHECKING, Dict, Optional, Tuple, Union
@@ -122,9 +121,9 @@ def compress_astc(
         astc_encoder.ASTCType.U8, width, height, 1, data
     )
     block_size = TEXTURE_FORMAT_BLOCK_SIZE_TABLE[target_texture_format]
-    assert block_size is not None, (
-        f"failed to get block size for {target_texture_format.name}"
-    )
+    assert (
+        block_size is not None
+    ), f"failed to get block size for {target_texture_format.name}"
     swizzle = astc_encoder.ASTCSwizzle.from_str("RGBA")
 
     context, lock = get_astc_context(block_size)
@@ -152,21 +151,14 @@ def image_to_texture2d(
     tex_format = TF.RGBA32
     pil_mode = "RGBA"
 
-    # DXT
+    # DXT / BC
     if target_texture_format in [TF.DXT1, TF.DXT1Crunched]:
         tex_format = TF.DXT1
         compress_func = compress_etcpak
     elif target_texture_format in [TF.DXT5, TF.DXT5Crunched]:
         tex_format = TF.DXT5
         compress_func = compress_etcpak
-    elif target_texture_format in [TF.BC4]:
-        tex_format = TF.BC4
-        compress_func = compress_etcpak
-    elif target_texture_format in [TF.BC5]:
-        tex_format = TF.BC5
-        compress_func = compress_etcpak
-    elif target_texture_format in [TF.BC7]:
-        tex_format = TF.BC7
+    elif target_texture_format in [TF.BC4, TF.BC5, TF.BC7]:
         compress_func = compress_etcpak
     # ASTC
     elif target_texture_format.name.startswith("ASTC"):
@@ -224,7 +216,7 @@ def image_to_texture2d(
     # everything else defaulted to RGBA
 
     if platform == BuildTarget.Switch and platform_blob is not None:
-        gobsPerBlock = TextureSwizzler.get_switch_gobs_per_block(platform_blob)
+        gobs_per_block = TextureSwizzler.get_switch_gobs_per_block(platform_blob)
         s_tex_format = tex_format
         if tex_format == TextureFormat.RGB24:
             s_tex_format = TextureFormat.RGBA32
@@ -235,14 +227,14 @@ def image_to_texture2d(
 
         block_size = TextureSwizzler.TEXTUREFORMAT_BLOCK_SIZE_MAP[s_tex_format]
         width, height = TextureSwizzler.get_padded_texture_size(
-            img.width, img.height, *block_size, gobsPerBlock
+            img.width, img.height, *block_size, gobs_per_block
         )
         img = pad_image(img, width, height)
         img = Image.frombytes(
             pil_mode,
             img.size,
             TextureSwizzler.swizzle(
-                img.tobytes("raw", pil_mode), width, height, *block_size, gobsPerBlock
+                img.tobytes("raw", pil_mode), width, height, *block_size, gobs_per_block
             ),
         )
 
@@ -261,9 +253,9 @@ def image_to_texture2d(
 def assert_rgba(img: Image.Image, target_texture_format: TextureFormat) -> Image.Image:
     if img.mode == "RGB":
         img = img.convert("RGBA")
-    assert img.mode == "RGBA", (
-        f"{target_texture_format} compression only supports RGB & RGBA images"
-    )  # noqa: E501
+    assert (
+        img.mode == "RGBA"
+    ), f"{target_texture_format} compression only supports RGB & RGBA images"  # noqa: E501
     return img
 
 
@@ -305,7 +297,7 @@ def parse_image_data(
     if not width or not height:
         return Image.new("RGBA", (0, 0))
 
-    image_data = copy(bytes(image_data))
+    image_data = bytes(image_data)
     if not image_data:
         raise ValueError("Texture2D has no image data")
 
@@ -315,10 +307,10 @@ def parse_image_data(
     if platform == BuildTarget.XBOX360 and texture_format in XBOX_SWAP_FORMATS:
         image_data = swap_bytes_for_xbox(image_data)
 
-    original_width, original_height = (width, height)
+    original_width, original_height = width, height
     switch_swizzle = None
     if platform == BuildTarget.Switch and platform_blob is not None:
-        gobsPerBlock = TextureSwizzler.get_switch_gobs_per_block(platform_blob)
+        gobs_per_block = TextureSwizzler.get_switch_gobs_per_block(platform_blob)
         s_tex_format = texture_format
         pil_mode = "RGBA"
 
@@ -333,19 +325,18 @@ def parse_image_data(
 
         block_size = TextureSwizzler.TEXTUREFORMAT_BLOCK_SIZE_MAP[s_tex_format]
         width, height = TextureSwizzler.get_padded_texture_size(
-            width, height, *block_size, gobsPerBlock
+            width, height, *block_size, gobs_per_block
         )
-        switch_swizzle = (block_size, gobsPerBlock, pil_mode)
+        switch_swizzle = (block_size, gobs_per_block, pil_mode)
     else:
         width, height = get_compressed_image_size(width, height, texture_format)
 
     selection = CONV_TABLE[texture_format]
 
-    if len(selection) == 0:
+    if not selection:
         raise NotImplementedError(f"Not implemented texture format: {texture_format}")
 
     if "Crunched" in texture_format.name:
-        version = version
         if (
             version[0] > 2017
             or (version[0] == 2017 and version[1] >= 3)  # 2017.3 and up
@@ -359,10 +350,10 @@ def parse_image_data(
     img = selection[0](image_data, width, height, *selection[1:])
 
     if switch_swizzle is not None:
-        block_size, gobsPerBlock, pil_mode = switch_swizzle
+        block_size, gobs_per_block, pil_mode = switch_swizzle
         swizzle_data = bytes(
             TextureSwizzler.deswizzle(
-                img.tobytes("raw", pil_mode), width, height, *block_size, gobsPerBlock
+                img.tobytes("raw", pil_mode), width, height, *block_size, gobs_per_block
             )
         )
         img = Image.frombytes(img.mode, (width, height), swizzle_data, "raw", pil_mode)
@@ -477,7 +468,7 @@ def etc(image_data: bytes, width: int, height: int, fmt: list) -> Image.Image:
     return Image.frombytes("RGBA", (width, height), image_data, "raw", "BGRA")
 
 
-def eac(image_data: bytes, width: int, height: int, fmt: list) -> Image.Image:
+def eac(image_data: bytes, width: int, height: int, fmt: str) -> Image.Image:
     if fmt == "EAC_R":
         image_data = texture2ddecoder.decode_eacr(image_data, width, height)
     elif fmt == "EAC_R_SIGNED":
