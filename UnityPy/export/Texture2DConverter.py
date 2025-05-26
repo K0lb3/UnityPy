@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import struct
 from copy import copy
@@ -193,11 +193,11 @@ def image_to_texture2d(
     elif target_texture_format in [TF.ETC2_RGBA8, TF.ETC2_RGBA8Crunched, TF.ETC2_RGBA1]:
         tex_format = TF.ETC2_RGBA8
         compress_func = compress_etcpak
-    # A
+    # L
     elif target_texture_format == TF.Alpha8:
         tex_format = TF.Alpha8
-        pil_mode = "A"
-    # R - should probably be moerged into #A, as pure R is used as Alpha
+        pil_mode = "L"
+    # R - should probably be merged into #L, as pure R is used as Alpha
     # but need test data for this first
     elif target_texture_format in [
         TF.R8,
@@ -229,18 +229,20 @@ def image_to_texture2d(
         if tex_format == TextureFormat.RGB24:
             s_tex_format = TextureFormat.RGBA32
             pil_mode = "RGBA"
-        # elif tex_format == TextureFormat.BGR24:
-        #     s_tex_format = TextureFormat.BGRA32
+        elif tex_format == TextureFormat.BGR24:
+            s_tex_format = TextureFormat.BGRA32
+            pil_mode = "BGRA"
+
         block_size = TextureSwizzler.TEXTUREFORMAT_BLOCK_SIZE_MAP[s_tex_format]
         width, height = TextureSwizzler.get_padded_texture_size(
             img.width, img.height, *block_size, gobsPerBlock
         )
         img = pad_image(img, width, height)
         img = Image.frombytes(
-            "RGBA",
+            pil_mode,
             img.size,
             TextureSwizzler.swizzle(
-                img.tobytes("raw", "RGBA"), width, height, *block_size, gobsPerBlock
+                img.tobytes("raw", pil_mode), width, height, *block_size, gobsPerBlock
             ),
         )
 
@@ -317,15 +319,23 @@ def parse_image_data(
     switch_swizzle = None
     if platform == BuildTarget.Switch and platform_blob is not None:
         gobsPerBlock = TextureSwizzler.get_switch_gobs_per_block(platform_blob)
+        s_tex_format = texture_format
+        pil_mode = "RGBA"
+
         if texture_format == TextureFormat.RGB24:
-            texture_format = TextureFormat.RGBA32
+            s_tex_format = TextureFormat.RGBA32
         elif texture_format == TextureFormat.BGR24:
-            texture_format = TextureFormat.BGRA32
-        block_size = TextureSwizzler.TEXTUREFORMAT_BLOCK_SIZE_MAP[texture_format]
+            s_tex_format = TextureFormat.BGRA32
+            pil_mode = "BGRA"
+        elif texture_format == TextureFormat.Alpha8:
+            s_tex_format = texture_format
+            pil_mode = "L"
+
+        block_size = TextureSwizzler.TEXTUREFORMAT_BLOCK_SIZE_MAP[s_tex_format]
         width, height = TextureSwizzler.get_padded_texture_size(
             width, height, *block_size, gobsPerBlock
         )
-        switch_swizzle = (block_size, gobsPerBlock)
+        switch_swizzle = (block_size, gobsPerBlock, pil_mode)
     else:
         width, height = get_compressed_image_size(width, height, texture_format)
 
@@ -349,10 +359,13 @@ def parse_image_data(
     img = selection[0](image_data, width, height, *selection[1:])
 
     if switch_swizzle is not None:
-        image_data = TextureSwizzler.deswizzle(
-            img.tobytes("raw", "RGBA"), width, height, *block_size, gobsPerBlock
+        block_size, gobsPerBlock, pil_mode = switch_swizzle
+        swizzle_data = bytes(
+            TextureSwizzler.deswizzle(
+                img.tobytes("raw", pil_mode), width, height, *block_size, gobsPerBlock
+            )
         )
-        img = Image.frombytes(img.mode, (width, height), image_data, "raw", "RGBA")
+        img = Image.frombytes(img.mode, (width, height), swizzle_data, "raw", pil_mode)
 
     if original_width != width or original_height != height:
         img = img.crop((0, 0, original_width, original_height))
@@ -540,7 +553,7 @@ def rgb9e5float(image_data: bytes, width: int, height: int) -> Image.Image:
 CONV_TABLE = {
     #  FORMAT                  FUNC     #ARGS.....
     # ----------------------- -------- -------- ------------ ----------------- ------------ ----------
-    (TF.Alpha8, pillow, "RGBA", "raw", "A"),
+    (TF.Alpha8, pillow, "L", "raw", "L"),
     (TF.ARGB4444, pillow, "RGBA", "raw", "RGBA;4B", (2, 1, 0, 3)),
     (TF.RGB24, pillow, "RGB", "raw", "RGB"),
     (TF.RGBA32, pillow, "RGBA", "raw", "RGBA"),
