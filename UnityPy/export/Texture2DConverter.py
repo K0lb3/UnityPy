@@ -3,7 +3,7 @@
 import struct
 from io import BytesIO
 from threading import Lock
-from typing import TYPE_CHECKING, Dict, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Callable, Dict, Optional, Tuple, Union
 
 import astc_encoder
 import texture2ddecoder
@@ -331,11 +331,6 @@ def parse_image_data(
     else:
         width, height = get_compressed_image_size(width, height, texture_format)
 
-    selection = CONV_TABLE[texture_format]
-
-    if not selection:
-        raise NotImplementedError(f"Not implemented texture format: {texture_format}")
-
     if "Crunched" in texture_format.name:
         if (
             version[0] > 2017
@@ -347,7 +342,11 @@ def parse_image_data(
         else:
             image_data = texture2ddecoder.unpack_crunch(image_data)
 
-    img = selection[0](image_data, width, height, *selection[1:])
+    conv_func = CONV_TABLE.get(texture_format)
+    if not conv_func:
+        raise NotImplementedError(f"Not implemented texture format: {texture_format}")
+
+    img = conv_func(image_data, width, height)
 
     if switch_swizzle is not None:
         block_size, gobs_per_block, pil_mode = switch_swizzle
@@ -453,18 +452,18 @@ def pvrtc(image_data: bytes, width: int, height: int, fmt: bool) -> Image.Image:
     return Image.frombytes("RGBA", (width, height), image_data, "raw", "BGRA")
 
 
-def etc(image_data: bytes, width: int, height: int, fmt: list) -> Image.Image:
-    if fmt[0] == 1:
+def etc(image_data: bytes, width: int, height: int, fmt: str) -> Image.Image:
+    if fmt == "ETC1":
         image_data = texture2ddecoder.decode_etc1(image_data, width, height)
-    elif fmt[0] == 2:
-        if fmt[1] == "RGB":
-            image_data = texture2ddecoder.decode_etc2(image_data, width, height)
-        elif fmt[1] == "A1":
-            image_data = texture2ddecoder.decode_etc2a1(image_data, width, height)
-        elif fmt[1] == "A8":
-            image_data = texture2ddecoder.decode_etc2a8(image_data, width, height)
+    elif fmt == "ETC2_RGB":
+        image_data = texture2ddecoder.decode_etc2(image_data, width, height)
+    elif fmt == "ETC2_A1":
+        image_data = texture2ddecoder.decode_etc2a1(image_data, width, height)
+    elif fmt == "ETC2_A8":
+        image_data = texture2ddecoder.decode_etc2a8(image_data, width, height)
     else:
-        raise NotImplementedError("unknown etc mode")
+        raise NotImplementedError(f"Unknown ETC mode: {fmt}")
+
     return Image.frombytes("RGBA", (width, height), image_data, "raw", "BGRA")
 
 
@@ -477,6 +476,9 @@ def eac(image_data: bytes, width: int, height: int, fmt: str) -> Image.Image:
         image_data = texture2ddecoder.decode_eacrg(image_data, width, height)
     elif fmt == "EAC_RG_SIGNED":
         image_data = texture2ddecoder.decode_eacrg_signed(image_data, width, height)
+    else:
+        raise NotImplementedError(f"Unknown EAC mode: {fmt}")
+
     return Image.frombytes("RGBA", (width, height), image_data, "raw", "BGRA")
 
 
@@ -540,90 +542,85 @@ def rgb9e5float(image_data: bytes, width: int, height: int) -> Image.Image:
     return Image.frombytes("RGB", (width, height), rgb, "raw", "RGB")
 
 
-CONV_TABLE = {
-    #  FORMAT                  FUNC     #ARGS.....
-    # ----------------------- -------- -------- ------------ ----------------- ------------ ----------
-    (TF.Alpha8, pillow, "L", "raw", "L"),
-    (TF.ARGB4444, pillow, "RGBA", "raw", "RGBA;4B", (2, 1, 0, 3)),
-    (TF.RGB24, pillow, "RGB", "raw", "RGB"),
-    (TF.RGBA32, pillow, "RGBA", "raw", "RGBA"),
-    (TF.ARGB32, pillow, "RGBA", "raw", "ARGB"),
-    (TF.ARGBFloat, pillow, "RGBA", "raw", "RGBAF", (2, 1, 0, 3)),
-    (TF.RGB565, pillow, "RGB", "raw", "BGR;16"),
-    (TF.BGR24, pillow, "RGB", "raw", "BGR"),
-    (TF.R8, pillow, "RGB", "raw", "R"),
-    (TF.R16, pillow, "RGB", "raw", "R;16"),
-    (TF.RG16, rg, "RGB", "raw", "RG"),
-    (TF.DXT1, pillow, "RGBA", "bcn", 1),
-    (TF.DXT3, pillow, "RGBA", "bcn", 2),
-    (TF.DXT5, pillow, "RGBA", "bcn", 3),
-    (TF.RGBA4444, pillow, "RGBA", "raw", "RGBA;4B", (3, 2, 1, 0)),
-    (TF.BGRA32, pillow, "RGBA", "raw", "BGRA"),
-    (TF.RHalf, half, "R", "raw", "R"),
-    (TF.RGHalf, rg, "RGB", "raw", "RGE"),
-    (TF.RGBAHalf, half, "RGB", "raw", "RGB"),
-    (TF.RFloat, pillow, "RGB", "raw", "RF"),
-    (TF.RGFloat, rg, "RGB", "raw", "RGF"),
-    (TF.RGBAFloat, pillow, "RGBA", "raw", "RGBAF"),
-    (TF.YUY2,),
-    (TF.RGB9e5Float, rgb9e5float),
-    (TF.BC4, pillow, "L", "bcn", 4),
-    (TF.BC5, pillow, "RGB", "bcn", 5),
-    (TF.BC6H, pillow, "RGBA", "bcn", 6),
-    (TF.BC7, pillow, "RGBA", "bcn", 7),
-    (TF.DXT1Crunched, pillow, "RGBA", "bcn", 1),
-    (TF.DXT5Crunched, pillow, "RGBA", "bcn", 3),
-    (TF.PVRTC_RGB2, pvrtc, True),
-    (TF.PVRTC_RGBA2, pvrtc, True),
-    (TF.PVRTC_RGB4, pvrtc, False),
-    (TF.PVRTC_RGBA4, pvrtc, False),
-    (TF.ETC_RGB4, etc, (1,)),
-    (TF.ATC_RGB4, atc, False),
-    (TF.ATC_RGBA8, atc, True),
-    (TF.EAC_R, eac, "EAC_R"),
-    (TF.EAC_R_SIGNED, eac, "EAC_R:SIGNED"),
-    (TF.EAC_RG, eac, "EAC_RG"),
-    (TF.EAC_RG_SIGNED, eac, "EAC_RG_SIGNED"),
-    (TF.ETC2_RGB, etc, (2, "RGB")),
-    (TF.ETC2_RGBA1, etc, (2, "A1")),
-    (TF.ETC2_RGBA8, etc, (2, "A8")),
-    (TF.ASTC_RGB_4x4, astc, (4, 4)),
-    (TF.ASTC_RGB_5x5, astc, (5, 5)),
-    (TF.ASTC_RGB_6x6, astc, (6, 6)),
-    (TF.ASTC_RGB_8x8, astc, (8, 8)),
-    (TF.ASTC_RGB_10x10, astc, (10, 10)),
-    (TF.ASTC_RGB_12x12, astc, (12, 12)),
-    (TF.ASTC_RGBA_4x4, astc, (4, 4)),
-    (TF.ASTC_RGBA_5x5, astc, (5, 5)),
-    (TF.ASTC_RGBA_6x6, astc, (6, 6)),
-    (TF.ASTC_RGBA_8x8, astc, (8, 8)),
-    (TF.ASTC_RGBA_10x10, astc, (10, 10)),
-    (TF.ASTC_RGBA_12x12, astc, (12, 12)),
-    (TF.ETC_RGB4_3DS, etc, (1,)),
-    (TF.ETC_RGBA8_3DS, etc, (1,)),
-    (TF.ETC_RGB4Crunched, etc, (1,)),
-    (TF.ETC2_RGBA8Crunched, etc, (2, "A8")),
-    (TF.ASTC_HDR_4x4, astc, (4, 4)),
-    (TF.ASTC_HDR_5x5, astc, (5, 5)),
-    (TF.ASTC_HDR_6x6, astc, (6, 6)),
-    (TF.ASTC_HDR_8x8, astc, (8, 8)),
-    (TF.ASTC_HDR_10x10, astc, (10, 10)),
-    (TF.ASTC_HDR_12x12, astc, (12, 12)),
-    (TF.RG32, rg, "RGB", "raw", "RG;16"),
-    (TF.RGB48, pillow, "RGB", "raw", "RGB;16"),
-    (TF.RGBA64, pillow, "RGBA", "raw", "RGBA;16"),
-    (TF.R8_SIGNED, pillow, "R", "raw", "R;8s"),
-    (TF.RG16_SIGNED, rg, "RGB", "raw", "RG;8s"),
-    (TF.RGB24_SIGNED, pillow, "RGB", "raw", "RGB;8s"),
-    (TF.RGBA32_SIGNED, pillow, "RGBA", "raw", "RGBA;8s"),
-    (TF.R16_SIGNED, pillow, "R", "raw", "R;16s"),
-    (TF.RG32_SIGNED, rg, "RGB", "raw", "RG;16s"),
-    (TF.RGB48_SIGNED, pillow, "RGB", "raw", "RGB;16s"),
-    (TF.RGBA64_SIGNED, pillow, "RGBA", "raw", "RGBA;16s"),
+CONV_TABLE: Dict[TextureFormat, Callable[[bytes, int, int], Image.Image]] = {
+    TF.Alpha8: lambda data, w, h: pillow(data, w, h, "L", "raw", "L"),
+    TF.ARGB4444: lambda data, w, h: pillow(data, w, h, "RGBA", "raw", "RGBA;4B", (2, 1, 0, 3)),
+    TF.RGB24: lambda data, w, h: pillow(data, w, h, "RGB", "raw", "RGB"),
+    TF.RGBA32: lambda data, w, h: pillow(data, w, h, "RGBA", "raw", "RGBA"),
+    TF.ARGB32: lambda data, w, h: pillow(data, w, h, "RGBA", "raw", "ARGB"),
+    TF.ARGBFloat: lambda data, w, h: pillow(data, w, h, "RGBA", "raw", "RGBAF", (2, 1, 0, 3)),
+    TF.RGB565: lambda data, w, h: pillow(data, w, h, "RGB", "raw", "BGR;16"),
+    TF.BGR24: lambda data, w, h: pillow(data, w, h, "RGB", "raw", "BGR"),
+    TF.R8: lambda data, w, h: pillow(data, w, h, "RGB", "raw", "R"),
+    TF.R16: lambda data, w, h: pillow(data, w, h, "RGB", "raw", "R;16"),
+    TF.RG16: lambda data, w, h: rg(data, w, h, "RGB", "raw", "RG"),
+    TF.DXT1: lambda data, w, h: pillow(data, w, h, "RGBA", "bcn", 1),
+    TF.DXT3: lambda data, w, h: pillow(data, w, h, "RGBA", "bcn", 2),
+    TF.DXT5: lambda data, w, h: pillow(data, w, h, "RGBA", "bcn", 3),
+    TF.RGBA4444: lambda data, w, h: pillow(data, w, h, "RGBA", "raw", "RGBA;4B", (3, 2, 1, 0)),
+    TF.BGRA32: lambda data, w, h: pillow(data, w, h, "RGBA", "raw", "BGRA"),
+    TF.RHalf: lambda data, w, h: half(data, w, h, "R", "raw", "R"),
+    TF.RGHalf: lambda data, w, h: rg(data, w, h, "RGB", "raw", "RGE"),
+    TF.RGBAHalf: lambda data, w, h: half(data, w, h, "RGB", "raw", "RGB"),
+    TF.RFloat: lambda data, w, h: pillow(data, w, h, "RGB", "raw", "RF"),
+    TF.RGFloat: lambda data, w, h: rg(data, w, h, "RGB", "raw", "RGF"),
+    TF.RGBAFloat: lambda data, w, h: pillow(data, w, h, "RGBA", "raw", "RGBAF"),
+    # TF.YUY2: lambda data, w, h: NotImplementedError("YUY2 not implemented"),
+    TF.RGB9e5Float: lambda data, w, h: rgb9e5float(data, w, h),
+    TF.BC4: lambda data, w, h: pillow(data, w, h, "L", "bcn", 4),
+    TF.BC5: lambda data, w, h: pillow(data, w, h, "RGB", "bcn", 5),
+    TF.BC6H: lambda data, w, h: pillow(data, w, h, "RGBA", "bcn", 6),
+    TF.BC7: lambda data, w, h: pillow(data, w, h, "RGBA", "bcn", 7),
+    TF.DXT1Crunched: lambda data, w, h: pillow(data, w, h, "RGBA", "bcn", 1),
+    TF.DXT5Crunched: lambda data, w, h: pillow(data, w, h, "RGBA", "bcn", 3),
+    TF.PVRTC_RGB2: lambda data, w, h: pvrtc(data, w, h, True),
+    TF.PVRTC_RGBA2: lambda data, w, h: pvrtc(data, w, h, True),
+    TF.PVRTC_RGB4: lambda data, w, h: pvrtc(data, w, h, False),
+    TF.PVRTC_RGBA4: lambda data, w, h: pvrtc(data, w, h, False),
+    TF.ETC_RGB4: lambda data, w, h: etc(data, w, h, "ETC1"),
+    TF.ATC_RGB4: lambda data, w, h: atc(data, w, h, False),
+    TF.ATC_RGBA8: lambda data, w, h: atc(data, w, h, True),
+    TF.EAC_R: lambda data, w, h: eac(data, w, h, "EAC_R"),
+    TF.EAC_R_SIGNED: lambda data, w, h: eac(data, w, h, "EAC_R_SIGNED"),
+    TF.EAC_RG: lambda data, w, h: eac(data, w, h, "EAC_RG"),
+    TF.EAC_RG_SIGNED: lambda data, w, h: eac(data, w, h, "EAC_RG_SIGNED"),
+    TF.ETC2_RGB: lambda data, w, h: etc(data, w, h, "ETC2_RGB"),
+    TF.ETC2_RGBA1: lambda data, w, h: etc(data, w, h, "ETC2_A1"),
+    TF.ETC2_RGBA8: lambda data, w, h: etc(data, w, h, "ETC2_A8"),
+    TF.ASTC_RGB_4x4: lambda data, w, h: astc(data, w, h, (4, 4)),
+    TF.ASTC_RGB_5x5: lambda data, w, h: astc(data, w, h, (5, 5)),
+    TF.ASTC_RGB_6x6: lambda data, w, h: astc(data, w, h, (6, 6)),
+    TF.ASTC_RGB_8x8: lambda data, w, h: astc(data, w, h, (8, 8)),
+    TF.ASTC_RGB_10x10: lambda data, w, h: astc(data, w, h, (10, 10)),
+    TF.ASTC_RGB_12x12: lambda data, w, h: astc(data, w, h, (12, 12)),
+    TF.ASTC_RGBA_4x4: lambda data, w, h: astc(data, w, h, (4, 4)),
+    TF.ASTC_RGBA_5x5: lambda data, w, h: astc(data, w, h, (5, 5)),
+    TF.ASTC_RGBA_6x6: lambda data, w, h: astc(data, w, h, (6, 6)),
+    TF.ASTC_RGBA_8x8: lambda data, w, h: astc(data, w, h, (8, 8)),
+    TF.ASTC_RGBA_10x10: lambda data, w, h: astc(data, w, h, (10, 10)),
+    TF.ASTC_RGBA_12x12: lambda data, w, h: astc(data, w, h, (12, 12)),
+    TF.ETC_RGB4_3DS: lambda data, w, h: etc(data, w, h, "ETC1"),
+    TF.ETC_RGBA8_3DS: lambda data, w, h: etc(data, w, h, "ETC1"),
+    TF.ETC_RGB4Crunched: lambda data, w, h: etc(data, w, h, "ETC1"),
+    TF.ETC2_RGBA8Crunched: lambda data, w, h: etc(data, w, h, "ETC2_A8"),
+    TF.ASTC_HDR_4x4: lambda data, w, h: astc(data, w, h, (4, 4)),
+    TF.ASTC_HDR_5x5: lambda data, w, h: astc(data, w, h, (5, 5)),
+    TF.ASTC_HDR_6x6: lambda data, w, h: astc(data, w, h, (6, 6)),
+    TF.ASTC_HDR_8x8: lambda data, w, h: astc(data, w, h, (8, 8)),
+    TF.ASTC_HDR_10x10: lambda data, w, h: astc(data, w, h, (10, 10)),
+    TF.ASTC_HDR_12x12: lambda data, w, h: astc(data, w, h, (12, 12)),
+    TF.RG32: lambda data, w, h: rg(data, w, h, "RGB", "raw", "RG;16"),
+    TF.RGB48: lambda data, w, h: pillow(data, w, h, "RGB", "raw", "RGB;16"),
+    TF.RGBA64: lambda data, w, h: pillow(data, w, h, "RGBA", "raw", "RGBA;16"),
+    TF.R8_SIGNED: lambda data, w, h: pillow(data, w, h, "R", "raw", "R;8s"),
+    TF.RG16_SIGNED: lambda data, w, h: rg(data, w, h, "RGB", "raw", "RG;8s"),
+    TF.RGB24_SIGNED: lambda data, w, h: pillow(data, w, h, "RGB", "raw", "RGB;8s"),
+    TF.RGBA32_SIGNED: lambda data, w, h: pillow(data, w, h, "RGBA", "raw", "RGBA;8s"),
+    TF.R16_SIGNED: lambda data, w, h: pillow(data, w, h, "R", "raw", "R;16s"),
+    TF.RG32_SIGNED: lambda data, w, h: rg(data, w, h, "RGB", "raw", "RG;16s"),
+    TF.RGB48_SIGNED: lambda data, w, h: pillow(data, w, h, "RGB", "raw", "RGB;16s"),
+    TF.RGBA64_SIGNED: lambda data, w, h: pillow(data, w, h, "RGBA", "raw", "RGBA;16s"),
 }
-
-# format conv_table to a dict
-CONV_TABLE = {line[0]: line[1:] for line in CONV_TABLE}
 
 # XBOX Swap Formats
 XBOX_SWAP_FORMATS = [TF.RGB565, TF.DXT1, TF.DXT1Crunched, TF.DXT5, TF.DXT5Crunched]
