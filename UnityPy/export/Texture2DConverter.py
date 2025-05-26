@@ -377,12 +377,11 @@ def parse_image_data(
 
 
 def swap_bytes_for_xbox(image_data: bytes) -> bytes:
-    """swaps the texture bytes
-    This is required for textures deployed on XBOX360.
-    """
-    for i in range(0, len(image_data), 2):
-        image_data[i : i + 2] = image_data[i : i + 2][::-1]
-    return image_data
+    """Swaps the texture bytes for XBOX360."""
+    data = bytearray(image_data)
+    for i in range(0, len(data), 2):
+        data[i : i + 2] = data[i : i + 2][::-1]
+    return bytes(data)
 
 
 def pillow(
