@@ -217,6 +217,7 @@ def image_to_texture2d(
 
     if platform == BuildTarget.Switch and platform_blob:
         gobs_per_block = TextureSwizzler.get_switch_gobs_per_block(platform_blob)
+
         s_tex_format = tex_format
         if tex_format == TextureFormat.RGB24:
             s_tex_format = TextureFormat.RGBA32
@@ -311,19 +312,18 @@ def parse_image_data(
     switch_swizzle = None
     if platform == BuildTarget.Switch and platform_blob:
         gobs_per_block = TextureSwizzler.get_switch_gobs_per_block(platform_blob)
-        s_tex_format = texture_format
-        pil_mode = "RGBA"
 
+        pil_mode = "RGBA"
         if texture_format == TextureFormat.RGB24:
-            s_tex_format = TextureFormat.RGBA32
+            texture_format = TextureFormat.RGBA32
         elif texture_format == TextureFormat.BGR24:
-            s_tex_format = TextureFormat.BGRA32
+            texture_format = TextureFormat.BGRA32
             pil_mode = "BGRA"
         elif texture_format == TextureFormat.Alpha8:
-            s_tex_format = texture_format
+            texture_format = texture_format
             pil_mode = "L"
 
-        block_size = TextureSwizzler.TEXTUREFORMAT_BLOCK_SIZE_MAP[s_tex_format]
+        block_size = TextureSwizzler.TEXTUREFORMAT_BLOCK_SIZE_MAP[texture_format]
         width, height = TextureSwizzler.get_padded_texture_size(
             width, height, *block_size, gobs_per_block
         )
