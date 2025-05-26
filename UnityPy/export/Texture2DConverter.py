@@ -273,6 +273,7 @@ def get_image_from_texture2d(
     :return: PIL.Image object
     :rtype: Image
     """
+    assert texture_2d.object_reader is not None
     return parse_image_data(
         texture_2d.get_image_data(),
         texture_2d.m_Width,

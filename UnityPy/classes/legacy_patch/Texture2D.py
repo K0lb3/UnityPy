@@ -24,6 +24,7 @@ def _Texture2d_set_image(
 
     if not isinstance(img, Image.Image):
         img = Image.open(img)
+        assert isinstance(img, Image.Image)
 
     platform = self.object_reader.platform if self.object_reader is not None else 0
     img_data, tex_format = Texture2DConverter.image_to_texture2d(
@@ -70,6 +71,7 @@ def _Texture2D_get_image_data(self: Texture2D):
     if self.m_StreamData:
         from ...helpers.ResourceReader import get_resource_data
 
+        assert self.object_reader is not None
         return get_resource_data(
             self.m_StreamData.path,
             self.object_reader.assets_file,

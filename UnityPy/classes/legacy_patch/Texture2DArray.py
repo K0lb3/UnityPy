@@ -15,9 +15,11 @@ def _Texture2DArray_get_images(self: Texture2DArray) -> List[Image.Image]:
     texture_format = GRAPHICS_TO_TEXTURE_MAP.get(GraphicsFormat(self.m_Format))
     if not texture_format:
         raise NotImplementedError(f"GraphicsFormat {self.m_Format} not supported yet")
+    assert self.object_reader is not None
 
     image_data = self.image_data
     if image_data is None:
+        assert self.m_StreamData is not None
         image_data = get_resource_data(
             self.m_StreamData.path,
             self.object_reader.assets_file,
