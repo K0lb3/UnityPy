@@ -215,7 +215,7 @@ def image_to_texture2d(
         pil_mode = "RGB"
     # everything else defaulted to RGBA
 
-    if platform == BuildTarget.Switch and platform_blob is not None:
+    if platform == BuildTarget.Switch and platform_blob:
         gobs_per_block = TextureSwizzler.get_switch_gobs_per_block(platform_blob)
         s_tex_format = tex_format
         if tex_format == TextureFormat.RGB24:
@@ -309,7 +309,7 @@ def parse_image_data(
 
     original_width, original_height = width, height
     switch_swizzle = None
-    if platform == BuildTarget.Switch and platform_blob is not None:
+    if platform == BuildTarget.Switch and platform_blob:
         gobs_per_block = TextureSwizzler.get_switch_gobs_per_block(platform_blob)
         s_tex_format = texture_format
         pil_mode = "RGBA"
@@ -355,6 +355,7 @@ def parse_image_data(
                 img.tobytes("raw", pil_mode), width, height, *block_size, gobs_per_block
             )
         )
+        img.mode = pil_mode
         img = Image.frombytes(img.mode, (width, height), swizzle_data, "raw", pil_mode)
 
     if original_width != width or original_height != height:
