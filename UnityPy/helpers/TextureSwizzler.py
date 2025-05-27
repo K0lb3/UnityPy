@@ -1,7 +1,7 @@
 # based on https://github.com/nesrak1/UABEA/blob/master/TexturePlugin/Texture2DSwitchDeswizzler.cs
 from typing import Dict, Tuple
 
-from ..enums import TextureFormat
+from ..enums import TextureFormat as TF
 
 GOB_X_TEXEL_COUNT = 4
 GOB_Y_TEXEL_COUNT = 8
@@ -24,7 +24,7 @@ def deswizzle(
     block_width: int,
     block_height: int,
     texels_per_block: int,
-) -> bytearray:
+) -> bytes:
     block_count_x = ceil_divide(width, block_width)
     block_count_y = ceil_divide(height, block_height)
     gob_count_x = block_count_x // GOB_X_TEXEL_COUNT
@@ -46,7 +46,8 @@ def deswizzle(
                         :TEXEL_BYTE_SIZE
                     ]
                     data_view = data_view[TEXEL_BYTE_SIZE:]
-    return new_data
+
+    return bytes(new_data)
 
 
 def swizzle(
@@ -56,7 +57,7 @@ def swizzle(
     block_width: int,
     block_height: int,
     texels_per_block: int,
-) -> bytearray:
+) -> bytes:
     block_count_x = ceil_divide(width, block_width)
     block_count_y = ceil_divide(height, block_height)
     gob_count_x = block_count_x // GOB_X_TEXEL_COUNT
@@ -79,40 +80,40 @@ def swizzle(
                     ]
                     data_view = data_view[TEXEL_BYTE_SIZE:]
 
-    return new_data
+    return bytes(new_data)
 
 
 # this should be the amount of pixels that can fit 16 bytes
-TEXTUREFORMAT_BLOCK_SIZE_MAP: Dict[TextureFormat, Tuple[int, int]] = {
-    TextureFormat.Alpha8: (16, 1),  # 1 byte per pixel
-    TextureFormat.ARGB4444: (8, 1),  # 2 bytes per pixel
-    TextureFormat.RGBA32: (4, 1),  # 4 bytes per pixel
-    TextureFormat.ARGB32: (4, 1),  # 4 bytes per pixel
-    TextureFormat.ARGBFloat: (1, 1),  # 16 bytes per pixel (?)
-    TextureFormat.RGB565: (8, 1),  # 2 bytes per pixel
-    TextureFormat.R16: (8, 1),  # 2 bytes per pixel
-    TextureFormat.DXT1: (8, 4),  # 8 bytes per 4x4=16 pixels
-    TextureFormat.DXT5: (4, 4),  # 16 bytes per 4x4=16 pixels
-    TextureFormat.RGBA4444: (8, 1),  # 2 bytes per pixel
-    TextureFormat.BGRA32: (4, 1),  # 4 bytes per pixel
-    TextureFormat.BC6H: (4, 4),  # 16 bytes per 4x4=16 pixels
-    TextureFormat.BC7: (4, 4),  # 16 bytes per 4x4=16 pixels
-    TextureFormat.BC4: (8, 4),  # 8 bytes per 4x4=16 pixels
-    TextureFormat.BC5: (4, 4),  # 16 bytes per 4x4=16 pixels
-    TextureFormat.ASTC_RGB_4x4: (4, 4),  # 16 bytes per 4x4=16 pixels
-    TextureFormat.ASTC_RGB_5x5: (5, 5),  # 16 bytes per 5x5=25 pixels
-    TextureFormat.ASTC_RGB_6x6: (6, 6),  # 16 bytes per 6x6=36 pixels
-    TextureFormat.ASTC_RGB_8x8: (8, 8),  # 16 bytes per 8x8=64 pixels
-    TextureFormat.ASTC_RGB_10x10: (10, 10),  # 16 bytes per 10x10=100 pixels
-    TextureFormat.ASTC_RGB_12x12: (12, 12),  # 16 bytes per 12x12=144 pixels
-    TextureFormat.ASTC_RGBA_4x4: (4, 4),  # 16 bytes per 4x4=16 pixels
-    TextureFormat.ASTC_RGBA_5x5: (5, 5),  # 16 bytes per 5x5=25 pixels
-    TextureFormat.ASTC_RGBA_6x6: (6, 6),  # 16 bytes per 6x6=36 pixels
-    TextureFormat.ASTC_RGBA_8x8: (8, 8),  # 16 bytes per 8x8=64 pixels
-    TextureFormat.ASTC_RGBA_10x10: (10, 10),  # 16 bytes per 10x10=100 pixels
-    TextureFormat.ASTC_RGBA_12x12: (12, 12),  # 16 bytes per 12x12=144 pixels
-    TextureFormat.RG16: (8, 1),  # 2 bytes per pixel
-    TextureFormat.R8: (16, 1),  # 1 byte per pixel
+TEXTUREFORMAT_BLOCK_SIZE_MAP: Dict[TF, Tuple[int, int]] = {
+    TF.Alpha8: (16, 1),  # 1 byte per pixel
+    TF.ARGB4444: (8, 1),  # 2 bytes per pixel
+    TF.RGBA32: (4, 1),  # 4 bytes per pixel
+    TF.ARGB32: (4, 1),  # 4 bytes per pixel
+    TF.ARGBFloat: (1, 1),  # 16 bytes per pixel (?)
+    TF.RGB565: (8, 1),  # 2 bytes per pixel
+    TF.R16: (8, 1),  # 2 bytes per pixel
+    TF.DXT1: (8, 4),  # 8 bytes per 4x4=16 pixels
+    TF.DXT5: (4, 4),  # 16 bytes per 4x4=16 pixels
+    TF.RGBA4444: (8, 1),  # 2 bytes per pixel
+    TF.BGRA32: (4, 1),  # 4 bytes per pixel
+    TF.BC6H: (4, 4),  # 16 bytes per 4x4=16 pixels
+    TF.BC7: (4, 4),  # 16 bytes per 4x4=16 pixels
+    TF.BC4: (8, 4),  # 8 bytes per 4x4=16 pixels
+    TF.BC5: (4, 4),  # 16 bytes per 4x4=16 pixels
+    TF.ASTC_RGB_4x4: (4, 4),  # 16 bytes per 4x4=16 pixels
+    TF.ASTC_RGB_5x5: (5, 5),  # 16 bytes per 5x5=25 pixels
+    TF.ASTC_RGB_6x6: (6, 6),  # 16 bytes per 6x6=36 pixels
+    TF.ASTC_RGB_8x8: (8, 8),  # 16 bytes per 8x8=64 pixels
+    TF.ASTC_RGB_10x10: (10, 10),  # 16 bytes per 10x10=100 pixels
+    TF.ASTC_RGB_12x12: (12, 12),  # 16 bytes per 12x12=144 pixels
+    TF.ASTC_RGBA_4x4: (4, 4),  # 16 bytes per 4x4=16 pixels
+    TF.ASTC_RGBA_5x5: (5, 5),  # 16 bytes per 5x5=25 pixels
+    TF.ASTC_RGBA_6x6: (6, 6),  # 16 bytes per 6x6=36 pixels
+    TF.ASTC_RGBA_8x8: (8, 8),  # 16 bytes per 8x8=64 pixels
+    TF.ASTC_RGBA_10x10: (10, 10),  # 16 bytes per 10x10=100 pixels
+    TF.ASTC_RGBA_12x12: (12, 12),  # 16 bytes per 12x12=144 pixels
+    TF.RG16: (8, 1),  # 2 bytes per pixel
+    TF.R8: (16, 1),  # 1 byte per pixel
 }
 
 

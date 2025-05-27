@@ -9,14 +9,13 @@ import astc_encoder
 import texture2ddecoder
 from PIL import Image
 
-from ..enums import BuildTarget, TextureFormat
+from ..enums import BuildTarget
+from ..enums import TextureFormat as TF
 from ..helpers import TextureSwizzler
 
 if TYPE_CHECKING:
     from ..classes import Texture2D
 
-
-TF = TextureFormat
 
 TEXTURE_FORMAT_BLOCK_SIZE_TABLE: Dict[TF, Optional[Tuple[int, int]]] = {}
 for tf in TF:
@@ -32,7 +31,7 @@ for tf in TF:
     TEXTURE_FORMAT_BLOCK_SIZE_TABLE[tf] = block_size
 
 
-def get_compressed_image_size(width: int, height: int, texture_format: TextureFormat):
+def get_compressed_image_size(width: int, height: int, texture_format: TF):
     block_size = TEXTURE_FORMAT_BLOCK_SIZE_TABLE[texture_format]
     if block_size is None:
         return (width, height)
@@ -88,7 +87,7 @@ def pad_image(img: Image.Image, pad_width: int, pad_height: int) -> Image.Image:
 
 
 def compress_etcpak(
-    data: bytes, width: int, height: int, target_texture_format: TextureFormat
+    data: bytes, width: int, height: int, target_texture_format: TF
 ) -> bytes:
     import etcpak
 
@@ -115,7 +114,7 @@ def compress_etcpak(
 
 
 def compress_astc(
-    data: bytes, width: int, height: int, target_texture_format: TextureFormat
+    data: bytes, width: int, height: int, target_texture_format: TF
 ) -> bytes:
     astc_image = astc_encoder.ASTCImage(
         astc_encoder.ASTCType.U8, width, height, 1, data
@@ -139,24 +138,24 @@ def image_to_texture2d(
     platform: int = 0,
     platform_blob: Optional[bytes] = None,
     flip: bool = True,
-) -> Tuple[bytes, TextureFormat]:
-    if not isinstance(target_texture_format, TextureFormat):
-        target_texture_format = TextureFormat(target_texture_format)
+) -> Tuple[bytes, TF]:
+    if not isinstance(target_texture_format, TF):
+        target_texture_format = TF(target_texture_format)
 
     if flip:
         img = img.transpose(Image.FLIP_TOP_BOTTOM)
 
     # defaults
     compress_func = None
-    tex_format = TF.RGBA32
+    texture_format = TF.RGBA32
     pil_mode = "RGBA"
 
     # DXT / BC
     if target_texture_format in [TF.DXT1, TF.DXT1Crunched]:
-        tex_format = TF.DXT1
+        texture_format = TF.DXT1
         compress_func = compress_etcpak
     elif target_texture_format in [TF.DXT5, TF.DXT5Crunched]:
-        tex_format = TF.DXT5
+        texture_format = TF.DXT5
         compress_func = compress_etcpak
     elif target_texture_format in [TF.BC4, TF.BC5, TF.BC7]:
         compress_func = compress_etcpak
@@ -166,28 +165,32 @@ def image_to_texture2d(
             block_size = TEXTURE_FORMAT_BLOCK_SIZE_TABLE[target_texture_format]
             assert block_size is not None
             if img.mode == "RGB":
-                tex_format = getattr(TF, f"ASTC_RGB_{block_size[0]}x{block_size[1]}")
+                texture_format = getattr(
+                    TF, f"ASTC_RGB_{block_size[0]}x{block_size[1]}"
+                )
             else:
-                tex_format = getattr(TF, f"ASTC_RGBA_{block_size[0]}x{block_size[1]}")
+                texture_format = getattr(
+                    TF, f"ASTC_RGBA_{block_size[0]}x{block_size[1]}"
+                )
         else:
-            tex_format = target_texture_format
+            texture_format = target_texture_format
         compress_func = compress_astc
     # ETC
     elif target_texture_format in [TF.ETC_RGB4, TF.ETC_RGB4Crunched, TF.ETC_RGB4_3DS]:
         if target_texture_format == TF.ETC_RGB4_3DS:
-            tex_format = TF.ETC_RGB4_3DS
+            texture_format = TF.ETC_RGB4_3DS
         else:
-            tex_format = target_texture_format
+            texture_format = target_texture_format
         compress_func = compress_etcpak
     elif target_texture_format == TF.ETC2_RGB:
-        tex_format = TF.ETC2_RGB
+        texture_format = TF.ETC2_RGB
         compress_func = compress_etcpak
     elif target_texture_format in [TF.ETC2_RGBA8, TF.ETC2_RGBA8Crunched, TF.ETC2_RGBA1]:
-        tex_format = TF.ETC2_RGBA8
+        texture_format = TF.ETC2_RGBA8
         compress_func = compress_etcpak
     # L
     elif target_texture_format == TF.Alpha8:
-        tex_format = TF.Alpha8
+        texture_format = TF.Alpha8
         pil_mode = "L"
     # R - should probably be merged into #L, as pure R is used as Alpha
     # but need test data for this first
@@ -199,7 +202,7 @@ def image_to_texture2d(
         TF.EAC_R,
         TF.EAC_R_SIGNED,
     ]:
-        tex_format = TF.R8
+        texture_format = TF.R8
         pil_mode = "R"
     # RGBA
     elif target_texture_format in [
@@ -211,7 +214,7 @@ def image_to_texture2d(
         TF.PVRTC_RGB4,
         TF.ATC_RGB4,
     ]:
-        tex_format = TF.RGB24
+        texture_format = TF.RGB24
         pil_mode = "RGB"
     # everything else defaulted to RGBA
 
@@ -219,17 +222,17 @@ def image_to_texture2d(
     if platform == BuildTarget.Switch and platform_blob:
         gobs_per_block = TextureSwizzler.get_switch_gobs_per_block(platform_blob)
 
-        if tex_format == TextureFormat.RGB24:
-            tex_format = TextureFormat.RGBA32
+        if texture_format == TF.RGB24:
+            texture_format = TF.RGBA32
             pil_mode = "RGBA"
-        elif tex_format == TextureFormat.BGR24:
-            tex_format = TextureFormat.BGRA32
+        elif texture_format == TF.BGR24:
+            texture_format = TF.BGRA32
             pil_mode = "BGRA"
 
-        block_size = TextureSwizzler.TEXTUREFORMAT_BLOCK_SIZE_MAP.get(tex_format)
+        block_size = TextureSwizzler.TEXTUREFORMAT_BLOCK_SIZE_MAP.get(texture_format)
         if not block_size:
             raise NotImplementedError(
-                f"Not implemented swizzle format: {tex_format.name}"
+                f"Not implemented swizzle format: {texture_format.name}"
             )
 
         width, height = TextureSwizzler.get_padded_texture_size(
@@ -237,26 +240,24 @@ def image_to_texture2d(
         )
         switch_swizzle = (block_size, gobs_per_block)
     else:
-        width, height = get_compressed_image_size(img.width, img.height, tex_format)
+        width, height = get_compressed_image_size(img.width, img.height, texture_format)
 
     img = pad_image(img, width, height)
     if compress_func:
         enc_img = compress_func(
-            img.tobytes("raw", pil_mode), img.width, img.height, tex_format
+            img.tobytes("raw", pil_mode), img.width, img.height, texture_format
         )
     else:
         enc_img = img.tobytes("raw", pil_mode)
 
     if switch_swizzle is not None:
         block_size, gobs_per_block = switch_swizzle
-        enc_img = bytes(
-            TextureSwizzler.swizzle(enc_img, width, height, *block_size, gobs_per_block)
-        )
+        enc_img = TextureSwizzler.swizzle(enc_img, width, height, *block_size, gobs_per_block)
 
-    return enc_img, tex_format
+    return enc_img, texture_format
 
 
-def assert_rgba(img: Image.Image, target_texture_format: TextureFormat) -> Image.Image:
+def assert_rgba(img: Image.Image, target_texture_format: TF) -> Image.Image:
     if img.mode == "RGB":
         img = img.convert("RGBA")
     assert (
@@ -295,7 +296,7 @@ def parse_image_data(
     image_data: bytes,
     width: int,
     height: int,
-    texture_format: Union[int, TextureFormat],
+    texture_format: Union[int, TF],
     version: Tuple[int, int, int, int],
     platform: int,
     platform_blob: Optional[bytes] = None,
@@ -308,8 +309,8 @@ def parse_image_data(
     if not image_data:
         raise ValueError("Texture2D has no image data")
 
-    if not isinstance(texture_format, TextureFormat):
-        texture_format = TextureFormat(texture_format)
+    if not isinstance(texture_format, TF):
+        texture_format = TF(texture_format)
 
     if platform == BuildTarget.XBOX360 and texture_format in XBOX_SWAP_FORMATS:
         image_data = swap_bytes_for_xbox(image_data)
@@ -320,12 +321,12 @@ def parse_image_data(
         gobs_per_block = TextureSwizzler.get_switch_gobs_per_block(platform_blob)
 
         pil_mode = "RGBA"
-        if texture_format == TextureFormat.RGB24:
-            texture_format = TextureFormat.RGBA32
-        elif texture_format == TextureFormat.BGR24:
-            texture_format = TextureFormat.BGRA32
+        if texture_format == TF.RGB24:
+            texture_format = TF.RGBA32
+        elif texture_format == TF.BGR24:
+            texture_format = TF.BGRA32
             pil_mode = "BGRA"
-        elif texture_format == TextureFormat.Alpha8:
+        elif texture_format == TF.Alpha8:
             texture_format = texture_format
             pil_mode = "L"
 
@@ -355,11 +356,8 @@ def parse_image_data(
 
     if switch_swizzle is not None:
         block_size, gobs_per_block, pil_mode = switch_swizzle
-        image_data = bytes(
-            TextureSwizzler.deswizzle(
-                image_data, width, height, *block_size, gobs_per_block
-            )
-        )
+        image_data = TextureSwizzler.deswizzle(image_data, width, height, *block_size, gobs_per_block)
+
 
     conv_func = CONV_TABLE.get(texture_format)
     if not conv_func:
@@ -553,13 +551,17 @@ def rgb9e5float(image_data: bytes, width: int, height: int) -> Image.Image:
     return Image.frombytes("RGB", (width, height), rgb, "raw", "RGB")
 
 
-CONV_TABLE: Dict[TextureFormat, Callable[[bytes, int, int], Image.Image]] = {
+CONV_TABLE: Dict[TF, Callable[[bytes, int, int], Image.Image]] = {
     TF.Alpha8: lambda data, w, h: pillow(data, w, h, "L", "raw", "L"),
-    TF.ARGB4444: lambda data, w, h: pillow(data, w, h, "RGBA", "raw", "RGBA;4B", (2, 1, 0, 3)),
+    TF.ARGB4444: lambda data, w, h: pillow(
+        data, w, h, "RGBA", "raw", "RGBA;4B", (2, 1, 0, 3)
+    ),
     TF.RGB24: lambda data, w, h: pillow(data, w, h, "RGB", "raw", "RGB"),
     TF.RGBA32: lambda data, w, h: pillow(data, w, h, "RGBA", "raw", "RGBA"),
     TF.ARGB32: lambda data, w, h: pillow(data, w, h, "RGBA", "raw", "ARGB"),
-    TF.ARGBFloat: lambda data, w, h: pillow(data, w, h, "RGBA", "raw", "RGBAF", (2, 1, 0, 3)),
+    TF.ARGBFloat: lambda data, w, h: pillow(
+        data, w, h, "RGBA", "raw", "RGBAF", (2, 1, 0, 3)
+    ),
     TF.RGB565: lambda data, w, h: pillow(data, w, h, "RGB", "raw", "BGR;16"),
     TF.BGR24: lambda data, w, h: pillow(data, w, h, "RGB", "raw", "BGR"),
     TF.R8: lambda data, w, h: pillow(data, w, h, "RGB", "raw", "R"),
@@ -568,7 +570,9 @@ CONV_TABLE: Dict[TextureFormat, Callable[[bytes, int, int], Image.Image]] = {
     TF.DXT1: lambda data, w, h: pillow(data, w, h, "RGBA", "bcn", 1),
     TF.DXT3: lambda data, w, h: pillow(data, w, h, "RGBA", "bcn", 2),
     TF.DXT5: lambda data, w, h: pillow(data, w, h, "RGBA", "bcn", 3),
-    TF.RGBA4444: lambda data, w, h: pillow(data, w, h, "RGBA", "raw", "RGBA;4B", (3, 2, 1, 0)),
+    TF.RGBA4444: lambda data, w, h: pillow(
+        data, w, h, "RGBA", "raw", "RGBA;4B", (3, 2, 1, 0)
+    ),
     TF.BGRA32: lambda data, w, h: pillow(data, w, h, "RGBA", "raw", "BGRA"),
     TF.RHalf: lambda data, w, h: half(data, w, h, "R", "raw", "R"),
     TF.RGHalf: lambda data, w, h: rg(data, w, h, "RGB", "raw", "RGE"),
