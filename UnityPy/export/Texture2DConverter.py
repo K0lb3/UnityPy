@@ -222,28 +222,6 @@ def image_to_texture2d(
         tex_format = TF.RGB24
         pil_mode = "RGB"
     # everything else defaulted to RGBA
-
-    if platform == BuildTarget.Switch and platform_blob is not None:
-        gobsPerBlock = TextureSwizzler.get_switch_gobs_per_block(platform_blob)
-        s_tex_format = tex_format
-        if tex_format == TextureFormat.RGB24:
-            s_tex_format = TextureFormat.RGBA32
-            pil_mode = "RGBA"
-        # elif tex_format == TextureFormat.BGR24:
-        #     s_tex_format = TextureFormat.BGRA32
-        block_size = TextureSwizzler.TEXTUREFORMAT_BLOCK_SIZE_MAP[s_tex_format]
-        width, height = TextureSwizzler.get_padded_texture_size(
-            img.width, img.height, *block_size, gobsPerBlock
-        )
-        img = pad_image(img, width, height)
-        img = Image.frombytes(
-            "RGBA",
-            img.size,
-            TextureSwizzler.swizzle(
-                img.tobytes("raw", "RGBA"), width, height, *block_size, gobsPerBlock
-            ),
-        )
-
     if compress_func:
         width, height = get_compressed_image_size(img.width, img.height, tex_format)
         img = pad_image(img, width, height)
@@ -252,6 +230,31 @@ def image_to_texture2d(
         )
     else:
         enc_img = img.tobytes("raw", pil_mode)
+
+    if TextureSwizzler.is_switch_swizzled(platform, platform_blob):
+        if TYPE_CHECKING:
+            # due to earlier check platform_blob can't be None
+            assert platform_blob is not None
+        gobsPerBlock = TextureSwizzler.get_switch_gobs_per_block(platform_blob)
+        s_tex_format = tex_format
+        if tex_format == TextureFormat.RGB24:
+            s_tex_format = TextureFormat.RGBA32
+            pil_mode = "RGBA"
+        elif tex_format == TextureFormat.BGR24:
+            s_tex_format = TextureFormat.BGRA32
+            pil_mode = "BGRA"
+        block_size = TextureSwizzler.TEXTUREFORMAT_BLOCK_SIZE_MAP[s_tex_format]
+        width, height = TextureSwizzler.get_padded_texture_size(
+            img.width, img.height, *block_size, gobsPerBlock
+        )
+        if not compress_func:
+            # recompress with padding and corrected image mode
+            img = pad_image(img, width, height)
+            enc_img = img.tobytes("raw", pil_mode)
+
+        enc_img = bytes(
+            TextureSwizzler.swizzle(enc_img, width, height, *block_size, gobsPerBlock)
+        )
 
     return enc_img, tex_format
 
@@ -314,8 +317,11 @@ def parse_image_data(
         image_data = swap_bytes_for_xbox(image_data)
 
     original_width, original_height = (width, height)
-    switch_swizzle = None
-    if platform == BuildTarget.Switch and platform_blob is not None:
+
+    if TextureSwizzler.is_switch_swizzled(platform, platform_blob):
+        if TYPE_CHECKING:
+            # due to earlier check platform_blob can't be None
+            assert platform_blob is not None
         gobsPerBlock = TextureSwizzler.get_switch_gobs_per_block(platform_blob)
         if texture_format == TextureFormat.RGB24:
             texture_format = TextureFormat.RGBA32
@@ -325,7 +331,9 @@ def parse_image_data(
         width, height = TextureSwizzler.get_padded_texture_size(
             width, height, *block_size, gobsPerBlock
         )
-        switch_swizzle = (block_size, gobsPerBlock)
+        image_data = TextureSwizzler.deswizzle(
+            image_data, width, height, *block_size, gobsPerBlock
+        )
     else:
         width, height = get_compressed_image_size(width, height, texture_format)
 
@@ -347,12 +355,6 @@ def parse_image_data(
             image_data = texture2ddecoder.unpack_crunch(image_data)
 
     img = selection[0](image_data, width, height, *selection[1:])
-
-    if switch_swizzle is not None:
-        image_data = TextureSwizzler.deswizzle(
-            img.tobytes("raw", "RGBA"), width, height, *block_size, gobsPerBlock
-        )
-        img = Image.frombytes(img.mode, (width, height), image_data, "raw", "RGBA")
 
     if original_width != width or original_height != height:
         img = img.crop((0, 0, original_width, original_height))
