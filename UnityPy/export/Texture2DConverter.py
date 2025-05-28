@@ -3,7 +3,7 @@
 import struct
 from io import BytesIO
 from threading import Lock
-from typing import TYPE_CHECKING, Callable, Dict, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Callable, Dict, Optional, Sequence, Tuple, Union
 
 import astc_encoder
 import texture2ddecoder
@@ -15,6 +15,9 @@ from ..helpers import TextureSwizzler
 
 if TYPE_CHECKING:
     from ..classes import Texture2D
+
+
+PlatformBlobType = Union[bytes, Sequence[int]]
 
 
 TEXTURE_FORMAT_BLOCK_SIZE_TABLE: Dict[TF, Optional[Tuple[int, int]]] = {}
@@ -134,7 +137,7 @@ def image_to_texture2d(
     img: Image.Image,
     target_texture_format: Union[TF, int],
     platform: int = 0,
-    platform_blob: Optional[bytes] = None,
+    platform_blob: Optional[PlatformBlobType] = None,
     flip: bool = True,
 ) -> Tuple[bytes, TF]:
     if not isinstance(target_texture_format, TF):
@@ -216,10 +219,8 @@ def image_to_texture2d(
         pil_mode = "RGB"
     # everything else defaulted to RGBA
 
-    switch_swizzle = None
-    if platform == BuildTarget.Switch and platform_blob:
-        gobs_per_block = TextureSwizzler.get_switch_gobs_per_block(platform_blob)
-
+    if TextureSwizzler.is_switch_swizzled(platform, platform_blob):
+        assert platform_blob is not None
         if texture_format == TF.RGB24:
             texture_format = TF.RGBA32
             pil_mode = "RGBA"
@@ -227,16 +228,9 @@ def image_to_texture2d(
             texture_format = TF.BGRA32
             pil_mode = "BGRA"
 
-        block_size = TextureSwizzler.TEXTUREFORMAT_BLOCK_SIZE_MAP.get(texture_format)
-        if not block_size:
-            raise NotImplementedError(
-                f"Not implemented swizzle format: {texture_format.name}"
-            )
-
-        width, height = TextureSwizzler.get_padded_texture_size(
-            img.width, img.height, *block_size, gobs_per_block
+        width, height = TextureSwizzler.get_padded_image_size(
+            img.width, img.height, texture_format, platform_blob
         )
-        switch_swizzle = (block_size, gobs_per_block)
     else:
         width, height = get_compressed_image_size(img.width, img.height, texture_format)
 
@@ -248,9 +242,11 @@ def image_to_texture2d(
     else:
         enc_img = img.tobytes("raw", pil_mode)
 
-    if switch_swizzle is not None:
-        block_size, gobs_per_block = switch_swizzle
-        enc_img = TextureSwizzler.swizzle(enc_img, width, height, *block_size, gobs_per_block)
+    if TextureSwizzler.is_switch_swizzled(platform, platform_blob):
+        assert platform_blob is not None
+        enc_img = TextureSwizzler.swizzle(
+            enc_img, width, height, texture_format, platform_blob
+        )
 
     return enc_img, texture_format
 
@@ -285,10 +281,10 @@ def parse_image_data(
     image_data: bytes,
     width: int,
     height: int,
-    texture_format: Union[int, TF],
+    texture_format: Union[TF, int],
     version: Tuple[int, int, int, int],
     platform: int,
-    platform_blob: Optional[bytes] = None,
+    platform_blob: Optional[PlatformBlobType] = None,
     flip: bool = True,
 ) -> Image.Image:
     if not width or not height:
@@ -304,30 +300,19 @@ def parse_image_data(
     if platform == BuildTarget.XBOX360 and texture_format in XBOX_SWAP_FORMATS:
         image_data = swap_bytes_for_xbox(image_data)
 
-    original_width, original_height = width, height
-    switch_swizzle = None
-    if platform == BuildTarget.Switch and platform_blob:
-        gobs_per_block = TextureSwizzler.get_switch_gobs_per_block(platform_blob)
+    ori_width, ori_height = width, height
 
-        pil_mode = "RGBA"
+    if TextureSwizzler.is_switch_swizzled(platform, platform_blob):
+        assert platform_blob is not None
         if texture_format == TF.RGB24:
             texture_format = TF.RGBA32
         elif texture_format == TF.BGR24:
             texture_format = TF.BGRA32
-            pil_mode = "BGRA"
-        elif texture_format == TF.Alpha8:
-            pil_mode = "L"
 
-        block_size = TextureSwizzler.TEXTUREFORMAT_BLOCK_SIZE_MAP.get(texture_format)
-        if not block_size:
-            raise NotImplementedError(
-                f"Not implemented swizzle format: {texture_format.name}"
-            )
-
-        width, height = TextureSwizzler.get_padded_texture_size(
-            width, height, *block_size, gobs_per_block
+        width, height = TextureSwizzler.get_padded_image_size(
+            width, height, texture_format, platform_blob
         )
-        switch_swizzle = (block_size, gobs_per_block, pil_mode)
+        image_data = TextureSwizzler.deswizzle(image_data, width, height, texture_format, platform_blob)
     else:
         width, height = get_compressed_image_size(width, height, texture_format)
 
@@ -342,11 +327,6 @@ def parse_image_data(
         else:
             image_data = texture2ddecoder.unpack_crunch(image_data)
 
-    if switch_swizzle is not None:
-        block_size, gobs_per_block, pil_mode = switch_swizzle
-        image_data = TextureSwizzler.deswizzle(image_data, width, height, *block_size, gobs_per_block)
-
-
     conv_func = CONV_TABLE.get(texture_format)
     if not conv_func:
         raise NotImplementedError(
@@ -354,8 +334,8 @@ def parse_image_data(
         )
     img = conv_func(image_data, width, height)
 
-    if original_width != width or original_height != height:
-        img = img.crop((0, 0, original_width, original_height))
+    if ori_width != width or ori_height != height:
+        img = img.crop((0, 0, ori_width, ori_height))
 
     return img.transpose(Image.FLIP_TOP_BOTTOM) if flip else img
 

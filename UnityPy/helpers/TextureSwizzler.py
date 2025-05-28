@@ -1,7 +1,13 @@
 # based on https://github.com/nesrak1/UABEA/blob/master/TexturePlugin/Texture2DSwitchDeswizzler.cs
-from typing import Dict, Tuple
+from typing import Dict, Optional, Sequence, Tuple, Union
+
+from UnityPy.enums import BuildTarget
 
 from ..enums import TextureFormat as TF
+
+
+PlatformBlobType = Union[bytes, Sequence[int]]
+
 
 GOB_X_TEXEL_COUNT = 4
 GOB_Y_TEXEL_COUNT = 8
@@ -13,11 +19,11 @@ GOB_MAP = [
 ]
 
 
-def ceil_divide(a: int, b: int) -> int:
+def _ceil_divide(a: int, b: int) -> int:
     return (a + b - 1) // b
 
 
-def deswizzle(
+def _deswizzle(
     data: bytes,
     width: int,
     height: int,
@@ -25,8 +31,8 @@ def deswizzle(
     block_height: int,
     texels_per_block: int,
 ) -> bytes:
-    block_count_x = ceil_divide(width, block_width)
-    block_count_y = ceil_divide(height, block_height)
+    block_count_x = _ceil_divide(width, block_width)
+    block_count_y = _ceil_divide(height, block_height)
     gob_count_x = block_count_x // GOB_X_TEXEL_COUNT
     gob_count_y = block_count_y // GOB_Y_TEXEL_COUNT
     new_data = bytearray(len(data))
@@ -50,7 +56,7 @@ def deswizzle(
     return bytes(new_data)
 
 
-def swizzle(
+def _swizzle(
     data: bytes,
     width: int,
     height: int,
@@ -58,8 +64,8 @@ def swizzle(
     block_height: int,
     texels_per_block: int,
 ) -> bytes:
-    block_count_x = ceil_divide(width, block_width)
-    block_count_y = ceil_divide(height, block_height)
+    block_count_x = _ceil_divide(width, block_width)
+    block_count_y = _ceil_divide(height, block_height)
     gob_count_x = block_count_x // GOB_X_TEXEL_COUNT
     gob_count_y = block_count_y // GOB_Y_TEXEL_COUNT
     new_data = bytearray(len(data))
@@ -83,8 +89,31 @@ def swizzle(
     return bytes(new_data)
 
 
+def _get_padded_texture_size(
+    width: int, height: int, block_width: int, block_height: int, texels_per_block: int
+) -> Tuple[int, int]:
+    width = (
+        _ceil_divide(width, block_width * GOB_X_TEXEL_COUNT)
+        * block_width
+        * GOB_X_TEXEL_COUNT
+    )
+    height = (
+        _ceil_divide(height, block_height * GOB_Y_TEXEL_COUNT * texels_per_block)
+        * block_height
+        * GOB_Y_TEXEL_COUNT
+        * texels_per_block
+    )
+    return width, height
+
+
+def _get_texels_per_block(platform_blob: PlatformBlobType) -> int:
+    if not platform_blob:
+        raise ValueError("Given platform_blob is empty")
+    return 1 << int.from_bytes(platform_blob[8:12], "little")
+
+
 # this should be the amount of pixels that can fit 16 bytes
-TEXTUREFORMAT_BLOCK_SIZE_MAP: Dict[TF, Tuple[int, int]] = {
+TEXTURE_FORMAT_BLOCK_SIZE_MAP: Dict[TF, Tuple[int, int]] = {
     TF.Alpha8: (16, 1),  # 1 byte per pixel
     TF.ARGB4444: (8, 1),  # 2 bytes per pixel
     TF.RGBA32: (4, 1),  # 4 bytes per pixel
@@ -117,22 +146,59 @@ TEXTUREFORMAT_BLOCK_SIZE_MAP: Dict[TF, Tuple[int, int]] = {
 }
 
 
-def get_padded_texture_size(
-    width: int, height: int, block_width: int, block_height: int, texels_per_block: int
+def deswizzle(
+    data: bytes,
+    width: int,
+    height: int,
+    texture_format: TF,
+    platform_blob: PlatformBlobType,
+) -> bytes:
+    block_size = TEXTURE_FORMAT_BLOCK_SIZE_MAP.get(texture_format)
+    if not block_size:
+        raise NotImplementedError(
+            f"Not implemented swizzle format: {texture_format.name}"
+        )
+    texels_per_block = _get_texels_per_block(platform_blob)
+    return _deswizzle(data, width, height, *block_size, texels_per_block)
+
+
+def swizzle(
+    data: bytes,
+    width: int,
+    height: int,
+    texture_format: TF,
+    platform_blob: PlatformBlobType,
+) -> bytes:
+    block_size = TEXTURE_FORMAT_BLOCK_SIZE_MAP.get(texture_format)
+    if not block_size:
+        raise NotImplementedError(
+            f"Not implemented swizzle format: {texture_format.name}"
+        )
+    texels_per_block = _get_texels_per_block(platform_blob)
+    return _swizzle(data, width, height, *block_size, texels_per_block)
+
+
+def get_padded_image_size(
+    width: int,
+    height: int,
+    texture_format: TF,
+    platform_blob: PlatformBlobType,
 ):
-    width = (
-        ceil_divide(width, block_width * GOB_X_TEXEL_COUNT)
-        * block_width
-        * GOB_X_TEXEL_COUNT
-    )
-    height = (
-        ceil_divide(height, block_height * GOB_Y_TEXEL_COUNT * texels_per_block)
-        * block_height
-        * GOB_Y_TEXEL_COUNT
-        * texels_per_block
-    )
-    return width, height
+    block_size = TEXTURE_FORMAT_BLOCK_SIZE_MAP.get(texture_format)
+    if not block_size:
+        raise NotImplementedError(
+            f"Not implemented swizzle format: {texture_format.name}"
+        )
+    texels_per_block = _get_texels_per_block(platform_blob)
+    return _get_padded_texture_size(width, height, *block_size, texels_per_block)
 
 
-def get_switch_gobs_per_block(platform_blob: bytes) -> int:
-    return 1 << int.from_bytes(platform_blob[8:12], "little")
+def is_switch_swizzled(
+    platform: Union[BuildTarget, int], platform_blob: Optional[PlatformBlobType] = None
+) -> bool:
+    if platform != BuildTarget.Switch:
+        return False
+    if not platform_blob or len(platform_blob) < 12:
+        return False
+    gobs_per_block = _get_texels_per_block(platform_blob)
+    return gobs_per_block > 1
