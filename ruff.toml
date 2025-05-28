@@ -1,5 +1,12 @@
 target-version = "py37"
-include = ["UnityPy", "tests", "setup.py", "generators", "examples"]
+include = [
+    "UnityPy/*.py",
+    "UnityPy/*.pyi",
+    "tests/*py",
+    "setup.py",
+    "generators/*.py",
+    "examples/*.py",
+]
 
 [lint.pydocstyle]
 # Enforce numpy-style docstrings
