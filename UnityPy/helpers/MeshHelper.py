@@ -583,7 +583,7 @@ class MeshHandler:
         # Tangent
         if m_CompressedMesh.m_Tangents.m_NumItems > 0:
             tangentData = unpack_floats(m_CompressedMesh.m_Tangents, shape=(2,))
-            signs = unpack_ints(m_CompressedMesh.m_TangentSigns)
+            signs = unpack_ints(m_CompressedMesh.m_TangentSigns, shape=(2,))
             self.m_Tangents = zeros((self.m_VertexCount, 4))
             for srcTan, (sign_z, sign_w), dstTan in zip(
                 tangentData, signs, self.m_Tangents
