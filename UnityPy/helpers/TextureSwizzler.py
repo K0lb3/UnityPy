@@ -1,7 +1,7 @@
-# based on https://github.com/nesrak1/UABEA/blob/master/TexturePlugin/Texture2DSwitchDeswizzler.cs
-from typing import Dict, Tuple
+# based on https://github.com/nesrak1/AssetsTools.NET/blob/dev/AssetsTools.NET.Texture/Swizzle/SwitchSwizzle.cs
+from typing import Dict, Optional, Tuple, Union
 
-from ..enums import TextureFormat
+from ..enums import BuildTarget, TextureFormat
 
 GOB_X_TEXEL_COUNT = 4
 GOB_Y_TEXEL_COUNT = 8
@@ -18,7 +18,7 @@ def ceil_divide(a: int, b: int) -> int:
 
 
 def deswizzle(
-    data: bytes,
+    data: Union[bytes, bytearray],
     width: int,
     height: int,
     block_width: int,
@@ -50,7 +50,7 @@ def deswizzle(
 
 
 def swizzle(
-    data: bytes,
+    data: Union[bytes, bytearray],
     width: int,
     height: int,
     block_width: int,
@@ -135,3 +135,14 @@ def get_padded_texture_size(
 
 def get_switch_gobs_per_block(platform_blob: bytes) -> int:
     return 1 << int.from_bytes(platform_blob[8:12], "little")
+
+
+def is_switch_swizzled(
+    platform: Union[BuildTarget, int], platform_blob: Optional[bytes]
+) -> bool:
+    if platform != BuildTarget.Switch:
+        return False
+    if not platform_blob or len(platform_blob) < 12:
+        return False
+    gobs_per_block = get_switch_gobs_per_block(platform_blob)
+    return gobs_per_block > 1
