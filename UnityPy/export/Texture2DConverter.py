@@ -53,10 +53,8 @@ def pad_image(img: Image.Image, pad_width: int, pad_height: int) -> Image.Image:
     if pad_width == ori_width and pad_height == ori_height:
         return img
 
-    pad_img = Image.new(img.mode, (pad_width, pad_height))
-    pad_img.paste(img)
-
     # Paste the original image at the top-left corner
+    pad_img = Image.new(img.mode, (pad_width, pad_height))
     pad_img.paste(img, (0, 0))
 
     # Fill the right border: duplicate the last column
@@ -257,15 +255,6 @@ def image_to_texture2d(
     return enc_img, texture_format
 
 
-def assert_rgba(img: Image.Image, target_texture_format: TF) -> Image.Image:
-    if img.mode == "RGB":
-        img = img.convert("RGBA")
-    assert (
-        img.mode == "RGBA"
-    ), f"{target_texture_format} compression only supports RGB & RGBA images"  # noqa: E501
-    return img
-
-
 def get_image_from_texture2d(
     texture_2d: Texture2D,
     flip: bool = True,
@@ -327,7 +316,6 @@ def parse_image_data(
             texture_format = TF.BGRA32
             pil_mode = "BGRA"
         elif texture_format == TF.Alpha8:
-            texture_format = texture_format
             pil_mode = "L"
 
         block_size = TextureSwizzler.TEXTUREFORMAT_BLOCK_SIZE_MAP.get(texture_format)
@@ -369,10 +357,7 @@ def parse_image_data(
     if original_width != width or original_height != height:
         img = img.crop((0, 0, original_width, original_height))
 
-    if img and flip:
-        return img.transpose(Image.FLIP_TOP_BOTTOM)
-
-    return img
+    return img.transpose(Image.FLIP_TOP_BOTTOM) if flip else img
 
 
 def swap_bytes_for_xbox(image_data: bytes) -> bytes:
