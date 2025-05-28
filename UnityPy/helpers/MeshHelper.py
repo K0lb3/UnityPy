@@ -166,8 +166,16 @@ class MeshHandler:
 
         # try to copy data directly from mesh
         if isinstance(mesh, Mesh):
-            if mesh.m_Use16BitIndices is False:
-                self.m_Use16BitIndices = False
+            if mesh.m_Use16BitIndices is not None:
+                self.m_Use16BitIndices = bool(mesh.m_Use16BitIndices)
+            elif (
+                self.version >= (2017, 4)
+                or
+                # version == (2017, 3, 1) & patched - px string
+                self.version[:2] == (2017, 3)
+                and mesh.m_MeshCompression == 0
+            ):
+                self.m_Use16BitIndices = mesh.m_IndexFormat == 0
             self.copy_from_mesh()
         elif isinstance(mesh, SpriteRenderData):
             self.copy_from_spriterenderdata()
