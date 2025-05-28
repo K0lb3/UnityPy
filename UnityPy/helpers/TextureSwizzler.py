@@ -18,7 +18,7 @@ def ceil_divide(a: int, b: int) -> int:
 
 
 def deswizzle(
-    data: Union[bytes, bytearray],
+    data: Union[bytes, bytearray, memoryview],
     width: int,
     height: int,
     block_width: int,
@@ -50,7 +50,7 @@ def deswizzle(
 
 
 def swizzle(
-    data: Union[bytes, bytearray],
+    data: Union[bytes, bytearray, memoryview],
     width: int,
     height: int,
     block_width: int,
