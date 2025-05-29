@@ -220,7 +220,15 @@ def image_to_texture2d(
         pil_mode = "RGB"
     # everything else defaulted to RGBA
     if compress_func:
-        width, height = get_compressed_image_size(img.width, img.height, tex_format)
+        width, height = img.width, img.height
+        if TextureSwizzler.is_switch_swizzled(platform, platform_blob):
+            gobsPerBlock = TextureSwizzler.get_switch_gobs_per_block(platform_blob)
+            s_tex_format = tex_format
+            block_size = TextureSwizzler.TEXTUREFORMAT_BLOCK_SIZE_MAP[s_tex_format]
+            width, height = TextureSwizzler.get_padded_texture_size(
+            img.width, img.height, *block_size, gobsPerBlock
+        )
+        width, height = get_compressed_image_size(width, height, tex_format)
         img = pad_image(img, width, height)
         enc_img = compress_func(
             img.tobytes("raw", "RGBA"), img.width, img.height, tex_format
