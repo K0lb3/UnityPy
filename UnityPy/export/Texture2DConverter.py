@@ -219,14 +219,9 @@ def image_to_texture2d(
         tex_format = TF.RGB24
         pil_mode = "RGB"
     # everything else defaulted to RGBA
-    if compress_func:
-        width, height = get_compressed_image_size(img.width, img.height, tex_format)
-        img = pad_image(img, width, height)
-        enc_img = compress_func(
-            img.tobytes("raw", "RGBA"), img.width, img.height, tex_format
-        )
-    else:
-        enc_img = img.tobytes("raw", pil_mode)
+
+    width, height = img.width, img.height
+    switch_info = None
 
     if TextureSwizzler.is_switch_swizzled(platform, platform_blob):
         if TYPE_CHECKING:
@@ -244,11 +239,22 @@ def image_to_texture2d(
         width, height = TextureSwizzler.get_padded_texture_size(
             img.width, img.height, *block_size, gobsPerBlock
         )
-        if not compress_func:
-            # recompress with padding and corrected image mode
-            img = pad_image(img, width, height)
-            enc_img = img.tobytes("raw", pil_mode)
+        switch_info = (block_size, gobsPerBlock)
 
+    if compress_func:
+        width, height = get_compressed_image_size(width, height, tex_format)
+        img = pad_image(img, width, height)
+        enc_img = compress_func(
+            img.tobytes("raw", "RGBA"), img.width, img.height, tex_format
+        )
+    else:
+        if switch_info is not None:
+            img = pad_image(img, width, height)
+
+        enc_img = img.tobytes("raw", pil_mode)
+
+    if switch_info is not None:
+        block_size, gobsPerBlock = switch_info
         enc_img = bytes(
             TextureSwizzler.swizzle(enc_img, width, height, *block_size, gobsPerBlock)
         )
