@@ -226,8 +226,8 @@ def image_to_texture2d(
             s_tex_format = tex_format
             block_size = TextureSwizzler.TEXTUREFORMAT_BLOCK_SIZE_MAP[s_tex_format]
             width, height = TextureSwizzler.get_padded_texture_size(
-            img.width, img.height, *block_size, gobsPerBlock
-        )
+                img.width, img.height, *block_size, gobsPerBlock
+            )
         width, height = get_compressed_image_size(width, height, tex_format)
         img = pad_image(img, width, height)
         enc_img = compress_func(
