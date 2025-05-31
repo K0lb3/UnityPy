@@ -55,10 +55,8 @@ def pad_image(img: Image.Image, pad_width: int, pad_height: int) -> Image.Image:
     if pad_width == ori_width and pad_height == ori_height:
         return img
 
-    pad_img = Image.new(img.mode, (pad_width, pad_height))
-    pad_img.paste(img)
-
     # Paste the original image at the top-left corner
+    pad_img = Image.new(img.mode, (pad_width, pad_height))
     pad_img.paste(img, (0, 0))
 
     # Fill the right border: duplicate the last column
@@ -259,15 +257,6 @@ def image_to_texture2d(
     return enc_img, tex_format
 
 
-def assert_rgba(img: Image.Image, target_texture_format: TextureFormat) -> Image.Image:
-    if img.mode == "RGB":
-        img = img.convert("RGBA")
-    assert img.mode == "RGBA", (
-        f"{target_texture_format} compression only supports RGB & RGBA images"
-    )  # noqa: E501
-    return img
-
-
 def get_image_from_texture2d(
     texture_2d: Texture2D,
     flip: bool = True,
@@ -341,8 +330,7 @@ def parse_image_data(
     if not selection:
         raise NotImplementedError(f"Not implemented texture format: {texture_format}")
 
-    if not isinstance(image_data, bytes):
-        image_data = bytes(image_data)
+    image_data = bytes(image_data)
 
     if "Crunched" in texture_format.name:
         if (
