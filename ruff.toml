@@ -7,6 +7,20 @@ include = [
     "generators/*.py",
     "examples/*.py",
 ]
+exclude = ["UnityPy/classes/generated.py"]
+line-length = 120
+
+[lint]
+select = [
+    # pycodestyle
+    "E",
+    # Pyflakes
+    "F",
+    # flake8-bugbear
+    "B",
+    # isort
+    "I",
+]
 
 [lint.pydocstyle]
 # Enforce numpy-style docstrings
@@ -15,3 +29,5 @@ convention = "numpy"
 [lint.per-file-ignores]
 # Ignore docstring requirements for test files
 "tests/**/*.py" = ["D"]
+# Ignore undefined names
+"UnityPy/streams/EndianBinaryReader.py" = ["F821"]

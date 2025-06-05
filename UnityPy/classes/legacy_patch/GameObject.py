@@ -23,21 +23,11 @@ def _GameObject_GetComponent(self, type: ClassIDType) -> Union[PPtr[Component], 
 
 
 GameObject.m_Components = property(_GameObject_Components)
-GameObject.m_Animator = property(
-    lambda self: _GameObject_GetComponent(self, ClassIDType.Animator)
-)
-GameObject.m_Animation = property(
-    lambda self: _GameObject_GetComponent(self, ClassIDType.Animation)
-)
-GameObject.m_Transform = property(
-    lambda self: _GameObject_GetComponent(self, ClassIDType.Transform)
-)
-GameObject.m_MeshRenderer = property(
-    lambda self: _GameObject_GetComponent(self, ClassIDType.MeshRenderer)
-)
+GameObject.m_Animator = property(lambda self: _GameObject_GetComponent(self, ClassIDType.Animator))
+GameObject.m_Animation = property(lambda self: _GameObject_GetComponent(self, ClassIDType.Animation))
+GameObject.m_Transform = property(lambda self: _GameObject_GetComponent(self, ClassIDType.Transform))
+GameObject.m_MeshRenderer = property(lambda self: _GameObject_GetComponent(self, ClassIDType.MeshRenderer))
 GameObject.m_SkinnedMeshRenderer = property(
     lambda self: _GameObject_GetComponent(self, ClassIDType.SkinnedMeshRenderer)
 )
-GameObject.m_MeshFilter = property(
-    lambda self: _GameObject_GetComponent(self, ClassIDType.MeshFilter)
-)
+GameObject.m_MeshFilter = property(lambda self: _GameObject_GetComponent(self, ClassIDType.MeshFilter))

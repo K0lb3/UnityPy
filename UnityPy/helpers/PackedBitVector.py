@@ -12,10 +12,7 @@ def reshape(data: list, shape: Optional[Tuple[int, ...]] = None) -> list:
         return [data[i : i + m] for i in range(0, len(data), m)]
     elif len(shape) == 2:
         m, n = shape
-        return [
-            [[data[i + j : i + j + n] for j in range(0, m * n, n)]]
-            for i in range(0, len(data), m * n)
-        ]
+        return [[[data[i + j : i + j + n] for j in range(0, m * n, n)]] for i in range(0, len(data), m * n)]
     else:
         raise ValueError("Invalid shape")
 
@@ -74,11 +71,7 @@ def unpack_floats(
     count: Optional[int] = None,
     shape: Optional[Tuple[int, ...]] = None,
 ) -> List[float]:
-    assert (
-        packed.m_BitSize is not None
-        and packed.m_Range is not None
-        and packed.m_Start is not None
-    )
+    assert packed.m_BitSize is not None and packed.m_Range is not None and packed.m_Start is not None
 
     # read as int and cast up to double to prevent loss of precision
     quantized_f64 = unpack_ints(packed, start, count)

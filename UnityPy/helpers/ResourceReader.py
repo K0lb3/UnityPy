@@ -7,9 +7,7 @@ if TYPE_CHECKING:
     from ..files.SerializedFile import SerializedFile
 
 
-def get_resource_data(
-    res_path: str, assets_file: "SerializedFile", offset: int, size: int
-):
+def get_resource_data(res_path: str, assets_file: "SerializedFile", offset: int, size: int):
     basename = ntpath.basename(res_path)
     name, ext = ntpath.splitext(basename)
     possible_names = [

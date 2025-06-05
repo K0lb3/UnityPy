@@ -84,9 +84,7 @@ class TypeTreeConfig:
         return TypeTreeConfig(self.as_dict, self.assetsfile, self.has_registry)
 
 
-def get_ref_type_node(
-    ref_object: dict, assetfile: SerializedFile
-) -> Optional[TypeTreeNode]:
+def get_ref_type_node(ref_object: dict, assetfile: SerializedFile) -> Optional[TypeTreeNode]:
     typ = ref_object["type"]
     if isinstance(typ, dict):
         cls = typ["class"]
@@ -104,11 +102,7 @@ def get_ref_type_node(
         return None
 
     for ref_type in assetfile.ref_types:
-        if (
-            cls == ref_type.m_ClassName
-            and ns == ref_type.m_NameSpace
-            and asm == ref_type.m_AssemblyName
-        ):
+        if cls == ref_type.m_ClassName and ns == ref_type.m_NameSpace and asm == ref_type.m_AssemblyName:
             return ref_type.node
     else:
         raise ValueError(f"Referenced type not found: {cls} {ns} {asm}")
@@ -139,9 +133,7 @@ def read_typetree(
     bytes_read: int
     if byte_size and read_typetree_boost:
         data = reader.read_bytes(byte_size)
-        obj, bytes_read = read_typetree_boost(
-            data, root_node, reader.endian, as_dict, assetsfile, classes
-        )
+        obj, bytes_read = read_typetree_boost(data, root_node, reader.endian, as_dict, assetsfile, classes)
     else:
         pos = reader.Position
         config = TypeTreeConfig(as_dict, assetsfile, False)
@@ -149,9 +141,7 @@ def read_typetree(
         bytes_read = reader.Position - pos
 
     if check_read and bytes_read != byte_size:
-        raise ValueError(
-            f"Expected to read {byte_size} bytes, but only read {bytes_read} bytes"
-        )
+        raise ValueError(f"Expected to read {byte_size} bytes, but only read {bytes_read} bytes")
 
     return obj
 
@@ -224,9 +214,7 @@ def read_value(
                 else:
                     config = config.copy()
                     config.has_registry = True
-            value[child.m_Name if config.as_dict else child._clean_name] = read_value(
-                child, reader, config
-            )
+            value[child.m_Name if config.as_dict else child._clean_name] = read_value(child, reader, config)
 
         if not config.as_dict:
             if node.m_Type.startswith("PPtr<"):
@@ -248,9 +236,7 @@ def read_value(
                     else:
                         extra_keys = keys - annotation_keys
                         if extra_keys:
-                            instance = clz(
-                                **{key: value[key] for key in annotation_keys}
-                            )
+                            instance = clz(**{key: value[key] for key in annotation_keys})
                             for key in extra_keys:
                                 setattr(instance, key, value[key])
                             value = instance
@@ -308,32 +294,19 @@ def read_value_array(
             align = True
         subtype = node.m_Children[0].m_Children[1]
         if metaflag_is_aligned(subtype.m_MetaFlag):
-            value = [
-                read_value_array(subtype, reader, config, reader.read_int())
-                for _ in range(size)
-            ]
+            value = [read_value_array(subtype, reader, config, reader.read_int()) for _ in range(size)]
         else:
-            value = [
-                [read_value(subtype, reader, config) for _ in range(reader.read_int())]
-                for _ in range(size)
-            ]
+            value = [[read_value(subtype, reader, config) for _ in range(reader.read_int())] for _ in range(size)]
     else:  # Class
         if config.as_dict:
             value = [
-                {
-                    child.m_Name: read_value(child, reader, config)
-                    for child in node.m_Children
-                }
-                for _ in range(size)
+                {child.m_Name: read_value(child, reader, config) for child in node.m_Children} for _ in range(size)
             ]
         elif node.m_Type.startswith("PPtr<"):
             value = [
                 PPtr[Any](
                     assetsfile=config.assetsfile,
-                    **{
-                        child.m_Name: read_value(child, reader, config)
-                        for child in node.m_Children
-                    },
+                    **{child.m_Name: read_value(child, reader, config) for child in node.m_Children},
                 )
                 for _ in range(size)
             ]
@@ -351,38 +324,21 @@ def read_value_array(
                 value = [
                     UnknownObject(
                         node,
-                        **{
-                            child._clean_name: read_value(child, reader, config)
-                            for child in node.m_Children
-                        },
+                        **{child._clean_name: read_value(child, reader, config) for child in node.m_Children},
                     )
                     for _ in range(size)
                 ]
             elif extra_keys:
                 value = [None] * size
                 for i in range(size):
-                    value_i_d = {
-                        child._clean_name: read_value(child, reader, config)
-                        for child in node.m_Children
-                    }
-                    value_i = clz(
-                        **{
-                            key: value
-                            for key, value in value_i_d.items()
-                            if key in annotation_keys
-                        }
-                    )
+                    value_i_d = {child._clean_name: read_value(child, reader, config) for child in node.m_Children}
+                    value_i = clz(**{key: value for key, value in value_i_d.items() if key in annotation_keys})
                     for key in extra_keys:
                         setattr(value_i, key, value_i_d[key])
                     value[i] = value_i
             else:
                 value = [
-                    clz(
-                        **{
-                            child._clean_name: read_value(child, reader, config)
-                            for child in node.m_Children
-                        }
-                    )
+                    clz(**{child._clean_name: read_value(child, reader, config) for child in node.m_Children})
                     for _ in range(size)
                 ]
 

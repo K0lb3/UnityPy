@@ -2,7 +2,7 @@ import gc
 import math
 import os
 import random
-from typing import List, Tuple, TypeVar, Union, Type
+from typing import List, Tuple, Type, TypeVar, Union
 
 import psutil
 
@@ -38,9 +38,7 @@ TEST_NODE_STR = "TestNode"
 
 @check_leak
 def test_typetreenode():
-    TypeTreeNode(
-        m_Level=0, m_Type=TEST_NODE_STR, m_Name=TEST_NODE_STR, m_ByteSize=0, m_Version=0
-    )
+    TypeTreeNode(m_Level=0, m_Type=TEST_NODE_STR, m_Name=TEST_NODE_STR, m_ByteSize=0, m_Version=0)
 
 
 def generate_dummy_node(typ: str, name: str = ""):
@@ -145,9 +143,7 @@ def test_simple_nodes():
                 write_typetree(value, node, writer)
                 raw = writer.bytes
                 re_value = _test_read_typetree(node, raw, as_dict=True)
-                assert abs(value - re_value) < 1e-5, (
-                    f"Failed on {typ}: {value} != {re_value}"
-                )
+                assert abs(value - re_value) < 1e-5, f"Failed on {typ}: {value} != {re_value}"
 
 
 @check_leak
@@ -168,16 +164,13 @@ def test_simple_nodes_array():
             write_typetree(values, array_node, writer)
             raw = writer.bytes
             re_values = _test_read_typetree(array_node, raw, as_dict=True)
-            assert all(
-                (abs(value - re_value) < 1e-5)
-                for value, re_value in zip(values, re_values)
-            ), f"Failed on {typ}: {values} != {re_values}"
+            assert all((abs(value - re_value) < 1e-5) for value, re_value in zip(values, re_values)), (
+                f"Failed on {typ}: {values} != {re_values}"
+            )
 
 
 TEST_CLASS_NODE = get_typetree_node(1, (5, 0, 0, 0))
-TEST_CLASS_NODE_OBJ = GameObject(
-    m_Component=[], m_IsActive=True, m_Layer=0, m_Name="TestObject", m_Tag=0
-)
+TEST_CLASS_NODE_OBJ = GameObject(m_Component=[], m_IsActive=True, m_Layer=0, m_Name="TestObject", m_Tag=0)
 TEST_CLASS_NODE_DICT = TEST_CLASS_NODE_OBJ.__dict__
 
 

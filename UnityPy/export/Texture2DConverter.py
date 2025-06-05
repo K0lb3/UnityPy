@@ -3,7 +3,7 @@ from __future__ import annotations
 import struct
 from io import BytesIO
 from threading import Lock
-from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Union
 
 import astc_encoder
 import texture2ddecoder
@@ -61,33 +61,25 @@ def pad_image(img: Image.Image, pad_width: int, pad_height: int) -> Image.Image:
     # Fill the right border: duplicate the last column
     if pad_width != ori_width:
         right_strip = img.crop((ori_width - 1, 0, ori_width, ori_height))
-        right_strip = right_strip.resize(
-            (pad_width - ori_width, ori_height), resample=Image.Resampling.NEAREST
-        )
+        right_strip = right_strip.resize((pad_width - ori_width, ori_height), resample=Image.Resampling.NEAREST)
         pad_img.paste(right_strip, (ori_width, 0))
 
     # Fill the bottom border: duplicate the last row
     if pad_height != ori_height:
         bottom_strip = img.crop((0, ori_height - 1, ori_width, ori_height))
-        bottom_strip = bottom_strip.resize(
-            (ori_width, pad_height - ori_height), resample=Image.Resampling.NEAREST
-        )
+        bottom_strip = bottom_strip.resize((ori_width, pad_height - ori_height), resample=Image.Resampling.NEAREST)
         pad_img.paste(bottom_strip, (0, ori_height))
 
     # Fill the bottom-right corner with the bottom-right pixel
     if pad_width != ori_width and pad_height != ori_height:
         corner = img.getpixel((ori_width - 1, ori_height - 1))
-        corner_img = Image.new(
-            img.mode, (pad_width - ori_width, pad_height - ori_height), color=corner
-        )
+        corner_img = Image.new(img.mode, (pad_width - ori_width, pad_height - ori_height), color=corner)
         pad_img.paste(corner_img, (ori_width, ori_height))
 
     return pad_img
 
 
-def compress_etcpak(
-    data: bytes, width: int, height: int, target_texture_format: TextureFormat
-) -> bytes:
+def compress_etcpak(data: bytes, width: int, height: int, target_texture_format: TextureFormat) -> bytes:
     import etcpak
 
     if target_texture_format in [TF.DXT1, TF.DXT1Crunched]:
@@ -107,21 +99,13 @@ def compress_etcpak(
     elif target_texture_format in [TF.ETC2_RGBA8, TF.ETC2_RGBA8Crunched, TF.ETC2_RGBA1]:
         return etcpak.compress_etc2_rgba(data, width, height)
     else:
-        raise NotImplementedError(
-            f"etcpak has no compress function for {target_texture_format.name}"
-        )
+        raise NotImplementedError(f"etcpak has no compress function for {target_texture_format.name}")
 
 
-def compress_astc(
-    data: bytes, width: int, height: int, target_texture_format: TextureFormat
-) -> bytes:
-    astc_image = astc_encoder.ASTCImage(
-        astc_encoder.ASTCType.U8, width, height, 1, data
-    )
+def compress_astc(data: bytes, width: int, height: int, target_texture_format: TextureFormat) -> bytes:
+    astc_image = astc_encoder.ASTCImage(astc_encoder.ASTCType.U8, width, height, 1, data)
     block_size = TEXTURE_FORMAT_BLOCK_SIZE_TABLE[target_texture_format]
-    assert block_size is not None, (
-        f"failed to get block size for {target_texture_format.name}"
-    )
+    assert block_size is not None, f"failed to get block size for {target_texture_format.name}"
     swizzle = astc_encoder.ASTCSwizzle.from_str("RGBA")
 
     context, lock = get_astc_context(block_size)
@@ -135,7 +119,7 @@ def image_to_texture2d(
     img: Image.Image,
     target_texture_format: Union[TF, int],
     platform: int = 0,
-    platform_blob: Optional[bytes] = None,
+    platform_blob: Optional[List[int]] = None,
     flip: bool = True,
 ) -> Tuple[bytes, TextureFormat]:
     if not isinstance(target_texture_format, TextureFormat):
@@ -236,17 +220,13 @@ def image_to_texture2d(
             s_tex_format = TF.BGRA32
             pil_mode = "BGRA"
         block_size = TextureSwizzler.TEXTUREFORMAT_BLOCK_SIZE_MAP[s_tex_format]
-        width, height = TextureSwizzler.get_padded_texture_size(
-            img.width, img.height, *block_size, gobsPerBlock
-        )
+        width, height = TextureSwizzler.get_padded_texture_size(img.width, img.height, *block_size, gobsPerBlock)
         switch_info = (block_size, gobsPerBlock)
 
     if compress_func:
         width, height = get_compressed_image_size(width, height, tex_format)
         img = pad_image(img, width, height)
-        enc_img = compress_func(
-            img.tobytes("raw", "RGBA"), img.width, img.height, tex_format
-        )
+        enc_img = compress_func(img.tobytes("raw", "RGBA"), img.width, img.height, tex_format)
     else:
         if switch_info is not None:
             img = pad_image(img, width, height)
@@ -255,9 +235,7 @@ def image_to_texture2d(
 
     if switch_info is not None:
         block_size, gobsPerBlock = switch_info
-        enc_img = bytes(
-            TextureSwizzler.swizzle(enc_img, width, height, *block_size, gobsPerBlock)
-        )
+        enc_img = bytes(TextureSwizzler.swizzle(enc_img, width, height, *block_size, gobsPerBlock))
 
     return enc_img, tex_format
 
@@ -321,12 +299,8 @@ def parse_image_data(
         elif texture_format == TF.BGR24:
             texture_format = TF.BGRA32
         block_size = TextureSwizzler.TEXTUREFORMAT_BLOCK_SIZE_MAP[texture_format]
-        width, height = TextureSwizzler.get_padded_texture_size(
-            width, height, *block_size, gobsPerBlock
-        )
-        image_data = TextureSwizzler.deswizzle(
-            image_data, width, height, *block_size, gobsPerBlock
-        )
+        width, height = TextureSwizzler.get_padded_texture_size(width, height, *block_size, gobsPerBlock)
+        image_data = TextureSwizzler.deswizzle(image_data, width, height, *block_size, gobsPerBlock)
     else:
         width, height = get_compressed_image_size(width, height, texture_format)
 
@@ -344,9 +318,7 @@ def parse_image_data(
             image_data = texture2ddecoder.unpack_crunch(image_data)
 
     if texture_format not in CONV_TABLE:
-        raise NotImplementedError(
-            f"Not implemented texture format: {texture_format.name}"
-        )
+        raise NotImplementedError(f"Not implemented texture format: {texture_format.name}")
     conv_func, conv_args = CONV_TABLE[texture_format]
 
     img = conv_func(image_data, width, height, *conv_args)
@@ -379,11 +351,7 @@ def pillow(
     args,
     swap: Optional[Tuple[int, ...]] = None,
 ) -> Image.Image:
-    img = (
-        Image.frombytes(mode, (width, height), image_data, codec, args)
-        if width
-        else Image.new(mode, (width, height))
-    )
+    img = Image.frombytes(mode, (width, height), image_data, codec, args) if width else Image.new(mode, (width, height))
     if swap:
         channels = img.split()
         img = Image.merge(mode, [channels[x] for x in swap])
@@ -407,9 +375,7 @@ def astc(image_data: bytes, width: int, height: int, block_size: tuple) -> Image
 
     context, lock = get_astc_context(block_size)
     with lock:
-        context.decompress(
-            image_data[:texture_size], image, astc_encoder.ASTCSwizzle.from_str("RGBA")
-        )
+        context.decompress(image_data[:texture_size], image, astc_encoder.ASTCSwizzle.from_str("RGBA"))
     assert image.data is not None, "Decompression failed, image data is None"
 
     return Image.frombytes("RGBA", (width, height), image.data, "raw", "RGBA")
@@ -490,10 +456,7 @@ def half(
 ) -> Image.Image:
     # convert half-float to int8
     stream = BytesIO(image_data)
-    image_data = bytes(
-        int(struct.unpack("e", stream.read(2))[0] * 256)
-        for _ in range(width * height * len(codec))
-    )
+    image_data = bytes(int(struct.unpack("e", stream.read(2))[0] * 256) for _ in range(width * height * len(codec)))
     return pillow(image_data, width, height, mode, codec, args, swap)
 
 
@@ -506,17 +469,12 @@ RG_PADDING_MAP = {
 }
 
 
-def rg(
-    image_data: bytes, width: int, height: int, mode: str, codec: str, args
-) -> Image.Image:
+def rg(image_data: bytes, width: int, height: int, mode: str, codec: str, args) -> Image.Image:
     # convert rg to rgb by adding in zeroes
     padding_size = RG_PADDING_MAP[codec]
     stream = BytesIO(image_data)
     padding = bytes(padding_size)
-    rgb_data = b"".join(
-        stream.read(padding_size * 2) + padding
-        for _ in range(len(image_data) // (2 * padding_size))
-    )
+    rgb_data = b"".join(stream.read(padding_size * 2) + padding for _ in range(len(image_data) // (2 * padding_size)))
     if codec == "RGE":
         return half(rgb_data, width, height, mode, "RGB", args)
     else:

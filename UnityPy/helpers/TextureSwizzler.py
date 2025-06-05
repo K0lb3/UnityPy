@@ -1,5 +1,5 @@
 # based on https://github.com/nesrak1/AssetsTools.NET/blob/dev/AssetsTools.NET.Texture/Swizzle/SwitchSwizzle.cs
-from typing import Dict, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 from ..enums import BuildTarget, TextureFormat
 
@@ -7,10 +7,7 @@ GOB_X_TEXEL_COUNT = 4
 GOB_Y_TEXEL_COUNT = 8
 TEXEL_BYTE_SIZE = 16
 TEXELS_IN_GOB = GOB_X_TEXEL_COUNT * GOB_Y_TEXEL_COUNT
-GOB_MAP = [
-    (((l >> 3) & 0b10) | ((l >> 1) & 0b1), ((l >> 1) & 0b110) | (l & 0b1))
-    for l in range(TEXELS_IN_GOB)
-]
+GOB_MAP = [(((v >> 3) & 0b10) | ((v >> 1) & 0b1), ((v >> 1) & 0b110) | (v & 0b1)) for v in range(TEXELS_IN_GOB)]
 
 
 def ceil_divide(a: int, b: int) -> int:
@@ -38,13 +35,8 @@ def deswizzle(
             for k in range(texels_per_block):
                 base_gob_dst_y = (i * texels_per_block + k) * GOB_Y_TEXEL_COUNT
                 for gob_x, gob_y in GOB_MAP:
-                    dst_offset = (
-                        (base_gob_dst_y + gob_y) * block_count_x
-                        + (base_gob_dst_x + gob_x)
-                    ) * TEXEL_BYTE_SIZE
-                    new_data[dst_offset : dst_offset + TEXEL_BYTE_SIZE] = data_view[
-                        :TEXEL_BYTE_SIZE
-                    ]
+                    dst_offset = ((base_gob_dst_y + gob_y) * block_count_x + (base_gob_dst_x + gob_x)) * TEXEL_BYTE_SIZE
+                    new_data[dst_offset : dst_offset + TEXEL_BYTE_SIZE] = data_view[:TEXEL_BYTE_SIZE]
                     data_view = data_view[TEXEL_BYTE_SIZE:]
     return new_data
 
@@ -70,13 +62,8 @@ def swizzle(
             for k in range(texels_per_block):
                 base_gob_dst_y = (i * texels_per_block + k) * GOB_Y_TEXEL_COUNT
                 for gob_x, gob_y in GOB_MAP:
-                    src_offset = (
-                        (base_gob_dst_y + gob_y) * block_count_x
-                        + (base_gob_dst_x + gob_x)
-                    ) * TEXEL_BYTE_SIZE
-                    data_view[:TEXEL_BYTE_SIZE] = data[
-                        src_offset : src_offset + TEXEL_BYTE_SIZE
-                    ]
+                    src_offset = ((base_gob_dst_y + gob_y) * block_count_x + (base_gob_dst_x + gob_x)) * TEXEL_BYTE_SIZE
+                    data_view[:TEXEL_BYTE_SIZE] = data[src_offset : src_offset + TEXEL_BYTE_SIZE]
                     data_view = data_view[TEXEL_BYTE_SIZE:]
 
     return new_data
@@ -116,14 +103,8 @@ TEXTUREFORMAT_BLOCK_SIZE_MAP: Dict[TextureFormat, Tuple[int, int]] = {
 }
 
 
-def get_padded_texture_size(
-    width: int, height: int, block_width: int, block_height: int, texels_per_block: int
-):
-    width = (
-        ceil_divide(width, block_width * GOB_X_TEXEL_COUNT)
-        * block_width
-        * GOB_X_TEXEL_COUNT
-    )
+def get_padded_texture_size(width: int, height: int, block_width: int, block_height: int, texels_per_block: int):
+    width = ceil_divide(width, block_width * GOB_X_TEXEL_COUNT) * block_width * GOB_X_TEXEL_COUNT
     height = (
         ceil_divide(height, block_height * GOB_Y_TEXEL_COUNT * texels_per_block)
         * block_height
@@ -133,13 +114,11 @@ def get_padded_texture_size(
     return width, height
 
 
-def get_switch_gobs_per_block(platform_blob: bytes) -> int:
+def get_switch_gobs_per_block(platform_blob: List[int]) -> int:
     return 1 << int.from_bytes(platform_blob[8:12], "little")
 
 
-def is_switch_swizzled(
-    platform: Union[BuildTarget, int], platform_blob: Optional[bytes]
-) -> bool:
+def is_switch_swizzled(platform: Union[BuildTarget, int], platform_blob: Optional[List[int]]) -> bool:
     if platform != BuildTarget.Switch:
         return False
     if not platform_blob or len(platform_blob) < 12:

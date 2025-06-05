@@ -56,28 +56,26 @@ class BundleFile(File.File):
             self._hash = reader.read_bytes(16)
             self.crc = reader.read_u_int()
 
-        minimumStreamedBytes = reader.read_u_int()
+        minimumStreamedBytes = reader.read_u_int()  # noqa: F841
         headerSize = reader.read_u_int()
-        numberOfLevelsToDownloadBeforeStreaming = reader.read_u_int()
+        numberOfLevelsToDownloadBeforeStreaming = reader.read_u_int()  # noqa: F841
         levelCount = reader.read_int()
         reader.Position += 4 * 2 * (levelCount - 1)
 
         compressedSize = reader.read_u_int()
-        uncompressedSize = reader.read_u_int()
+        uncompressedSize = reader.read_u_int()  # noqa: F841
 
         if version >= 2:
-            completeFileSize = reader.read_u_int()
+            completeFileSize = reader.read_u_int()  # noqa: F841
 
         if version >= 3:
-            fileInfoHeaderSize = reader.read_u_int()
+            fileInfoHeaderSize = reader.read_u_int()  # noqa: F841
 
         reader.Position = headerSize
 
         uncompressedBytes = reader.read_bytes(compressedSize)
         if self.signature == "UnityWeb":
-            uncompressedBytes = CompressionHelper.decompress_lzma(
-                uncompressedBytes, True
-            )
+            uncompressedBytes = CompressionHelper.decompress_lzma(uncompressedBytes, True)
 
         blocksReader = EndianBinaryReader(uncompressedBytes, offset=headerSize)
         nodesCount = blocksReader.read_int()
@@ -93,7 +91,7 @@ class BundleFile(File.File):
         return m_DirectoryInfo, blocksReader
 
     def read_fs(self, reader: EndianBinaryReader):
-        size = reader.read_long()
+        size = reader.read_long()  # noqa: F841
 
         # header
         compressedSize = reader.read_u_int()
@@ -133,21 +131,17 @@ class BundleFile(File.File):
                 self._uses_block_alignment = True
 
         start = reader.Position
-        if (
-            self.dataflags & ArchiveFlags.BlocksInfoAtTheEnd
-        ):  # kArchiveBlocksInfoAtTheEnd
+        if self.dataflags & ArchiveFlags.BlocksInfoAtTheEnd:  # kArchiveBlocksInfoAtTheEnd
             reader.Position = reader.Length - compressedSize
             blocksInfoBytes = reader.read_bytes(compressedSize)
             reader.Position = start
         else:  # 0x40 kArchiveBlocksAndDirectoryInfoCombined
             blocksInfoBytes = reader.read_bytes(compressedSize)
 
-        blocksInfoBytes = self.decompress_data(
-            blocksInfoBytes, uncompressedSize, self.dataflags
-        )
+        blocksInfoBytes = self.decompress_data(blocksInfoBytes, uncompressedSize, self.dataflags)
         blocksInfoReader = EndianBinaryReader(blocksInfoBytes, offset=start)
 
-        uncompressedDataHash = blocksInfoReader.read_bytes(16)
+        uncompressedDataHash = blocksInfoReader.read_bytes(16)  # noqa: F841
         blocksInfoCount = blocksInfoReader.read_int()
 
         m_BlocksInfo = [
@@ -173,10 +167,7 @@ class BundleFile(File.File):
         if m_BlocksInfo:
             self._block_info_flags = m_BlocksInfo[0].flags
 
-        if (
-            isinstance(self.dataflags, ArchiveFlags)
-            and self.dataflags & ArchiveFlags.BlockInfoNeedPaddingAtStart
-        ):
+        if isinstance(self.dataflags, ArchiveFlags) and self.dataflags & ArchiveFlags.BlockInfoNeedPaddingAtStart:
             reader.align_stream(16)
 
         blocksReader = EndianBinaryReader(
@@ -297,9 +288,7 @@ class BundleFile(File.File):
                 name,
                 f.flags,
                 data_writer.write_bytes(
-                    f.bytes
-                    if isinstance(f, (EndianBinaryReader, EndianBinaryWriter))
-                    else f.save()
+                    f.bytes if isinstance(f, (EndianBinaryReader, EndianBinaryWriter)) else f.save()
                 ),
             )
             for name, f in self.files.items()
@@ -314,9 +303,7 @@ class BundleFile(File.File):
         if data_flag & self.dataflags.UsesAssetBundleEncryption:
             data_flag ^= self.dataflags.UsesAssetBundleEncryption
 
-        file_data, block_info = CompressionHelper.chunk_based_compress(
-            file_data, block_info_flag
-        )
+        file_data, block_info = CompressionHelper.chunk_based_compress(file_data, block_info_flag)
 
         # write the block_info
         # uncompressedDataHash
@@ -333,9 +320,7 @@ class BundleFile(File.File):
 
         # file block info
         if not data_flag & 0x40:
-            raise NotImplementedError(
-                "UnityPy always writes DirectoryInfo, so data_flag must include 0x40"
-            )
+            raise NotImplementedError("UnityPy always writes DirectoryInfo, so data_flag must include 0x40")
         # file count
         block_writer.write_int(len(files))
         offset = 0
@@ -360,9 +345,7 @@ class BundleFile(File.File):
         if switch in CompressionHelper.COMPRESSION_MAP:
             block_data = CompressionHelper.COMPRESSION_MAP[switch](block_data)
         else:
-            raise NotImplementedError(
-                f"No compression function in the CompressionHelper.COMPRESSION_MAP for {switch}"
-            )
+            raise NotImplementedError(f"No compression function in the CompressionHelper.COMPRESSION_MAP for {switch}")
 
         compressed_block_data_size = len(block_data)
 
@@ -416,22 +399,16 @@ class BundleFile(File.File):
         # compressed assets
 
         if self.version > 3:
-            raise NotImplementedError(
-                "Saving Unity Web bundles with version > 3 is not supported"
-            )
+            raise NotImplementedError("Saving Unity Web bundles with version > 3 is not supported")
 
         # Calculate fileInfoHeaderSize for set offsets
         file_info_header_size = 4  # for nodesCount
 
         for file_name in self.files.keys():
-            file_info_header_size += (
-                len(file_name.encode()) + 1
-            )  # +1 for null terminator
+            file_info_header_size += len(file_name.encode()) + 1  # +1 for null terminator
             file_info_header_size += 4 * 2  # 4 bytes each for offset and size
 
-        file_info_header_padding_size = (
-            4 - (file_info_header_size % 4) if file_info_header_size % 4 != 0 else 0
-        )
+        file_info_header_padding_size = 4 - (file_info_header_size % 4) if file_info_header_size % 4 != 0 else 0
         file_info_header_size += file_info_header_padding_size
 
         # Prepare directory info
@@ -465,9 +442,7 @@ class BundleFile(File.File):
         uncompressed_content = uncompressed_directory_info + uncompressed_file_content
         compressed_content = uncompressed_content
         if self.signature == "UnityWeb":
-            compressed_content = CompressionHelper.compress_lzma(
-                uncompressed_content, True
-            )
+            compressed_content = CompressionHelper.compress_lzma(uncompressed_content, True)
 
         # Write header
         header_size = writer.Position + 24  # assuming levelCount = 1
@@ -484,9 +459,7 @@ class BundleFile(File.File):
             writer.write_bytes(self._hash)
             writer.write_u_int(self.crc)
 
-        writer.write_u_int(
-            header_size + len(compressed_content)
-        )  # minimumStreamedBytes (same as completeFileSize)
+        writer.write_u_int(header_size + len(compressed_content))  # minimumStreamedBytes (same as completeFileSize)
         writer.write_u_int(header_size)  # headerSize
         writer.write_u_int(1)  # numberOfLevelsToDownloadBeforeStreaming (always 1)
         writer.write_int(1)  # levelCount (always 1)
@@ -495,9 +468,7 @@ class BundleFile(File.File):
         writer.write_u_int(len(uncompressed_content))  # uncompressedSize
 
         if self.version >= 2:
-            writer.write_u_int(
-                header_size + len(compressed_content)
-            )  # completeFileSize
+            writer.write_u_int(header_size + len(compressed_content))  # completeFileSize
 
         if self.version >= 3:
             writer.write_u_int(file_info_header_size)  # file_info_header_size
@@ -537,14 +508,10 @@ class BundleFile(File.File):
         if comp_flag in CompressionHelper.DECOMPRESSION_MAP:
             return cast(
                 bytes,
-                CompressionHelper.DECOMPRESSION_MAP[comp_flag](
-                    compressed_data, uncompressed_size
-                ),
+                CompressionHelper.DECOMPRESSION_MAP[comp_flag](compressed_data, uncompressed_size),
             )
         else:
-            raise ValueError(
-                f"Unknown compression! flag: {flags}, compression flag: {comp_flag.value}"
-            )
+            raise ValueError(f"Unknown compression! flag: {flags}, compression flag: {comp_flag.value}")
 
     def get_version_tuple(self) -> Tuple[int, int, int]:
         """Returns the version as a tuple."""

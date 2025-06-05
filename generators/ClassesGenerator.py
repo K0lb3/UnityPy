@@ -1,12 +1,13 @@
 """Generates the classes for the UnityPy objects from the TypeTree of the TPK files."""
 
 from __future__ import annotations
-from dataclasses import dataclass, field
+
 import os
 import sys
-from typing import Dict, Set, Optional, Tuple, List
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional, Set, Tuple
 
-# small hack to import UnityPy from the parent directory instead of the installed package
+# import UnityPy from the parent directory instead of the installed package
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(ROOT)
 from UnityPy.helpers.Tpk import TPKTYPETREE, TpkUnityNode  # noqa: E402
@@ -322,16 +323,12 @@ def main():
 
             if unity_class.ReleaseRootNode is not None:
                 abstract = False
-                cls = implement_node_class(
-                    unity_class.ReleaseRootNode, override_name=cls_name
-                )
+                cls = implement_node_class(unity_class.ReleaseRootNode, override_name=cls_name)
                 cls.base = base
 
         if isinstance(cls_name, str):
             if abstract:
-                CLASS_CACHE_NAME[cls_name] = NodeClass(
-                    {0}, name=cls_name, base=base, abstract=True
-                )
+                CLASS_CACHE_NAME[cls_name] = NodeClass({0}, name=cls_name, base=base, abstract=True)
 
             main_classes.add(cls_name)
             if base:
@@ -350,9 +347,7 @@ def main():
         if cls_name in deps:
             stack = sorted(deps.pop(cls_name)) + stack
 
-    sorted_classes += sorted(
-        set(CLASS_CACHE_NAME.keys()) - set(sorted_classes) - FORBIDDEN_CLASSES
-    )
+    sorted_classes += sorted(set(CLASS_CACHE_NAME.keys()) - set(sorted_classes) - FORBIDDEN_CLASSES)
     i = 0
     names = set()
     while i < len(sorted_classes):
@@ -364,16 +359,11 @@ def main():
             i += 1
 
     fp = os.path.join(ROOT, "UnityPy", "classes", "generated.py")
-    with open(fp, "wt", encoding="utf8") as f:
+    with open(fp, "w", encoding="utf8") as f:
         f.write(GENERATED_HEADER)
         f.write("\n\n")
 
-        f.write(
-            "\n\n".join(
-                cls.generate_str()
-                for cls in map(CLASS_CACHE_NAME.__getitem__, sorted_classes)
-            )
-        )
+        f.write("\n\n".join(cls.generate_str() for cls in map(CLASS_CACHE_NAME.__getitem__, sorted_classes)))
         f.write("\n")
 
 

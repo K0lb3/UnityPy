@@ -31,3 +31,8 @@ class Object(ABC, metaclass=ABCMeta):
             raise ValueError("ObjectReader not set")
 
         self.object_reader.save_typetree(self)
+
+
+__all__ = [
+    "Object",
+]

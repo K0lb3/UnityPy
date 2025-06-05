@@ -314,22 +314,15 @@ class SerializedFile(File.File):
         # Read Scripts
         if header.version >= 11:
             script_count = reader.read_int()
-            self.script_types = [
-                LocalSerializedObjectIdentifier(header, reader)
-                for _ in range(script_count)
-            ]
+            self.script_types = [LocalSerializedObjectIdentifier(header, reader) for _ in range(script_count)]
 
         # Read Externals
         externals_count = reader.read_int()
-        self.externals = [
-            FileIdentifier(header, reader) for _ in range(externals_count)
-        ]
+        self.externals = [FileIdentifier(header, reader) for _ in range(externals_count)]
 
         if header.version >= 20:
             ref_type_count = reader.read_int()
-            self.ref_types = [
-                SerializedType(reader, self, True) for _ in range(ref_type_count)
-            ]
+            self.ref_types = [SerializedType(reader, self, True) for _ in range(ref_type_count)]
 
         if config.SERIALIZED_FILE_PARSE_TYPETREE is False:
             self._enable_type_tree = False
@@ -351,7 +344,7 @@ class SerializedFile(File.File):
     def container(self):
         return self._container
 
-    def load_dependencies(self, possible_dependencies: list = []):
+    def load_dependencies(self, possible_dependencies: Optional[list] = None):
         """Load all external dependencies.
 
         Parameters
@@ -362,6 +355,10 @@ class SerializedFile(File.File):
         """
         for file_id in self.externals:
             self.environment.load_file(file_id.path, True)
+
+        if possible_dependencies is None:
+            return
+
         for dependency in possible_dependencies:
             try:
                 self.environment.load_file(dependency, True)
@@ -387,9 +384,7 @@ class SerializedFile(File.File):
         Creates a new cab file in the bundle that contains the given data.
         This is usefull for asset types that use resource files.
         """
-        if not isinstance(
-            self.parent, (File.BundleFile.BundleFile, File.WebFile.WebFile)
-        ):
+        if not isinstance(self.parent, (File.BundleFile.BundleFile, File.WebFile.WebFile)):
             return None
 
         cab = self.parent.get_writeable_cab(name)
