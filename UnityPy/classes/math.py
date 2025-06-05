@@ -90,26 +90,18 @@ class ColorRGBA:
     b: float = 0
     a: float = 1
 
-    def __new__(
-        cls, r: float = 0, g: float = 0, b: float = 0, a: float = 1, rgba: int = -1
-    ) -> "ColorRGBA":
-        obj = super().__new__(cls)
+    def __init__(self, r: float = 0, g: float = 0, b: float = 0, a: float = 1, rgba: int = -1):
         if rgba != -1:
             r = ((rgba >> 24) & 0xFF) / 255
             g = ((rgba >> 16) & 0xFF) / 255
             b = ((rgba >> 8) & 0xFF) / 255
             a = (rgba & 0xFF) / 255
-        obj.__init__(r, g, b, a)
-        return obj
+        # defined by attrs
+        self.__attrs_init__(r, g, b, a)  # type: ignore
 
     @property
     def rgba(self) -> int:
-        return (
-            int(self.r * 255) << 24
-            | int(self.g * 255) << 16
-            | int(self.b * 255) << 8
-            | int(self.a * 255)
-        )
+        return int(self.r * 255) << 24 | int(self.g * 255) << 16 | int(self.b * 255) << 8 | int(self.a * 255)
 
     @rgba.setter
     def rgba(self, value: int):

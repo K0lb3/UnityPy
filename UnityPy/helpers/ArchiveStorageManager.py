@@ -17,9 +17,7 @@ def set_assetbundle_decrypt_key(key: Union[bytes, str]):
     if isinstance(key, str):
         key = key.encode("utf-8", "surrogateescape")
     if len(key) != 16:
-        raise ValueError(
-            f"AssetBundle Key length is wrong. It should be 16 bytes and now is {len(key)} bytes."
-        )
+        raise ValueError(f"AssetBundle Key length is wrong. It should be 16 bytes and now is {len(key)} bytes.")
     global DECRYPT_KEY
     DECRYPT_KEY = key
 
@@ -79,7 +77,7 @@ class ArchiveStorageDecryptor:
                     [
                         "The BundleFile is encrypted, but no key was provided!",
                         "You can set the key via UnityPy.set_assetbundle_decrypt_key(key).",
-                        "To try brute-forcing the key, use UnityPy.helpers.ArchiveStorageManager.brute_force_key(fp, key_sig, data_sig)",
+                        "To try brute-forcing the key, use UnityPy.helpers.ArchiveStorageManager.brute_force_key(fp, key_sig, data_sig)",  # noqa: E501
                         f"with  key_sig = {self.key_sig}, data_sig = {self.data_sig},"
                         "and fp being the path to global-metadata.dat or a memory dump.",
                     ]
@@ -93,9 +91,7 @@ class ArchiveStorageDecryptor:
         data = decrypt_key(self.key, self.data, DECRYPT_KEY)
         data = bytes(nibble for byte in data for nibble in (byte >> 4, byte & 0xF))
         self.index = data[:0x10]
-        self.substitute = bytes(
-            data[0x10 + i * 4 + j] for j in range(4) for i in range(4)
-        )
+        self.substitute = bytes(data[0x10 + i * 4 + j] for j in range(4) for i in range(4))
 
     def decrypt_block(self, data: bytes, index: int):
         if UnityPyBoost:
@@ -117,10 +113,7 @@ class ArchiveStorageDecryptor:
             + self.substitute[((index >> 4) & 3) + 8]
             + self.substitute[(index % 256 >> 6) + 12]
         )
-        view[offset] = (
-            (self.index[view[offset] & 0xF] - b) & 0xF
-            | 0x10 * (self.index[view[offset] >> 4] - b)
-        ) % 256
+        view[offset] = ((self.index[view[offset] & 0xF] - b) & 0xF | 0x10 * (self.index[view[offset] >> 4] - b)) % 256
         b = view[offset]
         return b, offset + 1, index + 1
 

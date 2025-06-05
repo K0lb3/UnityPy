@@ -71,22 +71,12 @@ class Environment:
 
     def load_folder(self, path: str):
         """Loads all files in the given path and its subdirs into the Environment."""
-        self.load_files(
-            [
-                self.fs.sep.join([root, f])
-                for root, dirs, files in self.fs.walk(path)
-                for f in files
-            ]
-        )
+        self.load_files([self.fs.sep.join([root, f]) for root, dirs, files in self.fs.walk(path) for f in files])
 
     def load(self, files: List[str]):
         """Loads all files into the Environment."""
         self.files.update(
-            {
-                ntpath.basename(f): self.load_file(self.fs.open(f, "rb"), self, f)
-                for f in files
-                if self.fs.exists(f)
-            }
+            {ntpath.basename(f): self.load_file(self.fs.open(f, "rb"), self, f) for f in files if self.fs.exists(f)}
         )
 
     def _load_split_file(self, basename: str) -> bytes:
@@ -126,13 +116,14 @@ class Environment:
                     # for dependency loading of split files
                     if os.path.exists(f"{file}.split0"):
                         file = self._load_split_file(file)
-                    # Unity paths are case insensitive, so we need to find "Resources/Foo.asset" when the record says "resources/foo.asset"
+                    # Unity paths are case insensitive,
+                    # so we need to find "Resources/Foo.asset" when the record says "resources/foo.asset"
                     elif not os.path.exists(file):
                         file = find_sensitive_path(self.path, file)
                     # nonexistent files might be packaging errors or references to Unity's global Library/
                     if file is None:
                         return
-                if type(file) == str:
+                if isinstance(file, str):
                     file = self.fs.open(file, "rb")
 
         typ, reader = check_file_type(file)
@@ -150,9 +141,7 @@ class Environment:
         if typ == FileType.ZIP:
             f = self.load_zip_file(file)
         else:
-            f = parse_file(
-                reader, self, name=stream_name, typ=typ, is_dependency=is_dependency
-            )
+            f = parse_file(reader, self, name=stream_name, typ=typ, is_dependency=is_dependency)
 
         if isinstance(f, (SerializedFile, EndianBinaryReader)):
             self.register_cab(stream_name, f)
@@ -180,9 +169,7 @@ class Environment:
         """
         for fname, fitem in self.files.items():
             if getattr(fitem, "is_changed", False):
-                with open(
-                    self.fs.sep.join([out_path, ntpath.basename(fname)]), "wb"
-                ) as out:
+                with open(self.fs.sep.join([out_path, ntpath.basename(fname)]), "wb") as out:
                     out.write(fitem.save(packer=pack))
 
     @property
@@ -199,8 +186,8 @@ class Environment:
 
             elif getattr(item, "files", None):  # WebBundle and BundleFile
                 # bundle
-                for item in item.files.values():
-                    ret.extend(search(item))
+                for sub_item in item.files.values():
+                    ret.extend(search(sub_item))
                 return ret
 
             return ret
@@ -223,7 +210,10 @@ class Environment:
         Lists all assets / SerializedFiles within this environment.
         """
 
-        def gen_all_asset_files(file, ret=[]):
+        def gen_all_asset_files(file, ret: Optional[list] = None):
+            if ret is None:
+                ret = []
+
             for f in getattr(file, "files", {}).values():
                 if getattr(f, "is_dependency", False):
                     continue
@@ -323,9 +313,7 @@ class Environment:
             for root, _, files in self.fs.walk(self.path):
                 for f in files:
                     self.local_files.append(self.fs.sep.join([root, f]))
-                    self.local_files_simple.append(
-                        self.fs.sep.join([root, simplify_name(f)])
-                    )
+                    self.local_files_simple.append(self.fs.sep.join([root, simplify_name(f)]))
 
         if name in self.local_files:
             fp = name

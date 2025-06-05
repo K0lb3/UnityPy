@@ -49,8 +49,8 @@ class File:
             elif isinstance(f, SerializedFile.SerializedFile):
                 yield f
 
-    def get_filtered_objects(self, obj_types=[]):
-        if len(obj_types) == 0:
+    def get_filtered_objects(self, obj_types: Optional[list] = None):
+        if obj_types is None or len(obj_types) == 0:
             return self.get_objects()
         for f in self.files.values():
             if isinstance(f, (BundleFile.BundleFile, WebFile.WebFile)):
@@ -78,12 +78,8 @@ class File:
         for node in files:
             reader.Position = node.offset
             name = node.path
-            node_reader = EndianBinaryReader(
-                reader.read(node.size), offset=(reader.BaseOffset + node.offset)
-            )
-            f = ImportHelper.parse_file(
-                node_reader, self, name, is_dependency=self.is_dependency
-            )
+            node_reader = EndianBinaryReader(reader.read(node.size), offset=(reader.BaseOffset + node.offset))
+            f = ImportHelper.parse_file(node_reader, self, name, is_dependency=self.is_dependency)
 
             if isinstance(f, (EndianBinaryReader, SerializedFile.SerializedFile)):
                 if self.environment:
@@ -109,9 +105,7 @@ class File:
             if isinstance(self.files[name], EndianBinaryWriter):
                 return self.files[name]
             else:
-                raise ValueError(
-                    "This cab already exists and isn't an EndianBinaryWriter"
-                )
+                raise ValueError("This cab already exists and isn't an EndianBinaryWriter")
 
         writer = EndianBinaryWriter()
         # try to find another resource file to copy the flags from
@@ -128,12 +122,7 @@ class File:
 
     @property
     def container(self):
-        return {
-            path: obj
-            for f in self.files.values()
-            if isinstance(f, File)
-            for path, obj in f.container.items()
-        }
+        return {path: obj for f in self.files.values() if isinstance(f, File) for path, obj in f.container.items()}
 
     def get(self, key, default=None):
         return getattr(self, key, default)
@@ -160,4 +149,4 @@ class File:
 
 
 # recursive import requires the import down here
-from . import BundleFile, ObjectReader, SerializedFile, WebFile
+from . import BundleFile, ObjectReader, SerializedFile, WebFile  # noqa: E402

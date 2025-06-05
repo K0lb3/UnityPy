@@ -53,17 +53,14 @@ def export_mesh_renderer(renderer: Renderer, export_dir: str) -> None:
         return
 
     firstSubMesh = 0
-    if (
-        hasattr(renderer, "m_StaticBatchInfo")
-        and renderer.m_StaticBatchInfo.subMeshCount > 0
-    ):
+    if hasattr(renderer, "m_StaticBatchInfo") and renderer.m_StaticBatchInfo.subMeshCount > 0:
         firstSubMesh = renderer.m_StaticBatchInfo.firstSubMesh
     elif hasattr(renderer, "m_SubsetIndices"):
         firstSubMesh = min(renderer.m_SubsetIndices)
 
     materials = []
     material_names = []
-    for i, submesh in enumerate(mesh.m_SubMeshes):
+    for i in range(len(mesh.m_SubMeshes)):
         mat_index = i - firstSubMesh
         if mat_index < 0 or mat_index >= len(renderer.m_Materials):
             continue
@@ -110,16 +107,10 @@ def export_material(mat: Material) -> str:
     """Creates a material file (.mtl) for the given material."""
 
     def clt(color):  # color to tuple
-        return (
-            color if isinstance(color, tuple) else (color.R, color.G, color.B, color.A)
-        )
+        return color if isinstance(color, tuple) else (color.R, color.G, color.B, color.A)
 
     def properties_to_dict(properties):
-        return {
-            k if isinstance(k, str) else k.name: v
-            for k, v in properties
-            if v is not None
-        }
+        return {k if isinstance(k, str) else k.name: v for k, v in properties if v is not None}
 
     colors = properties_to_dict(mat.m_SavedProperties.m_Colors)
     floats = properties_to_dict(mat.m_SavedProperties.m_Floats)
@@ -135,25 +126,41 @@ def export_material(mat: Material) -> str:
 
     sb: List[str] = []
     sb.append(f"newmtl {mat.m_Name}")
+
     # Ka r g b
     # defines the ambient color of the material to be (r,g,b). The default is (0.2,0.2,0.2);
     sb.append(f"Ka {ambient[0]:.4f} {ambient[1]:.4f} {ambient[2]:.4f}")
+
     # Kd r g b
     # defines the diffuse color of the material to be (r,g,b). The default is (0.8,0.8,0.8);
     sb.append(f"Kd {diffuse[0]:.4f} {diffuse[1]:.4f} {diffuse[2]:.4f}")
+
     # Ks r g b
-    # defines the specular color of the material to be (r,g,b). This color shows up in highlights. The default is (1.0,1.0,1.0);
+    # defines the specular color of the material to be (r,g,b). This color shows up in highlights.
+    # The default is (1.0,1.0,1.0);
     sb.append(f"Ks {specular[0]:.4f} {specular[1]:.4f} {specular[2]:.4f}")
-    # d alpha
-    # defines the non-transparency of the material to be alpha. The default is 1.0 (not transparent at all). The quantities d and Tr are the opposites of each other, and specifying transparency or nontransparency is simply a matter of user convenience.
+
+    #  d alpha
+    # defines the non-transparency of the material to be alpha.
+    # The default is 1.0 (not transparent at all). The quantities d and Tr are the opposites of each other,
+    # and specifying transparency or nontransparency is simply a matter of user convenience.
+
     # Tr alpha
-    # defines the transparency of the material to be alpha. The default is 0.0 (not transparent at all). The quantities d and Tr are the opposites of each other, and specifying transparency or nontransparency is simply a matter of user convenience.
+    # defines the transparency of the material to be alpha. The default is 0.0 (not transparent at all).
+    # The quantities d and Tr are the opposites of each other,
+    # and specifying transparency or nontransparency is simply a matter of user convenience.
     sb.append(f"Tr {transparency:.4f}")
+
     # Ns s
     # defines the shininess of the material to be s. The default is 0.0;
     sb.append(f"Ns {shininess:.4f}")
+
     # illum n
-    # denotes the illumination model used by the material. illum = 1 indicates a flat material with no specular highlights, so the value of Ks is not used. illum = 2 denotes the presence of specular highlights, and so a specification for Ks is required.
+    # denotes the illumination model used by the material.
+    # illum = 1 indicates a flat material with no specular highlights,
+    # so the value of Ks is not used. illum = 2 denotes the presence of specular highlights,
+    # and so a specification for Ks is required.
+
     # map_Ka filename
     # names a file containing a texture map, which should just be an ASCII dump of RGB values;
     texName = None

@@ -67,9 +67,7 @@ def import_pyfmodex():
         arch = "x64"
 
     fmod_rel_path = get_fmod_path(system, arch)
-    fmod_path = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.realpath(__file__))), fmod_rel_path
-    )
+    fmod_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), fmod_rel_path)
     os.environ["PYFMODEX_DLL_PATH"] = fmod_path
 
     # build path and load library
@@ -81,9 +79,7 @@ def import_pyfmodex():
     import pyfmodex
 
 
-def extract_audioclip_samples(
-    audio: AudioClip, convert_pcm_float: bool = True
-) -> Dict[str, bytes]:
+def extract_audioclip_samples(audio: AudioClip, convert_pcm_float: bool = True) -> Dict[str, bytes]:
     """extracts all the samples from an AudioClip
     :param audio: AudioClip
     :type audio: AudioClip
@@ -129,18 +125,17 @@ def get_pyfmodex_system_instance(channels: int, flags: int):
         return system, lock
 
 
-def dump_samples(
-    clip: AudioClip, audio_data: bytes, convert_pcm_float: bool = True
-) -> Dict[str, bytes]:
+def dump_samples(clip: AudioClip, audio_data: bytes, convert_pcm_float: bool = True) -> Dict[str, bytes]:
     global pyfmodex
     if pyfmodex is None:
         import_pyfmodex()
     if not pyfmodex:
         return {}
 
-    system, lock = get_pyfmodex_system_instance(
-        clip.m_Channels, pyfmodex.flags.INIT_FLAGS.NORMAL
-    )
+    if clip.m_Channels is None:
+        raise NotImplementedError("AudioClip.m_Channels is None, no solution implemented yet.")
+
+    system, lock = get_pyfmodex_system_instance(clip.m_Channels, pyfmodex.flags.INIT_FLAGS.NORMAL)
     with lock:
         sound = system.create_sound(
             bytes(audio_data),
@@ -201,9 +196,7 @@ def subsound_to_wav(subsound, convert_pcm_float: bool = True) -> bytes:
 
     # RIFF header
     w.write(b"RIFF")  # chunk id
-    w.write_int(
-        wav_data_length + 36
-    )  # chunk size - 4 + (8 + 16 (sub chunk 1 size)) + (8 + length (sub chunk 2 size))
+    w.write_int(wav_data_length + 36)  # chunk size - 4 + (8 + 16 (sub chunk 1 size)) + (8 + length (sub chunk 2 size))
     w.write(b"WAVE")  # format
 
     # fmt chunk - sub chunk 1
@@ -229,9 +222,7 @@ def subsound_to_wav(subsound, convert_pcm_float: bool = True) -> bytes:
                 ptr_data = (ptr_data * (1 << 15)).astype(np.int16).tobytes()
             else:
                 ptr_data = struct.unpack("<%df" % (len(ptr_data) // 4), ptr_data)
-                ptr_data = struct.pack(
-                    "<%dh" % len(ptr_data), *[int(f * (1 << 15)) for f in ptr_data]
-                )
+                ptr_data = struct.pack("<%dh" % len(ptr_data), *[int(f * (1 << 15)) for f in ptr_data])
 
         w.write(ptr_data)
     subsound.unlock(*lock)

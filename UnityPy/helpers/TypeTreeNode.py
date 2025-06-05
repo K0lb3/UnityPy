@@ -60,9 +60,7 @@ TYPETREENODE_KEYS = [
 ]
 
 SYSTEM_GLOBAL_LOCK = Lock()
-NAME_PEEK_NODE_CACHE: dict[
-    Tuple[str, str, int], Union[Tuple[TypeTreeNode, str], None]
-] = {}
+NAME_PEEK_NODE_CACHE: dict[Tuple[str, str, int], Union[Tuple[TypeTreeNode, str], None]] = {}
 
 
 class TypeTreeNode(TypeTreeNodeC):
@@ -113,9 +111,7 @@ class TypeTreeNode(TypeTreeNodeC):
 
         node_struct, keys = _get_blob_node_struct(reader.endian, version)
         struct_data = reader.read(node_struct.size * node_count)
-        stringbuffer_reader = EndianBinaryReader(
-            reader.read(stringbuffer_size), reader.endian
-        )
+        stringbuffer_reader = EndianBinaryReader(reader.read(stringbuffer_size), reader.endian)
 
         CommonString = get_common_strings()
 
@@ -154,9 +150,7 @@ class TypeTreeNode(TypeTreeNodeC):
         return fake_root.m_Children[0]
 
     @classmethod
-    def from_list(
-        cls, nodes: Union[List[Dict[str, Union[str, int]]], List[TypeTreeNode]]
-    ) -> TypeTreeNode:
+    def from_list(cls, nodes: Union[List[Dict[str, Union[str, int]]], List[TypeTreeNode]]) -> TypeTreeNode:
         fake_root: TypeTreeNode = cls(-1, "", "", 0, 0, [])
         stack: List[TypeTreeNode] = [fake_root]
         parent = fake_root
@@ -164,14 +158,8 @@ class TypeTreeNode(TypeTreeNodeC):
 
         # check if the nodes contain all required fields
         if isinstance(nodes[0], dict):
-            if (
-                "m_Level" not in nodes[0]
-                or "m_Type" not in nodes[0]
-                or "m_Name" not in nodes[0]
-            ):
-                raise ValueError(
-                    "Nodes must contain at least m_Level, m_Type and m_Name"
-                )
+            if "m_Level" not in nodes[0] or "m_Type" not in nodes[0] or "m_Name" not in nodes[0]:
+                raise ValueError("Nodes must contain at least m_Level, m_Type and m_Name")
             patch_dict = {}
             if "m_ByteSize" not in nodes[0]:
                 patch_dict["m_ByteSize"] = 0
@@ -247,9 +235,7 @@ class TypeTreeNode(TypeTreeNodeC):
         string_writer = EndianBinaryWriter()
 
         # string buffer setup
-        CommonStringOffsetMap = {
-            string: offset for offset, string in get_common_strings().items()
-        }
+        CommonStringOffsetMap = {string: offset for offset, string in get_common_strings().items()}
 
         string_offsets: dict[str, int] = {}
 
@@ -290,7 +276,8 @@ class TypeTreeNode(TypeTreeNodeC):
     def dump_structure(self, indent: str = "  ") -> str:
         # dump structure similar to https://github.com/AssetRipper/TypeTreeDumps/blob/main/StructsDump
         sb = [
-            f"{indent}{self.m_Type} {self.m_Name} // ByteSize{{{self.m_ByteSize:X}}}, Index{{{self.m_Index}}}, Version{{{self.m_Version}}}, TypeFlags{{{self.m_TypeFlags}}}, MetaFlag{{{self.m_MetaFlag}}}"
+            f"{indent}{self.m_Type} {self.m_Name} // ByteSize{{{self.m_ByteSize:X}}}, Index{{{self.m_Index}}}, \
+                Version{{{self.m_Version}}}, TypeFlags{{{self.m_TypeFlags}}}, MetaFlag{{{self.m_MetaFlag}}}"
         ]
         for child in self.m_Children:
             sb.append(child.dump_structure(indent + "  "))
@@ -298,9 +285,7 @@ class TypeTreeNode(TypeTreeNodeC):
 
     def to_dict(self) -> dict:
         return {
-            key: value
-            for key, value in ((key, getattr(self, key)) for key in TYPETREENODE_KEYS)
-            if value is not None
+            key: value for key, value in ((key, getattr(self, key)) for key in TYPETREENODE_KEYS) if value is not None
         }
 
     def to_dict_list(self) -> List[dict]:

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, List, Optional, Union
+from typing import TYPE_CHECKING, Any, List, Literal, Optional, Union
 
 if TYPE_CHECKING:
     from .classes import Object
@@ -19,7 +19,7 @@ def unpack_vertexdata(
 def read_typetree(
     data: Union[bytes, bytearray],
     node: TypeTreeNode,
-    endian: Union["<", ">"],
+    endian: Literal["<", ">"],
     as_dict: bool,
     assetsfile: SerializedFile,
     classes: dict,

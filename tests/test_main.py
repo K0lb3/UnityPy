@@ -5,6 +5,7 @@ import platform
 from PIL import Image
 
 import UnityPy
+from UnityPy.streams import EndianBinaryReader
 
 SAMPLES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "samples")
 
@@ -116,11 +117,11 @@ def test_save():
     # this only makes sure
     # that the save function still produces a readable file
     for name, file in env.files.items():
-        if isinstance(file, UnityPy.streams.EndianBinaryReader):
+        if isinstance(file, EndianBinaryReader):
             continue
         save1 = file.save()
         save2 = UnityPy.load(save1).file.save()
-        assert save1 == save2
+        assert save1 == save2, f"Failed to save {name} correctly"
 
 
 if __name__ == "__main__":

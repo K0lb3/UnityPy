@@ -68,10 +68,7 @@ class WebFile(File.File):
             packer = self.packer
 
         # get raw data
-        files = {
-            name: f.bytes if isinstance(f, EndianBinaryReader) else f.save()
-            for name, f in files.items()
-        }
+        files = {name: f.bytes if isinstance(f, EndianBinaryReader) else f.save() for name, f in files.items()}
 
         # create writer
         writer = EndianBinaryWriter(endian="<")
@@ -82,9 +79,7 @@ class WebFile(File.File):
         offset = sum(
             [
                 writer.Position,  # signature
-                sum(
-                    len(path.encode("utf-8")) for path in files.keys()
-                ),  # path of each file
+                sum(len(path.encode("utf-8")) for path in files.keys()),  # path of each file
                 4 * 3 * len(files),  # 3 ints per file
                 4,  # offset int
             ]

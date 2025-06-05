@@ -26,14 +26,10 @@ class TypeTreeGenerator(TypeTreeGeneratorBase):
 
     def load_local_game(self, root_dir: str):
         root_files = os.listdir(root_dir)
-        data_dir = os.path.join(
-            root_dir, next(f for f in root_files if f.endswith("_Data"))
-        )
+        data_dir = os.path.join(root_dir, next(f for f in root_files if f.endswith("_Data")))
         if "GameAssembly.dll" in root_files:
             ga_fp = os.path.join(root_dir, "GameAssembly.dll")
-            gm_fp = os.path.join(
-                data_dir, "il2cpp_data", "Metadata", "global-metadata.dat"
-            )
+            gm_fp = os.path.join(data_dir, "il2cpp_data", "Metadata", "global-metadata.dat")
             ga_raw = open(ga_fp, "rb").read()
             gm_raw = open(gm_fp, "rb").read()
             self.load_il2cpp(ga_raw, gm_raw)

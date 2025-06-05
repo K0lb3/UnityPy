@@ -42,14 +42,16 @@ class PPtr(Generic[T]):
 
     def deref(self, assetsfile: Optional[SerializedFile] = None) -> ObjectReader[T]:
         assetsfile = assetsfile or self.assetsfile
+
         if assetsfile is None:
             raise ValueError("PPtr can't deref without an assetsfile!")
 
         if self.m_PathID == 0:
             raise ValueError("PPtr can't deref with m_PathID == 0!")
 
+        assetsfile_dst = None
         if self.m_FileID == 0:
-            pass
+            assetsfile_dst = assetsfile or self.assetsfile
         else:
             # resolve file id to external name
             external_id = self.m_FileID - 1
@@ -61,9 +63,7 @@ class PPtr(Generic[T]):
             container = assetsfile.parent
             if container is None:
                 # TODO - use default fs
-                raise FileNotFoundError(
-                    f"PPtr points to {external.path} but no container is set!"
-                )
+                raise FileNotFoundError(f"PPtr points to {external.path} but no container is set!")
 
             external_clean_path = external.path
             if external_clean_path.startswith("archive:/"):
@@ -74,26 +74,25 @@ class PPtr(Generic[T]):
 
             for key, file in container.files.items():
                 if key.lower() == external_clean_path:
-                    assetsfile = file
+                    assetsfile_dst = file
                     break
             else:
                 env = assetsfile.environment
                 cab = env.find_file(external_clean_path)
                 if cab:
-                    assetsfile = cab
+                    assetsfile_dst = cab
                 else:
-                    raise FileNotFoundError(
-                        f"Failed to resolve pointer - {external.path} not found!"
-                    )
+                    raise FileNotFoundError(f"Failed to resolve pointer - {external.path} not found!")
 
-        return cast("ObjectReader[T]", assetsfile.objects[self.m_PathID])
+        if assetsfile_dst is None:
+            raise FileNotFoundError(f"Failed to resolve pointer - {self.m_FileID} not found!")
+
+        return cast("ObjectReader[T]", assetsfile_dst.objects[self.m_PathID])
 
     def deref_parse_as_object(self, assetsfile: Optional[SerializedFile] = None) -> T:
         return self.deref(assetsfile).parse_as_object()
 
-    def deref_parse_as_dict(
-        self, assetsfile: Optional[SerializedFile] = None
-    ) -> dict[str, Any]:
+    def deref_parse_as_dict(self, assetsfile: Optional[SerializedFile] = None) -> dict[str, Any]:
         return self.deref(assetsfile).parse_as_dict()
 
     def __bool__(self):
@@ -106,3 +105,8 @@ class PPtr(Generic[T]):
         if not isinstance(other, PPtr):
             return False
         return self.m_FileID == other.m_FileID and self.m_PathID == other.m_PathID
+
+
+__all__ = [
+    "PPtr",
+]

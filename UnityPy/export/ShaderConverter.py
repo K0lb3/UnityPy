@@ -68,9 +68,7 @@ def ConvertSerializedShader(m_Shader: Shader) -> str:
         return item
 
     for i in range(platformNumber):
-        if i >= len(m_Shader.compressedLengths) or i >= len(
-            m_Shader.decompressedLengths
-        ):
+        if i >= len(m_Shader.compressedLengths) or i >= len(m_Shader.decompressedLengths):
             # m_Shader.platforms shouldn't be longer than m_shader.[de]compressedLengths, but it is
             break
 
@@ -79,9 +77,7 @@ def ConvertSerializedShader(m_Shader: Shader) -> str:
         offset = get_entry(m_Shader.offsets, i)
 
         compressedBytes = compressed_blob[offset : offset + compressedSize]
-        decompressedBytes = CompressionHelper.decompress_lz4(
-            compressedBytes, decompressedSize
-        )
+        decompressedBytes = CompressionHelper.decompress_lz4(compressedBytes, decompressedSize)
 
         shaderPrograms.append(
             ShaderProgram(
@@ -90,9 +86,7 @@ def ConvertSerializedShader(m_Shader: Shader) -> str:
             )
         )
 
-    return ConvertSerializedShaderParsedForm(
-        m_Shader.m_ParsedForm, m_Shader.platforms, shaderPrograms
-    )
+    return ConvertSerializedShaderParsedForm(m_Shader.m_ParsedForm, m_Shader.platforms, shaderPrograms)
 
 
 def ConvertSerializedShaderParsedForm(
@@ -131,17 +125,12 @@ def ConvertSerializedSubShader(
 
     sb.append(ConvertSerializedTagMap(m_SubShader.m_Tags, 1))
 
-    sb.extend(
-        ConvertSerializedPass(m_Passe, platforms, shaderPrograms)
-        for m_Passe in m_SubShader.m_Passes
-    )
+    sb.extend(ConvertSerializedPass(m_Passe, platforms, shaderPrograms) for m_Passe in m_SubShader.m_Passes)
     sb.append("}\n")
     return "".join(sb)
 
 
-def ConvertSerializedPass(
-    m_Passe: SerializedPass, platforms: List[int], shaderPrograms: List[ShaderProgram]
-) -> str:
+def ConvertSerializedPass(m_Passe: SerializedPass, platforms: List[int], shaderPrograms: List[ShaderProgram]) -> str:
     sb = []
     if m_Passe.m_Type == PassType.kPassTypeNormal:
         sb.append(" Pass ")
@@ -164,47 +153,27 @@ def ConvertSerializedPass(
 
             if len(m_Passe.progVertex.m_SubPrograms) > 0:
                 sb.append('Program "vp" {\n')
-                sb.append(
-                    ConvertSerializedSubPrograms(
-                        m_Passe.progVertex.m_SubPrograms, platforms, shaderPrograms
-                    )
-                )
+                sb.append(ConvertSerializedSubPrograms(m_Passe.progVertex.m_SubPrograms, platforms, shaderPrograms))
                 sb.append("}\n")
 
             if len(m_Passe.progFragment.m_SubPrograms) > 0:
                 sb.append('Program "fp" {\n')
-                sb.append(
-                    ConvertSerializedSubPrograms(
-                        m_Passe.progFragment.m_SubPrograms, platforms, shaderPrograms
-                    )
-                )
+                sb.append(ConvertSerializedSubPrograms(m_Passe.progFragment.m_SubPrograms, platforms, shaderPrograms))
                 sb.append("}\n")
 
             if len(m_Passe.progGeometry.m_SubPrograms) > 0:
                 sb.append('Program "gp" {\n')
-                sb.append(
-                    ConvertSerializedSubPrograms(
-                        m_Passe.progGeometry.m_SubPrograms, platforms, shaderPrograms
-                    )
-                )
+                sb.append(ConvertSerializedSubPrograms(m_Passe.progGeometry.m_SubPrograms, platforms, shaderPrograms))
                 sb.append("}\n")
 
             if len(m_Passe.progHull.m_SubPrograms) > 0:
                 sb.append('Program "hp" {\n')
-                sb.append(
-                    ConvertSerializedSubPrograms(
-                        m_Passe.progHull.m_SubPrograms, platforms, shaderPrograms
-                    )
-                )
+                sb.append(ConvertSerializedSubPrograms(m_Passe.progHull.m_SubPrograms, platforms, shaderPrograms))
                 sb.append("}\n")
 
             if len(m_Passe.progDomain.m_SubPrograms) > 0:
                 sb.append('Program "dp" {\n')
-                sb.append(
-                    ConvertSerializedSubPrograms(
-                        m_Passe.progDomain.m_SubPrograms, platforms, shaderPrograms
-                    )
-                )
+                sb.append(ConvertSerializedSubPrograms(m_Passe.progDomain.m_SubPrograms, platforms, shaderPrograms))
                 sb.append("}\n")
 
         sb.append("}\n")
@@ -243,21 +212,13 @@ def ConvertSerializedSubPrograms(
 
                 if CheckGpuProgramUsable(platform, programKey):
                     for subProgram in subPrograms:
-                        sb.append(
-                            'SubProgram "{0} '.format(GetPlatformString(platform))
-                        )
+                        sb.append('SubProgram "{0} '.format(GetPlatformString(platform)))
 
                         if isTier:
-                            sb.append(
-                                "hw_tier{0:02} ".format(subProgram.m_ShaderHardwareTier)
-                            )
+                            sb.append("hw_tier{0:02} ".format(subProgram.m_ShaderHardwareTier))
 
                         sb.append('" {\n')
-                        sb.append(
-                            shaderPrograms[i]
-                            .m_SubPrograms[subProgram.m_BlobIndex]
-                            .Export()
-                        )
+                        sb.append(shaderPrograms[i].m_SubPrograms[subProgram.m_BlobIndex].Export())
 
                         sb.append("\n}\n")
 
@@ -318,11 +279,7 @@ def ConvertSerializedShaderState(m_State: SerializedShaderState) -> str:
         sb.append("\n")
 
     if m_State.offsetFactor.val != 0 or m_State.offsetUnits.val != 0:
-        sb.append(
-            " Offset {0}, {1}\n".format(
-                m_State.offsetFactor.val, m_State.offsetUnits.val
-            )
-        )
+        sb.append(" Offset {0}, {1}\n".format(m_State.offsetFactor.val, m_State.offsetUnits.val))
 
     # TODO Stencil
 
@@ -375,9 +332,7 @@ def ConvertSerializedProperty(m_Prop: SerializedProperty) -> str:
     elif m_Prop.m_Type == SerializedPropertyType.kFloat:
         sb.append("Float")
     elif m_Prop.m_Type == SerializedPropertyType.kRange:
-        sb.append(
-            "Range({0:g}, {1:g})".format(m_Prop.m_DefValue_1_, m_Prop.m_DefValue_2_)
-        )
+        sb.append("Range({0:g}, {1:g})".format(m_Prop.m_DefValue_1_, m_Prop.m_DefValue_2_))
     elif m_Prop.m_Type == SerializedPropertyType.kTexture:
         if m_Prop.m_DefTexture.m_TexDim == TextureDimension.kTexDimAny:
             sb.append("any")
@@ -615,9 +570,8 @@ class ShaderProgram:
 
 class ShaderSubProgram:
     m_Version: int
-    m_ProgramCode: ShaderGpuProgramType
     m_Keywords: List[str]
-    m_ProgramCode: List[bytes]
+    m_ProgramCode: bytes
     m_LocalKeywords: Optional[List[str]]
 
     def __init__(self, reader: EndianBinaryReader):
@@ -643,9 +597,7 @@ class ShaderSubProgram:
 
         if 201806140 <= self.m_Version < 202012090:
             m_LocalKeywordsSize = reader.read_int()
-            self.m_LocalKeywords = [
-                reader.read_aligned_string() for _ in range(m_LocalKeywordsSize)
-            ]
+            self.m_LocalKeywords = [reader.read_aligned_string() for _ in range(m_LocalKeywordsSize)]
         else:
             self.m_LocalKeywords = None
 
@@ -663,11 +615,11 @@ class ShaderSubProgram:
             sb.append("}\n")
 
         if (
-            getattr(self, "m_LocalKeywords") is not None
-            and len(self.m_LocalKeywords) > 0
+            getattr(self, "m_LocalKeywords") is not None  # noqa: B009
+            and len(self.m_LocalKeywords) > 0  # type: ignore
         ):
             sb.append("Local Keywords { ")
-            for keyword in self.m_LocalKeywords:
+            for keyword in self.m_LocalKeywords:  # type: ignore
                 sb.append('"{0}" '.format(keyword))
 
             sb.append("}\n")
@@ -731,11 +683,7 @@ class ShaderSubProgram:
             ]:
                 sb.append(bytes(self.m_ProgramCode).decode("utf8"))
             else:
-                sb.append(
-                    "//shader disassembly not supported on {0}".format(
-                        self.m_ProgramType
-                    )
-                )
+                sb.append("//shader disassembly not supported on {0}".format(self.m_ProgramType))
 
         sb.append('"')
         return "".join(sb)

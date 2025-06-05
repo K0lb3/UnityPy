@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING, List
 
 from ...enums.GraphicsFormat import GRAPHICS_TO_TEXTURE_MAP, GraphicsFormat

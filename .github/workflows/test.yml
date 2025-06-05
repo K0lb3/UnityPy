@@ -25,5 +25,13 @@ jobs:
       - name: Install
         run: pip install .[tests]
 
+      - uses: astral-sh/ruff-action@v3
+
+      - name: Check code (ruff check)
+        run: ruff check
+      
+      - name: Check code style (ruff format)
+        run: ruff format --check
+
       - name: Run tests
         run: python -m pytest -vs ./tests

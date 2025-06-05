@@ -13,9 +13,7 @@ FileSourceType = Union[str, bytes, bytearray, io.IOBase, EndianBinaryReader]
 
 
 def file_name_without_extension(file_name: str) -> str:
-    return os.path.join(
-        os.path.dirname(file_name), os.path.splitext(os.path.basename(file_name))[0]
-    )
+    return os.path.join(os.path.dirname(file_name), os.path.splitext(os.path.basename(file_name))[0])
 
 
 def list_all_files(directory: str) -> List[str]:
@@ -34,11 +32,7 @@ def find_all_files(directory: str, search_str: str) -> List[str]:
     return [
         val
         for sublist in [
-            [
-                os.path.join(dir_path, filename)
-                for filename in filenames
-                if search_str in filename
-            ]
+            [os.path.join(dir_path, filename) for filename in filenames if search_str in filename]
             for (dir_path, dirnames, filenames) in os.walk(directory)
             if ".git" not in dir_path
         ]
@@ -54,10 +48,7 @@ def check_file_type(
     elif isinstance(input_, EndianBinaryReader):
         reader = input_
     else:
-        try:
-            reader = EndianBinaryReader(input_)
-        except:
-            return None, None
+        reader = EndianBinaryReader(input_)
 
     if reader.Length < 20:
         return FileType.ResourceFile, reader
@@ -102,12 +93,12 @@ def check_file_type(
 
         if version >= 22:
             raw_endian = reader.read_u_byte()
-            endian = ">" if raw_endian else "<"
-            reserved = reader.read_bytes(3)
+            _endian = ">" if raw_endian else "<"
+            _reserved = reader.read_bytes(3)
             metadata_size = reader.read_u_int()
             file_size = reader.read_long()
             data_offset = reader.read_long()
-            unknown = reader.read_long()  # unknown
+            _unknown = reader.read_long()  # unknown
 
         # reset
         reader.endian = old_endian
@@ -117,10 +108,7 @@ def check_file_type(
             (
                 version < 0,
                 version > 100,
-                *[
-                    x < 0 or x > reader.Length
-                    for x in [file_size, metadata_size, version, data_offset]
-                ],
+                *[x < 0 or x > reader.Length for x in [file_size, metadata_size, version, data_offset]],
                 file_size < metadata_size,
                 file_size < data_offset,
             )

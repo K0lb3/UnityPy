@@ -9,7 +9,7 @@ class UnknownObject(Object):
 
     __node__: Optional[TypeTreeNode]
 
-    def __init__(self, __node__: TypeTreeNode = None, **kwargs):
+    def __init__(self, __node__: Optional[TypeTreeNode] = None, **kwargs):
         self.__node__ = __node__
         self.__dict__.update(**kwargs)
 
@@ -23,10 +23,11 @@ class UnknownObject(Object):
                 return vstr[:97] + "..."
             return vstr
 
-        inner_str = ", ".join(
-            f"{k}={format_value(v)}"
-            for k, v in self.__dict__.items()
-            if k != "__node__"
-        )
+        inner_str = ", ".join(f"{k}={format_value(v)}" for k, v in self.__dict__.items() if k != "__node__")
 
         return f"<UnknownObject<{self.get_type()}> {inner_str}>"
+
+
+__all__ = [
+    "UnknownObject",
+]

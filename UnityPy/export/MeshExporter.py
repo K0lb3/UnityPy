@@ -30,26 +30,19 @@ def export_mesh_obj(mesh: Mesh, material_names: Optional[List[str]] = None) -> s
         return False
 
     sb.extend(
-        "v {0:.9G} {1:.9G} {2:.9G}\n".format(-pos[0], pos[1], pos[2]).replace(
-            "nan", "0"
-        )
-        for pos in m_Mesh.m_Vertices
+        "v {0:.9G} {1:.9G} {2:.9G}\n".format(-pos[0], pos[1], pos[2]).replace("nan", "0") for pos in m_Mesh.m_Vertices
     )
     # endregion
 
     # region UV
     if m_Mesh.m_UV0:
-        sb.extend(
-            "vt {0:.9G} {1:.9G}\n".format(uv[0], uv[1]).replace("nan", "0")
-            for uv in m_Mesh.m_UV0
-        )
+        sb.extend("vt {0:.9G} {1:.9G}\n".format(uv[0], uv[1]).replace("nan", "0") for uv in m_Mesh.m_UV0)
     # endregion
 
     # region Normals
     if m_Mesh.m_Normals:
         sb.extend(
-            "vn {0:.9G} {1:.9G} {2:.9G}\n".format(-n[0], n[1], n[2]).replace("nan", "0")
-            for n in m_Mesh.m_Normals
+            "vn {0:.9G} {1:.9G} {2:.9G}\n".format(-n[0], n[1], n[2]).replace("nan", "0") for n in m_Mesh.m_Normals
         )
     # endregion
 
@@ -58,9 +51,6 @@ def export_mesh_obj(mesh: Mesh, material_names: Optional[List[str]] = None) -> s
         sb.append(f"g {mesh.m_Name}_{i}\n")
         if material_names and i < len(material_names) and material_names[i]:
             sb.append(f"usemtl {material_names[i]}\n")
-        sb.extend(
-            "f {0}/{0}/{0} {1}/{1}/{1} {2}/{2}/{2}\n".format(c + 1, b + 1, a + 1)
-            for a, b, c in triangles
-        )
+        sb.extend("f {0}/{0}/{0} {1}/{1}/{1} {2}/{2}/{2}\n".format(c + 1, b + 1, a + 1) for a, b, c in triangles)
     # endregion
     return "".join(sb)

@@ -1,13 +1,12 @@
 import gzip
 import lzma
 import struct
-from typing import Tuple, Union, Callable, Dict
+from typing import Callable, Dict, Tuple, Union
 
 import brotli
 import lz4.block
 
 from ..enums.BundleFile import CompressionFlags
-
 
 ByteString = Union[bytes, bytearray, memoryview]
 GZIP_MAGIC: bytes = b"\x1f\x8b"
@@ -103,9 +102,7 @@ def compress_lz4(data: ByteString) -> bytes:  # LZ4M/LZ4HC
     :return: compressed data
     :rtype: bytes
     """
-    return lz4.block.compress(
-        data, mode="high_compression", compression=9, store_size=False
-    )
+    return lz4.block.compress(data, mode="high_compression", compression=9, store_size=False)
 
 
 # Brotli
@@ -158,9 +155,7 @@ def compress_gzip(data: ByteString) -> bytes:
     return gzip.compress(data)
 
 
-def chunk_based_compress(
-    data: ByteString, block_info_flag: int
-) -> Tuple[ByteString, list]:
+def chunk_based_compress(data: ByteString, block_info_flag: int) -> Tuple[ByteString, list]:
     """compresses AssetBundle data based on the block_info_flag
     LZ4/LZ4HC will be chunk-based compression
 
@@ -180,16 +175,12 @@ def chunk_based_compress(
     if switch in COMPRESSION_MAP:
         compress_func = COMPRESSION_MAP[switch]
     else:
-        raise NotImplementedError(
-            f"No compression function in the CompressionHelper.COMPRESSION_MAP for {switch}"
-        )
+        raise NotImplementedError(f"No compression function in the CompressionHelper.COMPRESSION_MAP for {switch}")
 
     if switch in COMPRESSION_CHUNK_SIZE_MAP:
         chunk_size = COMPRESSION_CHUNK_SIZE_MAP[switch]
     else:
-        raise NotImplementedError(
-            f"No chunk size in the CompressionHelper.COMPRESSION_CHUNK_SIZE_MAP for {switch}"
-        )
+        raise NotImplementedError(f"No chunk size in the CompressionHelper.COMPRESSION_CHUNK_SIZE_MAP for {switch}")
 
     block_info = []
     uncompressed_data_size = len(data)
@@ -241,14 +232,10 @@ def chunk_based_compress(
 
 
 def decompress_lzham(data: ByteString, uncompressed_size: int) -> bytes:
-    raise NotImplementedError(
-        "Custom compression or unimplemented LZHAM (removed by Unity) encountered!"
-    )
+    raise NotImplementedError("Custom compression or unimplemented LZHAM (removed by Unity) encountered!")
 
 
-DECOMPRESSION_MAP: Dict[
-    Union[int, CompressionFlags], Callable[[ByteString, int], ByteString]
-] = {
+DECOMPRESSION_MAP: Dict[Union[int, CompressionFlags], Callable[[ByteString, int], ByteString]] = {
     CompressionFlags.NONE: lambda cd, _ucs: cd,
     CompressionFlags.LZMA: lambda cd, _ucs: decompress_lzma(cd),
     CompressionFlags.LZ4: decompress_lz4,
@@ -256,9 +243,7 @@ DECOMPRESSION_MAP: Dict[
     CompressionFlags.LZHAM: decompress_lzham,
 }
 
-COMPRESSION_MAP: Dict[
-    Union[int, CompressionFlags], Callable[[ByteString], ByteString]
-] = {
+COMPRESSION_MAP: Dict[Union[int, CompressionFlags], Callable[[ByteString], ByteString]] = {
     CompressionFlags.NONE: lambda cd: cd,
     CompressionFlags.LZMA: compress_lzma,
     CompressionFlags.LZ4: compress_lz4,

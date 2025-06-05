@@ -26,9 +26,7 @@ def _Texture2d_set_image(
         img = Image.open(img)
 
     platform = self.object_reader.platform if self.object_reader is not None else 0
-    img_data, tex_format = Texture2DConverter.image_to_texture2d(
-        img, target_format, platform, self.m_PlatformBlob
-    )
+    img_data, tex_format = Texture2DConverter.image_to_texture2d(img, target_format, platform, self.m_PlatformBlob)
     self.m_Width = img.width
     self.m_Height = img.height
 
@@ -42,7 +40,7 @@ def _Texture2d_set_image(
             if width < 4 or height < 4:
                 mipmap_count = i + 1
                 break
-            re_img = re_img.resize((width, height), Image.BICUBIC)
+            re_img = re_img.resize((width, height), Image.Resampling.BICUBIC)
             img_data += Texture2DConverter.image_to_texture2d(re_img, target_format)[0]
 
     # disable mipmaps as we don't store them ourselves by default
@@ -53,9 +51,7 @@ def _Texture2d_set_image(
 
     self.image_data = img_data
     # width * height * channel count
-    self.m_CompleteImageSize = len(
-        img_data
-    )  # img.width * img.height * len(img.getbands())
+    self.m_CompleteImageSize = len(img_data)  # img.width * img.height * len(img.getbands())
     self.m_TextureFormat = tex_format
 
     if self.m_StreamData is not None:

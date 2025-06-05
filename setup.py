@@ -1,7 +1,7 @@
 import os
 import re
 import subprocess
-from typing import Union
+from typing import Literal, cast, get_args
 
 from setuptools import Extension, find_packages, setup
 from setuptools.command.build_ext import build_ext
@@ -10,8 +10,10 @@ from setuptools.command.sdist import sdist
 try:
     from setuptools.command.bdist_wheel import bdist_wheel
 except ImportError:
-    from wheel.bdist_wheel import bdist_wheel
+    from wheel.bdist_wheel import bdist_wheel  # type: ignore
 
+System = Literal["Windows", "Linux", "Darwin"]
+Arch = Literal["x64", "x86", "arm", "arm64", "x86_64"]
 
 INSTALL_DIR = os.path.dirname(os.path.realpath(__file__))
 UNITYPYBOOST_DIR = os.path.join(INSTALL_DIR, "UnityPyBoost")
@@ -36,10 +38,7 @@ class BuildExt(build_ext):
             if version is None:
                 raise Exception("Failed to determine compiler version")
             version = int(version.group(1))
-            if version < 10:
-                cpp_version_flag = "-std=c++2a"
-            else:
-                cpp_version_flag = "-std=c++20"
+            cpp_version_flag = "-std=c++2a" if version < 10 else "-std=c++20"
         else:
             cpp_version_flag = "-std=c++20"
 
@@ -52,7 +51,7 @@ class BuildExt(build_ext):
 class SDist(sdist):
     def make_distribution(self) -> None:
         # add all fmod libraries to the distribution
-        for root, dirs, files in os.walk("UnityPy/lib/FMOD"):
+        for root, _dirs, files in os.walk("UnityPy/lib/FMOD"):
             for file in files:
                 fp = f"{root}/{file}"
                 if fp not in self.filelist.files:
@@ -74,9 +73,7 @@ BDIST_TAG_FMOD_MAP = {
 }
 
 
-def get_fmod_path(
-    system: Union["Windows", "Linux", "Darwin"], arch: ["x64", "x86", "arm", "arm64"]
-) -> str:
+def get_fmod_path(system: System, arch: Arch) -> str:
     if system == "Darwin":
         # universal dylib
         return "lib/FMOD/Darwin/libfmod.dylib"
@@ -92,7 +89,7 @@ def get_fmod_path(
     raise NotImplementedError(f"Unsupported system: {system}")
 
 
-class BDistWheel(bdist_wheel):
+class BDistWheel(bdist_wheel):  # type: ignore
     def run(self):
         platform_tag = self.get_tag()[2]
         if platform_tag.startswith("win"):
@@ -103,17 +100,10 @@ class BDistWheel(bdist_wheel):
                 (v for k, v in BDIST_TAG_FMOD_MAP.items() if platform_tag.endswith(k)),
                 None,
             )
-            if platform_tag.startswith("macosx"):
-                system = "Darwin"
-            else:
-                system = "Linux"
+            system = "Darwin" if platform_tag.startswith("macosx") else "Linux"
 
-        try:
-            self.distribution.package_data["UnityPy"].append(
-                get_fmod_path(system, arch)
-            )
-        except NotImplementedError:
-            pass
+        if arch and arch in get_args(Arch):
+            self.distribution.package_data["UnityPy"].append(get_fmod_path(system, cast(Arch, arch)))
         super().run()
 
 
@@ -124,16 +114,8 @@ setup(
     ext_modules=[
         Extension(
             "UnityPy.UnityPyBoost",
-            [
-                f"UnityPyBoost/{f}"
-                for f in os.listdir(UNITYPYBOOST_DIR)
-                if f.endswith(".cpp")
-            ],
-            depends=[
-                f"UnityPyBoost/{f}"
-                for f in os.listdir(UNITYPYBOOST_DIR)
-                if f.endswith(".hpp")
-            ],
+            [f"UnityPyBoost/{f}" for f in os.listdir(UNITYPYBOOST_DIR) if f.endswith(".cpp")],
+            depends=[f"UnityPyBoost/{f}" for f in os.listdir(UNITYPYBOOST_DIR) if f.endswith(".hpp")],
             language="c++",
             include_dirs=[UNITYPYBOOST_DIR],
         )

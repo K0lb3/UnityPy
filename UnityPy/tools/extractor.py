@@ -2,7 +2,7 @@ import json
 import os
 from io import BytesIO
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Tuple, Union
+from typing import Callable, Dict, Iterable, List, Optional, Sequence, Tuple, Union
 
 import UnityPy
 from UnityPy.classes import (
@@ -37,7 +37,8 @@ def export_obj(
         fp (Path): A valid filepath where the object should be exported to.
         append_name (bool, optional): Decides if the obj name will be appended to the filepath. Defaults to False.
         append_path_id (bool, optional): Decides if the obj path id will be appended to the filepath. Defaults to False.
-        export_unknown_as_typetree (bool, optional): If set, then unimplemented objects will be exported via their typetree or dumped as bin. Defaults to False.
+        export_unknown_as_typetree (bool, optional): If set, then unimplemented objects will be exported
+            via their typetree or dumped as bin. Defaults to False.
         asset_filter (func(Object)->bool, optional): Determines whether to export an object. Defaults to all objects.
 
     Returns:
@@ -60,7 +61,8 @@ def export_obj(
 
     if append_name:
         fp = os.path.join(
-            fp, obj.m_Name if getattr(obj, "m_Name") else obj.object_reader.type.name
+            fp,
+            obj.m_Name if getattr(obj, "m_Name") else obj.object_reader.type.name,  # noqa: B009
         )
 
     fp, extension = os.path.splitext(fp)
@@ -90,7 +92,8 @@ def extract_assets(
         ignore_first_container_dirs (int, optional): [description]. Defaults to 0.
         append_path_id (bool, optional): [description]. Defaults to False.
         export_unknown_as_typetree (bool, optional): [description]. Defaults to False.
-        asset_filter (func(object)->bool, optional): Determines whether to export an object. Defaults to all objects.
+        asset_filter (func(object)->bool, optional): Determines whether to export an object.
+            Defaults to all objects.
 
     Returns:
         List[Tuple[SerializedFile, int]]: [description]
@@ -108,11 +111,10 @@ def extract_assets(
             return 999
 
     if use_container:
-        container = sorted(
-            env.container.items(), key=lambda x: defaulted_export_index(x[1].type)
-        )
+        container = sorted(env.container.items(), key=lambda x: defaulted_export_index(x[1].type))
         for obj_path, obj in container:
-            # The filter here can only access metadata. The same filter may produce a different result later in extract_obj after obj.read()
+            # The filter here can only access metadata.
+            # The same filter may produce a different result later in extract_obj after obj.read()
             if asset_filter is not None and not asset_filter(obj):
                 continue
             # the check of the various sub directories is required to avoid // in the path
@@ -156,9 +158,7 @@ def extract_assets(
 ###############################################################################
 
 
-def exportTextAsset(
-    obj: TextAsset, fp: str, extension: str = ".txt"
-) -> List[Tuple[SerializedFile, int]]:
+def exportTextAsset(obj: TextAsset, fp: str, extension: str = ".txt") -> List[Tuple[SerializedFile, int]]:
     if not extension:
         extension = ".txt"
     with open(f"{fp}{extension}", "wb") as f:
@@ -166,9 +166,7 @@ def exportTextAsset(
     return [(obj.assets_file, obj.object_reader.path_id)]
 
 
-def exportFont(
-    obj: Font, fp: str, extension: str = ""
-) -> List[Tuple[SerializedFile, int]]:
+def exportFont(obj: Font, fp: str, extension: str = "") -> List[Tuple[SerializedFile, int]]:
     # TODO - export glyphs
     if obj.m_FontData:
         extension = ".ttf"
@@ -179,9 +177,7 @@ def exportFont(
     return [(obj.assets_file, obj.object_reader.path_id)]
 
 
-def exportMesh(
-    obj: Mesh, fp: str, extension=".obj"
-) -> List[Tuple[SerializedFile, int]]:
+def exportMesh(obj: Mesh, fp: str, extension=".obj") -> List[Tuple[SerializedFile, int]]:
     if not extension:
         extension = ".obj"
     with open(f"{fp}{extension}", "wt", encoding="utf8", newline="") as f:
@@ -189,9 +185,7 @@ def exportMesh(
     return [(obj.assets_file, obj.object_reader.path_id)]
 
 
-def exportShader(
-    obj: Shader, fp: str, extension=".txt"
-) -> List[Tuple[SerializedFile, int]]:
+def exportShader(obj: Shader, fp: str, extension=".txt") -> List[Tuple[SerializedFile, int]]:
     if not extension:
         extension = ".txt"
     with open(f"{fp}{extension}", "wt", encoding="utf8", newline="") as f:
@@ -214,9 +208,7 @@ def exportMonoBehaviour(
             # looks like we have a script
             script = script_ptr.read()
             # check if there is a locally stored typetree for it
-            nodes = MONOBEHAVIOUR_TYPETREES.get(script.m_AssemblyName, {}).get(
-                script.m_ClassName, None
-            )
+            nodes = MONOBEHAVIOUR_TYPETREES.get(script.m_AssemblyName, {}).get(script.m_ClassName, None)
             if nodes:
                 export = obj.object_reader.read_typetree(nodes)
     else:
@@ -227,17 +219,13 @@ def exportMonoBehaviour(
         export = obj.object_reader.raw_data
     else:
         extension = ".json"
-        export = json.dumps(export, indent=4, ensure_ascii=False).encode(
-            "utf8", errors="surrogateescape"
-        )
+        export = json.dumps(export, indent=4, ensure_ascii=False).encode("utf8", errors="surrogateescape")
     with open(f"{fp}{extension}", "wb") as f:
         f.write(export)
     return [(obj.assets_file, obj.object_reader.path_id)]
 
 
-def exportAudioClip(
-    obj: AudioClip, fp: str, extension: str = ""
-) -> List[Tuple[SerializedFile, int]]:
+def exportAudioClip(obj: AudioClip, fp: str, extension: str = "") -> List[Tuple[SerializedFile, int]]:
     samples = obj.samples
     if len(samples) == 0:
         pass
@@ -252,9 +240,7 @@ def exportAudioClip(
     return [(obj.assets_file, obj.object_reader.path_id)]
 
 
-def exportSprite(
-    obj: Sprite, fp: str, extension: str = ".png"
-) -> List[Tuple[SerializedFile, int]]:
+def exportSprite(obj: Sprite, fp: str, extension: str = ".png") -> List[Tuple[SerializedFile, int]]:
     if not extension:
         extension = ".png"
     obj.image.save(f"{fp}{extension}")
@@ -269,9 +255,7 @@ def exportSprite(
     return exported
 
 
-def exportTexture2D(
-    obj: Texture2D, fp: str, extension: str = ".png"
-) -> List[Tuple[SerializedFile, int]]:
+def exportTexture2D(obj: Texture2D, fp: str, extension: str = ".png") -> List[Tuple[SerializedFile, int]]:
     if not extension:
         extension = ".png"
     if obj.m_Width:
@@ -280,9 +264,7 @@ def exportTexture2D(
     return [(obj.assets_file, obj.object_reader.path_id)]
 
 
-def exportGameObject(
-    obj: GameObject, fp: str, extension: str = ""
-) -> List[Tuple[SerializedFile, int]]:
+def exportGameObject(obj: GameObject, fp: str, extension: str = "") -> List[Tuple[SerializedFile, int]]:
     exported = [(obj.assets_file, obj.object_reader.path_id)]
     refs = crawl_obj(obj)
     if refs:
@@ -321,10 +303,10 @@ CLASS_NAME = str
 MONOBEHAVIOUR_TYPETREES: Dict[ASSEMBLY_NAME_DLL, Dict[CLASS_NAME, List[Dict]]] = {}
 
 
-def crawl_obj(
-    obj: Object, ret: Optional[dict] = None
-) -> Dict[int, Union[Object, PPtr]]:
-    """Crawls through the data struture of the object and returns a list of all the components."""
+def crawl_obj(obj: Object, ret: Optional[dict] = None) -> Dict[int, Union[Object, PPtr]]:
+    """Crawls through the data struture of the object
+    and returns a list of all the components.
+    """
     if not ret:
         ret = {}
 
@@ -355,11 +337,11 @@ def crawl_obj(
     return ret
 
 
-def flatten(l):
-    for el in list(l):
-        if isinstance(el, (list, tuple)):
-            yield from flatten(el)
-        elif isinstance(el, dict):
-            yield from flatten(el.values())
+def flatten(seq: Sequence) -> Iterable:
+    for elem in list(seq):
+        if isinstance(elem, (list, tuple)):
+            yield from flatten(elem)
+        elif isinstance(elem, dict):
+            yield from flatten(elem.values())  # type: ignore
         else:
-            yield el
+            yield elem

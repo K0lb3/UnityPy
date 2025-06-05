@@ -116,9 +116,7 @@ class ObjectReader(Generic[T]):
         if header.version == 15 or header.version == 16:
             self.stripped = reader.read_byte()
 
-    def write(
-        self, header, writer: EndianBinaryWriter, data_writer: EndianBinaryWriter
-    ):
+    def write(self, header, writer: EndianBinaryWriter, data_writer: EndianBinaryWriter):
         if self.assets_file.big_id_enabled:
             writer.write_long(self.path_id)
         elif header.version < 14:
@@ -250,7 +248,7 @@ class ObjectReader(Generic[T]):
 
     def save_typetree(
         self,
-        tree: dict,
+        tree: Union[dict, T],
         nodes: Optional[NodeInput] = None,
         writer: Optional[EndianBinaryWriter] = None,
     ):
@@ -294,14 +292,10 @@ class ObjectReader(Generic[T]):
         return node
 
     # UnityPy 2 syntax early implementation
-    def parse_as_object(
-        self, node: Optional[NodeInput] = None, check_read: bool = True
-    ) -> T:
+    def parse_as_object(self, node: Optional[NodeInput] = None, check_read: bool = True) -> T:
         return self.read_typetree(nodes=node, wrap=True, check_read=check_read)  # type: ignore
 
-    def parse_as_dict(
-        self, node: Optional[NodeInput] = None, check_read: bool = True
-    ) -> dict[str, Any]:
+    def parse_as_dict(self, node: Optional[NodeInput] = None, check_read: bool = True) -> dict[str, Any]:
         return self.read_typetree(nodes=node, wrap=False, check_read=check_read)  # type: ignore
 
     def _try_monobehaviour_node(self, base_node: TypeTreeNode) -> TypeTreeNode:
@@ -309,13 +303,9 @@ class ObjectReader(Generic[T]):
         generator = env.typetree_generator
         if generator is None:
             raise ValueError("No typetree generator set!")
-        monobehaviour = cast(
-            MonoBehaviour, self.parse_as_object(base_node, check_read=False)
-        )
+        monobehaviour = cast(MonoBehaviour, self.parse_as_object(base_node, check_read=False))
         script = monobehaviour.m_Script.deref_parse_as_object()
-        node = generator.get_nodes_up(
-            script.m_AssemblyName, f"{script.m_Namespace}.{script.m_ClassName}"
-        )
+        node = generator.get_nodes_up(script.m_AssemblyName, f"{script.m_Namespace}.{script.m_ClassName}")
         if node:
             return node
         else:

@@ -15,3 +15,27 @@ from .SpritePackingMode import SpritePackingMode
 from .SpritePackingRotation import SpritePackingRotation
 from .TextureDimension import TextureDimension
 from .TextureFormat import TextureFormat
+
+__all__ = [
+    "AUDIO_TYPE_EXTEMSION",
+    "AudioCompressionFormat",
+    "AudioType",
+    "BuildTarget",
+    "ArchiveFlags",
+    "ArchiveFlagsOld",
+    "CompressionFlags",
+    "ClassIDType",
+    "CommonString",
+    "FileType",
+    "GfxPrimitiveType",
+    "GraphicsFormat",
+    "PassType",
+    "SerializedPropertyType",
+    "ShaderCompilerPlatform",
+    "ShaderGpuProgramType",
+    "SpriteMeshType",
+    "SpritePackingMode",
+    "SpritePackingRotation",
+    "TextureDimension",
+    "TextureFormat",
+]
