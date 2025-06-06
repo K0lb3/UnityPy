@@ -117,11 +117,12 @@ def compress_astc(data: bytes, width: int, height: int, target_texture_format: T
 
 def image_to_texture2d(
     img: Image.Image,
-    target_texture_format: Union[TF, int],
-    platform: int = 0,
+    target_texture_format: Union[TextureFormat, int],
+    platform: Union[BuildTarget, int] = 0,
     platform_blob: Optional[List[int]] = None,
     flip: bool = True,
 ) -> Tuple[bytes, TextureFormat]:
+    """Converts a PIL Image to Texture2D bytes."""
     if not isinstance(target_texture_format, TextureFormat):
         target_texture_format = TextureFormat(target_texture_format)
 
@@ -133,21 +134,15 @@ def image_to_texture2d(
     tex_format = TF.RGBA32
     pil_mode = "RGBA"
 
-    # DXT
+    # DXT / BC
     if target_texture_format in [TF.DXT1, TF.DXT1Crunched]:
         tex_format = TF.DXT1
         compress_func = compress_etcpak
     elif target_texture_format in [TF.DXT5, TF.DXT5Crunched]:
         tex_format = TF.DXT5
         compress_func = compress_etcpak
-    elif target_texture_format in [TF.BC4]:
-        tex_format = TF.BC4
-        compress_func = compress_etcpak
-    elif target_texture_format in [TF.BC5]:
-        tex_format = TF.BC5
-        compress_func = compress_etcpak
-    elif target_texture_format in [TF.BC7]:
-        tex_format = TF.BC7
+    elif target_texture_format in [TF.BC4, TF.BC5, TF.BC7]:
+        tex_format = target_texture_format
         compress_func = compress_etcpak
     # ASTC
     elif target_texture_format.name.startswith("ASTC"):
@@ -178,7 +173,7 @@ def image_to_texture2d(
     elif target_texture_format == TF.Alpha8:
         tex_format = TF.Alpha8
         pil_mode = "A"
-    # R - should probably be moerged into #A, as pure R is used as Alpha
+    # R - should probably be merged into #A, as pure R is used as Alpha
     # but need test data for this first
     elif target_texture_format in [
         TF.R8,
@@ -208,10 +203,6 @@ def image_to_texture2d(
     switch_info = None
 
     if TextureSwizzler.is_switch_swizzled(platform, platform_blob):
-        if TYPE_CHECKING:
-            # due to earlier check platform_blob can't be None
-            assert platform_blob is not None
-        gobsPerBlock = TextureSwizzler.get_switch_gobs_per_block(platform_blob)
         s_tex_format = tex_format
         if tex_format == TF.RGB24:
             s_tex_format = TF.RGBA32
@@ -219,23 +210,26 @@ def image_to_texture2d(
         elif tex_format == TF.BGR24:
             s_tex_format = TF.BGRA32
             pil_mode = "BGRA"
-        block_size = TextureSwizzler.TEXTUREFORMAT_BLOCK_SIZE_MAP[s_tex_format]
-        width, height = TextureSwizzler.get_padded_texture_size(img.width, img.height, *block_size, gobsPerBlock)
-        switch_info = (block_size, gobsPerBlock)
+
+        assert platform_blob is not None
+        gobs_per_block = TextureSwizzler.get_switch_gobs_per_block(platform_blob)
+        block_size = TextureSwizzler.TEXTURE_FORMAT_BLOCK_SIZE_MAP[s_tex_format]
+        width, height = TextureSwizzler.get_padded_texture_size(img.width, img.height, *block_size, gobs_per_block)
+        switch_info = (block_size, gobs_per_block)
 
     if compress_func:
         width, height = get_compressed_image_size(width, height, tex_format)
         img = pad_image(img, width, height)
-        enc_img = compress_func(img.tobytes("raw", "RGBA"), img.width, img.height, tex_format)
+        enc_img = compress_func(img.tobytes("raw", "RGBA"), width, height, tex_format)
     else:
-        if switch_info is not None:
+        if switch_info:
             img = pad_image(img, width, height)
 
         enc_img = img.tobytes("raw", pil_mode)
 
-    if switch_info is not None:
-        block_size, gobsPerBlock = switch_info
-        enc_img = bytes(TextureSwizzler.swizzle(enc_img, width, height, *block_size, gobsPerBlock))
+    if switch_info:
+        block_size, gobs_per_block = switch_info
+        enc_img = bytes(TextureSwizzler.swizzle(enc_img, width, height, *block_size, gobs_per_block))
 
     return enc_img, tex_format
 
@@ -244,15 +238,7 @@ def get_image_from_texture2d(
     texture_2d: Texture2D,
     flip: bool = True,
 ) -> Image.Image:
-    """converts the given texture into PIL.Image
-
-    :param texture_2d: texture to be converterd
-    :type texture_2d: Texture2D
-    :param flip: flips the image back to the original (all Unity textures are flipped by default)
-    :type flip: bool
-    :return: PIL.Image object
-    :rtype: Image
-    """
+    """Converts the given Texture2D object to PIL Image."""
     return parse_image_data(
         texture_2d.get_image_data(),
         texture_2d.m_Width,
@@ -269,12 +255,13 @@ def parse_image_data(
     image_data: Union[bytes, bytearray, memoryview],
     width: int,
     height: int,
-    texture_format: Union[int, TextureFormat],
+    texture_format: Union[TextureFormat, int],
     version: Tuple[int, int, int, int],
-    platform: int,
-    platform_blob: Optional[bytes] = None,
+    platform: Union[BuildTarget, int],
+    platform_blob: Optional[List[int]] = None,
     flip: bool = True,
 ) -> Image.Image:
+    """Converts the given image data bytes to PIL Image."""
     if not width or not height:
         return Image.new("RGBA", (0, 0))
 
@@ -290,17 +277,16 @@ def parse_image_data(
     original_width, original_height = (width, height)
 
     if TextureSwizzler.is_switch_swizzled(platform, platform_blob):
-        if TYPE_CHECKING:
-            # due to earlier check platform_blob can't be None
-            assert platform_blob is not None
-        gobsPerBlock = TextureSwizzler.get_switch_gobs_per_block(platform_blob)
         if texture_format == TF.RGB24:
             texture_format = TF.RGBA32
         elif texture_format == TF.BGR24:
             texture_format = TF.BGRA32
-        block_size = TextureSwizzler.TEXTUREFORMAT_BLOCK_SIZE_MAP[texture_format]
-        width, height = TextureSwizzler.get_padded_texture_size(width, height, *block_size, gobsPerBlock)
-        image_data = TextureSwizzler.deswizzle(image_data, width, height, *block_size, gobsPerBlock)
+
+        assert platform_blob is not None
+        gobs_per_block = TextureSwizzler.get_switch_gobs_per_block(platform_blob)
+        block_size = TextureSwizzler.TEXTURE_FORMAT_BLOCK_SIZE_MAP[texture_format]
+        width, height = TextureSwizzler.get_padded_texture_size(width, height, *block_size, gobs_per_block)
+        image_data = TextureSwizzler.deswizzle(image_data, width, height, *block_size, gobs_per_block)
     else:
         width, height = get_compressed_image_size(width, height, texture_format)
 
@@ -333,9 +319,7 @@ def parse_image_data(
 
 
 def swap_bytes_for_xbox(image_data: Union[bytes, bytearray, memoryview]) -> bytearray:
-    """swaps the texture bytes
-    This is required for textures deployed on XBOX360.
-    """
+    """Swaps the texture bytes for textures deployed on XBOX360."""
     image_data = bytearray(image_data)
     for i in range(0, len(image_data), 2):
         image_data[i : i + 2] = image_data[i : i + 2][::-1]
