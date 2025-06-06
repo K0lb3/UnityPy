@@ -70,7 +70,7 @@ def swizzle(
 
 
 # this should be the amount of pixels that can fit 16 bytes
-TEXTUREFORMAT_BLOCK_SIZE_MAP: Dict[TextureFormat, Tuple[int, int]] = {
+TEXTURE_FORMAT_BLOCK_SIZE_MAP: Dict[TextureFormat, Tuple[int, int]] = {
     TextureFormat.Alpha8: (16, 1),  # 1 byte per pixel
     TextureFormat.ARGB4444: (8, 1),  # 2 bytes per pixel
     TextureFormat.RGBA32: (4, 1),  # 4 bytes per pixel
