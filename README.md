@@ -48,7 +48,7 @@ if UnityPy.__version__ != '1.9.6':
 
 ## Installation
 
-**Python 3.7.0 or higher is required.**
+**Python 3.8 or higher is required.**
 
 Install via PyPI:
 

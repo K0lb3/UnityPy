@@ -1,4 +1,4 @@
-target-version = "py37"
+target-version = "py38"
 include = [
     "UnityPy/*.py",
     "UnityPy/*.pyi",

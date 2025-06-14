@@ -8,7 +8,7 @@ authors = [{ name = "Rudolf Kolbe", email = "rkolbe96@gmail.com" }]
 description = "A Unity extraction and patching package"
 readme = "README.md"
 license = { file = "LICENSE" }
-requires-python = ">=3.7"
+requires-python = ">=3.8"
 keywords = [
     "python",
     "unity",
@@ -26,7 +26,6 @@ classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
@@ -83,4 +82,4 @@ archs = ["x86_64", "arm64"]
 archs = ["AMD64", "x86", "ARM64"]
 
 [tool.pyright]
-pythonVersion = "3.7"
+pythonVersion = "3.8"
