@@ -2,18 +2,19 @@ from __future__ import annotations
 
 import re
 from ntpath import basename
-from typing import TYPE_CHECKING, Dict, Generator, Iterator, List, Optional, Tuple
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
 
 from attrs import define
 
 from .. import config
 from ..enums import BuildTarget, ClassIDType, CommonString
+from ..helpers.ContainerHelper import ContainerHelper
 from ..helpers.TypeTreeHelper import TypeTreeNode
 from ..streams import EndianBinaryWriter
 from . import BundleFile, File, ObjectReader
 
 if TYPE_CHECKING:
-    from ..classes import AssetBundle, AssetInfo, Object, PPtr
+    from ..classes import AssetBundle, Object
     from ..files import ObjectReader
     from ..streams.EndianBinaryReader import EndianBinaryReader
 
@@ -338,7 +339,7 @@ class SerializedFile(File.File):
                 break
         else:
             self.assetbundle = None
-            self._container = ContainerHelper()
+            self._container = ContainerHelper([])
 
     @property
     def container(self):
@@ -521,55 +522,3 @@ def read_string(string_buffer_reader: EndianBinaryReader, value: int) -> str:
 
     offset = value & 0x7FFFFFFF
     return CommonString.get(offset, str(offset))
-
-
-@define(slots=True)
-class ContainerHelper:
-    """Helper class to allow multidict containers
-    without breaking compatibility with old versions"""
-
-    container: List[Tuple[str, AssetInfo]]
-    container_dict: Dict[str, PPtr[Object]]
-    path_dict: Dict[int, str]
-
-    def __init__(self, assetbundle: Optional[AssetBundle] = None) -> None:
-        if assetbundle is None:
-            self.container = []
-        else:
-            self.container = assetbundle.m_Container
-        # support for getitem
-        self.container_dict = {key: value.asset for key, value in self.container}
-        self.path_dict = {value.asset.m_PathID: key for key, value in self.container}
-
-    def items(self) -> Generator[Tuple[str, PPtr[Object]], None, None]:
-        return ((key, value.asset) for key, value in self.container)
-
-    def keys(self) -> list[str]:
-        return list({key for key, value in self.container})
-
-    def values(self) -> list[PPtr[Object]]:
-        return list({value.asset for key, value in self.container})
-
-    def __getitem__(self, key) -> PPtr[Object]:
-        return self.container_dict[key]
-
-    def __setitem__(self, key, value) -> None:
-        raise NotImplementedError("Assigning to container is not allowed!")
-
-    def __delitem__(self, key) -> None:
-        raise NotImplementedError("Deleting from the container is not allowed!")
-
-    def __iter__(self) -> Iterator[str]:
-        return iter(self.keys())
-
-    def __len__(self) -> int:
-        return len(self.container)
-
-    def __getattr__(self, name: str) -> PPtr[Object]:
-        return self.container_dict[name]
-
-    def __str__(self) -> str:
-        return f"{{{', '.join(f'{key}: {value}' for key, value in self.items())}}}"
-
-    def __dict__(self) -> Dict[str, PPtr[Object]]:
-        return self.container_dict
