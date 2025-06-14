@@ -299,7 +299,9 @@ def parse_image_data(
     else:
         width, height = get_compressed_image_size(width, height, texture_format)
 
-    image_data = bytes(image_data)
+    if not isinstance(image_data, bytes):
+        # bytes(bytes item) would cause an unnecessary copy
+        image_data = bytes(image_data)
 
     if "Crunched" in texture_format.name:
         if (
