@@ -191,9 +191,6 @@ class EndianBinaryReader:
     def read_u_long_array(self, length: Optional[int] = None) -> Tuple[int, ...]:
         return self.read_array_struct("Q", length)
 
-    def read_u_int_array_array(self, length: Optional[int] = None) -> List[Tuple[int, ...]]:
-        return self.read_array(self.read_u_int_array, length if length is not None else self.read_int())
-
     def read_float_array(self, length: Optional[int] = None) -> Tuple[float, ...]:
         return self.read_array_struct("f", length)
 
