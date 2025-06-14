@@ -2,7 +2,7 @@ import io
 import ntpath
 import os
 import re
-from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, BinaryIO, Callable, Dict, List, Optional, Union, cast
 from zipfile import ZipFile
 
 from fsspec import AbstractFileSystem
@@ -10,6 +10,7 @@ from fsspec.implementations.local import LocalFileSystem
 
 from .enums import FileType
 from .files import BundleFile, File, ObjectReader, SerializedFile, WebFile
+from .helpers.ContainerHelper import ContainerHelper
 from .helpers.ImportHelper import (
     FileSourceType,
     check_file_type,
@@ -32,13 +33,21 @@ class Environment:
     local_files_simple: List[str]
     typetree_generator: Optional["TypeTreeGenerator"] = None
 
-    def __init__(self, *args: FileSourceType, fs: Optional[AbstractFileSystem] = None):
+    def __init__(self, *args: FileSourceType, fs: Optional[AbstractFileSystem] = None, path: Optional[str] = None):
         self.files = {}
         self.cabs = {}
-        self.path = None
         self.fs = fs or LocalFileSystem()
         self.local_files = []
         self.local_files_simple = []
+
+        if path is None:
+            # if no path is given, use the current working directory
+            if isinstance(self.fs, LocalFileSystem):
+                self.path = os.getcwd()
+            else:
+                self.path = ""
+        else:
+            self.path = path
 
         if args:
             for arg in args:
@@ -56,14 +65,10 @@ class Environment:
                         self.path = arg
                         self.load_folder(arg)
                 else:
-                    self.path = None
                     self.load_file(file=arg)
 
         if len(self.files) == 1:
             self.file = list(self.files.values())[0]
-
-        if self.path == "":
-            self.path = os.getcwd()
 
     def load_files(self, files: List[str]):
         """Loads all files (list) into the Environment and merges .split files for common usage."""
@@ -80,12 +85,12 @@ class Environment:
         )
 
     def _load_split_file(self, basename: str) -> bytes:
-        file: list[str] = []
+        file: List[bytes] = []
         for i in range(0, 999):
             item = f"{basename}.split{i}"
             if self.fs.exists(item):
                 with self.fs.open(item, "rb") as f:
-                    file.append(f.read())
+                    file.append(f.read())  # type: ignore
             elif i:
                 break
         return b"".join(file)
@@ -119,10 +124,13 @@ class Environment:
                     # Unity paths are case insensitive,
                     # so we need to find "Resources/Foo.asset" when the record says "resources/foo.asset"
                     elif not os.path.exists(file):
-                        file = find_sensitive_path(self.path, file)
-                    # nonexistent files might be packaging errors or references to Unity's global Library/
-                    if file is None:
-                        return
+                        file_path = find_sensitive_path(self.path, file)
+                        if file_path:
+                            file = file_path
+                        else:
+                            return None
+                            # raise FileNotFoundError(f"File {file} not found in {self.path}")
+
                 if isinstance(file, str):
                     file = self.fs.open(file, "rb")
 
@@ -134,7 +142,7 @@ class Environment:
             else getattr(
                 file,
                 "name",
-                str(file.__hash__()) if hasattr(file, "__hash__") else "",
+                str(file.__hash__()) if hasattr(file, "__hash__") else "",  # type: ignore
             )
         )
 
@@ -150,16 +158,17 @@ class Environment:
         return f
 
     def load_zip_file(self, value):
-        buffer = None
         if isinstance(value, str) and self.fs.exists(value):
-            buffer = open(value, "rb")
-        elif isinstance(value, (bytes, bytearray)):
+            buffer = cast(io.BufferedReader, self.fs.open(value, "rb"))
+        elif isinstance(value, (bytes, bytearray, memoryview)):
             buffer = io.BytesIO(value)
         elif isinstance(value, (io.BufferedReader, io.BufferedIOBase)):
             buffer = value
+        else:
+            raise TypeError("Unsupported type for loading zip file")
 
         z = ZipFile(buffer)
-        self.load_assets(z.namelist(), lambda x: z.open(x, "r"))
+        self.load_assets(z.namelist(), lambda x: z.open(x, "r"))  # type: ignore
         z.close()
 
     def save(self, pack="none", out_path="output"):
@@ -195,14 +204,14 @@ class Environment:
         return search(self)
 
     @property
-    def container(self) -> Dict[str, ObjectReader]:
+    def container(self) -> ContainerHelper:
         """Returns a dictionary of all objects in the Environment."""
-        return {
-            path: obj
-            for f in self.files.values()
-            if isinstance(f, File) and not f.is_dependency
-            for path, obj in f.container.items()
-        }
+        container = []
+        for f in self.cabs.values():
+            if isinstance(f, SerializedFile) and not f.is_dependency:
+                container.extend(f.container.container)
+
+        return ContainerHelper(container)
 
     @property
     def assets(self) -> list:
@@ -228,7 +237,7 @@ class Environment:
     def get(self, key: str, default=None):
         return getattr(self, key, default)
 
-    def register_cab(self, name: str, item: File) -> None:
+    def register_cab(self, name: str, item: Union[SerializedFile, EndianBinaryReader]) -> None:
         """
         Registers a cab file.
 
@@ -241,7 +250,7 @@ class Environment:
         """
         self.cabs[simplify_name(name)] = item
 
-    def get_cab(self, name: str) -> File:
+    def get_cab(self, name: str) -> Union[SerializedFile, EndianBinaryReader, None]:
         """
         Returns the cab file with the given name.
 
@@ -257,7 +266,7 @@ class Environment:
         """
         return self.cabs.get(simplify_name(name), None)
 
-    def load_assets(self, assets: List[str], open_f: Callable[[str], io.IOBase]):
+    def load_assets(self, assets: List[str], open_f: Callable[[str], BinaryIO]):
         """
         Load all assets from a list of files via the given open_f function.
 
