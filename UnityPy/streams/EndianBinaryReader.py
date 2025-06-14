@@ -299,7 +299,7 @@ class EndianBinaryReader_Streamable(EndianBinaryReader):
         last_pos = self.Position
         self.Position = 0
         ret = self.read(self.Length)
-        self.Position = last_pos # type: ignore
+        self.Position = last_pos  # type: ignore
         return ret
 
     def dispose(self):
