@@ -199,6 +199,8 @@ def read_value(
 
         # size = read_value(node.m_Children[0].m_Children[0], reader, as_dict)
         size = reader.read_int()
+        if size < 0:
+            raise ValueError("Negative length read from TypeTree")
         subtype = node.m_Children[0].m_Children[1]
         if metaflag_is_aligned(subtype.m_MetaFlag):
             value = read_value_array(subtype, reader, config, size)

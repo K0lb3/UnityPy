@@ -295,6 +295,11 @@ inline bool _read_length(ReaderT *reader, int32_t *length)
     {
         swap_any_inplace(length);
     }
+    if (*length < 0)
+    {
+        PyErr_SetString(PyExc_ValueError, "Negative length read from TypeTree");
+        return false;
+    }
     reader->ptr += sizeof(int32_t);
     return true;
 }
@@ -346,12 +351,12 @@ inline PyObject *read_pair(ReaderT *reader, TypeTreeNodeObject *node, TypeTreeRe
     }
 
     PyObject *first = read_typetree_value<swap>(reader, (TypeTreeNodeObject *)PyList_GET_ITEM(node->m_Children, 0), config);
-    if (!first)
+    if (first == NULL)
     {
         return NULL;
     }
     PyObject *second = read_typetree_value<swap>(reader, (TypeTreeNodeObject *)PyList_GET_ITEM(node->m_Children, 1), config);
-    if (!second)
+    if (second == NULL)
     {
         Py_DECREF(first);
         return NULL;
@@ -380,13 +385,13 @@ inline PyObject *read_pair_array(ReaderT *reader, TypeTreeNodeObject *node, Type
     for (auto i = 0; i < count; i++)
     {
         PyObject *first = read_typetree_value<swap>(reader, first_child, config);
-        if (!first)
+        if (first == NULL)
         {
             Py_DECREF(list);
             return NULL;
         }
         PyObject *second = read_typetree_value<swap>(reader, second_child, config);
-        if (!second)
+        if (second == NULL)
         {
             Py_DECREF(first);
             Py_DECREF(list);
@@ -422,7 +427,7 @@ inline PyObject *read_class(ReaderT *reader, TypeTreeNodeObject *node, TypeTreeR
             }
         }
         PyObject *child_value = read_typetree_value<swap>(reader, child, config); // child_value: 1 refcount
-        if (!child_value)
+        if (child_value == NULL)
         {
             Py_DECREF(value); // value: 0 refcount
             return NULL;
@@ -487,6 +492,11 @@ inline PyObject *parse_class(PyObject *kwargs, TypeTreeNodeObject *node, TypeTre
     Py_ssize_t pos;
     // slots check
     PyObject *slots = nullptr;
+
+    if (kwargs == NULL)
+    {
+        return NULL;
+    }
 
     if (node->_data_type == NodeDataType::PPtr)
     {
@@ -792,7 +802,7 @@ PyObject *read_typetree_value(ReaderT *reader, TypeTreeNodeObject *node, TypeTre
                 child_value = read_typetree_value<swap>(reader, child, config);
             }
 
-            if (!child_value)
+            if (child_value == NULL)
             {
                 Py_DECREF(value);
                 return NULL;
@@ -857,7 +867,7 @@ PyObject *read_typetree_value(ReaderT *reader, TypeTreeNodeObject *node, TypeTre
                 for (int i = 0; i < length; i++)
                 {
                     PyObject *item = read_typetree_value<swap>(reader, child, config);
-                    if (!item)
+                    if (item == NULL)
                     {
                         Py_DECREF(value);
                         return NULL;
@@ -885,7 +895,7 @@ PyObject *read_typetree_value(ReaderT *reader, TypeTreeNodeObject *node, TypeTre
         }
     }
 
-    if (align)
+    if (align && value != NULL)
     {
         align4(reader);
     }
@@ -940,7 +950,7 @@ PyObject *read_typetree_value_array(ReaderT *reader, TypeTreeNodeObject *node, T
     default:
         value = PyErr_Format(PyExc_ValueError, "Unsupported type for read_typetree_value_array: %d", node->_data_type);
     }
-    if (align)
+    if (align && value != NULL)
     {
         align4(reader);
     }
@@ -1050,7 +1060,7 @@ READ_TYPETREE_CLEANUP:
     Py_XDECREF(config.assetfile);
     Py_XDECREF(config.classes);
 
-    return Py_BuildValue("(Nn)", value, bytes_read);
+    return (value != NULL) ? Py_BuildValue("(Nn)", value, bytes_read) : NULL;
 }
 
 // TypeTreeNode impl
@@ -1206,6 +1216,16 @@ static int TypeTreeNode_init(TypeTreeNodeObject *self, PyObject *args, PyObject 
     return 0;
 }
 
+static PyObject *TypeTreeNode_repr(TypeTreeNodeObject *self)
+{
+    return PyUnicode_FromFormat(
+        "TypeTreeNode(m_Level=%R, m_Type=%R, m_Name=%R, m_MetaFlag=%R)",
+        self->m_Level,
+        self->m_Type,
+        self->m_Name,
+        self->m_MetaFlag);
+}
+
 static PyMemberDef TypeTreeNode_members[] = {
     {"m_Level", T_OBJECT_EX, offsetof(TypeTreeNodeObject, m_Level), 0, ""},
     {"m_Type", T_OBJECT_EX, offsetof(TypeTreeNodeObject, m_Type), 0, ""},
@@ -1240,6 +1260,7 @@ static PyTypeObject TypeTreeNodeType = []() -> PyTypeObject
     type.tp_init = (initproc)TypeTreeNode_init;
     type.tp_members = TypeTreeNode_members;
     type.tp_finalize = (destructor)TypeTreeNode_finalize;
+    type.tp_repr = (reprfunc)TypeTreeNode_repr;
     return type;
 }();
 

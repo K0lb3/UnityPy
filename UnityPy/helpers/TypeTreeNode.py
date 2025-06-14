@@ -44,6 +44,10 @@ except ImportError:
         def __attrs_post_init__(self):
             self._clean_name = clean_name(self.m_Name)
 
+        def __repr__(self):
+            return f"TypeTreeNode(m_Level={self.m_Level}, m_Type='{self.m_Type}', \
+                m_Name='{self.m_Name}', m_MetaFlag={self.m_MetaFlag})"
+
 
 TYPETREENODE_KEYS = [
     "m_Level",
