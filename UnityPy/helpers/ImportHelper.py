@@ -42,7 +42,7 @@ def find_all_files(directory: str, search_str: str) -> List[str]:
 
 def check_file_type(
     input_: FileSourceType,
-) -> Tuple[Optional[FileType], Optional[EndianBinaryReader]]:
+) -> Tuple[FileType, EndianBinaryReader]:
     if isinstance(input_, str) and os.path.isfile(input_):
         reader = EndianBinaryReader(open(input_, "rb"))
     elif isinstance(input_, EndianBinaryReader):
