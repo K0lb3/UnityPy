@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, List, Literal, Optional, Union
+from typing import TYPE_CHECKING, Any, List, Literal, Optional, Tuple, Union
 
 if TYPE_CHECKING:
     from .classes import Object
@@ -23,7 +23,7 @@ def read_typetree(
     as_dict: bool,
     assetsfile: SerializedFile,
     classes: dict,
-) -> Union[dict[str, Any], Object]: ...
+) -> Tuple[Union[dict[str, Any], Object], int]: ...
 
 class TypeTreeNode:
     m_Level: int
