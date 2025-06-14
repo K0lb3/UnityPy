@@ -20,8 +20,8 @@ except ImportError:
 class TypeTreeGenerator(TypeTreeGeneratorBase):
     cache: Dict[Tuple[str, str], TypeTreeNode]
 
-    def __init__(self, unity_version: str):
-        super().__init__(unity_version)
+    def __init__(self, unity_version: str, *args, **kwargs):
+        super().__init__(unity_version, *args, **kwargs)
         self.cache = {}
 
     def load_local_game(self, root_dir: str):
