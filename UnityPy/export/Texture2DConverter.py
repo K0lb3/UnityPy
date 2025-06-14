@@ -215,7 +215,9 @@ def image_to_texture2d(
         assert platform_blob is not None
         gobs_per_block = TextureSwizzler.get_switch_gobs_per_block(platform_blob)
         block_size = TextureSwizzler.TEXTURE_FORMAT_BLOCK_SIZE_MAP[s_tex_format]
-        width, height = TextureSwizzler.get_padded_texture_size(img.width, img.height, *block_size, gobs_per_block)
+        width, height = TextureSwizzler.get_padded_texture_size(
+            img.width, img.height, *block_size, gobs_per_block
+        )
         switch_info = (block_size, gobs_per_block)
 
     if compress_func:
@@ -230,7 +232,9 @@ def image_to_texture2d(
 
     if switch_info:
         block_size, gobs_per_block = switch_info
-        enc_img = bytes(TextureSwizzler.swizzle(enc_img, width, height, *block_size, gobs_per_block))
+        enc_img = bytes(
+            TextureSwizzler.swizzle(enc_img, width, height, *block_size, gobs_per_block)
+        )
 
     return enc_img, tex_format
 
@@ -286,8 +290,12 @@ def parse_image_data(
         assert platform_blob is not None
         gobs_per_block = TextureSwizzler.get_switch_gobs_per_block(platform_blob)
         block_size = TextureSwizzler.TEXTURE_FORMAT_BLOCK_SIZE_MAP[texture_format]
-        width, height = TextureSwizzler.get_padded_texture_size(width, height, *block_size, gobs_per_block)
-        image_data = TextureSwizzler.deswizzle(image_data, width, height, *block_size, gobs_per_block)
+        width, height = TextureSwizzler.get_padded_texture_size(
+            width, height, *block_size, gobs_per_block
+        )
+        image_data = TextureSwizzler.deswizzle(
+            image_data, width, height, *block_size, gobs_per_block
+        )
     else:
         width, height = get_compressed_image_size(width, height, texture_format)
 

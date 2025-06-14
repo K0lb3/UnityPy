@@ -1,5 +1,6 @@
 # based on https://github.com/nesrak1/AssetsTools.NET/blob/dev/AssetsTools.NET.Texture/Swizzle/SwitchSwizzle.cs
 from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 from ..enums import BuildTarget, TextureFormat
 
@@ -118,7 +119,9 @@ def get_switch_gobs_per_block(platform_blob: List[int]) -> int:
     return 1 << int.from_bytes(platform_blob[8:12], "little")
 
 
-def is_switch_swizzled(platform: Union[BuildTarget, int], platform_blob: Optional[List[int]]) -> bool:
+def is_switch_swizzled(
+    platform: Union[BuildTarget, int], platform_blob: Optional[List[int]]
+) -> bool:
     if platform != BuildTarget.Switch:
         return False
     if not platform_blob or len(platform_blob) < 12:
