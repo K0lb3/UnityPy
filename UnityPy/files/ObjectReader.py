@@ -305,7 +305,13 @@ class ObjectReader(Generic[T]):
             raise ValueError("No typetree generator set!")
         monobehaviour = cast(MonoBehaviour, self.parse_as_object(base_node, check_read=False))
         script = monobehaviour.m_Script.deref_parse_as_object()
-        node = generator.get_nodes_up(script.m_AssemblyName, f"{script.m_Namespace}.{script.m_ClassName}")
+
+        if script.m_Namespace != "":
+            fullname = f"{script.m_Namespace}.{script.m_ClassName}"
+        else:
+            fullname = script.m_ClassName
+
+        node = generator.get_nodes_up(script.m_AssemblyName, fullname)
         if node:
             return node
         else:
