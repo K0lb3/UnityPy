@@ -311,7 +311,7 @@ class ObjectReader(Generic[T]):
         else:
             fullname = script.m_ClassName
 
-        node = generator.get_nodes_up(script.m_AssemblyName, fullname)
+        node = generator.get_nodes_up(base_node, script.m_AssemblyName, fullname)
         if node:
             return node
         else:
