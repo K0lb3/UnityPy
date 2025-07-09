@@ -45,7 +45,7 @@ class TypeTreeGenerator(TypeTreeGeneratorBase):
                 data = f.read()
                 self.load_dll(data)
 
-    def get_nodes_up(self, assembly: str, fullname: str) -> TypeTreeNode:
+    def get_nodes_up(self, base_node: TypeTreeNode, assembly: str, fullname: str) -> TypeTreeNode:
         root = self.cache.get((assembly, fullname))
         if root is not None:
             return root
@@ -62,6 +62,7 @@ class TypeTreeGenerator(TypeTreeGeneratorBase):
             0,
             0,
             m_MetaFlag=base_root.m_MetaFlag,
+            m_Children=base_node.m_Children[:],
         )
         stack: List[TypeTreeNode] = []
         parent = root
