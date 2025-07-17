@@ -73,10 +73,15 @@ def unpack_floats(
 ) -> List[float]:
     assert packed.m_BitSize is not None and packed.m_Range is not None and packed.m_Start is not None
 
-    # read as int and cast up to double to prevent loss of precision
-    quantized_f64 = unpack_ints(packed, start, count)
-    scale = packed.m_Range / ((1 << packed.m_BitSize) - 1)
-    quantized = [x * scale + packed.m_Start for x in quantized_f64]
+    # avoid zero division of scale
+    if packed.m_BitSize == 0:
+        quantized = [packed.m_Start] * (packed.m_NumItems if count is None else count)
+    else:
+        # read as int and cast up to double to prevent loss of precision
+        quantized_f64 = unpack_ints(packed, start, count)
+        scale = packed.m_Range / ((1 << packed.m_BitSize) - 1)
+        quantized = [x * scale + packed.m_Start for x in quantized_f64]
+
     return reshape(quantized, shape)
 
 
