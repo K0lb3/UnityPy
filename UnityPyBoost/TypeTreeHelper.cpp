@@ -153,14 +153,13 @@ inline PyObject *read_s8_array(ReaderT *reader, int32_t count)
 }
 
 template <typename T, bool swap>
-inline PyObject *read_int(ReaderT *reader)
+inline PyObject *read_num(ReaderT *reader)
 {
-    static_assert(std::is_integral<T>::value, "Unsupported type for read_int");
+    static_assert(std::is_integral<T>::value || std::is_floating_point<T>::value, "Unsupported type for read_num");
 
     if (reader->ptr + sizeof(T) > reader->end)
     {
-        PyErr_SetString(PyExc_ValueError, "read_int out of bounds");
-        return NULL;
+        return PyErr_Format(PyExc_ValueError, "read_%s out of bounds", typeid(T).name());
     }
     T value = *(T *)reader->ptr;
     if constexpr (swap)
@@ -168,7 +167,11 @@ inline PyObject *read_int(ReaderT *reader)
         swap_any_inplace(&value);
     }
     reader->ptr += sizeof(T);
-    if constexpr (std::is_signed<T>::value)
+    if constexpr (std::is_floating_point<T>::value)
+    {
+        return PyFloat_FromDouble(value);
+    }
+    else if constexpr (std::is_signed<T>::value)
     {
         if constexpr (std::is_same<T, int64_t>::value)
         {
@@ -179,7 +182,7 @@ inline PyObject *read_int(ReaderT *reader)
             return PyLong_FromLong((int32_t)value);
         }
     }
-    else
+    else if constexpr (std::is_unsigned<T>::value)
     {
         if constexpr (std::is_same<T, uint64_t>::value)
         {
@@ -190,17 +193,20 @@ inline PyObject *read_int(ReaderT *reader)
             return PyLong_FromUnsignedLong((uint32_t)value);
         }
     }
+    else
+    {
+        return PyErr_Format(PyExc_TypeError, "Unsupported type for read_num: %s", typeid(T).name());
+    }
 }
 
 template <typename T, bool swap>
-inline PyObject *read_int_array(ReaderT *reader, int32_t count)
+inline PyObject *read_num_array(ReaderT *reader, int32_t count)
 {
-    static_assert(std::is_integral<T>::value, "Unsupported type for read_int_array");
+    static_assert(std::is_integral<T>::value || std::is_floating_point<T>::value, "Unsupported type for read_num_array");
 
     if (reader->ptr + sizeof(T) * count > reader->end)
     {
-        PyErr_SetString(PyExc_ValueError, "read_int_array out of bounds");
-        return NULL;
+        return PyErr_Format(PyExc_ValueError, "read_%s_array out of bounds", typeid(T).name());
     }
     PyObject *list = PyList_New(count);
     T *ptr = (T *)reader->ptr;
@@ -211,72 +217,39 @@ inline PyObject *read_int_array(ReaderT *reader, int32_t count)
         {
             swap_any_inplace(&value);
         }
-        if constexpr (std::is_signed<T>::value)
+        PyObject *item;
+        if constexpr (std::is_floating_point<T>::value)
+        {
+            item = PyFloat_FromDouble(value);
+        }
+        else if constexpr (std::is_signed<T>::value)
         {
             if constexpr (std::is_same<T, int64_t>::value)
             {
-                PyList_SET_ITEM(list, i, PyLong_FromLongLong(value));
+                item = PyLong_FromLongLong(value);
             }
             else
             {
-                PyList_SET_ITEM(list, i, PyLong_FromLong((int32_t)value));
+                item = PyLong_FromLong((int32_t)value);
+            }
+        }
+        else if constexpr (std::is_unsigned<T>::value)
+        {
+            if constexpr (std::is_same<T, uint64_t>::value)
+            {
+                item = PyLong_FromUnsignedLongLong(value);
+            }
+            else
+            {
+                item = PyLong_FromUnsignedLong((uint32_t)value);
             }
         }
         else
         {
-            if constexpr (std::is_same<T, uint64_t>::value)
-            {
-                PyList_SET_ITEM(list, i, PyLong_FromUnsignedLongLong(value));
-            }
-            else
-            {
-                PyList_SET_ITEM(list, i, PyLong_FromUnsignedLong((uint32_t)value));
-            }
+            Py_DECREF(list);
+            return PyErr_Format(PyExc_TypeError, "Unsupported type for read_num_array: %s", typeid(T).name());
         }
-    }
-    reader->ptr = (uint8_t *)ptr;
-    return list;
-}
-
-template <typename T, bool swap>
-inline PyObject *read_float(ReaderT *reader)
-{
-    static_assert(std::is_floating_point<T>::value, "Unsupported type for read_float");
-
-    if (reader->ptr + sizeof(T) > reader->end)
-    {
-        PyErr_SetString(PyExc_ValueError, "read_float out of bounds");
-        return NULL;
-    }
-    T value = *(T *)reader->ptr;
-    if constexpr (swap)
-    {
-        swap_any_inplace(&value);
-    }
-    reader->ptr += sizeof(T);
-    return PyFloat_FromDouble(value);
-}
-
-template <typename T, bool swap>
-inline PyObject *read_float_array(ReaderT *reader, int32_t count)
-{
-    static_assert(std::is_floating_point<T>::value, "Unsupported type for read_float_array");
-
-    if (reader->ptr + sizeof(T) * count > reader->end)
-    {
-        PyErr_SetString(PyExc_ValueError, "read_float_array out of bounds");
-        return NULL;
-    }
-    T *ptr = (T *)reader->ptr;
-    PyObject *list = PyList_New(count);
-    for (auto i = 0; i < count; i++)
-    {
-        T value = *ptr++;
-        if constexpr (swap)
-        {
-            swap_any_inplace(&value);
-        }
-        PyList_SET_ITEM(list, i, PyFloat_FromDouble(value));
+        PyList_SET_ITEM(list, i, item);
     }
     reader->ptr = (uint8_t *)ptr;
     return list;
@@ -735,31 +708,31 @@ PyObject *read_typetree_value(ReaderT *reader, TypeTreeNodeObject *node, TypeTre
         value = read_u8(reader);
         break;
     case NodeDataType::u16:
-        value = read_int<uint16_t, swap>(reader);
+        value = read_num<uint16_t, swap>(reader);
         break;
     case NodeDataType::u32:
-        value = read_int<uint32_t, swap>(reader);
+        value = read_num<uint32_t, swap>(reader);
         break;
     case NodeDataType::u64:
-        value = read_int<uint64_t, swap>(reader);
+        value = read_num<uint64_t, swap>(reader);
         break;
     case NodeDataType::s8:
         value = read_s8(reader);
         break;
     case NodeDataType::s16:
-        value = read_int<int16_t, swap>(reader);
+        value = read_num<int16_t, swap>(reader);
         break;
     case NodeDataType::s32:
-        value = read_int<int32_t, swap>(reader);
+        value = read_num<int32_t, swap>(reader);
         break;
     case NodeDataType::s64:
-        value = read_int<int64_t, swap>(reader);
+        value = read_num<int64_t, swap>(reader);
         break;
     case NodeDataType::f32:
-        value = read_float<float, swap>(reader);
+        value = read_num<float, swap>(reader);
         break;
     case NodeDataType::f64:
-        value = read_float<double, swap>(reader);
+        value = read_num<double, swap>(reader);
         break;
     case NodeDataType::boolean:
         value = read_bool(reader);
@@ -915,31 +888,31 @@ PyObject *read_typetree_value_array(ReaderT *reader, TypeTreeNodeObject *node, T
         value = read_u8_array(reader, count);
         break;
     case NodeDataType::u16:
-        value = read_int_array<uint16_t, swap>(reader, count);
+        value = read_num_array<uint16_t, swap>(reader, count);
         break;
     case NodeDataType::u32:
-        value = read_int_array<uint32_t, swap>(reader, count);
+        value = read_num_array<uint32_t, swap>(reader, count);
         break;
     case NodeDataType::u64:
-        value = read_int_array<uint64_t, swap>(reader, count);
+        value = read_num_array<uint64_t, swap>(reader, count);
         break;
     case NodeDataType::s8:
         value = read_s8_array(reader, count);
         break;
     case NodeDataType::s16:
-        value = read_int_array<int16_t, swap>(reader, count);
+        value = read_num_array<int16_t, swap>(reader, count);
         break;
     case NodeDataType::s32:
-        value = read_int_array<int32_t, swap>(reader, count);
+        value = read_num_array<int32_t, swap>(reader, count);
         break;
     case NodeDataType::s64:
-        value = read_int_array<int64_t, swap>(reader, count);
+        value = read_num_array<int64_t, swap>(reader, count);
         break;
     case NodeDataType::f32:
-        value = read_float_array<float, swap>(reader, count);
+        value = read_num_array<float, swap>(reader, count);
         break;
     case NodeDataType::f64:
-        value = read_float_array<double, swap>(reader, count);
+        value = read_num_array<double, swap>(reader, count);
         break;
     case NodeDataType::boolean:
         value = read_bool_array(reader, count);
@@ -965,6 +938,16 @@ static inline void set_none_if_null_n_incref(PyObject **field)
         *field = Py_None;
     }
     Py_INCREF(*field);
+}
+
+static bool is_null_none_or_type(PyObject *obj, PyTypeObject *type, const char *type_name, const char *field_name)
+{
+    if (obj == nullptr || obj == Py_None || PyObject_TypeCheck(obj, type))
+    {
+        return true;
+    }
+    PyErr_Format(PyExc_TypeError, "Expected %s or None for %s, got %R", type_name, field_name, obj);
+    return false;
 }
 
 PyObject *read_typetree(PyObject *self, PyObject *args, PyObject *kwargs)
@@ -1166,7 +1149,7 @@ static int TypeTreeNode_init(TypeTreeNodeObject *self, PyObject *args, PyObject 
     self->m_RefTypeHash = nullptr;
     self->_clean_name = nullptr;
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O!O!O!O!O!|O!O!O!O!O!O!", (char **)kwlist,
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O!O!O!O!O!|OOOOOO", (char **)kwlist,
                                      // required fields
                                      &PyLong_Type, &self->m_Level,
                                      &PyUnicode_Type, &self->m_Type,
@@ -1174,12 +1157,12 @@ static int TypeTreeNode_init(TypeTreeNodeObject *self, PyObject *args, PyObject 
                                      &PyLong_Type, &self->m_ByteSize,
                                      &PyLong_Type, &self->m_Version,
                                      // optional fields
-                                     &PyList_Type, &self->m_Children,
-                                     &PyLong_Type, &self->m_TypeFlags,
-                                     &PyLong_Type, &self->m_VariableCount,
-                                     &PyLong_Type, &self->m_Index,
-                                     &PyLong_Type, &self->m_MetaFlag,
-                                     &PyLong_Type, &self->m_RefTypeHash))
+                                     &self->m_Children,
+                                     &self->m_TypeFlags,
+                                     &self->m_VariableCount,
+                                     &self->m_Index,
+                                     &self->m_MetaFlag,
+                                     &self->m_RefTypeHash))
     {
         return -1;
     }
@@ -1192,14 +1175,27 @@ static int TypeTreeNode_init(TypeTreeNodeObject *self, PyObject *args, PyObject 
     Py_INCREF(self->m_Version);
 
     // optional values - can still be nullptr
-    if (self->m_Children == nullptr)
+    if (self->m_Children == nullptr || self->m_Children == Py_None)
     {
+        if (self->m_Children == Py_None)
+        {
+            // in older Python's Py_None is not immortal
+            Py_DECREF(self->m_Children);
+        }
         self->m_Children = PyList_New(0);
     }
     else
     {
         Py_INCREF(self->m_Children);
     }
+
+    if (!is_null_none_or_type(self->m_TypeFlags, &PyLong_Type, "int", "m_TypeFlags") ||
+        !is_null_none_or_type(self->m_VariableCount, &PyLong_Type, "int", "m_VariableCount") ||
+        !is_null_none_or_type(self->m_Index, &PyLong_Type, "int", "m_Index") ||
+        !is_null_none_or_type(self->m_MetaFlag, &PyLong_Type, "int", "m_MetaFlag") ||
+        !is_null_none_or_type(self->m_RefTypeHash, &PyLong_Type, "int", "m_RefTypeHash"))
+        return -1;
+
     set_none_if_null_n_incref(&self->m_TypeFlags);
     set_none_if_null_n_incref(&self->m_VariableCount);
     set_none_if_null_n_incref(&self->m_Index);
