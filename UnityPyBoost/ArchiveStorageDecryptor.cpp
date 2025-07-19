@@ -9,7 +9,7 @@ inline unsigned char decrypt_byte(unsigned char *bytes, uint64_t& offset, uint64
                             + substitute_data[index & 3]
                             + substitute_data[((index >> 4) & 3) + 8]
                             + substitute_data[((unsigned char)index >> 6) + 12];
-    bytes[offset] = (unsigned char)((index_data[bytes[offset] & 0xF] - count_byte) & 0xF | 0x10 * (index_data[bytes[offset] >> 4] - count_byte));
+    bytes[offset] = (unsigned char)(((index_data[bytes[offset] & 0xF] - count_byte) & 0xF) | 0x10 * (index_data[bytes[offset] >> 4] - count_byte));
     count_byte = bytes[offset++];
     index++;
     return count_byte;
@@ -76,7 +76,7 @@ PyObject *decrypt_block(PyObject *self, PyObject *args) {
     unsigned char *result_raw = (unsigned char *)PyBytes_AS_STRING(result);
     memcpy(result_raw, data.buf, data.len);
 
-    uint64_t offset = 0;
+    Py_ssize_t offset = 0;
     while (offset < data.len) {
         offset += decrypt(result_raw + offset, index++, data.len - offset, (unsigned char *)index_data.buf, (unsigned char *)substitute_data.buf);
     }
