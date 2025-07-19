@@ -38,6 +38,8 @@ class TypeTreeGenerator(TypeTreeGeneratorBase):
 
     def load_local_dll_folder(self, dll_dir: str):
         for f in os.listdir(dll_dir):
+            if not f.endswith(".dll"):
+                continue
             fp = os.path.join(dll_dir, f)
             with open(fp, "rb") as f:
                 data = f.read()
