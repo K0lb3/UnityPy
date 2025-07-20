@@ -625,10 +625,10 @@ class MeshHandler:
 
     def get_triangles(self) -> List[List[Tuple[int, ...]]]:
         assert self.m_IndexBuffer is not None
+        assert self.src.m_SubMeshes is not None
 
         submeshes: List[List[Tuple[int, ...]]] = []
 
-        assert self.src and self.src.m_SubMeshes is not None, "No submesh data!"
         for m_SubMesh in self.src.m_SubMeshes:
             firstIndex = m_SubMesh.firstByte // 2
             if not self.m_Use16BitIndices:
@@ -640,38 +640,37 @@ class MeshHandler:
             triangles: List[Tuple[int, ...]]
 
             if topology == MeshTopology.Triangles:
-                triangles = self.m_IndexBuffer[firstIndex : firstIndex + indexCount]  # type: ignore
-                triangles = [triangles[i : i + 3] for i in range(0, len(triangles), 3)]  # type: ignore
-            elif self.version[0] < 4 or topology == MeshTopology.TriangleStrip:  # TriangleStrip
-                # todo: use as_strided, then fix winding, finally remove degenerates
-                triIndex = 0
-                triangles = [None] * (indexCount - 2)  # type: ignore
+                triangles = [
+                    tuple(self.m_IndexBuffer[i : i + 3]) for i in range(firstIndex, firstIndex + indexCount, 3)
+                ]
 
-                for i in range(indexCount - 2):
-                    a, b, c = self.m_IndexBuffer[firstIndex + i : firstIndex + i + 3]
+            elif self.version[0] < 4 or topology == MeshTopology.TriangleStrip:
+                triangles = [()] * (indexCount - 2)
+                triIndex = 0
+                for i in range(firstIndex, firstIndex + indexCount - 2):
+                    a, b, c = self.m_IndexBuffer[i : i + 3]
                     # skip degenerates
                     if a == b or a == c or b == c:
                         continue
-
                     # do the winding flip-flop of strips
-                    if i & 1:
-                        triangles[triIndex] = b, a, c
+                    if (i - firstIndex) & 1:
+                        triangles[triIndex] = (b, a, c)
                     else:
-                        triangles[triIndex] = a, b, c
+                        triangles[triIndex] = (a, b, c)
                     triIndex += 1
-
                 triangles = triangles[:triIndex]
+                m_SubMesh.indexCount = len(triangles) * 3
 
             elif topology == MeshTopology.Quads:
                 # one quad is two triangles, so // 4 * 2 = // 2
-                # TODO: use as_strided
-                triangles = [None] * (indexCount // 2)  # type: ignore
+                triangles = [()] * (indexCount // 2)
                 triIndex = 0
                 for i in range(firstIndex, firstIndex + indexCount, 4):
                     a, b, c, d = self.m_IndexBuffer[i : i + 4]
-                    triangles[triIndex] = a, b, c
-                    triangles[triIndex + 1] = a, c, d
+                    triangles[triIndex] = (a, b, c)
+                    triangles[triIndex + 1] = (a, c, d)
                     triIndex += 2
+
             else:
                 raise ValueError("Failed getting triangles. Submesh topology is lines or points.")
 
