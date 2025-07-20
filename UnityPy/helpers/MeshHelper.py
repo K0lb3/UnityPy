@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import math
 import struct
-from typing import TYPE_CHECKING, List, Optional, Sequence, Tuple, TypeVar, Union, cast
+from typing import TYPE_CHECKING, List, Optional, Tuple, Union, cast
 
 from ..classes.generated import (
     ChannelInfo,
@@ -33,12 +33,6 @@ except ImportError:
 Tuple2f = Tuple[float, float]
 Tuple3f = Tuple[float, float, float]
 Tuple4f = Tuple[float, float, float, float]
-
-T = TypeVar("T")
-
-
-def flat_list_to_tuples(data: Sequence[T], item_size: int) -> List[tuple[T, ...]]:
-    return [tuple(data[i : i + item_size]) for i in range(0, len(data), item_size)]
 
 
 def vector_list_to_tuples(
@@ -403,7 +397,10 @@ class MeshHandler:
 
                 count = len(componentBytes) // component_byte_size
                 component_data = struct.unpack(f">{count}{component_dtype}", componentBytes)
-                component_data = flat_list_to_tuples(component_data, channel_dimension)
+                component_data = [
+                    tuple(component_data[i : i + channel_dimension])
+                    for i in range(0, len(component_data), channel_dimension)
+                ]
 
                 self.assign_channel_vertex_data(chn, component_data)
 
