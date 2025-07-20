@@ -1,10 +1,10 @@
-from typing import TYPE_CHECKING, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, List, Optional, Tuple
 
 if TYPE_CHECKING:
     from ..classes.generated import PackedBitVector
 
 
-def reshape(data: list, shape: Optional[Tuple[int, ...]] = None) -> list:
+def reshape(data: list, shape: Optional[Tuple[int, ...]] = None) -> List[Any]:
     if shape is None:
         return data
     if len(shape) == 1:
@@ -12,7 +12,7 @@ def reshape(data: list, shape: Optional[Tuple[int, ...]] = None) -> list:
         return [data[i : i + m] for i in range(0, len(data), m)]
     elif len(shape) == 2:
         m, n = shape
-        return [[[data[i + j : i + j + n] for j in range(0, m * n, n)]] for i in range(0, len(data), m * n)]
+        return [[data[i + j : i + j + n] for j in range(0, m * n, n)] for i in range(0, len(data), m * n)]
     else:
         raise ValueError("Invalid shape")
 
@@ -22,7 +22,7 @@ def unpack_ints(
     start: int = 0,
     count: Optional[int] = None,
     shape: Optional[Tuple[int, ...]] = None,
-) -> List[int]:
+) -> List[Any]:
     assert packed.m_BitSize is not None
 
     m_BitSize = packed.m_BitSize
@@ -70,7 +70,7 @@ def unpack_floats(
     start: int = 0,
     count: Optional[int] = None,
     shape: Optional[Tuple[int, ...]] = None,
-) -> List[float]:
+) -> List[Any]:
     assert packed.m_BitSize is not None and packed.m_Range is not None and packed.m_Start is not None
 
     # avoid zero division of scale
