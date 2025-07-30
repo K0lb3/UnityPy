@@ -583,7 +583,7 @@ class MeshHandler:
         # Skin
         if m_CompressedMesh.m_Weights.m_NumItems > 0:
             weightsData = unpack_ints(m_CompressedMesh.m_Weights)
-            weightsData = [weight / 31 for weight in weightsData]
+            weightsData = [weight for weight in weightsData]
             boneIndicesData = unpack_ints(m_CompressedMesh.m_BoneIndices)
 
             vertexIndex = 0
@@ -596,14 +596,14 @@ class MeshHandler:
             boneIndicesIterator = iter(boneIndicesData)
             for weight, boneIndex in zip(weightsData, boneIndicesIterator):
                 # read bone index and weight
-                self.m_BoneWeights[vertexIndex][j] = weight
+                self.m_BoneWeights[vertexIndex][j] = weight / 31
                 self.m_BoneIndices[vertexIndex][j] = boneIndex
 
                 j += 1
                 sum += weight
 
                 # the weights add up to one, continue with the next vertex.
-                if sum >= 1.0:
+                if sum >= 31:
                     j = 4
                     # set weights and boneIndices to 0,
                     # already done on init
