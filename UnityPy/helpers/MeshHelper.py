@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import math
 import struct
-from typing import TYPE_CHECKING, List, Optional, Sequence, Tuple, TypeVar, Union, cast
+from typing import TYPE_CHECKING, List, Optional, Tuple, Union, cast
 
 from ..classes.generated import (
     ChannelInfo,
@@ -34,12 +34,6 @@ Tuple2f = Tuple[float, float]
 Tuple3f = Tuple[float, float, float]
 Tuple4f = Tuple[float, float, float, float]
 
-T = TypeVar("T")
-
-
-def flat_list_to_tuples(data: Sequence[T], item_size: int) -> List[tuple[T, ...]]:
-    return [tuple(data[i : i + item_size]) for i in range(0, len(data), item_size)]
-
 
 def vector_list_to_tuples(
     data: Union[List[Vector2f], List[Vector3f], List[Vector4f]],
@@ -58,14 +52,12 @@ def vector_list_to_tuples(
         raise ValueError("Unknown vector type")
 
 
-def zeros(shape: Union[Tuple[int], Tuple[int, int]]) -> Union[List, List[List]]:
-    if len(shape) == 1:
-        return [0] * shape[0]
-    elif len(shape) == 2:
-        m, n = shape
-        return [[0] * n for _ in range(m)]
-    else:
-        raise ValueError("Invalid shape")
+def lists_to_tuples(data: List[list]) -> List[tuple]:
+    return [tuple(v) for v in data]
+
+
+def zeros(m: int, n: int) -> List[list]:
+    return [[0] * n for _ in range(m)]
 
 
 def normalize(*vector: float) -> Tuple[float, ...]:
@@ -234,21 +226,12 @@ class MeshHandler:
 
         if self.m_BoneWeights is None and mesh.m_Skin:
             # BoneInfluence == BoneWeight in terms of usage in UnityPy due to int simplification
-            self.m_BoneWeights = zeros((len(mesh.m_Skin), 4))
-            self.m_BoneIndices = zeros((len(mesh.m_Skin), 4))
-            for skin, indices, weights in zip(mesh.m_Skin, self.m_BoneIndices, self.m_BoneWeights):
-                indices[:] = [
-                    skin.boneIndex_0_,
-                    skin.boneIndex_1_,
-                    skin.boneIndex_2_,
-                    skin.boneIndex_3_,
-                ]
-                weights[:] = [
-                    skin.weight_0_,
-                    skin.weight_1_,
-                    skin.weight_2_,
-                    skin.weight_3_,
-                ]
+            self.m_BoneIndices = [
+                (skin.boneIndex_0_, skin.boneIndex_1_, skin.boneIndex_2_, skin.boneIndex_3_) for skin in mesh.m_Skin
+            ]
+            self.m_BoneWeights = [
+                (skin.weight_0_, skin.weight_1_, skin.weight_2_, skin.weight_3_) for skin in mesh.m_Skin
+            ]
 
     def copy_from_spriterenderdata(self):
         rd = self.src
@@ -401,10 +384,7 @@ class MeshHandler:
                                 buff = buff[::-1]
                             componentBytes[componentDataSrc : componentDataSrc + component_byte_size] = buff
 
-                count = len(componentBytes) // component_byte_size
-                component_data = struct.unpack(f">{count}{component_dtype}", componentBytes)
-                component_data = flat_list_to_tuples(component_data, channel_dimension)
-
+                component_data = list(struct.iter_unpack(f">{channel_dimension}{component_dtype}", componentBytes))
                 self.assign_channel_vertex_data(chn, component_data)
 
     def assign_channel_vertex_data(self, channel: int, component_data: list):
@@ -483,10 +463,11 @@ class MeshHandler:
     def decompress_compressed_mesh(self):
         # TODO: m_Triangles????
 
-        # Vertex
         version = self.version
+        assert isinstance(self.src, Mesh)
         m_CompressedMesh = self.src.m_CompressedMesh
 
+        # Vertex
         self.m_VertexCount = m_VertexCount = m_CompressedMesh.m_Vertices.m_NumItems // 3
 
         if m_CompressedMesh.m_Vertices.m_NumItems > 0:
@@ -543,8 +524,8 @@ class MeshHandler:
             normalData = unpack_floats(m_CompressedMesh.m_Normals, shape=(2,))
             signs = unpack_ints(m_CompressedMesh.m_NormalSigns)
 
-            self.m_Normals = zeros((self.m_VertexCount, 3))
-            for srcNrm, sign, dstNrm in zip(normalData, signs, self.m_Normals):
+            normals = zeros(self.m_VertexCount, 3)
+            for srcNrm, sign, dstNrm in zip(normalData, signs, normals):
                 x, y = srcNrm
                 zsqr = 1 - x * x - y * y
                 if zsqr >= 0:
@@ -555,13 +536,15 @@ class MeshHandler:
                     dstNrm[:] = normalize(x, y, z)
                 if sign == 0:
                     dstNrm[2] *= -1
+            self.m_Normals = lists_to_tuples(normals)
 
         # Tangent
         if m_CompressedMesh.m_Tangents.m_NumItems > 0:
             tangentData = unpack_floats(m_CompressedMesh.m_Tangents, shape=(2,))
             signs = unpack_ints(m_CompressedMesh.m_TangentSigns, shape=(2,))
-            self.m_Tangents = zeros((self.m_VertexCount, 4))
-            for srcTan, (sign_z, sign_w), dstTan in zip(tangentData, signs, self.m_Tangents):
+
+            tangents = zeros(self.m_VertexCount, 4)
+            for srcTan, (sign_z, sign_w), dstTan in zip(tangentData, signs, tangents):
                 x, y = srcTan
                 zsqr = 1 - x * x - y * y
                 z = 0
@@ -574,6 +557,7 @@ class MeshHandler:
                     z = -z
                 w = 1.0 if sign_w > 0 else -1.0
                 dstTan[:] = x, y, z, w
+            self.m_Tangents = lists_to_tuples(tangents)
 
         # FloatColor
         if version[0] >= 5:  # 5.0 and up
@@ -590,14 +574,14 @@ class MeshHandler:
             j = 0
             sum = 0
 
-            self.m_BoneWeights = zeros((self.m_VertexCount, 4))
-            self.m_BoneIndices = zeros((self.m_VertexCount, 4))
+            boneWeights = zeros(self.m_VertexCount, 4)
+            boneIndices = zeros(self.m_VertexCount, 4)
 
             boneIndicesIterator = iter(boneIndicesData)
             for weight, boneIndex in zip(weightsData, boneIndicesIterator):
                 # read bone index and weight
-                self.m_BoneWeights[vertexIndex][j] = weight
-                self.m_BoneIndices[vertexIndex][j] = boneIndex
+                boneWeights[vertexIndex][j] = weight
+                boneIndices[vertexIndex][j] = boneIndex
 
                 j += 1
                 sum += weight
@@ -613,12 +597,15 @@ class MeshHandler:
                 # we read three weights, but they don't add up to one. calculate the fourth one, and read
                 # missing bone index. continue with next vertex.
                 elif j == 3:  #
-                    self.m_BoneWeights[vertexIndex][j] = 1 - sum
-                    self.m_BoneIndices[vertexIndex][j] = next(boneIndicesIterator)
+                    boneWeights[vertexIndex][j] = 1 - sum
+                    boneIndices[vertexIndex][j] = next(boneIndicesIterator)
 
                     vertexIndex += 1
                     j = 0
                     sum = 0
+
+            self.m_BoneWeights = lists_to_tuples(boneWeights)
+            self.m_BoneIndices = lists_to_tuples(boneIndices)
 
         # IndexBuffer
         if m_CompressedMesh.m_Triangles.m_NumItems > 0:  #
@@ -638,10 +625,10 @@ class MeshHandler:
 
     def get_triangles(self) -> List[List[Tuple[int, ...]]]:
         assert self.m_IndexBuffer is not None
+        assert self.src.m_SubMeshes is not None
 
         submeshes: List[List[Tuple[int, ...]]] = []
 
-        assert self.src and self.src.m_SubMeshes is not None, "No submesh data!"
         for m_SubMesh in self.src.m_SubMeshes:
             firstIndex = m_SubMesh.firstByte // 2
             if not self.m_Use16BitIndices:
@@ -653,38 +640,37 @@ class MeshHandler:
             triangles: List[Tuple[int, ...]]
 
             if topology == MeshTopology.Triangles:
-                triangles = self.m_IndexBuffer[firstIndex : firstIndex + indexCount]  # type: ignore
-                triangles = [triangles[i : i + 3] for i in range(0, len(triangles), 3)]  # type: ignore
-            elif self.version[0] < 4 or topology == MeshTopology.TriangleStrip:  # TriangleStrip
-                # todo: use as_strided, then fix winding, finally remove degenerates
-                triIndex = 0
-                triangles = [None] * (indexCount - 2)  # type: ignore
+                triangles = [
+                    tuple(self.m_IndexBuffer[i : i + 3]) for i in range(firstIndex, firstIndex + indexCount, 3)
+                ]
 
-                for i in range(indexCount - 2):
-                    a, b, c = self.m_IndexBuffer[firstIndex + i : firstIndex + i + 3]
+            elif self.version[0] < 4 or topology == MeshTopology.TriangleStrip:
+                triangles = [()] * (indexCount - 2)
+                triIndex = 0
+                for i in range(firstIndex, firstIndex + indexCount - 2):
+                    a, b, c = self.m_IndexBuffer[i : i + 3]
                     # skip degenerates
                     if a == b or a == c or b == c:
                         continue
-
                     # do the winding flip-flop of strips
-                    if i & 1:
-                        triangles[triIndex] = b, a, c
+                    if (i - firstIndex) & 1:
+                        triangles[triIndex] = (b, a, c)
                     else:
-                        triangles[triIndex] = a, b, c
+                        triangles[triIndex] = (a, b, c)
                     triIndex += 1
-
                 triangles = triangles[:triIndex]
+                m_SubMesh.indexCount = len(triangles) * 3
 
             elif topology == MeshTopology.Quads:
                 # one quad is two triangles, so // 4 * 2 = // 2
-                # TODO: use as_strided
-                triangles = [None] * (indexCount // 2)  # type: ignore
+                triangles = [()] * (indexCount // 2)
                 triIndex = 0
                 for i in range(firstIndex, firstIndex + indexCount, 4):
                     a, b, c, d = self.m_IndexBuffer[i : i + 4]
-                    triangles[triIndex] = a, b, c
-                    triangles[triIndex + 1] = a, c, d
+                    triangles[triIndex] = (a, b, c)
+                    triangles[triIndex + 1] = (a, c, d)
                     triIndex += 2
+
             else:
                 raise ValueError("Failed getting triangles. Submesh topology is lines or points.")
 
