@@ -583,7 +583,6 @@ class MeshHandler:
         # Skin
         if m_CompressedMesh.m_Weights.m_NumItems > 0:
             weightsData = unpack_ints(m_CompressedMesh.m_Weights)
-            weightsData = [weight for weight in weightsData]
             boneIndicesData = unpack_ints(m_CompressedMesh.m_BoneIndices)
 
             vertexIndex = 0
