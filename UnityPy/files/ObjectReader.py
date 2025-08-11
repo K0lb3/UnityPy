@@ -21,10 +21,11 @@ from ..exceptions import TypeTreeError
 from ..helpers import TypeTreeHelper
 from ..helpers.Tpk import get_typetree_node
 from ..helpers.TypeTreeNode import TypeTreeNode
+from ..helpers.UnityVersion import UnityVersion
 from ..streams import EndianBinaryReader, EndianBinaryWriter
 
 if TYPE_CHECKING:
-    from ..files.SerializedFile import BuildType, SerializedFile, SerializedType
+    from ..files.SerializedFile import SerializedFile, SerializedType
 
 T = TypeVar("T")
 NodeInput = Union[TypeTreeNode, List[Dict[str, Union[str, int]]]]
@@ -34,10 +35,9 @@ class ObjectReader(Generic[T]):
     assets_file: SerializedFile
     reader: EndianBinaryReader
     data: bytes
-    version: Tuple[int, int, int, int]
+    version: UnityVersion
     version2: int
     platform: BuildTarget
-    build_type: BuildType
     path_id: int
     byte_start_offset: Tuple[int, int]
     byte_start: int
@@ -61,7 +61,6 @@ class ObjectReader(Generic[T]):
         self.version = assets_file.version
         self.version2 = assets_file.header.version
         self.platform = assets_file.target_platform
-        self.build_type = assets_file.build_type
 
         header = assets_file.header
         types = assets_file.types

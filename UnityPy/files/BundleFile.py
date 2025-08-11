@@ -1,12 +1,12 @@
 # TODO: implement encryption for saving files
 import re
 from collections import namedtuple
-from typing import Optional, Tuple, Union, cast
+from typing import Optional, Union, cast
 
 from .. import config
 from ..enums import ArchiveFlags, ArchiveFlagsOld, CompressionFlags
-from ..exceptions import UnityVersionFallbackError
 from ..helpers import ArchiveStorageManager, CompressionHelper
+from ..helpers.UnityVersion import UnityVersion
 from ..streams import EndianBinaryReader, EndianBinaryWriter
 from . import File
 
@@ -98,7 +98,7 @@ class BundleFile(File.File):
         uncompressedSize = reader.read_u_int()
         dataflagsValue = reader.read_u_int()
 
-        version = self.get_version_tuple()
+        version = self.parse_version()
         # https://issuetracker.unity3d.com/issues/files-within-assetbundles-do-not-start-on-aligned-boundaries-breaking-patching-on-nintendo-switch
         # Unity CN introduced encryption before the alignment fix was introduced.
         # Unity CN used the same flag for the encryption as later on the alignment fix,
@@ -513,17 +513,17 @@ class BundleFile(File.File):
         else:
             raise ValueError(f"Unknown compression! flag: {flags}, compression flag: {comp_flag.value}")
 
-    def get_version_tuple(self) -> Tuple[int, int, int]:
+    def parse_version(self) -> UnityVersion:
         """Returns the version as a tuple."""
-        version = self.version_engine
-        match = None
-        if version and version != "0.0.0":
-            match = reVersion.match(version)
-            if not match or len(match.groups()) < 3:
-                match = None
-        if not match:
-            match = reVersion.match(config.get_fallback_version())
-            if not match or len(match.groups()) < 3:
-                raise UnityVersionFallbackError("Illegal fallback version format")
-        map_ = map(int, match.groups())
-        return (next(map_), next(map_), next(map_))
+        version = None
+        version_str = self.version_engine
+        try:
+            version = UnityVersion.from_str(version_str)
+        except ValueError:
+            pass
+
+        if version is None or version.major == 0:
+            version_str = config.get_fallback_version()
+            version = UnityVersion.from_str(version_str)
+
+        return version

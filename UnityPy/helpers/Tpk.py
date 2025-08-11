@@ -4,12 +4,15 @@ from enum import IntEnum, IntFlag
 from importlib.resources import open_binary
 from io import BytesIO
 from struct import Struct
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, TypeVar
 
 from .TypeTreeHelper import TypeTreeNode
+from .UnityVersion import UnityVersion
 
-TPKTYPETREE: TpkTypeTreeBlob = None
-CLASSES_CACHE: Dict[Tuple[int, tuple], TypeTreeNode] = {}
+T = TypeVar("T")
+
+TPKTYPETREE: TpkTypeTreeBlob = None  # pyright: ignore[reportAssignmentType]
+CLASSES_CACHE: Dict[Tuple[int, UnityVersion], TypeTreeNode] = {}
 NODES_CACHE: Dict[TpkUnityClass, TypeTreeNode] = {}
 
 
@@ -24,14 +27,14 @@ def init():
         TPKTYPETREE = blob
 
 
-def get_typetree_node(class_id: int, version: tuple):
+def get_typetree_node(class_id: int, version: UnityVersion):
     global CLASSES_CACHE
     key = (class_id, version)
     cached = CLASSES_CACHE.get(key)
     if cached:
         return cached
 
-    class_info = TPKTYPETREE.ClassInformation[class_id].getVersionedClass(UnityVersion.fromList(*version))
+    class_info = TPKTYPETREE.ClassInformation[class_id].getVersionedClass(version)
     if class_info is None:
         raise ValueError("Could not find class info for class id {}".format(class_id))
 
@@ -85,15 +88,6 @@ class TpkCompressionType(IntEnum):
     Lz4 = 1
     Lzma = 2
     Brotli = 3
-
-
-class UnityVersionType(IntEnum):
-    Alpha = 0
-    Beta = 1
-    China = 2
-    Final = 3
-    Patch = 4
-    Experimental = 5
 
 
 class TpkDataType(IntEnum):
@@ -168,7 +162,7 @@ class TpkFile:
             raise Exception("Invalid compressed size")
 
     def GetDataBlob(self) -> TpkDataBlob:
-        decompressed = None
+        decompressed: bytes
         if self.CompressionType == TpkCompressionType.NONE:
             decompressed = self.CompressedBytes
 
@@ -185,7 +179,7 @@ class TpkFile:
         elif self.CompressionType == TpkCompressionType.Brotli:
             import brotli
 
-            decompressed: bytes = brotli.decompress(self.CompressedBytes)
+            decompressed = brotli.decompress(self.CompressedBytes)
 
         else:
             raise Exception("Invalid compression type")
@@ -228,7 +222,7 @@ class TpkTypeTreeBlob(TpkDataBlob):
     def __init__(self, stream: BytesIO) -> None:
         (self.CreationTime,) = INT64.unpack(stream.read(INT64.size))
         (versionCount,) = INT32.unpack(stream.read(INT32.size))
-        self.Versions = [UnityVersion.fromStream(stream) for _ in range(versionCount)]
+        self.Versions = [read_version(stream) for _ in range(versionCount)]
         (classCount,) = INT32.unpack(stream.read(INT32.size))
         self.ClassInformation = {x.ID: x for x in (TpkClassInformation(stream) for _ in range(classCount))}
         self.CommonString = TpkCommonString(stream)
@@ -282,52 +276,6 @@ class TpkJsonBlob(TpkDataBlob):
 ######################################################################################
 
 
-class UnityVersion(int):
-    # https://github.com/AssetRipper/VersionUtilities/blob/master/VersionUtilities/UnityVersion.cs
-    """
-    use following static methods instead of the constructor(__init__):
-        UnityVersion.fromStream(stream: BytesIO)
-        UnityVersion.fromString(version: str)
-        UnityVersion.fromList(major: int, minor: int, patch: int, build: int)
-    """
-
-    @staticmethod
-    def fromStream(stream: BytesIO) -> UnityVersion:
-        (m_data,) = UINT64.unpack(stream.read(UINT64.size))
-        return UnityVersion(m_data)
-
-    @staticmethod
-    def fromString(version: str) -> UnityVersion:
-        return UnityVersion.fromList(*map(int, version.split(".")))
-
-    @staticmethod
-    def fromList(major: int = 0, minor: int = 0, patch: int = 0, build: int = 0) -> UnityVersion:
-        return UnityVersion(major << 48 | minor << 32 | patch << 16 | build)
-
-    @property
-    def major(self) -> int:
-        return (self >> 48) & 0xFFFF
-
-    @property
-    def minor(self) -> int:
-        return (self >> 32) & 0xFFFF
-
-    @property
-    def build(self) -> int:
-        return (self >> 16) & 0xFFFF
-
-    @property
-    def type(self) -> int:
-        return UnityVersionType(self >> 8) & 0xFF
-
-    @property
-    def type_number(self) -> int:
-        return self & 0xFF
-
-    def __repr__(self) -> str:
-        return f"UnityVersion {self.major}.{self.minor}.{self.build}.{self.type_number}"
-
-
 class TpkUnityClass:
     __slots__ = ("Name", "Base", "Flags", "EditorRootNode", "ReleaseRootNode")
     Struct = Struct("<HHb")
@@ -374,20 +322,20 @@ class TpkClassInformation:
     __slots__ = ("ID", "Classes")
     ID: int
     # TODO - might want to use dict
-    Classes: List[Tuple[UnityVersion, TpkUnityClass]]
+    Classes: List[Tuple[UnityVersion, Optional[TpkUnityClass]]]
 
     def __init__(self, stream: BytesIO) -> None:
         (self.ID,) = INT32.unpack(stream.read(INT32.size))
         (count,) = INT32.unpack(stream.read(INT32.size))
         self.Classes = [
             (
-                UnityVersion.fromStream(stream),
+                read_version(stream),
                 TpkUnityClass(stream) if stream.read(1)[0] else None,
             )
             for _ in range(count)
         ]
 
-    def getVersionedClass(self, version: UnityVersion) -> TpkUnityClass:
+    def getVersionedClass(self, version: UnityVersion) -> Optional[TpkUnityClass]:
         return get_item_for_version(version, self.Classes)
 
 
@@ -469,7 +417,7 @@ class TpkCommonString:
 
     def __init__(self, stream: BytesIO) -> None:
         (versionCount,) = INT32.unpack(stream.read(INT32.size))
-        self.VersionInformation = [(UnityVersion.fromStream(stream), stream.read(1)[0]) for _ in range(versionCount)]
+        self.VersionInformation = [(read_version(stream), stream.read(1)[0]) for _ in range(versionCount)]
         (indicesCount,) = INT32.unpack(stream.read(INT32.size))
         indicesStruct = Struct(f"<{indicesCount}H")
         self.StringBufferIndices = indicesStruct.unpack(stream.read(indicesStruct.size))
@@ -512,7 +460,11 @@ def read_data(stream: BytesIO) -> bytes:
     return stream.read(INT32.unpack(stream.read(INT32.size))[0])
 
 
-def get_item_for_version(exactVersion: UnityVersion, items: List[Tuple[UnityVersion, Any]]) -> Any:
+def read_version(stream: BytesIO) -> UnityVersion:
+    return UnityVersion(UINT64.unpack(stream.read(UINT64.size))[0])
+
+
+def get_item_for_version(exactVersion: UnityVersion, items: List[Tuple[UnityVersion, T]]) -> T:
     ret = None
     for version, item in items:
         if exactVersion >= version:

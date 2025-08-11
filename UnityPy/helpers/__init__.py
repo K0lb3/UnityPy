@@ -1,4 +1,4 @@
-from . import ArchiveStorageManager, CompressionHelper, ContainerHelper, ImportHelper, TypeTreeHelper
+from . import ArchiveStorageManager, CompressionHelper, ContainerHelper, ImportHelper, TypeTreeHelper, UnityVersion
 
 __all__ = [
     "ArchiveStorageManager",
@@ -6,4 +6,5 @@ __all__ = [
     "ImportHelper",
     "TypeTreeHelper",
     "ContainerHelper",
+    "UnityVersion",
 ]

@@ -10,6 +10,7 @@ from UnityPy.classes.generated import GameObject
 from UnityPy.helpers.Tpk import get_typetree_node
 from UnityPy.helpers.TypeTreeHelper import read_typetree, write_typetree
 from UnityPy.helpers.TypeTreeNode import TypeTreeNode
+from UnityPy.helpers.UnityVersion import UnityVersion
 from UnityPy.streams import EndianBinaryReader, EndianBinaryWriter
 
 PROCESS = psutil.Process(os.getpid())
@@ -169,7 +170,7 @@ def test_simple_nodes_array():
             )
 
 
-TEST_CLASS_NODE = get_typetree_node(1, (5, 0, 0, 0))
+TEST_CLASS_NODE = get_typetree_node(1, UnityVersion.from_list(5, 0, 0, 0))
 TEST_CLASS_NODE_OBJ = GameObject(m_Component=[], m_IsActive=True, m_Layer=0, m_Name="TestObject", m_Tag=0)
 TEST_CLASS_NODE_DICT = TEST_CLASS_NODE_OBJ.__dict__
 

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 from ntpath import basename
 from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
 
@@ -10,6 +9,7 @@ from .. import config
 from ..enums import BuildTarget, ClassIDType, CommonString
 from ..helpers.ContainerHelper import ContainerHelper
 from ..helpers.TypeTreeHelper import TypeTreeNode
+from ..helpers.UnityVersion import UnityVersion
 from ..streams import EndianBinaryWriter
 from . import BundleFile, File, ObjectReader
 
@@ -91,22 +91,6 @@ class FileIdentifier:  # external
             writer.write_bytes(self.guid)
             writer.write_int(self.type)
         writer.write_string_to_null(self.path)
-
-
-@define(slots=True)
-class BuildType:
-    build_type: str
-
-    def __init__(self, build_type):
-        self.build_type = build_type
-
-    @property
-    def IsAlpha(self):
-        return self.build_type == "a"
-
-    @property
-    def IsPatch(self):
-        return self.build_type == "p"
 
 
 @define(slots=True, init=False)
@@ -220,9 +204,8 @@ class SerializedType:
 
 class SerializedFile(File.File):
     reader: EndianBinaryReader
-    version: Tuple[int, int, int, int]
+    version: UnityVersion
     unity_version: str
-    build_type: BuildType
     target_platform: BuildTarget
     _enable_type_tree: bool
     types: List[SerializedType]
@@ -253,8 +236,6 @@ class SerializedFile(File.File):
         self.reader = reader
 
         self.unity_version = "2.5.0f5"
-        self.version = (0, 0, 0, 0)
-        self.build_type = BuildType("")
         self.target_platform = BuildTarget.UnknownPlatform
         self._enable_type_tree = True
         self.types = []
@@ -375,10 +356,7 @@ class SerializedFile(File.File):
                 string_version = self.parent.version_engine
             if not string_version or string_version == "0.0.0":
                 string_version = config.get_fallback_version()
-        build_type = re.findall(r"([^\d.])", string_version)
-        self.build_type = BuildType(build_type[0] if build_type else "")
-        version_split = re.split(r"\D", string_version)
-        self.version = tuple(int(x) for x in version_split[:4])
+        self.version = UnityVersion.from_str(string_version)
 
     def get_writeable_cab(self, name: str = "CAB-UnityPy_Mod.resS"):
         """
