@@ -54,6 +54,9 @@ dependencies = [
 ]
 dynamic = ["version"]
 
+[project.scripts]
+UnityPy = "UnityPy.cli:main"
+
 [project.optional-dependencies]
 # optional dependencies must be lowercase/normalized
 ttgen = ["typetreegeneratorapi>=0.0.5"]
