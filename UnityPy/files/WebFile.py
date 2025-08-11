@@ -39,7 +39,7 @@ class WebFile(File.File):
         # signature check
         signature = reader.read_string_to_null()
         if not signature.startswith(("UnityWebData", "TuanjieWebData")):
-            return
+            raise ValueError(f"Invalid WebFile signature: {signature!r}. Expected 'UnityWebData' or 'TuanjieWebData'.")
         self.signature = signature
 
         # read header -> contains file headers
