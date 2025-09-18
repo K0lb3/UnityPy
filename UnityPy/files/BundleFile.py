@@ -502,7 +502,7 @@ class BundleFile(File.File):
             The decompressed data."""
         comp_flag = CompressionFlags(flags & ArchiveFlags.CompressionTypeMask)
 
-        if self.decryptor is not None and comp_flag != CompressionFlags.None and flags & 0x100:
+        if self.decryptor is not None and comp_flag != CompressionFlags.NONE and flags & 0x100:
             try:
                 compressed_data = self.decryptor.decrypt_block(compressed_data, index)
             except:
