@@ -489,7 +489,7 @@ class BundleFile(File.File):
         """
         Parameters
         ----------
-        compressed_data : bytes
+        raw_compressed_data : bytes
             The compressed data.
         uncompressed_size : int
             The uncompressed size of the data.
@@ -503,16 +503,20 @@ class BundleFile(File.File):
         comp_flag = CompressionFlags(flags & ArchiveFlags.CompressionTypeMask)
 
         if self.decryptor is not None and comp_flag != CompressionFlags.NONE and flags & 0x100:
-            try:
-                compressed_data = self.decryptor.decrypt_block(compressed_data, index)
-            except:
-                compressed_data = compressed_data
+            de_compressed_data = self.decryptor.decrypt_block(compressed_data, index)
+        else:
+            de_compressed_data = compressed_data
 
         if comp_flag in CompressionHelper.DECOMPRESSION_MAP:
-            return cast(
-                bytes,
-                CompressionHelper.DECOMPRESSION_MAP[comp_flag](compressed_data, uncompressed_size),
-            )
+            try:
+                return cast(
+                    bytes,
+                    CompressionHelper.DECOMPRESSION_MAP[comp_flag](de_compressed_data, uncompressed_size),
+                )
+            except:
+                return cast(
+                    bytes,
+                    CompressionHelper.DECOMPRESSION_MAP[comp_flag](compressed_data, uncompressed_size),)
         else:
             raise ValueError(f"Unknown compression! flag: {flags}, compression flag: {comp_flag.value}")
 
