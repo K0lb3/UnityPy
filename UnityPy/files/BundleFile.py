@@ -489,7 +489,7 @@ class BundleFile(File.File):
         """
         Parameters
         ----------
-        raw_compressed_data : bytes
+        compressed_data : bytes
             The compressed data.
         uncompressed_size : int
             The uncompressed size of the data.
