@@ -44,7 +44,7 @@ dependencies = [
     "Pillow",
     "texture2ddecoder >= 1.0.5", # texture decompression
     "etcpak",                    # ETC & DXT compression
-    "astc-encoder-py >= 0.1.8",  # ASTC compression
+    "astc-encoder-py >= 0.1.12",  # ASTC compression
     # audio extraction
     "fmod_toolkit",
     # filesystem handling
