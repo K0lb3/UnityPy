@@ -69,22 +69,14 @@ if platform.system() == "Darwin":
 
 
 def test_audioclip():
-    # as not platforms are supported by FMOD
-    # we have to check if the platform is supported first
-    try:
-        from UnityPy.export import AudioClipConverter
+    from fmod_toolkit.importer import import_pyfmodex
 
-        AudioClipConverter.import_pyfmodex()
-    except NotImplementedError:
+    try:
+        import_pyfmodex()
+    except ValueError:
+        print("FMOD toolkit not available, skipping AudioClip tests")
         return
-    except OSError:
-        # cibuildwheel doesn't copy the .so files
-        # so we have to skip the test on it
-        print("Failed to load the fmod lib for your system.")
-        print("Skipping the audioclip test.")
-        return
-    if AudioClipConverter.pyfmodex is False:
-        return
+
     env = UnityPy.load(os.path.join(SAMPLES, "char_118_yuki.ab"))
     for obj in env.objects:
         if obj.type.name == "AudioClip":

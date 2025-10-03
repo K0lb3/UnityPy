@@ -46,7 +46,7 @@ dependencies = [
     "etcpak",                    # ETC & DXT compression
     "astc-encoder-py >= 0.1.8",  # ASTC compression
     # audio extraction
-    "pyfmodex >= 0.7.1",
+    "fmod_toolkit",
     # filesystem handling
     "fsspec",
     # better classes
