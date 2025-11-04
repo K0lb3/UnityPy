@@ -9,18 +9,6 @@
 A Unity asset extractor for Python based on [AssetStudio](https://github.com/Perfare/AssetStudio).
 
 Next to extraction, UnityPy also supports editing Unity assets.
-Via the typetree structure all object types can be edited in their native forms.
-
-```python
-# modification via dict:
-    raw_dict = obj.read_typetree()
-    # modify raw dict
-    obj.save_typetree(raw_dict)
-# modification via parsed class
-    instance = obj.read()
-    # modify instance
-    obj.save(instance)
-```
 
 If you need advice or if you want to talk about (game) data-mining,
 feel free to join the [UnityPy Discord](https://discord.gg/C6txv7M).
@@ -209,7 +197,23 @@ The objects with a file path can be found in the `.container` dict - `{path : ob
 
 Objects \([ObjectReader class](UnityPy/files/ObjectReader.py)\) contain the _actual_ files, e.g., textures, text files, meshes, settings, ...
 
-To acquire the actual data of an object it has to be read first. This happens via the `.read()` function. This isn't done automatically to save time because only a small part of the objects are of interest. Serialized objects can be set with raw data using `.set_raw_data(data)` or modified with `.save()` function, if supported.
+To acquire the actual data of an object reader, you must first _read_ it. This happens via the `.read()` function.
+To save time, object reading _isn't_ done automatically because usually only a small part of the objects are of interest.
+
+Via two ways you can modify the data of an object:
+
+1.  Typetree structure based - all object types can be edited in their native forms.
+    ```python
+    raw_dict = obj.read_typetree()  # get typetree dict
+    ...  # your code to modify the raw dict
+    obj.save_typetree(raw_dict)
+    ```
+2.  Parsed class based - some serialized object types have a parsed class representation which may expose mutable attributes.
+    ```python
+    instance = obj.read()  # get actual object
+    ...  # your code to modify it
+    instance.save()
+    ```
 
 ## Important Object Types
 
