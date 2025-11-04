@@ -9,18 +9,6 @@
 A Unity asset extractor for Python based on [AssetStudio](https://github.com/Perfare/AssetStudio).
 
 Next to extraction, UnityPy also supports editing Unity assets.
-Via the typetree structure all object types can be edited in their native forms.
-
-```python
-# modification via dict:
-    raw_dict = obj.read_typetree()
-    # modify raw dict
-    obj.save_typetree(raw_dict)
-# modification via parsed class
-    instance = obj.read()
-    # modify instance
-    obj.save(instance)
-```
 
 If you need advice or if you want to talk about (game) data-mining,
 feel free to join the [UnityPy Discord](https://discord.gg/C6txv7M).
@@ -90,41 +78,44 @@ def unpack_all_assets(source_folder: str, destination_folder: str):
     # iterate over all files in source folder
     for root, dirs, files in os.walk(source_folder):
         for file_name in files:
-            # generate file_path
+            # generate full file path
             file_path = os.path.join(root, file_name)
-            # load that file via UnityPy.load
-            env = UnityPy.load(file_path)
+            # open and load that file
+            with open(file_path, "rb") as f:
+                env = UnityPy.load(f)
 
-            # iterate over internal objects
-            for obj in env.objects:
-                # process specific object types
-                if obj.type.name in ["Texture2D", "Sprite"]:
-                    # parse the object data
-                    data = obj.read()
+                # iterate over internal objects
+                for obj in env.objects:
+                    # process specific object types
+                    if obj.type.name in ["Texture2D", "Sprite"]:
+                        # parse the object data
+                        data = obj.read()
 
-                    # create destination path
-                    dest = os.path.join(destination_folder, data.name)
+                        # generate destination path
+                        dest = os.path.join(destination_folder, data.name)
 
-                    # make sure that the extension is correct
-                    # you probably only want to do so with images/textures
-                    dest, ext = os.path.splitext(dest)
-                    dest = dest + ".png"
+                        # make sure that the extension is correct
+                        # you probably only want to do so with images/textures
+                        dest, ext = os.path.splitext(dest)
+                        dest = dest + ".png"
 
-                    img = data.image
-                    img.save(dest)
+                        img = data.image
+                        img.save(dest)
 
-            # alternative way which keeps the original path
-            for path,obj in env.container.items():
-                if obj.type.name in ["Texture2D", "Sprite"]:
-                    data = obj.read()
-                    # create dest based on original path
-                    dest = os.path.join(destination_folder, *path.split("/"))
-                    # make sure that the dir of that path exists
-                    os.makedirs(os.path.dirname(dest), exist_ok = True)
-                    # correct extension
-                    dest, ext = os.path.splitext(dest)
-                    dest = dest + ".png"
-                    data.image.save(dest)
+                # alternative way which keeps the original path
+                for path, obj in env.container.items():
+                    if obj.type.name in ["Texture2D", "Sprite"]:
+                        data = obj.read()
+
+                        # generate destination based on original path
+                        dest = os.path.join(destination_folder, *path.split("/"))
+                        # make sure that the dir of that path exists
+                        os.makedirs(os.path.dirname(dest), exist_ok = True)
+
+                        # correct extension
+                        dest, ext = os.path.splitext(dest)
+                        dest = dest + ".png"
+                        data.image.save(dest)
 ```
 
 You probably have to read [Important Classes](#important-classes)
@@ -138,39 +129,58 @@ It can also be used as a general template or as an importable tool.
 ### Environment
 
 [Environment](UnityPy/environment.py) loads and parses the given files.
-It can be initialized via:
 
--   a file path - apk files can be loaded as well
--   a folder path - loads all files in that folder (bad idea for folders with a lot of files)
--   a stream - e.g., `io.BytesIO`, file stream,...
--   a bytes object - will be loaded into a stream
+#### Initialization
+
+An Environment object can be created by providing:
+
+-   a file path - loads a single file (typically an asset bundle file, apk file or zip file).
+-   a folder path - loads all files in the given folder (bad idea for large folders).
+-   a streamable object - loads the data from the given stream (it can be `io.BytesIO`, file stream returned by `open()` and any other object that extends `io.IOBase`).
+-   a bytes object - loads the data from memory.
 
 UnityPy can detect if the file is a WebFile, BundleFile, Asset, or APK.
 
-The unpacked assets will be loaded into `.files`, a dict consisting of `asset-name : asset`.
-
-All objects of the loaded assets can be easily accessed via `.objects`,
-which itself is a simple recursive iterator.
+The following code shows the different ways to create an Environment object.
 
 ```python
 import io
 import UnityPy
 
-# all of the following would work
-src = "file_path"
-src = b"bytes"
-src = io.BytesIO(b"Streamable")
+# load from file path or folder path
+env = UnityPy.load("path/to/your/file")
 
-env = UnityPy.load(src)
+# note that the best way to pass a file to UnityPy is
+# using with-statement to ensure the file can be properly closed
+with open("path/to/your/file", "rb") as f:
+    env = UnityPy.load(f)
+
+# load from bytes io stream
+data = io.BytesIO(b"streamable-data")
+env = UnityPy.load(data)
+
+# load from bytes object
+data = b"some-bytes-data"
+env = UnityPy.load(data)
+```
+
+#### Attributes
+
+The unpacked assets will be loaded into `.files`, a dict consisting of `asset-name : asset`.
+
+All objects of the loaded assets can be easily accessed via `.objects`, which itself is a simple recursive iterator.
+If you want, you can modify the objects and save the edited file later.
+See [Object](#object) section to learn how to apply modifications to the objects.
+
+```python
+# assumes that you have already created an `env`
 
 for obj in env.objects:
+    # your code for processing each object
     ...
 
-# saving an edited file
-    # apply modifications to the objects
-    # don't forget to use data.save()
-    ...
-with open(dst, "wb") as f:
+# don't forget to save an edited file
+with open("path/to/save", "wb") as f:
     f.write(env.file.save())
 ```
 
@@ -187,7 +197,23 @@ The objects with a file path can be found in the `.container` dict - `{path : ob
 
 Objects \([ObjectReader class](UnityPy/files/ObjectReader.py)\) contain the _actual_ files, e.g., textures, text files, meshes, settings, ...
 
-To acquire the actual data of an object it has to be read first. This happens via the `.read()` function. This isn't done automatically to save time because only a small part of the objects are of interest. Serialized objects can be set with raw data using `.set_raw_data(data)` or modified with `.save()` function, if supported.
+To acquire the actual data of an object reader, you must first _read_ it. This happens via the `.read()` function.
+To save time, object reading _isn't_ done automatically because usually only a small part of the objects are of interest.
+
+Via two ways you can modify the data of an object:
+
+1.  Typetree structure based - all object types can be edited in their native forms.
+    ```python
+    raw_dict = obj.read_typetree()  # get typetree dict
+    ...  # your code to modify the raw dict
+    obj.save_typetree(raw_dict)
+    ```
+2.  Parsed class based - some serialized object types have a parsed class representation which may expose mutable attributes.
+    ```python
+    instance = obj.read()  # get actual object
+    ...  # your code to modify it
+    instance.save()
+    ```
 
 ## Important Object Types
 
