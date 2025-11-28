@@ -13,13 +13,13 @@ Via the typetree structure all object types can be edited in their native forms.
 
 ```python
 # modification via dict:
-    raw_dict = obj.read_typetree()
+    raw_dict = obj.parse_as_dict()
     # modify raw dict
-    obj.save_typetree(raw_dict)
+    obj.patch(raw_dict)
 # modification via parsed class
-    instance = obj.read()
+    instance = obj.parse_as_object()
     # modify instance
-    obj.save(instance)
+    obj.patch(instance)
 ```
 
 If you need advice or if you want to talk about (game) data-mining,
@@ -100,10 +100,10 @@ def unpack_all_assets(source_folder: str, destination_folder: str):
                 # process specific object types
                 if obj.type.name in ["Texture2D", "Sprite"]:
                     # parse the object data
-                    data = obj.read()
+                    data = obj.parse_as_object()
 
                     # create destination path
-                    dest = os.path.join(destination_folder, data.name)
+                    dest = os.path.join(destination_folder, data.m_Name)
 
                     # make sure that the extension is correct
                     # you probably only want to do so with images/textures
@@ -116,7 +116,7 @@ def unpack_all_assets(source_folder: str, destination_folder: str):
             # alternative way which keeps the original path
             for path,obj in env.container.items():
                 if obj.type.name in ["Texture2D", "Sprite"]:
-                    data = obj.read()
+                    data = obj.parse_as_object()
                     # create dest based on original path
                     dest = os.path.join(destination_folder, *path.split("/"))
                     # make sure that the dir of that path exists
@@ -187,7 +187,51 @@ The objects with a file path can be found in the `.container` dict - `{path : ob
 
 Objects \([ObjectReader class](UnityPy/files/ObjectReader.py)\) contain the _actual_ files, e.g., textures, text files, meshes, settings, ...
 
-To acquire the actual data of an object it has to be read first. This happens via the `.read()` function. This isn't done automatically to save time because only a small part of the objects are of interest. Serialized objects can be set with raw data using `.set_raw_data(data)` or modified with `.save()` function, if supported.
+To acquire the actual data of an object it has to be parsed first.
+This happens via the parse functions mentioned below.
+This isn't done automatically to save time as only a small part of the objects are usually of interest.
+Serialized objects can be set with raw data using `.set_raw_data(data)` or modified with `.save()` function, if supported.
+
+For object types with ``m_Name`` you can use ``.peek_name()`` to only read the name of the parsed object without parsing it completely, which is way faster.
+
+There are two general parsing functions, ``.parse_as_object()`` and ``.parse_as_dict()``.
+``parse_as_dict`` parses the object data into a dict.
+``parse_as_object`` parses the object data into a class. If the class is a Unity class, it's stub class from ``UnityPy.classes(.generated)`` will be used, if it's an unknown one, then it will be parsed into an ``UnknownObject``, which simply acts as interface for the otherwise parsed dict.
+Some special classes, namely those below, have additional handlers added to their class for easier interaction with them.
+
+The ``.patch(item)`` function can be used on all object (readers) to replace their data with the changed item, which has to be either a dict or of the class the object represents.
+
+#### Example
+
+```py
+for obj in env.objects:
+    if obj.type.name == "the type you want":
+        if obj.peek_name() != "the specific object you want":
+            continue
+        # parsing
+        instance = obj.parse_as_object()
+        dic = obj.parse_as_dict()
+
+        # modifying
+        instance.m_Name = "new name"
+        dic["m_Name"] = "new name"
+
+        # saving
+        obj.patch(instance)
+        obj.patch(dic)
+```
+
+#### Legacy
+
+Following functions are legacy functions that will be removed in the future when major version 2 hits.
+The modern versions are equivalent to them and have a more correct type hints.
+
+| Legacy        | Modern          |
+|---------------|-----------------|
+| read          | parse_as_object |
+| read_typetree | parse_as_dict   |
+| save_typetree | patch           |
+
 
 ## Important Object Types
 
@@ -207,14 +251,14 @@ from PIL import Image
 for obj in env.objects:
     if obj.type.name == "Texture2D":
         # export texture
-        data = obj.read()
-        path = os.path.join(export_dir, f"{data.m_Name}.png")
-        data.image.save(path)
+        tex = obj.parse_as_object()
+        path = os.path.join(export_dir, f"{tex.m_Name}.png")
+        tex.image.save(path)
         # edit texture
-        fp = os.path.join(replace_dir, f"{data.m_Name}.png")
+        fp = os.path.join(replace_dir, f"{tex.m_Name}.png")
         pil_img = Image.open(fp)
-        data.image = pil_img
-        data.save()
+        tex.image = pil_img
+        tex.save()
 ```
 
 ### Sprite
@@ -232,9 +276,9 @@ Unlike most other extractors (including AssetStudio), UnityPy merges those two i
 ```python
 for obj in env.objects:
     if obj.type.name == "Sprite":
-        data = obj.read()
-        path = os.path.join(export_dir, f"{data.m_Name}.png")
-        data.image.save(path)
+        sprite = obj.parse_as_object()
+        path = os.path.join(export_dir, f"{sprite.m_Name}.png")
+        sprite.image.save(path)
 ```
 
 ### TextAsset
@@ -244,7 +288,8 @@ TextAssets are usually normal text files.
 -   `.m_Name`
 -   `.m_Script` - str
 
-Some games save binary data as TextAssets. As ``m_Script`` gets handled as str by default,
+Some games save binary data as TextAssets.
+As ``m_Script`` gets handled as str by default,
 use ``m_Script.encode("utf-8", "surrogateescape")`` to retrieve the original binary data.
 
 **Export**
@@ -253,15 +298,15 @@ use ``m_Script.encode("utf-8", "surrogateescape")`` to retrieve the original bin
 for obj in env.objects:
     if obj.type.name == "TextAsset":
         # export asset
-        data = obj.read()
-        path = os.path.join(export_dir, f"{data.m_Name}.txt")
+        txt = obj.parse_as_object()
+        path = os.path.join(export_dir, f"{txt.m_Name}.txt")
         with open(path, "wb") as f:
-            f.write(data.m_Script.encode("utf-8", "surrogateescape"))
+            f.write(txt.m_Script.encode("utf-8", "surrogateescape"))
         # edit asset
-        fp = os.path.join(replace_dir, f"{data.m_Name}.txt")
+        fp = os.path.join(replace_dir, f"{txt.m_Name}.txt")
         with open(fp, "rb") as f:
-            data.m_Script = f.read().decode("utf-8", "surrogateescape"))
-        data.save()
+            txt.m_Script = f.read().decode("utf-8", "surrogateescape")
+        txt.save()
 ```
 
 ### MonoBehaviour
@@ -272,6 +317,7 @@ In such cases see the 2nd example (TypeTreeGenerator) below.
 
 -   `.m_Name`
 -   `.m_Script`
+-   custom data
 
 **Export**
 
@@ -281,22 +327,16 @@ import json
 for obj in env.objects:
     if obj.type.name == "MonoBehaviour":
         # export
-        if obj.serialized_type.node:
-            # save decoded data
-            tree = obj.read_typetree()
-            fp = os.path.join(extract_dir, f"{tree['m_Name']}.json")
-            with open(fp, "wt", encoding = "utf8") as f:
-                json.dump(tree, f, ensure_ascii = False, indent = 4)
+        # save decoded data
+        tree = obj.parse_as_dict()
+        fp = os.path.join(extract_dir, f"{tree['m_Name']}.json")
+        with open(fp, "wt", encoding = "utf8") as f:
+            json.dump(tree, f, ensure_ascii = False, indent = 4)
 
         # edit
-        if obj.serialized_type.node:
-            tree = obj.read_typetree()
-            # apply modifications to the data within the tree
-            obj.save_typetree(tree)
-        else:
-            data = obj.read(check_read=False)
-            with open(os.path.join(replace_dir, data.m_Name)) as f:
-                data.save(raw_data = f.read())
+        tree = obj.parse_as_dict()
+        # apply modifications to the data within the tree
+        obj.patch(tree)
 ```
 
 **TypeTreeGenerator**
@@ -328,7 +368,7 @@ env.typetree_generator = generator
 for obj in objects:
     if obj.type.name == "MonoBehaviour":
         # automatically tries to use the generator in the background if necessary
-        x = obj.read()
+        x = obj.parse_as_object()
 ```
 
 
@@ -352,7 +392,7 @@ for name, data in clip.samples.items():
 
 ```python
 if obj.type.name == "Font":
-    font: Font = obj.read()
+    font: Font = obj.parse_as_object()
     if font.m_FontData:
         extension = ".ttf"
         if font.m_FontData[0:4] == b"OTTO":
@@ -389,8 +429,9 @@ export_dir: str
 
 if mesh_renderer.m_GameObject:
     # get the name of the model
-    game_object = mesh_renderer.m_GameObject.read()
-    export_dir = os.path.join(export_dir, game_object.m_Name)
+    game_obj_reader = mesh_renderer.m_GameObject.deref()
+    game_obj_name = game_obj_reader.peek_name()
+    export_dir = os.path.join(export_dir, game_obj_name)
 mesh_renderer.export(export_dir)
 ```
 
@@ -411,9 +452,9 @@ from PIL import Image
 for obj in env.objects:
     if obj.type.name == "Texture2DArray":
         # export texture
-        data = obj.read()
-        for i, image in enumerate(data.images):
-            image.save(os.path.join(path, f"{data.m_Name}_{i}.png"))
+        tex_arr = obj.parse_as_object()
+        for i, image in enumerate(tex_arr.images):
+            image.save(os.path.join(path, f"{tex_arr.m_Name}_{i}.png"))
         # editing isn't supported yet!
 ```
 
