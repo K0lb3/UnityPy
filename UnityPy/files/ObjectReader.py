@@ -294,6 +294,15 @@ class ObjectReader(Generic[T]):
     def parse_as_dict(self, node: Optional[NodeInput] = None, check_read: bool = True) -> dict[str, Any]:
         return self.read_typetree(nodes=node, wrap=False, check_read=check_read)  # type: ignore
 
+    def patch(
+        self,
+        obj: Union[dict, T],
+        nodes: Optional[NodeInput] = None,
+        writer: Optional[EndianBinaryWriter] = None,
+    ):
+        return self.save_typetree(obj, nodes=nodes, writer=writer)
+
+    # MonoBehaviour specific methods
     def parse_monobehaviour_head(self, mb_node: Optional[TypeTreeNode] = None) -> MonoBehaviour:
         if mb_node is None:
             mb_node = get_typetree_node(ClassIDType.MonoBehaviour, self.version)
