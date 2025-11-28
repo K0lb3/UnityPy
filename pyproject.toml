@@ -59,7 +59,7 @@ UnityPy = "UnityPy.cli:main"
 
 [project.optional-dependencies]
 # optional dependencies must be lowercase/normalized
-ttgen = ["typetreegeneratorapi>=0.0.7"]
+ttgen = ["typetreegeneratorapi>=0.0.10"]
 full = ["unitypy[ttgen]"]
 tests = ["pytest", "pillow", "psutil", "unitypy[full]"]
 dev = ["ruff", "unitypy[tests]"]

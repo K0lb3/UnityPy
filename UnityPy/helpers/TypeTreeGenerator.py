@@ -4,7 +4,7 @@ from typing import Dict, List, Tuple
 from .TypeTreeNode import TypeTreeNode
 
 try:
-    from TypeTreeGeneratorAPI import TypeTreeGenerator as TypeTreeGeneratorBase
+    from TypeTreeGeneratorAPI import TypeTreeGenerator as TypeTreeGeneratorBase  # pyright: ignore[reportAssignmentType]
 except ImportError:
 
     class TypeTreeGeneratorBase:
@@ -45,50 +45,32 @@ class TypeTreeGenerator(TypeTreeGeneratorBase):
                 data = f.read()
                 self.load_dll(data)
 
-    def get_nodes_up(self, base_node: TypeTreeNode, assembly: str, fullname: str) -> TypeTreeNode:
-        root = self.cache.get((assembly, fullname))
-        if root is not None:
-            return root
+    def get_nodes_up(self, assembly: str, fullname: str) -> TypeTreeNode:
+        key = (assembly, fullname)
+        if key in self.cache:
+            return self.cache[key]
 
         if not assembly.endswith(".dll"):
             assembly = f"{assembly}.dll"
+
         base_nodes = self.get_nodes(assembly, fullname)
 
-        base_root = base_nodes[0]
-        root = TypeTreeNode(
-            base_root.m_Level,
-            base_root.m_Type,
-            base_root.m_Name,
-            0,
-            0,
-            m_MetaFlag=base_root.m_MetaFlag,
-            m_Children=base_node.m_Children[:],
+        node = TypeTreeNode.from_list(
+            [
+                TypeTreeNode(
+                    base_node.m_Level,
+                    base_node.m_Type,
+                    base_node.m_Name,
+                    0,
+                    0,
+                    m_MetaFlag=base_node.m_MetaFlag,
+                )
+                for base_node in base_nodes
+            ]
         )
-        stack: List[TypeTreeNode] = []
-        parent = root
-        prev = root
 
-        for base_node in base_nodes[1:]:
-            node = TypeTreeNode(
-                base_node.m_Level,
-                base_node.m_Type,
-                base_node.m_Name,
-                0,
-                0,
-                m_MetaFlag=base_node.m_MetaFlag,
-            )
-            if node.m_Level > prev.m_Level:
-                stack.append(parent)
-                parent = prev
-            elif node.m_Level < prev.m_Level:
-                while node.m_Level <= parent.m_Level:
-                    parent = stack.pop()
-
-            parent.m_Children.append(node)
-            prev = node
-
-        self.cache[(assembly, fullname)] = root
-        return root
+        self.cache[key] = node
+        return node
 
 
 __all__ = ("TypeTreeGenerator",)

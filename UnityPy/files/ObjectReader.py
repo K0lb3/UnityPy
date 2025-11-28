@@ -282,10 +282,7 @@ class ObjectReader(Generic[T]):
         if not node:
             node = get_typetree_node(self.class_id, self.version)
             if node.m_Type == "MonoBehaviour":
-                try:
-                    node = self._try_monobehaviour_node(node)
-                except Exception:
-                    pass
+                node = self.generate_monobehaviour_node(node)
         if not node:
             raise TypeTreeError("There are no TypeTree nodes for this object.")
         return node
@@ -297,12 +294,20 @@ class ObjectReader(Generic[T]):
     def parse_as_dict(self, node: Optional[NodeInput] = None, check_read: bool = True) -> dict[str, Any]:
         return self.read_typetree(nodes=node, wrap=False, check_read=check_read)  # type: ignore
 
-    def _try_monobehaviour_node(self, base_node: TypeTreeNode) -> TypeTreeNode:
+    def parse_monobehaviour_head(self, mb_node: Optional[TypeTreeNode] = None) -> MonoBehaviour:
+        if mb_node is None:
+            mb_node = get_typetree_node(ClassIDType.MonoBehaviour, self.version)
+
+        mb = self.read_typetree(nodes=mb_node, wrap=True, check_read=False)
+        return cast(MonoBehaviour, mb)
+
+    def generate_monobehaviour_node(self, mb_node: Optional[TypeTreeNode] = None) -> TypeTreeNode:
         env = self.assets_file.environment
         generator = env.typetree_generator
         if generator is None:
-            raise ValueError("No typetree generator set!")
-        monobehaviour = cast(MonoBehaviour, self.parse_as_object(base_node, check_read=False))
+            raise ValueError("MonoBehaviour detected, but no typetree_generator set to the environment!")
+
+        monobehaviour = self.parse_monobehaviour_head(mb_node)
         script = monobehaviour.m_Script.deref_parse_as_object()
 
         if script.m_Namespace != "":
@@ -310,8 +315,8 @@ class ObjectReader(Generic[T]):
         else:
             fullname = script.m_ClassName
 
-        node = generator.get_nodes_up(base_node, script.m_AssemblyName, fullname)
+        node = generator.get_nodes_up(script.m_AssemblyName, fullname)
         if node:
             return node
         else:
-            raise ValueError("Failed to get custom MonoBehaviour node!")
+            raise ValueError(f"Failed to generate MonoBehaviour node for {fullname} of {script.m_AssemblyName}!")
