@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from sys import version_info as py_version_info
 from typing import TYPE_CHECKING, Any, Optional, Union
 
 from attrs import define
@@ -106,6 +107,17 @@ def get_ref_type_node(ref_object: dict, assetfile: SerializedFile) -> Optional[T
             return ref_type.node
     else:
         raise ValueError(f"Referenced type not found: {cls} {ns} {asm}")
+
+
+if py_version_info >= (3, 14):
+    from annotationlib import get_annotations as annotationlib_get_annotations
+
+    def get_annotation_keys(clz) -> set[str]:
+        return set(annotationlib_get_annotations(clz).keys())
+else:
+
+    def get_annotation_keys(clz) -> set[str]:
+        return set(clz.__annotations__)
 
 
 def read_typetree(
@@ -231,7 +243,7 @@ def read_value(
                     value = clz(**value)
                 except TypeError:
                     keys = set(value.keys())
-                    annotation_keys = set(clz.__annotations__)
+                    annotation_keys = get_annotation_keys(clz)
                     missing_keys = annotation_keys - keys
                     if clz is UnknownObject or missing_keys:
                         value = UnknownObject(node, **value)
@@ -319,7 +331,7 @@ def read_value_array(
                 UnknownObject,
             )
             keys = set(child._clean_name for child in node.m_Children)
-            annotation_keys = set(clz.__annotations__)
+            annotation_keys = get_annotation_keys(clz)
             missing_keys = annotation_keys - keys
             extra_keys = keys - annotation_keys
             if missing_keys or clz is UnknownObject:

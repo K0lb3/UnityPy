@@ -432,22 +432,12 @@ inline PyObject *read_class(ReaderT *reader, TypeTreeNodeObject *node, TypeTreeR
     return value;
 }
 
-#if PY_VERSION_HEX >= 0x030e0000
-PyObject *get_annotations = nullptr;
-#endif
+static PyObject *_get_annotations = nullptr;
 
 inline PyObject *get_annotations(PyObject *clz)
 {
 #if PY_VERSION_HEX >= 0x030e0000
-    if (get_annotations == nullptr)
-    {
-        // from annotationlib import get_annotations
-        PyObject *annotationlib = PyImport_ImportModule("annotationlib");
-        get_annotations = PyObject_GetAttrString(annotationlib, "get_annotations");
-        Py_INCREF(get_annotations);
-        Py_DECREF(annotationlib);
-    }
-    return PyObject_CallFunctionObjArgs(get_annotations, clz, NULL);
+    return PyObject_CallFunctionObjArgs(_get_annotations, clz, NULL);
 #else
     return PyObject_GetAttrString(clz, "__annotations__");
 #endif
@@ -1266,5 +1256,12 @@ int add_typetreenode_to_module(PyObject *m)
         return -1;
     Py_INCREF(&TypeTreeNodeType);
     PyModule_AddObject(m, "TypeTreeNode", (PyObject *)&TypeTreeNodeType);
+#if PY_VERSION_HEX >= 0x030e0000
+    PyObject *annotationlib = PyImport_ImportModule("annotationlib");
+    _get_annotations = PyObject_GetAttrString(annotationlib, "get_annotations");
+    PyModule_AddObject(m, "_get_annotations", _get_annotations); // steals ref
+    Py_INCREF(_get_annotations);
+    Py_DECREF(annotationlib);
+#endif
     return 0;
 }
