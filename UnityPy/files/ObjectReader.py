@@ -282,7 +282,10 @@ class ObjectReader(Generic[T]):
         if not node:
             node = get_typetree_node(self.class_id, self.version)
             if node.m_Type == "MonoBehaviour":
-                node = self.generate_monobehaviour_node(node)
+                try:
+                    node = self.generate_monobehaviour_node(node)
+                except ValueError:
+                    pass
         if not node:
             raise TypeTreeError("There are no TypeTree nodes for this object.")
         return node
