@@ -12,11 +12,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-13]
+        os: [ubuntu-latest, windows-latest, macos-latest]
 
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -29,7 +29,7 @@ jobs:
 
       - name: Check code (ruff check)
         run: ruff check
-      
+
       - name: Check code style (ruff format)
         run: ruff format --check
 
