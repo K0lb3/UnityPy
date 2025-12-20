@@ -315,7 +315,7 @@ class SerializedFile(File.File):
         # read the asset_bundles to get the containers
         for obj in self.objects.values():
             if obj.type == ClassIDType.AssetBundle:
-                self.assetbundle = obj.read()
+                self.assetbundle = obj.parse_as_object()
                 self._container = ContainerHelper(self.assetbundle)
                 break
         else:

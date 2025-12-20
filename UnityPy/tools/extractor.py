@@ -19,12 +19,12 @@ from UnityPy.classes import (
     Texture2D,
 )
 from UnityPy.enums.ClassIDType import ClassIDType
-from UnityPy.files import SerializedFile
+from UnityPy.files import ObjectReader, SerializedFile
 
 
 def export_obj(
-    obj: Union[Object, PPtr],
-    fp: Path,
+    obj: Union[ObjectReader, PPtr],
+    fp: str,
     append_name: bool = False,
     append_path_id: bool = False,
     export_unknown_as_typetree: bool = False,
@@ -53,25 +53,29 @@ def export_obj(
             return []
 
     # set filepath
-    obj = obj.read()
+    if isinstance(obj, PPtr):
+        obj = obj.deref()
+
+    instance = obj.parse_as_object()
 
     # a filter that returned True during an earlier extract_assets check can return False now with more info from read()
-    if asset_filter and not asset_filter(obj):
+    if asset_filter and not asset_filter(instance):
         return []
 
     if append_name:
+        name = getattr(instance, "m_Name", obj.type.name)
         fp = os.path.join(
             fp,
-            obj.m_Name if getattr(obj, "m_Name") else obj.object_reader.type.name,  # noqa: B009
+            name,
         )
 
     fp, extension = os.path.splitext(fp)
 
     if append_path_id:
-        fp = f"{fp}_{obj.object_reader.path_id}"
+        fp = f"{fp}_{obj.m_PathID}"
 
     # export
-    return export_func(obj, fp, extension)
+    return export_func(instance, fp, extension)
 
 
 def extract_assets(
@@ -158,7 +162,11 @@ def extract_assets(
 ###############################################################################
 
 
-def exportTextAsset(obj: TextAsset, fp: str, extension: str = ".txt") -> List[Tuple[SerializedFile, int]]:
+def exportTextAsset(
+    obj: Union[TextAsset, ObjectReader], fp: str, extension: str = ".txt"
+) -> List[Tuple[SerializedFile, int]]:
+    if isinstance(obj, ObjectReader):
+        obj = obj.parse_as_object()
     if not extension:
         extension = ".txt"
     with open(f"{fp}{extension}", "wb") as f:
@@ -166,7 +174,9 @@ def exportTextAsset(obj: TextAsset, fp: str, extension: str = ".txt") -> List[Tu
     return [(obj.assets_file, obj.object_reader.path_id)]
 
 
-def exportFont(obj: Font, fp: str, extension: str = "") -> List[Tuple[SerializedFile, int]]:
+def exportFont(obj: Union[Font, ObjectReader], fp: str, extension: str = "") -> List[Tuple[SerializedFile, int]]:
+    if isinstance(obj, ObjectReader):
+        obj = obj.parse_as_object()
     # TODO - export glyphs
     if obj.m_FontData:
         extension = ".ttf"
@@ -177,7 +187,9 @@ def exportFont(obj: Font, fp: str, extension: str = "") -> List[Tuple[Serialized
     return [(obj.assets_file, obj.object_reader.path_id)]
 
 
-def exportMesh(obj: Mesh, fp: str, extension=".obj") -> List[Tuple[SerializedFile, int]]:
+def exportMesh(obj: Union[Mesh, ObjectReader], fp: str, extension=".obj") -> List[Tuple[SerializedFile, int]]:
+    if isinstance(obj, ObjectReader):
+        obj = obj.parse_as_object()
     if not extension:
         extension = ".obj"
     with open(f"{fp}{extension}", "wt", encoding="utf8", newline="") as f:
@@ -185,7 +197,9 @@ def exportMesh(obj: Mesh, fp: str, extension=".obj") -> List[Tuple[SerializedFil
     return [(obj.assets_file, obj.object_reader.path_id)]
 
 
-def exportShader(obj: Shader, fp: str, extension=".txt") -> List[Tuple[SerializedFile, int]]:
+def exportShader(obj: Union[Shader, ObjectReader], fp: str, extension=".txt") -> List[Tuple[SerializedFile, int]]:
+    if isinstance(obj, ObjectReader):
+        obj = obj.parse_as_object()
     if not extension:
         extension = ".txt"
     with open(f"{fp}{extension}", "wt", encoding="utf8", newline="") as f:
@@ -194,39 +208,32 @@ def exportShader(obj: Shader, fp: str, extension=".txt") -> List[Tuple[Serialize
 
 
 def exportMonoBehaviour(
-    obj: Union[MonoBehaviour, Object], fp: str, extension: str = ""
+    obj: Union[MonoBehaviour, ObjectReader], fp: str, extension: str = ""
 ) -> List[Tuple[SerializedFile, int]]:
-    export = None
+    reader = obj.object_reader if isinstance(obj, MonoBehaviour) else obj
 
-    if obj.object_reader.serialized_type.node:
-        # a typetree is available from the SerializedFile for this object
-        export = obj.object_reader.read_typetree()
-    elif isinstance(obj, MonoBehaviour):
-        # try to get the typetree from the MonoBehavior script
-        script_ptr = obj.m_Script
-        if script_ptr:
-            # looks like we have a script
-            script = script_ptr.read()
-            # check if there is a locally stored typetree for it
-            nodes = MONOBEHAVIOUR_TYPETREES.get(script.m_AssemblyName, {}).get(script.m_ClassName, None)
-            if nodes:
-                export = obj.object_reader.read_typetree(nodes)
-    else:
-        export = obj.object_reader.read_typetree()
-
-    if not export:
-        extension = ".bin"
-        export = obj.object_reader.raw_data
-    else:
+    try:
+        export = reader.parse_as_dict()
         extension = ".json"
         export = json.dumps(export, indent=4, ensure_ascii=False).encode("utf8", errors="surrogateescape")
+    except Exception:
+        extension = ".bin"
+        export = reader.get_raw_data()
     with open(f"{fp}{extension}", "wb") as f:
         f.write(export)
-    return [(obj.assets_file, obj.object_reader.path_id)]
+    return [(obj.assets_file, obj.path_id)]
 
 
-def exportAudioClip(obj: AudioClip, fp: str, extension: str = "") -> List[Tuple[SerializedFile, int]]:
-    samples = obj.samples
+def exportAudioClip(
+    obj: Union[AudioClip, ObjectReader], fp: str, extension: str = ""
+) -> List[Tuple[SerializedFile, int]]:
+    if isinstance(obj, ObjectReader):
+        clip = obj.parse_as_object()
+    else:
+        clip = obj
+        obj = clip.object_reader
+
+    samples = clip.samples
     if len(samples) == 0:
         pass
     elif len(samples) == 1:
@@ -237,25 +244,35 @@ def exportAudioClip(obj: AudioClip, fp: str, extension: str = "") -> List[Tuple[
         for name, clip_data in samples.items():
             with open(os.path.join(fp, f"{name}.wav"), "wb") as f:
                 f.write(clip_data)
-    return [(obj.assets_file, obj.object_reader.path_id)]
+    return [(obj.assets_file, obj.path_id)]
 
 
-def exportSprite(obj: Sprite, fp: str, extension: str = ".png") -> List[Tuple[SerializedFile, int]]:
-    if not extension:
-        extension = ".png"
-    obj.image.save(f"{fp}{extension}")
+def exportSprite(
+    obj: Union[Sprite, ObjectReader], fp: str, extension: str = ".png"
+) -> List[Tuple[SerializedFile, int]]:
+    if isinstance(obj, ObjectReader):
+        sprite = obj.parse_as_object()
+    else:
+        sprite = obj
+        obj = sprite.object_reader
+
+    sprite.image.save(f"{fp}{extension}")
     exported = [
-        (obj.assets_file, obj.object_reader.path_id),
-        (obj.m_RD.texture.assetsfile, obj.m_RD.texture.path_id),
+        (obj.assets_file, obj.path_id),
+        (sprite.m_RD.texture.assetsfile, sprite.m_RD.texture.path_id),
     ]
-    alpha_assets_file = getattr(obj.m_RD.alphaTexture, "assets_file", None)
-    alpha_path_id = getattr(obj.m_RD.alphaTexture, "path_id", None)
+    alpha_assets_file = getattr(sprite.m_RD.alphaTexture, "assets_file", None)
+    alpha_path_id = getattr(sprite.m_RD.alphaTexture, "path_id", None)
     if alpha_path_id and alpha_assets_file:
         exported.append((alpha_assets_file, alpha_path_id))
     return exported
 
 
-def exportTexture2D(obj: Texture2D, fp: str, extension: str = ".png") -> List[Tuple[SerializedFile, int]]:
+def exportTexture2D(
+    obj: Union[Texture2D, ObjectReader], fp: str, extension: str = ".png"
+) -> List[Tuple[SerializedFile, int]]:
+    if isinstance(obj, ObjectReader):
+        obj = obj.parse_as_object()
     if not extension:
         extension = ".png"
     if obj.m_Width:
@@ -264,7 +281,11 @@ def exportTexture2D(obj: Texture2D, fp: str, extension: str = ".png") -> List[Tu
     return [(obj.assets_file, obj.object_reader.path_id)]
 
 
-def exportGameObject(obj: GameObject, fp: str, extension: str = "") -> List[Tuple[SerializedFile, int]]:
+def exportGameObject(
+    obj: Union[GameObject, ObjectReader], fp: str, extension: str = ""
+) -> List[Tuple[SerializedFile, int]]:
+    if isinstance(obj, ObjectReader):
+        obj = obj.parse_as_object()
     exported = [(obj.assets_file, obj.object_reader.path_id)]
     refs = crawl_obj(obj)
     if refs:
@@ -303,34 +324,34 @@ CLASS_NAME = str
 MONOBEHAVIOUR_TYPETREES: Dict[ASSEMBLY_NAME_DLL, Dict[CLASS_NAME, List[Dict]]] = {}
 
 
-def crawl_obj(obj: Object, ret: Optional[dict] = None) -> Dict[int, Union[Object, PPtr]]:
+def crawl_obj(obj: Union[Object, ObjectReader, PPtr], ret: Optional[dict] = None) -> Dict[int, Union[Object, PPtr]]:
     """Crawls through the data struture of the object
     and returns a list of all the components.
     """
     if not ret:
         ret = {}
 
+    values: Sequence
     if isinstance(obj, PPtr):
-        if obj.path_id == 0 and obj.file_id == 0 and obj.index == -2:
+        if obj.m_PathID == 0 and obj.m_FileID == 0 and obj.m_Index == -2:
             return ret
         try:
-            obj = obj.read()
+            instance = obj.deref_parse_as_dict()
+            values = instance.values()
         except AttributeError:
             return ret
+    elif isinstance(obj, Object):
+        values = obj.__dict__.values()
+    elif isinstance(obj, ObjectReader):
+        values = obj.parse_as_dict().values()
     else:
         return ret
-    ret[obj.path_id] = obj
 
-    # MonoBehaviour really on their typetree
-    # while Object denotes that the class of the object isn't implemented yet
-    if isinstance(obj, (MonoBehaviour, Object)):
-        data = obj.read_typetree().__dict__.values()
-    else:
-        data = obj.__dict__.values()
+    ret[obj.m_PathID] = obj
 
-    for value in flatten(data):
+    for value in flatten(values):
         if isinstance(value, (Object, PPtr)):
-            if value.path_id in ret:
+            if value.m_PathID in ret:
                 continue
             crawl_obj(value, ret)
 

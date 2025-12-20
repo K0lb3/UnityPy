@@ -47,14 +47,14 @@ def get_image(sprite: Sprite, texture: PPtr[Texture2D], alpha_texture: Optional[
     if alpha_texture:
         cache_id = (texture.path_id, alpha_texture.path_id)
         if cache_id not in cache:
-            original_image = get_image_from_texture2d(texture.read(), False)
-            alpha_image = get_image_from_texture2d(alpha_texture.read(), False)
+            original_image = get_image_from_texture2d(texture.deref_parse_as_object(), False)
+            alpha_image = get_image_from_texture2d(alpha_texture.deref_parse_as_object(), False)
             original_image = Image.merge("RGBA", (*original_image.split()[:3], alpha_image.split()[0]))
             cache[cache_id] = original_image
     else:
         cache_id = texture.path_id
         if cache_id not in cache:
-            original_image = get_image_from_texture2d(texture.read(), False)
+            original_image = get_image_from_texture2d(texture.deref_parse_as_object(), False)
             cache[cache_id] = original_image
     return cache[cache_id]
 
@@ -62,14 +62,15 @@ def get_image(sprite: Sprite, texture: PPtr[Texture2D], alpha_texture: Optional[
 def get_image_from_sprite(m_Sprite: Sprite) -> Image.Image:
     atlas = None
     if m_Sprite.m_SpriteAtlas:
-        atlas = m_Sprite.m_SpriteAtlas.read()
+        atlas = m_Sprite.m_SpriteAtlas.deref_parse_as_object()
     elif m_Sprite.m_AtlasTags:
         # looks like the direct pointer is empty, let's try to find the Atlas via its name
         assert m_Sprite.assets_file, "Sprite assets file is not set!"
         for obj in m_Sprite.assets_file.objects.values():
             if obj.type == ClassIDType.SpriteAtlas:
-                atlas = obj.read()
-                if atlas.m_Name == m_Sprite.m_AtlasTags[0]:
+                name = obj.peek_name()
+                if name == m_Sprite.m_AtlasTags[0]:
+                    atlas = obj.parse_as_object()
                     break
                 atlas = None
 

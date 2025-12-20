@@ -14,22 +14,24 @@ def test_read_single():
     for f in os.listdir(SAMPLES):
         env = UnityPy.load(os.path.join(SAMPLES, f))
         for obj in env.objects:
-            obj.read()
+            obj.parse_as_object()
+            obj.parse_as_dict()
 
 
 def test_read_batch():
     env = UnityPy.load(SAMPLES)
     for obj in env.objects:
-        obj.read()
+        obj.parse_as_object()
+        obj.parse_as_dict()
 
 
 def test_save_dict():
     env = UnityPy.load(SAMPLES)
     for obj in env.objects:
         data = obj.get_raw_data()
-        item = obj.read_typetree(wrap=False)
+        item = obj.parse_as_dict()
         assert isinstance(item, dict)
-        re_data = obj.save_typetree(item)
+        re_data = obj.patch(item)
         assert data == re_data
 
 
@@ -37,9 +39,9 @@ def test_save_wrap():
     env = UnityPy.load(SAMPLES)
     for obj in env.objects:
         data = obj.get_raw_data()
-        item = obj.read_typetree(wrap=True)
+        item = obj.parse_as_object()
         assert not isinstance(item, dict)
-        re_data = obj.save_typetree(item)
+        re_data = obj.patch(item)
         assert data == re_data
 
 
@@ -48,7 +50,7 @@ def test_texture2d():
         env = UnityPy.load(os.path.join(SAMPLES, f))
         for obj in env.objects:
             if obj.type.name == "Texture2D":
-                data = obj.read()
+                data = obj.parse_as_object()
                 data.image.save(io.BytesIO(), format="PNG")
                 data.image = data.image.transpose(Image.ROTATE_90)
                 data.save()
@@ -59,7 +61,8 @@ def test_sprite():
         env = UnityPy.load(os.path.join(SAMPLES, f))
         for obj in env.objects:
             if obj.type.name == "Sprite":
-                obj.read().image.save(io.BytesIO(), format="PNG")
+                sprite = obj.parse_as_object()
+                sprite.image.save(io.BytesIO(), format="PNG")
 
 
 if platform.system() == "Darwin":
@@ -80,7 +83,7 @@ def test_audioclip():
     env = UnityPy.load(os.path.join(SAMPLES, "char_118_yuki.ab"))
     for obj in env.objects:
         if obj.type.name == "AudioClip":
-            clip = obj.read()
+            clip = obj.parse_as_object()
             assert len(clip.samples) == 1
 
 
@@ -90,7 +93,7 @@ def test_mesh():
         wanted = f.read().replace(b"\r", b"")
     for obj in env.objects:
         if obj.type.name == "Mesh":
-            mesh = obj.read()
+            mesh = obj.parse_as_object()
             data = mesh.export()
             if isinstance(data, str):
                 data = data.encode("utf8").replace(b"\r", b"")

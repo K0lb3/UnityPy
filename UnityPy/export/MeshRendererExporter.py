@@ -25,9 +25,9 @@ if TYPE_CHECKING:
 def get_mesh(meshR: Renderer) -> Optional[Mesh]:
     if isinstance(meshR, SkinnedMeshRenderer):
         if meshR.m_Mesh:
-            return meshR.m_Mesh.read()
+            return meshR.m_Mesh.deref_parse_as_object()
     else:
-        m_GameObject = meshR.m_GameObject.read()
+        m_GameObject = meshR.m_GameObject.deref_parse_as_object()
         for comp in m_GameObject.m_Component:
             if isinstance(comp, tuple):
                 pptr = comp[1]
@@ -39,9 +39,9 @@ def get_mesh(meshR: Renderer) -> Optional[Mesh]:
             if not obj:
                 continue
             if obj.type.name == "MeshFilter":
-                filter: MeshFilter = pptr.read()
+                filter: MeshFilter = pptr.deref_parse_as_object()
                 if filter.m_Mesh:
-                    return filter.m_Mesh.read()
+                    return filter.m_Mesh.deref_parse_as_object()
     return None
 
 
@@ -66,7 +66,7 @@ def export_mesh_renderer(renderer: Renderer, export_dir: str) -> None:
             continue
         matPtr: Optional[PPtr[Material]] = renderer.m_Materials[i - firstSubMesh]
         if matPtr:
-            mat: Material = matPtr.read()
+            mat: Material = matPtr.deref_parse_as_object()
         else:
             material_names.append(None)
             continue
@@ -79,10 +79,10 @@ def export_mesh_renderer(renderer: Renderer, export_dir: str) -> None:
             if not isinstance(key, str):
                 # FastPropertyName
                 key = key.name
-            tex: Texture2D = texEnv.m_Texture.read()
+            tex: Texture2D = texEnv.m_Texture.deref_parse_as_object()
             texName = f"{tex.m_Name if tex.m_Name else key}.png"
             with env.fs.open(env.fs.sep.join([export_dir, texName]), "wb") as f:
-                tex.read().image.save(f)
+                tex.image.save(f)
 
     # save .obj
     with env.fs.open(
@@ -172,7 +172,7 @@ def export_material(mat: Material) -> str:
             # FastPropertyName
             key = key.name
 
-        tex: Texture2D = texEnv.m_Texture.read()
+        tex: Texture2D = texEnv.m_Texture.deref_parse_as_object()
         texName = f"{tex.m_Name if tex.m_Name else key}.png"
         if key == "_MainTex":
             sb.append(f"map_Kd {texName}")
