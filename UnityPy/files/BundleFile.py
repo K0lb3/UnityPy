@@ -215,7 +215,7 @@ class BundleFile(File.File):
             self.save_web_raw(writer)
         elif self.signature == "UnityFS":
             if not packer or packer == "none":
-                self.save_fs(writer, 64, 64)
+                self.save_fs(writer, 0x40, 0)
             elif packer == "original":
                 self.save_fs(
                     writer,
@@ -282,6 +282,9 @@ class BundleFile(File.File):
 
         # file list & file data
         # prep nodes and build up block data
+        data_flag = int(data_flag)
+        block_info_flag = int(block_info_flag) & 0x3F
+
         data_writer = EndianBinaryWriter()
         files = [
             (
@@ -316,7 +319,7 @@ class BundleFile(File.File):
             # compressed size
             block_writer.write_u_int(block_compressed_size)
             # flag
-            block_writer.write_u_short(block_flag)
+            block_writer.write_u_short(block_flag & 0x3F)
 
         # file block info
         if not data_flag & 0x40:
