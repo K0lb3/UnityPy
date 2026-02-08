@@ -30,8 +30,10 @@ class TypeTreeGenerator(TypeTreeGeneratorBase):
         if "GameAssembly.dll" in root_files:
             ga_fp = os.path.join(root_dir, "GameAssembly.dll")
             gm_fp = os.path.join(data_dir, "il2cpp_data", "Metadata", "global-metadata.dat")
-            ga_raw = open(ga_fp, "rb").read()
-            gm_raw = open(gm_fp, "rb").read()
+            with open(ga_fp, "rb") as f:
+                ga_raw = f.read()
+            with open(gm_fp, "rb") as f:
+                gm_raw = f.read()
             self.load_il2cpp(ga_raw, gm_raw)
         else:
             self.load_local_dll_folder(os.path.join(data_dir, "Managed"))
