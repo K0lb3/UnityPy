@@ -32,6 +32,29 @@ class Object(ABC, metaclass=ABCMeta):
 
         self.object_reader.save_typetree(self)
 
+    def __copy__(self) -> Object:
+        clz = self.__class__
+        data = {
+            key: value
+            for key, value in self.__dict__.items()
+            if isinstance(key, str)
+            and (not key.startswith("__") or key == "__node__")
+            and not callable(value)
+        }
+        try:
+            # covers UnknownObject
+            return clz(**data)
+        except TypeError:
+            from ..helpers.TypeTreeHelper import get_annotation_keys
+
+            keys = set(self.__dict__.keys())
+            annotation_keys = get_annotation_keys(clz)
+            extra_keys = keys - annotation_keys
+            instance = clz(**{key: data[key] for key in annotation_keys})
+            for key in extra_keys:
+                setattr(instance, key, data[key])
+            return instance
+
 
 __all__ = [
     "Object",
