@@ -11,7 +11,8 @@ from ..helpers.ContainerHelper import ContainerHelper
 from ..helpers.TypeTreeHelper import TypeTreeNode
 from ..helpers.UnityVersion import UnityVersion
 from ..streams import EndianBinaryWriter
-from . import BundleFile, File, ObjectReader
+from . import BundleFile, File
+from .ObjectReader import ObjectReader
 
 if TYPE_CHECKING:
     from ..classes import AssetBundle, Object
@@ -290,7 +291,7 @@ class SerializedFile(File.File):
         object_count = reader.read_int()
         self.objects = {}
         for _ in range(object_count):
-            obj = ObjectReader.ObjectReader(self, reader)
+            obj = ObjectReader.from_reader(self, reader)
             self.objects[obj.path_id] = obj
 
         # Read Scripts

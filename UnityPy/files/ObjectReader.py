@@ -7,21 +7,21 @@ from typing import (
     Generic,
     List,
     Optional,
-    Tuple,
     Type,
     TypeVar,
     Union,
     cast,
 )
 
+from attrs import define
+
 from ..classes import MonoBehaviour
 from ..classes.ClassIDTypeToClassMap import ClassIDTypeToClassMap
-from ..enums import BuildTarget, ClassIDType
+from ..enums import ClassIDType
 from ..exceptions import TypeTreeError
 from ..helpers import TypeTreeHelper
 from ..helpers.Tpk import get_typetree_node
 from ..helpers.TypeTreeNode import TypeTreeNode
-from ..helpers.UnityVersion import UnityVersion
 from ..streams import EndianBinaryReader, EndianBinaryWriter
 
 if TYPE_CHECKING:
@@ -31,89 +31,103 @@ T = TypeVar("T")
 NodeInput = Union[TypeTreeNode, List[Dict[str, Union[str, int]]]]
 
 
+@define(
+    slots=True,
+)
 class ObjectReader(Generic[T]):
     assets_file: SerializedFile
     reader: EndianBinaryReader
-    data: bytes
-    version: UnityVersion
-    version2: int
-    platform: BuildTarget
     path_id: int
-    byte_start_offset: Tuple[int, int]
-    byte_start: int
-    byte_size_offset: Tuple[int, int]
-    byte_size: int
     type_id: int
     serialized_type: Optional[SerializedType]
     class_id: int
     type: ClassIDType
+    byte_start: int
+    byte_size: int
     is_destroyed: Optional[int]
     is_stripped: Optional[int]
+    data: Optional[bytes] = None
+    _read_until: Optional[int] = None
+
+    @property
+    def version(self):
+        return self.assets_file.version
+
+    @property
+    def version2(self):
+        return self.assets_file.header.version
+
+    @property
+    def platform(self):
+        return self.assets_file.target_platform
 
     # saves where the parser stopped
     # in case that not all data is read
     # and the obj.data is changed, the unknown data can be added again
-
-    def __init__(self, assets_file: SerializedFile, reader: EndianBinaryReader):
-        self.assets_file = assets_file
-        self.reader = reader
-        self.data = b""
-        self.version = assets_file.version
-        self.version2 = assets_file.header.version
-        self.platform = assets_file.target_platform
-
+    @classmethod
+    def from_reader(cls, assets_file: SerializedFile, reader: EndianBinaryReader) -> ObjectReader[Any]:
         header = assets_file.header
         types = assets_file.types
 
         # AssetStudio ObjectInfo init
         if assets_file.big_id_enabled:
-            self.path_id = reader.read_long()
+            path_id = reader.read_long()
         elif header.version < 14:
-            self.path_id = reader.read_int()
+            path_id = reader.read_int()
         else:
             reader.align_stream()
-            self.path_id = reader.read_long()
+            path_id = reader.read_long()
 
         if header.version >= 22:
-            self.byte_start_offset = (self.reader.real_offset(), 8)
-            self.byte_start = reader.read_long()
+            byte_start = reader.read_long()
         else:
-            self.byte_start_offset = (self.reader.real_offset(), 4)
-            self.byte_start = reader.read_u_int()
+            byte_start = reader.read_u_int()
 
-        self.byte_start += header.data_offset
-        self.byte_header_offset = header.data_offset
-        self.byte_base_offset = self.reader.BaseOffset
+        byte_start += header.data_offset
+        byte_size = reader.read_u_int()
 
-        self.byte_size_offset = (self.reader.real_offset(), 4)
-        self.byte_size = reader.read_u_int()
+        type_id = reader.read_int()
 
-        self.type_id = reader.read_int()
-
+        serialized_type = None
         if header.version < 16:
-            self.class_id = reader.read_u_short()
-            self.serialized_type = None
+            class_id = reader.read_u_short()
             for typ in types:
-                if typ.class_id == self.type_id:
-                    self.serialized_type = typ
+                if typ.class_id == type_id:
+                    serialized_type = typ
                     break
         else:
-            typ = types[self.type_id]
-            self.serialized_type = typ
-            self.class_id = typ.class_id
+            typ = types[type_id]
+            serialized_type = typ
+            class_id = typ.class_id
 
-        self.type = ClassIDType(self.class_id)
+        clz_type = ClassIDType(class_id)
 
+        is_destroyed = None
         if header.version < 11:
-            self.is_destroyed = reader.read_u_short()
+            is_destroyed = reader.read_u_short()
 
         if 11 <= header.version < 17:
             script_type_index = reader.read_short()
-            if self.serialized_type:
-                self.serialized_type.script_type_index = script_type_index
+            if serialized_type:
+                serialized_type.script_type_index = script_type_index
 
+        is_stripped = None
         if header.version == 15 or header.version == 16:
-            self.stripped = reader.read_byte()
+            is_stripped = reader.read_byte()
+
+        return cls(
+            assets_file,
+            reader,
+            path_id,
+            type_id,
+            serialized_type,
+            class_id,
+            clz_type,
+            byte_start,
+            byte_size,
+            is_destroyed,
+            is_stripped,
+        )
 
     def write(self, header, writer: EndianBinaryWriter, data_writer: EndianBinaryWriter):
         if self.assets_file.big_id_enabled:
@@ -124,7 +138,7 @@ class ObjectReader(Generic[T]):
             writer.align_stream()
             writer.write_long(self.path_id)
 
-        if self.data:
+        if self.data is not None:
             data = self.data
             # in some cases the parser doesn't read all of the object data
             # games might still require the missing data
@@ -161,9 +175,10 @@ class ObjectReader(Generic[T]):
             writer.write_short(self.serialized_type.script_type_index)
 
         if header.version == 15 or header.version == 16:
-            writer.write_byte(self.stripped)
+            assert self.is_stripped is not None
+            writer.write_byte(self.is_stripped)
 
-    def set_raw_data(self, data):
+    def set_raw_data(self, data: bytes):
         self.data = data
         if self.assets_file:
             self.assets_file.mark_changed()
@@ -197,9 +212,7 @@ class ObjectReader(Generic[T]):
         self.reader.Position = self.byte_start
 
     def read(self, check_read: bool = True) -> T:
-        obj = self.read_typetree(wrap=True, check_read=check_read)
-        self._read_until = self.reader.Position
-        return obj  # type: ignore
+        return self.read_typetree(wrap=True, check_read=check_read)  # type: ignore
 
     def get(self, key, default=None):
         return getattr(self, key, default)
@@ -332,3 +345,8 @@ class ObjectReader(Generic[T]):
             return node
         else:
             raise ValueError(f"Failed to generate MonoBehaviour node for {fullname} of {script.m_AssemblyName}!")
+
+
+__all__ = [
+    "ObjectReader",
+]
