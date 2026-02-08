@@ -56,7 +56,7 @@ class Environment:
                         if ntpath.splitext(arg)[-1] in [".apk", ".zip"]:
                             self.load_zip_file(arg)
                         else:
-                            self.path = ntpath.dirname(arg)
+                            self.path = ntpath.dirname(arg) or ntpath.curdir
                             if reSplit.match(arg):
                                 self.load_files([arg])
                             else:
