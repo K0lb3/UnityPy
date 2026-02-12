@@ -41,7 +41,10 @@ class BundleFile(File.File):
         if signature == "UnityArchive":
             raise NotImplementedError("BundleFile - UnityArchive")
         elif signature in ["UnityWeb", "UnityRaw"]:
-            m_DirectoryInfo, blocksReader = self.read_web_raw(reader)
+            if self.version == 6:
+                m_DirectoryInfo, blocksReader = self.read_fs(reader)
+            else:
+                m_DirectoryInfo, blocksReader = self.read_web_raw(reader)
         elif signature == "UnityFS":
             m_DirectoryInfo, blocksReader = self.read_fs(reader)
         else:
@@ -97,6 +100,10 @@ class BundleFile(File.File):
         compressedSize = reader.read_u_int()
         uncompressedSize = reader.read_u_int()
         dataflagsValue = reader.read_u_int()
+
+        # UnityWeb version 6
+        if self.signature != "UnityFS":
+            reader.read_byte()
 
         version = self.parse_version()
         # https://issuetracker.unity3d.com/issues/files-within-assetbundles-do-not-start-on-aligned-boundaries-breaking-patching-on-nintendo-switch
