@@ -1,0 +1,3 @@
+PySide6>=6.5.0
+Pillow>=9.0.0
+UnityPy>=1.20.0

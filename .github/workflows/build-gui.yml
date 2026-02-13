@@ -1,0 +1,72 @@
+name: Build GUI App
+on:
+  workflow_dispatch:
+
+jobs:
+  build-macos:
+    name: Build macOS App (Apple Silicon)
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          pip install pyinstaller PySide6 Pillow
+          pip install .
+
+      - name: Build app
+        run: python build_app.py --clean --target mac-arm64
+
+      - name: Zip app bundle
+        run: |
+          cd dist
+          APP_NAME="$(ls -d *.app | head -1)"
+          ditto -c -k --sequesterRsrc --keepParent "$APP_NAME" "UnityPyExplorer-mac-arm64.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: UnityPyExplorer-mac-arm64
+          path: dist/UnityPyExplorer-mac-arm64.zip
+          retention-days: 30
+
+  build-windows:
+    name: Build Windows App (64-bit)
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          pip install pyinstaller PySide6 Pillow
+          pip install .
+
+      - name: Build app
+        run: python build_app.py --clean --target win64
+
+      - name: Zip output
+        shell: pwsh
+        run: |
+          $folder = Get-ChildItem -Path dist -Directory | Where-Object { $_.Name -like "UnityPyExplorer-*" } | Select-Object -First 1
+          Compress-Archive -Path "$($folder.FullName)\*" -DestinationPath "dist\UnityPyExplorer-win64.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: UnityPyExplorer-win64
+          path: dist/UnityPyExplorer-win64.zip
+          retention-days: 30

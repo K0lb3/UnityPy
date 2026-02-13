@@ -1,3 +1,10 @@
+# AssetStudio_UnityPy
+
+![Preview](preview.png)
+
+> **🖥 GUI Application — UnityPy Explorer** | [Documentation / 文档](README_gui.md)
+
+
 # UnityPy
 
 [![Discord server invite](https://discordapp.com/api/guilds/603359898507673630/embed.png)](https://discord.gg/C6txv7M)
