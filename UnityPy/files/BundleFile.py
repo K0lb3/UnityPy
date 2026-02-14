@@ -119,10 +119,7 @@ class BundleFile(File.File):
         # if header version is 7 or later we need to align the reader
         # for 2019.4.15 and later, version should be 7 and aligned
         # but some games in these versions somehow has version 6 while aligned
-        if (
-            self.version >= 7
-            or (version[0] == 2019 and version >= (2019, 4, 15))
-        ):
+        if self.version >= 7 or (version[0] == 2019 and version >= (2019, 4, 15)):
             reader.align_stream(16)
             self._uses_block_alignment = True
 
