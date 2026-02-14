@@ -116,19 +116,15 @@ class BundleFile(File.File):
         if self.dataflags & self.dataflags.UsesAssetBundleEncryption:
             self.decryptor = ArchiveStorageManager.ArchiveStorageDecryptor(reader)
 
-        # check if we need to align the reader
-        # - align to 16 bytes and check if all are 0
-        # - if not, reset the reader to the previous position
-        if self.version >= 7:
+        # if header version is 7 or later we need to align the reader
+        # for 2019.4.15 and later, version should be 7 and aligned
+        # but some games in these versions somehow has version 6 while aligned
+        if (
+            self.version >= 7
+            or (version[0] == 2019 and version >= (2019, 4, 15))
+        ):
             reader.align_stream(16)
             self._uses_block_alignment = True
-        elif version >= (2019, 4):
-            pre_align = reader.Position
-            align_data = reader.read((16 - pre_align % 16) % 16)
-            if any(align_data):
-                reader.Position = pre_align
-            else:
-                self._uses_block_alignment = True
 
         start = reader.Position
         if self.dataflags & ArchiveFlags.BlocksInfoAtTheEnd:  # kArchiveBlocksInfoAtTheEnd
