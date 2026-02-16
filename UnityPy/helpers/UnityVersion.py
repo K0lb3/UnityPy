@@ -77,7 +77,7 @@ class UnityVersion(int):
     def __repr__(self) -> str:
         return f"UnityVersion {self.major}.{self.minor}{self.type_str}{self.type_number}"
 
-    def __getitem__(self, idx: int) -> int:
+    def __getitem__(self, idx: Union[int, slice]) -> Union[int, Tuple[int, ...]]:
         values = (
             self.major,
             self.minor,
