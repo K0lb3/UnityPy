@@ -78,17 +78,14 @@ class UnityVersion(int):
         return f"UnityVersion {self.major}.{self.minor}{self.type_str}{self.type_number}"
 
     def __getitem__(self, idx: int) -> int:
-        if idx == 0:
-            return self.major
-        elif idx == 1:
-            return self.minor
-        elif idx == 2:
-            return self.build
-        elif idx == 3:
-            return self.type.value
-        elif idx == 4:
-            return self.type_number
-        raise IndexError("Invalid UnityVersion index")
+        values = (
+            self.major,
+            self.minor,
+            self.build,
+            self.type.value,
+            self.type_number,
+        )
+        return values[idx]
 
     def as_tuple(self) -> Tuple[int, int, int, int, int]:
         return (self.major, self.minor, self.build, self.type.value, self.type_number)
