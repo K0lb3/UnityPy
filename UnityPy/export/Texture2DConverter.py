@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import struct
-from io import BytesIO
 from functools import lru_cache
+from io import BytesIO
 from threading import get_ident
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Union
 
@@ -376,7 +376,8 @@ def _get_astc_context(ident: int, block_size: tuple):
         flags=astc_encoder.ASTCConfigFlags.USE_DECODE_UNORM8,
     )
     context = astc_encoder.ASTCContext(config)
-    return context    
+    return context
+
 
 def get_astc_context(block_size: tuple):
     """Get the ASTC context for the current thread using the given `block_size`.
@@ -384,6 +385,7 @@ def get_astc_context(block_size: tuple):
     This function is thread safe.
     """
     return _get_astc_context(get_ident(), block_size)
+
 
 def calculate_astc_compressed_size(width: int, height: int, block_size: tuple) -> int:
     """Calculate the size of the compressed data for ASTC."""
