@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import struct
+from functools import lru_cache
 from io import BytesIO
-from threading import Lock
+from threading import get_ident
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Union
 
 import astc_encoder
@@ -108,9 +109,8 @@ def compress_astc(data: bytes, width: int, height: int, target_texture_format: T
     assert block_size is not None, f"failed to get block size for {target_texture_format.name}"
     swizzle = astc_encoder.ASTCSwizzle.from_str("RGBA")
 
-    context, lock = get_astc_context(block_size)
-    with lock:
-        enc_img = context.compress(astc_image, swizzle)
+    context = get_astc_context(block_size)
+    enc_img = context.compress(astc_image, swizzle)
 
     return enc_img
 
@@ -359,31 +359,32 @@ def astc(image_data: bytes, width: int, height: int, block_size: tuple) -> Image
     if len(image_data) < texture_size:
         raise ValueError(f"Invalid ASTC data size: {len(image_data)} < {texture_size}")
 
-    context, lock = get_astc_context(block_size)
-    with lock:
-        context.decompress(image_data[:texture_size], image, astc_encoder.ASTCSwizzle.from_str("RGBA"))
+    context = get_astc_context(block_size)
+    context.decompress(image_data[:texture_size], image, astc_encoder.ASTCSwizzle.from_str("RGBA"))
     assert image.data is not None, "Decompression failed, image data is None"
 
     return Image.frombytes("RGBA", (width, height), image.data, "raw", "RGBA")
 
 
-ASTC_CONTEXTS: Dict[Tuple[int, int], Tuple[astc_encoder.ASTCContext, Lock]] = {}
+@lru_cache(maxsize=128)
+def _get_astc_context(ident: int, block_size: tuple):
+    config = astc_encoder.ASTCConfig(
+        astc_encoder.ASTCProfile.LDR,
+        *block_size,
+        block_z=1,
+        quality=100,
+        flags=astc_encoder.ASTCConfigFlags.USE_DECODE_UNORM8,
+    )
+    context = astc_encoder.ASTCContext(config)
+    return context
 
 
 def get_astc_context(block_size: tuple):
-    """Get the ASTC context and its lock using the given `block_size`."""
-    if block_size not in ASTC_CONTEXTS:
-        config = astc_encoder.ASTCConfig(
-            astc_encoder.ASTCProfile.LDR,
-            *block_size,
-            block_z=1,
-            quality=100,
-            flags=astc_encoder.ASTCConfigFlags.USE_DECODE_UNORM8,
-        )
-        context = astc_encoder.ASTCContext(config)
-        lock = Lock()
-        ASTC_CONTEXTS[block_size] = (context, lock)
-    return ASTC_CONTEXTS[block_size]
+    """Get the ASTC context for the current thread using the given `block_size`.
+    Created contexts belong to and only to the calling thread, and may be cached.
+    This function is thread safe.
+    """
+    return _get_astc_context(get_ident(), block_size)
 
 
 def calculate_astc_compressed_size(width: int, height: int, block_size: tuple) -> int:
