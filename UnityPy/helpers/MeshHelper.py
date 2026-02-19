@@ -159,11 +159,10 @@ class MeshHandler:
             if mesh.m_Use16BitIndices is not None:
                 self.m_Use16BitIndices = bool(mesh.m_Use16BitIndices)
             elif (
-                self.version >= (2017, 4)
+                (self.version >= (2017, 4))
                 or
                 # version == (2017, 3, 1) & patched - px string
-                self.version[:2] == (2017, 3)
-                and mesh.m_MeshCompression == 0
+                (self.version[:2] == (2017, 3) and mesh.m_MeshCompression == 0)
             ):
                 self.m_Use16BitIndices = mesh.m_IndexFormat == 0
             self.copy_from_mesh()
@@ -292,10 +291,10 @@ class MeshHandler:
             for _ in range(6)
         ]
         for s, m_Stream in enumerate(m_Streams):
-            channelMask = bytearray(m_Stream.channelMask)  # BitArray
+            channelMask = m_Stream.channelMask  # uint
             offset = 0
             for i in range(6):
-                if channelMask[i]:
+                if channelMask & (1 << i):
                     m_Channel = m_Channels[i]
                     m_Channel.stream = s
                     m_Channel.offset = offset
@@ -324,6 +323,12 @@ class MeshHandler:
     def read_vertex_data(self, m_Channels: list[ChannelInfo], m_Streams: list[StreamInfo]) -> None:
         m_VertexData = self.src.m_VertexData
         if m_VertexData is None:
+            return
+
+        # could be empty for fully compressed meshes
+        # in that case data will be read from CompressedMesh via decompress_compressed_mesh
+        # also avoids a crash in UnityPyBoost.unpack_vertexdata with empty data
+        if m_VertexData.m_VertexCount == 0 or not m_VertexData.m_DataSize:
             return
 
         self.m_VertexCount = m_VertexCount = m_VertexData.m_VertexCount
