@@ -414,7 +414,7 @@ class SerializedFile(File.File):
 
         # ReadObjects
         meta_writer.write_int(len(self.objects))
-        for obj in self.objects.values():
+        for obj in sorted(self.objects.values(), key=lambda x: x.path_id):
             obj.write(header, meta_writer, data_writer)
             data_writer.align_stream(8)
 
