@@ -212,7 +212,10 @@ class BundleFile(File.File):
         if self.signature == "UnityArchive":
             raise NotImplementedError("BundleFile - UnityArchive")
         elif self.signature in ["UnityWeb", "UnityRaw"]:
-            self.save_web_raw(writer)
+            if self.version == 6:
+                self.save_fs(writer, 64, 64)
+            else:
+                self.save_web_raw(writer)
         elif self.signature == "UnityFS":
             if not packer or packer == "none":
                 self.save_fs(writer, 64, 64)
@@ -359,6 +362,10 @@ class BundleFile(File.File):
         writer.write_u_int(uncompressed_block_data_size)
         # compression and file layout flag
         writer.write_u_int(data_flag)
+
+        # UnityWeb version 6
+        if self.signature != "UnityFS":
+            writer.write_byte(0)
 
         if self._uses_block_alignment:
             # UnityFS\x00 - 8
