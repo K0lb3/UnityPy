@@ -37,9 +37,7 @@ class Object(ABC, metaclass=ABCMeta):
         data = {
             key: value
             for key, value in self.__dict__.items()
-            if isinstance(key, str)
-            and (not key.startswith("__") or key == "__node__")
-            and not callable(value)
+            if isinstance(key, str) and (not key.startswith("__") or key == "__node__") and not callable(value)
         }
         try:
             # covers UnknownObject
