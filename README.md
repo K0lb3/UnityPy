@@ -90,41 +90,44 @@ def unpack_all_assets(source_folder: str, destination_folder: str):
     # iterate over all files in source folder
     for root, dirs, files in os.walk(source_folder):
         for file_name in files:
-            # generate file_path
+            # generate full file path
             file_path = os.path.join(root, file_name)
-            # load that file via UnityPy.load
-            env = UnityPy.load(file_path)
+            # open and load that file
+            with open(file_path, "rb") as f:
+                env = UnityPy.load(f)
 
-            # iterate over internal objects
-            for obj in env.objects:
-                # process specific object types
-                if obj.type.name in ["Texture2D", "Sprite"]:
-                    # parse the object data
-                    data = obj.parse_as_object()
+                # iterate over internal objects
+                for obj in env.objects:
+                    # process specific object types
+                    if obj.type.name in ["Texture2D", "Sprite"]:
+                        # parse the object data
+                        data = obj.parse_as_object()
 
-                    # create destination path
-                    dest = os.path.join(destination_folder, data.m_Name)
+                        # generate destination path
+                        dest = os.path.join(destination_folder, data.m_Name)
 
-                    # make sure that the extension is correct
-                    # you probably only want to do so with images/textures
-                    dest, ext = os.path.splitext(dest)
-                    dest = dest + ".png"
+                        # make sure that the extension is correct
+                        # you probably only want to do so with images/textures
+                        dest, ext = os.path.splitext(dest)
+                        dest = dest + ".png"
 
-                    img = data.image
-                    img.save(dest)
+                        img = data.image
+                        img.save(dest)
 
-            # alternative way which keeps the original path
-            for path,obj in env.container.items():
-                if obj.type.name in ["Texture2D", "Sprite"]:
-                    data = obj.parse_as_object()
-                    # create dest based on original path
-                    dest = os.path.join(destination_folder, *path.split("/"))
-                    # make sure that the dir of that path exists
-                    os.makedirs(os.path.dirname(dest), exist_ok = True)
-                    # correct extension
-                    dest, ext = os.path.splitext(dest)
-                    dest = dest + ".png"
-                    data.image.save(dest)
+                # alternative way which keeps the original path
+                for path, obj in env.container.items():
+                    if obj.type.name in ["Texture2D", "Sprite"]:
+                        data = obj.parse_as_object()
+
+                        # generate destination based on original path
+                        dest = os.path.join(destination_folder, *path.split("/"))
+                        # make sure that the dir of that path exists
+                        os.makedirs(os.path.dirname(dest), exist_ok = True)
+
+                        # correct extension
+                        dest, ext = os.path.splitext(dest)
+                        dest = dest + ".png"
+                        data.image.save(dest)
 ```
 
 You probably have to read [Important Classes](#important-classes)
@@ -246,7 +249,7 @@ Following functions are legacy functions that will be removed in the future when
 The modern versions are equivalent to them and have a more correct type hints.
 
 | Legacy        | Modern          |
-|---------------|-----------------|
+| ------------- | --------------- |
 | read          | parse_as_object |
 | read_typetree | parse_as_dict   |
 | save_typetree | patch           |
