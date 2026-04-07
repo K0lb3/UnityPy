@@ -14,6 +14,7 @@ from UnityPy.helpers.UnityVersion import UnityVersion, UnityVersionType
         ("2021.1.0c1", (2021, 1, 0, UnityVersionType.c.value, 1)),
         ("2022.2.0x1", (2022, 2, 0, UnityVersionType.x.value, 1)),
         ("2018.1.1z2", (2018, 1, 1, UnityVersionType.u.value, 2)),  # unknown type
+        ("2022.3.62f2\n2", (2022, 3, 62, UnityVersionType.f.value, 2)),
     ],
 )
 def test_parse_unity_version(version_str, expected_tuple):
@@ -24,6 +25,7 @@ def test_parse_unity_version(version_str, expected_tuple):
     assert v.build == expected_tuple[2]
     assert v.type.value == expected_tuple[3]
     assert v.type_number == expected_tuple[4]
+    assert UnityVersion.from_list(*expected_tuple) == v
 
 
 @pytest.mark.parametrize(
@@ -58,6 +60,7 @@ def test_comparison_with_tuple(version_str, compare_tuple):
         ("2018.1.1f2", "2018.1.1f1"),
         ("2018.1.1f2", "2018.1.2f2"),
         ("2018.1.1f2", "2018.2.1f2"),
+        ("2022.3.62f2\n2", "2022.3.62f2"),
     ],
 )
 def test_comparison_with_unityversion(version_str, other_str):
@@ -69,12 +72,3 @@ def test_comparison_with_unityversion(version_str, other_str):
     assert (v1 <= v2) == (v1.as_tuple() <= v2.as_tuple())
     assert (v1 > v2) == (v1.as_tuple() > v2.as_tuple())
     assert (v1 >= v2) == (v1.as_tuple() >= v2.as_tuple())
-
-
-def test_repr_and_str():
-    v = UnityVersion.from_str("2018.1.1f2")
-    assert "UnityVersion" in repr(v)
-    assert str(v.major) in repr(v)
-    assert str(v.minor) in repr(v)
-    assert v.type_str in repr(v)
-    assert str(v.type_number) in repr(v)

@@ -4,7 +4,10 @@ import re
 from enum import IntEnum
 from typing import Optional, Tuple, Union
 
-VersionPattern = re.compile(r"^(?P<major>\d+)\.(?P<minor>\d+)\.(?P<build>\d+)(?P<type_str>.+?)?(?P<type_number>\d+)?$")
+VersionPattern = re.compile(
+    r"^(?P<major>\d+)\.(?P<minor>\d+)\.(?P<build>\d+)(?P<type_str>.+?)?(?P<type_number>\d+)?(?P<postfix>.*)$",
+    flags=re.DOTALL,
+)
 
 
 class UnityVersionType(IntEnum):
@@ -20,6 +23,7 @@ class UnityVersionType(IntEnum):
 class UnityVersion(int):
     # https://github.com/AssetRipper/VersionUtilities/blob/master/VersionUtilities/UnityVersion.cs
     _type_str: Optional[str]
+    _postfix: Optional[str]
 
     @property
     def major(self):
@@ -42,6 +46,10 @@ class UnityVersion(int):
         return getattr(self, "_type_str", self.type.name)
 
     @property
+    def postfix(self):
+        return getattr(self, "_postfix", "")
+
+    @property
     def type_number(self):
         return self & 0xFF
 
@@ -56,6 +64,7 @@ class UnityVersion(int):
         # formats:
         #   old: 5.0.0, <major>.<minor>.<build>
         #   new: 2018.1.1f2 <major>.<minor>.<build><type_str><type_number>
+        #   the new format string can be followed by a custom postfix
         match = VersionPattern.match(version)
         if not match:
             raise ValueError(f"Invalid version string: {version}")
@@ -64,6 +73,7 @@ class UnityVersion(int):
         build = int(match.group("build"))
         type_str = match.group("type_str")
         type_number = int(match.group("type_number") or 0)
+        postfix = match.group("postfix")
 
         if type_str is None:
             return cls.from_list(major, minor, build)
@@ -72,10 +82,19 @@ class UnityVersion(int):
         obj = cls.from_list(major, minor, build, type, type_number)
         if type is UnityVersionType.u:
             obj._type_str = type_str
+        if postfix:
+            obj._postfix = postfix
+
         return obj
 
+    def __str__(self) -> str:
+        if self.major <= 5:
+            return f"{self.major}.{self.minor}.{self.build}"
+        else:
+            return f"{self.major}.{self.minor}{self.type_str}{self.type_number}{self.postfix}"
+
     def __repr__(self) -> str:
-        return f"UnityVersion {self.major}.{self.minor}{self.type_str}{self.type_number}"
+        return f"UnityVersion {self.__str__()}"
 
     def __getitem__(self, idx: Union[int, slice]) -> Union[int, Tuple[int, ...]]:
         values = (
