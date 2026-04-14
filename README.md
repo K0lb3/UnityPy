@@ -143,26 +143,37 @@ UnityPy can detect if the file is a WebFile, BundleFile, Asset, or APK.
 
 The following code shows the different ways to create an Environment object.
 
-```python
-import io
-import UnityPy
+1. Load from file path or folder path (most frequently used).
+    ```python
+    import UnityPy
 
-# load from file path or folder path
-env = UnityPy.load("path/to/your/file")
+    env = UnityPy.load("path/to/your/file")
 
-# note that the best way to pass a file to UnityPy is
-# using with-statement to ensure the file can be properly closed
-with open("path/to/your/file", "rb") as f:
-    env = UnityPy.load(f)
+    # it's suggested to keep the file open while using `env`
+    f = open("path/to/your/file", "rb")
+    try:
+        env = UnityPy.load(f)
+        # use env here ...
+    finally:
+        f.close()
+    ```
 
-# load from bytes io stream
-data = io.BytesIO(b"streamable-data")
-env = UnityPy.load(data)
+2. Load from streamable object.
+    ```python
+    import io
+    import UnityPy
 
-# load from bytes object
-data = b"some-bytes-data"
-env = UnityPy.load(data)
-```
+    data = io.BytesIO(b"streamable-data")
+    env = UnityPy.load(data)
+    ```
+
+3. Load from bytes object.
+    ```python
+    import UnityPy
+
+    data = b"some-bytes-data"
+    env = UnityPy.load(data)
+    ```
 
 #### Attributes
 
