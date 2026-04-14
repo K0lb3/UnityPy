@@ -16,16 +16,24 @@ feel free to join the [UnityPy Discord](https://discord.gg/C6txv7M).
 If you're using UnityPy for a commercial project,
 a donation to a charitable cause or a sponsorship of this project is expected.
 
-**As UnityPy is still in active development, breaking changes can happen.**
-These changes are usually limited to minor versions (x.y) and not to patch versions (x.y.z).
-So in case that you don't want to actively maintain your project,
-make sure to make a note of the used UnityPy version in your README or add a check in your code.
-e.g.
+> [!NOTE]
+> **As UnityPy is still in active development, breaking changes can happen.**
+> These changes are usually limited to minor versions (x.y) and not to patch versions (x.y.z).
+>
+> <details>
+> <summary>In case you don't want to actively maintain your project...</summary>
+> 
+> Make a note of the used UnityPy version in your README or add a check in your code.
+> 
+> ```python
+> if UnityPy.__version__ != '1.9.6':
+>     raise ImportError("Invalid UnityPy version detected. Please use version 1.9.6")
+> ```
+> 
+> You can also pin the version in your `requirements.txt` or `pyproject.toml` file, which is the best practice.
+> 
+> </details>
 
-```python
-if UnityPy.__version__ != '1.9.6':
-    raise ImportError("Invalid UnityPy version detected. Please use version 1.9.6")
-```
 
 1. [Installation](#installation)
 2. [Example](#example)
@@ -208,12 +216,17 @@ The objects with a file path can be found in the `.container` dict - `{path : ob
 
 Objects \([ObjectReader class](UnityPy/files/ObjectReader.py)\) contain the _actual_ files, e.g., textures, text files, meshes, settings, ...
 
-To acquire the actual data of an object it has to be parsed first.
+> [!IMPORTANT]
+> 
+> To acquire the actual data of an object it has to be parsed first.
 This happens via the parse functions mentioned below.
 This isn't done automatically to save time as only a small part of the objects are usually of interest.
-Serialized objects can be set with raw data using `.set_raw_data(data)` or modified with `.save()` function, if supported.
 
-For object types with ``m_Name`` you can use ``.peek_name()`` to only read the name of the parsed object without parsing it completely, which is way faster.
+> [!TIP]
+>
+> For object types with attribute `.m_Name` you can use `.peek_name()` to only read the name of the parsed object without parsing it completely, which is way faster.
+
+Serialized objects can be set with raw data using `.set_raw_data(data)` or modified with `.save()` function, if supported.
 
 There are two general parsing functions, ``.parse_as_object()`` and ``.parse_as_dict()``.
 ``parse_as_dict`` parses the object data into a dict.
@@ -269,6 +282,7 @@ Now UnityPy uses [auto generated classes](UnityPy/classes/generated.py) with som
 
 ```python
 from PIL import Image
+
 for obj in env.objects:
     if obj.type.name == "Texture2D":
         # export texture
@@ -352,7 +366,7 @@ for obj in env.objects:
         tree = obj.parse_as_dict()
         fp = os.path.join(extract_dir, f"{tree['m_Name']}.json")
         with open(fp, "wt", encoding = "utf8") as f:
-            json.dump(tree, f, ensure_ascii = False, indent = 4)
+            json.dump(tree, f, ensure_ascii=False, indent=4)
 
         # edit
         tree = obj.parse_as_dict()
@@ -431,14 +445,16 @@ The mesh will be converted to the Wavefront .obj file format.
 
 ```python
 mesh: Mesh
-with open(f"{mesh.m_Name}.obj", "wt", newline = "") as f:
+with open(f"{mesh.m_Name}.obj", "wt", newline="") as f:
     # newline = "" is important
     f.write(mesh.export())
 ```
 
 ### Renderer, MeshRenderer, SkinnedMeshRenderer
 
-ALPHA-VERSION
+> [!WARNING]
+> 
+> This feature is in alpha version.
 
 -   `.export(export_dir)` - exports the associated mesh, materials, and textures into the given directory
 
@@ -458,7 +474,9 @@ mesh_renderer.export(export_dir)
 
 ### Texture2DArray
 
-WARNING - not well tested
+> [!WARNING]
+> 
+> This feature isn't well tested.
 
 -   `.m_Name`
 -   `.image` converts the texture2darray into a `PIL.Image`
@@ -490,6 +508,7 @@ To enable encryption simply use the code as follow, with `key` being the value t
 
 ```python
 import UnityPy
+
 UnityPy.set_assetbundle_decrypt_key(key)
 ```
 
@@ -499,6 +518,7 @@ In case UnityPy failed to detect the Unity version of the game assets, you can s
 
 ```python
 import UnityPy.config
+
 UnityPy.config.FALLBACK_UNITY_VERSION = "2.5.0f5"
 ```
 
@@ -508,6 +528,7 @@ The [C-implementation](UnityPyBoost/) of typetree reader can boost the parsing o
 
 ```python
 from UnityPy.helpers import TypeTreeHelper
+
 TypeTreeHelper.read_typetree_boost = False
 ```
 
@@ -517,9 +538,9 @@ Some game assets have non-standard compression/decompression algorithm applied o
 
 ```python
 from UnityPy.enums.BundleFile import CompressionFlags
-flag = CompressionFlags.LZHAM
-
 from UnityPy.helpers import CompressionHelper
+
+flag = CompressionFlags.LZHAM
 CompressionHelper.COMPRESSION_MAP[flag] = custom_compress
 CompressionHelper.DECOMPRESSION_MAP[flag] = custom_decompress
 ```
