@@ -9,18 +9,6 @@
 A Unity asset extractor for Python based on [AssetStudio](https://github.com/Perfare/AssetStudio).
 
 Next to extraction, UnityPy also supports editing Unity assets.
-Via the typetree structure all object types can be edited in their native forms.
-
-```python
-# modification via dict:
-    raw_dict = obj.parse_as_dict()
-    # modify raw dict
-    obj.patch(raw_dict)
-# modification via parsed class
-    instance = obj.parse_as_object()
-    # modify instance
-    obj.patch(instance)
-```
 
 If you need advice or if you want to talk about (game) data-mining,
 feel free to join the [UnityPy Discord](https://discord.gg/C6txv7M).
