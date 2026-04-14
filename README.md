@@ -138,39 +138,58 @@ It can also be used as a general template or as an importable tool.
 ### Environment
 
 [Environment](UnityPy/environment.py) loads and parses the given files.
-It can be initialized via:
 
--   a file path - apk files can be loaded as well
--   a folder path - loads all files in that folder (bad idea for folders with a lot of files)
--   a stream - e.g., `io.BytesIO`, file stream,...
--   a bytes object - will be loaded into a stream
+#### Initialization
+
+An Environment object can be created by providing:
+
+-   a file path - loads a single file (typically an asset bundle file, apk file or zip file).
+-   a folder path - loads all files in the given folder (bad idea for large folders).
+-   a streamable object - loads the data from the given stream (it can be `io.BytesIO`, file stream returned by `open()` and any other object that extends `io.IOBase`).
+-   a bytes object - loads the data from memory.
 
 UnityPy can detect if the file is a WebFile, BundleFile, Asset, or APK.
 
-The unpacked assets will be loaded into `.files`, a dict consisting of `asset-name : asset`.
-
-All objects of the loaded assets can be easily accessed via `.objects`,
-which itself is a simple recursive iterator.
+The following code shows the different ways to create an Environment object.
 
 ```python
 import io
 import UnityPy
 
-# all of the following would work
-src = "file_path"
-src = b"bytes"
-src = io.BytesIO(b"Streamable")
+# load from file path or folder path
+env = UnityPy.load("path/to/your/file")
 
-env = UnityPy.load(src)
+# note that the best way to pass a file to UnityPy is
+# using with-statement to ensure the file can be properly closed
+with open("path/to/your/file", "rb") as f:
+    env = UnityPy.load(f)
+
+# load from bytes io stream
+data = io.BytesIO(b"streamable-data")
+env = UnityPy.load(data)
+
+# load from bytes object
+data = b"some-bytes-data"
+env = UnityPy.load(data)
+```
+
+#### Attributes
+
+The unpacked assets will be loaded into `.files`, a dict consisting of `asset-name : asset`.
+
+All objects of the loaded assets can be easily accessed via `.objects`, which itself is a simple recursive iterator.
+If you want, you can modify the objects and save the edited file later.
+See [Object](#object) section to learn how to apply modifications to the objects.
+
+```python
+# assumes that you have already created an `env`
 
 for obj in env.objects:
+    # your code for processing each object
     ...
 
-# saving an edited file
-    # apply modifications to the objects
-    # don't forget to use data.save()
-    ...
-with open(dst, "wb") as f:
+# don't forget to save an edited file
+with open("path/to/save", "wb") as f:
     f.write(env.file.save())
 ```
 
