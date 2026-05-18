@@ -203,9 +203,15 @@ class Environment:
 
         return search(self)
 
+    def _build_container_index(self) -> None:
+        for f in self.cabs.values():
+            if isinstance(f, SerializedFile):
+                f.container.parse_preload_table()
+
     @property
     def container(self) -> ContainerHelper:
         """Returns a dictionary of all objects in the Environment."""
+        self._build_container_index()
         container = []
         for f in self.cabs.values():
             if isinstance(f, SerializedFile) and not f.is_dependency:
