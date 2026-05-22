@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from enum import IntEnum, IntFlag
-from importlib.resources import open_binary
 from io import BytesIO
 from struct import Struct
 from typing import Any, Dict, List, Optional, Tuple, TypeVar
@@ -18,8 +17,19 @@ NODES_CACHE: Dict[TpkUnityClass, TypeTreeNode] = {}
 
 
 def init():
-    with open_binary("UnityPy.resources", "lzma.tpk") as f:
-        data = f.read()
+    try:
+        from importlib.resources import files
+
+        def open_resource(package, resource):
+            return files(package).joinpath(resource).open("rb").read()
+            
+    except ImportError:
+        from importlib.resources import open_binary
+
+        def open_resource(package, resource):
+            return open_binary(package, resource).read()
+                
+    data = open_resource("UnityPy.resources", "lzma.tpk")
 
     global TPKTYPETREE
     with BytesIO(data) as stream:
