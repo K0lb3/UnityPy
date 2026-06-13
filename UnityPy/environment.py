@@ -32,6 +32,7 @@ class Environment:
     local_files: List[str]
     local_files_simple: List[str]
     typetree_generator: Optional["TypeTreeGenerator"] = None
+    _container_index_built: bool = False
 
     def __init__(self, *args: FileSourceType, fs: Optional[AbstractFileSystem] = None, path: Optional[str] = None):
         self.files = {}
@@ -39,6 +40,7 @@ class Environment:
         self.fs = fs or LocalFileSystem()
         self.local_files = []
         self.local_files_simple = []
+        self._container_index_built = False
 
         if path is None:
             # if no path is given, use the current working directory
@@ -204,6 +206,7 @@ class Environment:
         return search(self)
 
     def _build_container_index(self) -> None:
+        self._container_index_built = True
         for f in self.cabs.values():
             if isinstance(f, SerializedFile):
                 f.container.parse_preload_table()
@@ -211,7 +214,8 @@ class Environment:
     @property
     def container(self) -> ContainerHelper:
         """Returns a dictionary of all objects in the Environment."""
-        self._build_container_index()
+        if not self._container_index_built:
+            self._build_container_index()
         container = []
         for f in self.cabs.values():
             if isinstance(f, SerializedFile) and not f.is_dependency:
@@ -255,6 +259,7 @@ class Environment:
             The file to register.
         """
         self.cabs[simplify_name(name)] = item
+        self._container_index_built = False
 
     def get_cab(self, name: str) -> Union[SerializedFile, EndianBinaryReader, None]:
         """
