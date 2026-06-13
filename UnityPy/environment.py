@@ -206,9 +206,10 @@ class Environment:
         return search(self)
 
     def _build_container_index(self) -> None:
-        if not self._container_index_built:
-            self._container_index_built = True
+        if self._container_index_built:
+            return
 
+        self._container_index_built = True
         for f in self.cabs.values():
             if isinstance(f, SerializedFile):
                 f.container.parse_preload_table()
