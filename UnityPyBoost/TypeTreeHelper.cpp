@@ -15,7 +15,6 @@ typedef struct Reader
     uint8_t *ptr;
     uint8_t *end;
     uint8_t *start;
-    bool exhausted;
 } ReaderT;
 
 typedef struct TypeTreeReaderConfig
@@ -76,7 +75,6 @@ inline PyObject *read_bool(ReaderT *reader)
 {
     if (reader->ptr + 1 > reader->end)
     {
-        reader->exhausted = true;
         PyErr_SetString(PyExc_ValueError, "read_bool out of bounds");
         return NULL;
     }
@@ -89,7 +87,6 @@ inline PyObject *read_bool_array(ReaderT *reader, int32_t count)
 {
     if (reader->ptr + count > reader->end)
     {
-        reader->exhausted = true;
         PyErr_SetString(PyExc_ValueError, "read_bool_array out of bounds");
         return NULL;
     }
@@ -107,7 +104,6 @@ inline PyObject *read_u8(ReaderT *reader)
 {
     if (reader->ptr + 1 > reader->end)
     {
-        reader->exhausted = true;
         PyErr_SetString(PyExc_ValueError, "read_u8 out of bounds");
         return NULL;
     }
@@ -118,7 +114,6 @@ inline PyObject *read_u8_array(ReaderT *reader, int32_t count)
 {
     if (reader->ptr + count > reader->end)
     {
-        reader->exhausted = true;
         PyErr_SetString(PyExc_ValueError, "read_u8_array out of bounds");
         return NULL;
     }
@@ -134,7 +129,6 @@ inline PyObject *read_s8(ReaderT *reader)
 {
     if (reader->ptr + 1 > reader->end)
     {
-        reader->exhausted = true;
         PyErr_SetString(PyExc_ValueError, "read_s8 out of bounds");
         return NULL;
     }
@@ -145,7 +139,6 @@ inline PyObject *read_s8_array(ReaderT *reader, int32_t count)
 {
     if (reader->ptr + count > reader->end)
     {
-        reader->exhausted = true;
         PyErr_SetString(PyExc_ValueError, "read_s8_array out of bounds");
         return NULL;
     }
@@ -166,8 +159,8 @@ inline PyObject *read_num(ReaderT *reader)
 
     if (reader->ptr + sizeof(T) > reader->end)
     {
-        reader->exhausted = true;
-        return PyErr_Format(PyExc_ValueError, "read_%s out of bounds", typeid(T).name());
+        PyErr_Format(PyExc_ValueError, "read_%s out of bounds", typeid(T).name());
+        return nullptr;
     }
     T value = *(T *)reader->ptr;
     if constexpr (swap)
@@ -214,8 +207,8 @@ inline PyObject *read_num_array(ReaderT *reader, int32_t count)
 
     if (reader->ptr + sizeof(T) * count > reader->end)
     {
-        reader->exhausted = true;
-        return PyErr_Format(PyExc_ValueError, "read_%s_array out of bounds", typeid(T).name());
+        PyErr_Format(PyExc_ValueError, "read_%s_array out of bounds", typeid(T).name());
+        return nullptr;
     }
     PyObject *list = PyList_New(count);
     T *ptr = (T *)reader->ptr;
@@ -269,7 +262,6 @@ inline bool _read_length(ReaderT *reader, int32_t *length)
 {
     if (reader->ptr + sizeof(int32_t) > reader->end)
     {
-        reader->exhausted = true;
         PyErr_SetString(PyExc_ValueError, "read_length out of bounds");
         return false;
     }
@@ -297,7 +289,6 @@ inline PyObject *read_str(ReaderT *reader)
     }
     if (reader->ptr + length > reader->end)
     {
-        reader->exhausted = true;
         PyErr_SetString(PyExc_ValueError, "read_str out of bounds");
         return NULL;
     }
@@ -317,7 +308,6 @@ inline PyObject *read_bytes(ReaderT *reader)
     }
     if (reader->ptr + length > reader->end)
     {
-        reader->exhausted = true;
         PyErr_SetString(PyExc_ValueError, "read_bytes out of bounds");
         return NULL;
     }
@@ -705,13 +695,6 @@ const NodeDataType SUPPORTED_VALUE_ARRAY_READ_TYPES[] = {
 template <bool swap>
 PyObject *read_typetree_value(ReaderT *reader, TypeTreeNodeObject *node, TypeTreeReaderConfigT *config)
 {
-    if (reader->exhausted)
-    {
-        if (!PyErr_Occurred())
-            PyErr_SetString(PyExc_ValueError, "Read past end of typetree data");
-        return NULL;
-    }
-
     bool align = node->_align;
     PyObject *value = nullptr;
 
@@ -896,13 +879,6 @@ PyObject *read_typetree_value(ReaderT *reader, TypeTreeNodeObject *node, TypeTre
 template <bool swap>
 PyObject *read_typetree_value_array(ReaderT *reader, TypeTreeNodeObject *node, TypeTreeReaderConfigT *config, int32_t count)
 {
-    if (reader->exhausted)
-    {
-        if (!PyErr_Occurred())
-            PyErr_SetString(PyExc_ValueError, "Read past end of typetree data");
-        return NULL;
-    }
-
     bool align = node->_align;
     PyObject *value = nullptr;
 
@@ -945,7 +921,8 @@ PyObject *read_typetree_value_array(ReaderT *reader, TypeTreeNodeObject *node, T
         value = read_pair_array<swap>(reader, node, config, count);
         break;
     default:
-        value = PyErr_Format(PyExc_ValueError, "Unsupported type for read_typetree_value_array: %d", node->_data_type);
+        PyErr_Format(PyExc_ValueError, "Unsupported type for read_typetree_value_array: %d", node->_data_type);
+        value = nullptr;
     }
     if (align && value != NULL)
     {
@@ -1046,7 +1023,7 @@ PyObject *read_typetree(PyObject *self, PyObject *args, PyObject *kwargs)
     }
     }
 
-    reader = {static_cast<uint8_t *>(view.buf), static_cast<uint8_t *>(view.buf) + view.len, static_cast<uint8_t *>(view.buf), false};
+    reader = {static_cast<uint8_t *>(view.buf), static_cast<uint8_t *>(view.buf) + view.len, static_cast<uint8_t *>(view.buf)};
 
     if (swap)
     {
