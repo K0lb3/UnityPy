@@ -9,18 +9,6 @@
 A Unity asset extractor for Python based on [AssetStudio](https://github.com/Perfare/AssetStudio).
 
 Next to extraction, UnityPy also supports editing Unity assets.
-Via the typetree structure all object types can be edited in their native forms.
-
-```python
-# modification via dict:
-    raw_dict = obj.parse_as_dict()
-    # modify raw dict
-    obj.patch(raw_dict)
-# modification via parsed class
-    instance = obj.parse_as_object()
-    # modify instance
-    obj.patch(instance)
-```
 
 If you need advice or if you want to talk about (game) data-mining,
 feel free to join the [UnityPy Discord](https://discord.gg/C6txv7M).
@@ -28,16 +16,24 @@ feel free to join the [UnityPy Discord](https://discord.gg/C6txv7M).
 If you're using UnityPy for a commercial project,
 a donation to a charitable cause or a sponsorship of this project is expected.
 
-**As UnityPy is still in active development, breaking changes can happen.**
-These changes are usually limited to minor versions (x.y) and not to patch versions (x.y.z).
-So in case that you don't want to actively maintain your project,
-make sure to make a note of the used UnityPy version in your README or add a check in your code.
-e.g.
+> [!NOTE]
+> **As UnityPy is still in active development, breaking changes can happen.**
+> These changes are usually limited to minor versions (x.y) and not to patch versions (x.y.z).
+>
+> <details>
+> <summary>In case you don't want to actively maintain your project...</summary>
+> 
+> Make a note of the used UnityPy version in your README or add a check in your code.
+> 
+> ```python
+> if UnityPy.__version__ != '1.9.6':
+>     raise ImportError("Invalid UnityPy version detected. Please use version 1.9.6")
+> ```
+> 
+> You can also pin the version in your `requirements.txt` or `pyproject.toml` file, which is the best practice.
+> 
+> </details>
 
-```python
-if UnityPy.__version__ != '1.9.6':
-    raise ImportError("Invalid UnityPy version detected. Please use version 1.9.6")
-```
 
 1. [Installation](#installation)
 2. [Example](#example)
@@ -90,41 +86,44 @@ def unpack_all_assets(source_folder: str, destination_folder: str):
     # iterate over all files in source folder
     for root, dirs, files in os.walk(source_folder):
         for file_name in files:
-            # generate file_path
+            # generate full file path
             file_path = os.path.join(root, file_name)
-            # load that file via UnityPy.load
-            env = UnityPy.load(file_path)
+            # open and load that file
+            with open(file_path, "rb") as f:
+                env = UnityPy.load(f)
 
-            # iterate over internal objects
-            for obj in env.objects:
-                # process specific object types
-                if obj.type.name in ["Texture2D", "Sprite"]:
-                    # parse the object data
-                    data = obj.parse_as_object()
+                # iterate over internal objects
+                for obj in env.objects:
+                    # process specific object types
+                    if obj.type.name in ["Texture2D", "Sprite"]:
+                        # parse the object data
+                        data = obj.parse_as_object()
 
-                    # create destination path
-                    dest = os.path.join(destination_folder, data.m_Name)
+                        # generate destination path
+                        dest = os.path.join(destination_folder, data.m_Name)
 
-                    # make sure that the extension is correct
-                    # you probably only want to do so with images/textures
-                    dest, ext = os.path.splitext(dest)
-                    dest = dest + ".png"
+                        # make sure that the extension is correct
+                        # you probably only want to do so with images/textures
+                        dest, ext = os.path.splitext(dest)
+                        dest = dest + ".png"
 
-                    img = data.image
-                    img.save(dest)
+                        img = data.image
+                        img.save(dest)
 
-            # alternative way which keeps the original path
-            for path,obj in env.container.items():
-                if obj.type.name in ["Texture2D", "Sprite"]:
-                    data = obj.parse_as_object()
-                    # create dest based on original path
-                    dest = os.path.join(destination_folder, *path.split("/"))
-                    # make sure that the dir of that path exists
-                    os.makedirs(os.path.dirname(dest), exist_ok = True)
-                    # correct extension
-                    dest, ext = os.path.splitext(dest)
-                    dest = dest + ".png"
-                    data.image.save(dest)
+                # alternative way which keeps the original path
+                for path, obj in env.container.items():
+                    if obj.type.name in ["Texture2D", "Sprite"]:
+                        data = obj.parse_as_object()
+
+                        # generate destination based on original path
+                        dest = os.path.join(destination_folder, *path.split("/"))
+                        # make sure that the dir of that path exists
+                        os.makedirs(os.path.dirname(dest), exist_ok = True)
+
+                        # correct extension
+                        dest, ext = os.path.splitext(dest)
+                        dest = dest + ".png"
+                        data.image.save(dest)
 ```
 
 You probably have to read [Important Classes](#important-classes)
@@ -138,39 +137,69 @@ It can also be used as a general template or as an importable tool.
 ### Environment
 
 [Environment](UnityPy/environment.py) loads and parses the given files.
-It can be initialized via:
 
--   a file path - apk files can be loaded as well
--   a folder path - loads all files in that folder (bad idea for folders with a lot of files)
--   a stream - e.g., `io.BytesIO`, file stream,...
--   a bytes object - will be loaded into a stream
+#### Initialization
+
+An Environment object can be created by providing:
+
+-   a file path - loads a single file (typically an asset bundle file, apk file or zip file).
+-   a folder path - loads all files in the given folder (bad idea for large folders).
+-   a streamable object - loads the data from the given stream (it can be `io.BytesIO`, file stream returned by `open()` and any other object that extends `io.IOBase`).
+-   a bytes object - loads the data from memory.
 
 UnityPy can detect if the file is a WebFile, BundleFile, Asset, or APK.
 
+The following code shows the different ways to create an Environment object.
+
+1. Load from file path or folder path (most frequently used).
+    ```python
+    import UnityPy
+
+    env = UnityPy.load("path/to/your/file")
+
+    # it's suggested to keep the file open while using `env`
+    f = open("path/to/your/file", "rb")
+    try:
+        env = UnityPy.load(f)
+        # use env here ...
+    finally:
+        f.close()
+    ```
+
+2. Load from streamable object.
+    ```python
+    import io
+    import UnityPy
+
+    data = io.BytesIO(b"streamable-data")
+    env = UnityPy.load(data)
+    ```
+
+3. Load from bytes object.
+    ```python
+    import UnityPy
+
+    data = b"some-bytes-data"
+    env = UnityPy.load(data)
+    ```
+
+#### Attributes
+
 The unpacked assets will be loaded into `.files`, a dict consisting of `asset-name : asset`.
 
-All objects of the loaded assets can be easily accessed via `.objects`,
-which itself is a simple recursive iterator.
+All objects of the loaded assets can be easily accessed via `.objects`, which itself is a simple recursive iterator.
+If you want, you can modify the objects and save the edited file later.
+See [Object](#object) section to learn how to apply modifications to the objects.
 
 ```python
-import io
-import UnityPy
-
-# all of the following would work
-src = "file_path"
-src = b"bytes"
-src = io.BytesIO(b"Streamable")
-
-env = UnityPy.load(src)
+# assumes that you have already created an `env`
 
 for obj in env.objects:
+    # your code for processing each object
     ...
 
-# saving an edited file
-    # apply modifications to the objects
-    # don't forget to use data.save()
-    ...
-with open(dst, "wb") as f:
+# don't forget to save an edited file
+with open("path/to/save", "wb") as f:
     f.write(env.file.save())
 ```
 
@@ -187,12 +216,17 @@ The objects with a file path can be found in the `.container` dict - `{path : ob
 
 Objects \([ObjectReader class](UnityPy/files/ObjectReader.py)\) contain the _actual_ files, e.g., textures, text files, meshes, settings, ...
 
-To acquire the actual data of an object it has to be parsed first.
+> [!IMPORTANT]
+> 
+> To acquire the actual data of an object it has to be parsed first.
 This happens via the parse functions mentioned below.
 This isn't done automatically to save time as only a small part of the objects are usually of interest.
-Serialized objects can be set with raw data using `.set_raw_data(data)` or modified with `.save()` function, if supported.
 
-For object types with ``m_Name`` you can use ``.peek_name()`` to only read the name of the parsed object without parsing it completely, which is way faster.
+> [!TIP]
+>
+> For object types with attribute `.m_Name` you can use `.peek_name()` to only read the name of the parsed object without parsing it completely, which is way faster.
+
+Serialized objects can be set with raw data using `.set_raw_data(data)` or modified with `.save()` function, if supported.
 
 There are two general parsing functions, ``.parse_as_object()`` and ``.parse_as_dict()``.
 ``parse_as_dict`` parses the object data into a dict.
@@ -227,7 +261,7 @@ Following functions are legacy functions that will be removed in the future when
 The modern versions are equivalent to them and have a more correct type hints.
 
 | Legacy        | Modern          |
-|---------------|-----------------|
+| ------------- | --------------- |
 | read          | parse_as_object |
 | read_typetree | parse_as_dict   |
 | save_typetree | patch           |
@@ -248,6 +282,7 @@ Now UnityPy uses [auto generated classes](UnityPy/classes/generated.py) with som
 
 ```python
 from PIL import Image
+
 for obj in env.objects:
     if obj.type.name == "Texture2D":
         # export texture
@@ -331,7 +366,7 @@ for obj in env.objects:
         tree = obj.parse_as_dict()
         fp = os.path.join(extract_dir, f"{tree['m_Name']}.json")
         with open(fp, "wt", encoding = "utf8") as f:
-            json.dump(tree, f, ensure_ascii = False, indent = 4)
+            json.dump(tree, f, ensure_ascii=False, indent=4)
 
         # edit
         tree = obj.parse_as_dict()
@@ -410,14 +445,16 @@ The mesh will be converted to the Wavefront .obj file format.
 
 ```python
 mesh: Mesh
-with open(f"{mesh.m_Name}.obj", "wt", newline = "") as f:
+with open(f"{mesh.m_Name}.obj", "wt", newline="") as f:
     # newline = "" is important
     f.write(mesh.export())
 ```
 
 ### Renderer, MeshRenderer, SkinnedMeshRenderer
 
-ALPHA-VERSION
+> [!WARNING]
+> 
+> This feature is in alpha version.
 
 -   `.export(export_dir)` - exports the associated mesh, materials, and textures into the given directory
 
@@ -437,7 +474,9 @@ mesh_renderer.export(export_dir)
 
 ### Texture2DArray
 
-WARNING - not well tested
+> [!WARNING]
+> 
+> This feature isn't well tested.
 
 -   `.m_Name`
 -   `.image` converts the texture2darray into a `PIL.Image`
@@ -469,6 +508,7 @@ To enable encryption simply use the code as follow, with `key` being the value t
 
 ```python
 import UnityPy
+
 UnityPy.set_assetbundle_decrypt_key(key)
 ```
 
@@ -478,6 +518,7 @@ In case UnityPy failed to detect the Unity version of the game assets, you can s
 
 ```python
 import UnityPy.config
+
 UnityPy.config.FALLBACK_UNITY_VERSION = "2.5.0f5"
 ```
 
@@ -487,6 +528,7 @@ The [C-implementation](UnityPyBoost/) of typetree reader can boost the parsing o
 
 ```python
 from UnityPy.helpers import TypeTreeHelper
+
 TypeTreeHelper.read_typetree_boost = False
 ```
 
@@ -496,9 +538,9 @@ Some game assets have non-standard compression/decompression algorithm applied o
 
 ```python
 from UnityPy.enums.BundleFile import CompressionFlags
-flag = CompressionFlags.LZHAM
-
 from UnityPy.helpers import CompressionHelper
+
+flag = CompressionFlags.LZHAM
 CompressionHelper.COMPRESSION_MAP[flag] = custom_compress
 CompressionHelper.DECOMPRESSION_MAP[flag] = custom_decompress
 ```
