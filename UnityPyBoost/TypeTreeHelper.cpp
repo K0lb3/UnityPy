@@ -159,7 +159,8 @@ inline PyObject *read_num(ReaderT *reader)
 
     if (reader->ptr + sizeof(T) > reader->end)
     {
-        PyErr_Format(PyExc_ValueError, "read_%s out of bounds", typeid(T).name());
+        std::string error_msg = "read_" + std::string(typeid(T).name()) + " out of bounds";
+        PyErr_SetString(PyExc_EOFError, error_msg.c_str());
         return nullptr;
     }
     T value = *(T *)reader->ptr;
@@ -196,7 +197,9 @@ inline PyObject *read_num(ReaderT *reader)
     }
     else
     {
-        return PyErr_Format(PyExc_TypeError, "Unsupported type for read_num: %s", typeid(T).name());
+        std::string error_msg = "Unsupported type for read_num: " + std::string(typeid(T).name());
+        PyErr_SetString(PyExc_TypeError, error_msg.c_str());
+        return nullptr;
     }
 }
 
@@ -207,7 +210,8 @@ inline PyObject *read_num_array(ReaderT *reader, int32_t count)
 
     if (reader->ptr + sizeof(T) * count > reader->end)
     {
-        PyErr_Format(PyExc_ValueError, "read_%s_array out of bounds", typeid(T).name());
+        std::string error_msg = "read_" + std::string(typeid(T).name()) + "_array out of bounds";
+        PyErr_SetString(PyExc_EOFError, error_msg.c_str());
         return nullptr;
     }
     PyObject *list = PyList_New(count);
@@ -249,7 +253,9 @@ inline PyObject *read_num_array(ReaderT *reader, int32_t count)
         else
         {
             Py_DECREF(list);
-            return PyErr_Format(PyExc_TypeError, "Unsupported type for read_num_array: %s", typeid(T).name());
+            std::string error_msg = "Unsupported type for read_num_array: " + std::string(typeid(T).name());
+            PyErr_SetString(PyExc_TypeError, error_msg.c_str());
+            return nullptr;
         }
         PyList_SET_ITEM(list, i, item);
     }
@@ -262,7 +268,7 @@ inline bool _read_length(ReaderT *reader, int32_t *length)
 {
     if (reader->ptr + sizeof(int32_t) > reader->end)
     {
-        PyErr_SetString(PyExc_ValueError, "read_length out of bounds");
+        PyErr_SetString(PyExc_EOFError, "read_length out of bounds");
         return false;
     }
     *length = *(int32_t *)reader->ptr;
@@ -289,7 +295,7 @@ inline PyObject *read_str(ReaderT *reader)
     }
     if (reader->ptr + length > reader->end)
     {
-        PyErr_SetString(PyExc_ValueError, "read_str out of bounds");
+        PyErr_SetString(PyExc_EOFError, "read_str out of bounds");
         return NULL;
     }
     PyObject *py_str = PyUnicode_DecodeUTF8((char *)reader->ptr, length, "surrogateescape");
@@ -921,7 +927,8 @@ PyObject *read_typetree_value_array(ReaderT *reader, TypeTreeNodeObject *node, T
         value = read_pair_array<swap>(reader, node, config, count);
         break;
     default:
-        PyErr_Format(PyExc_ValueError, "Unsupported type for read_typetree_value_array: %d", node->_data_type);
+        std::string error_msg = "Unsupported type for read_value_array: " + std::to_string(node->_data_type);
+        PyErr_SetString(PyExc_TypeError, error_msg.c_str());
         value = nullptr;
     }
     if (align && value != NULL)
@@ -947,7 +954,8 @@ static bool is_null_none_or_type(PyObject *obj, PyTypeObject *type, const char *
     {
         return true;
     }
-    PyErr_Format(PyExc_TypeError, "Expected %s or None for %s, got %R", type_name, field_name, obj);
+    std::string error_msg = "Expected " + std::string(type_name) + " or None for " + std::string(field_name);
+    PyErr_SetString(PyExc_TypeError, error_msg.c_str());
     return false;
 }
 
