@@ -76,7 +76,7 @@ inline PyObject *read_bool(ReaderT *reader)
     if (reader->ptr + 1 > reader->end)
     {
         PyErr_SetString(PyExc_ValueError, "read_bool out of bounds");
-        return NULL;
+        return nullptr;
     }
     PyObject *value = *reader->ptr++ ? Py_True : Py_False;
     Py_INCREF(value);
@@ -88,7 +88,7 @@ inline PyObject *read_bool_array(ReaderT *reader, int32_t count)
     if (reader->ptr + count > reader->end)
     {
         PyErr_SetString(PyExc_ValueError, "read_bool_array out of bounds");
-        return NULL;
+        return nullptr;
     }
     PyObject *list = PyList_New(count);
     for (auto i = 0; i < count; i++)
@@ -105,7 +105,7 @@ inline PyObject *read_u8(ReaderT *reader)
     if (reader->ptr + 1 > reader->end)
     {
         PyErr_SetString(PyExc_ValueError, "read_u8 out of bounds");
-        return NULL;
+        return nullptr;
     }
     return PyLong_FromUnsignedLong(*reader->ptr++);
 }
@@ -115,7 +115,7 @@ inline PyObject *read_u8_array(ReaderT *reader, int32_t count)
     if (reader->ptr + count > reader->end)
     {
         PyErr_SetString(PyExc_ValueError, "read_u8_array out of bounds");
-        return NULL;
+        return nullptr;
     }
     PyObject *list = PyList_New(count);
     for (auto i = 0; i < count; i++)
@@ -130,7 +130,7 @@ inline PyObject *read_s8(ReaderT *reader)
     if (reader->ptr + 1 > reader->end)
     {
         PyErr_SetString(PyExc_ValueError, "read_s8 out of bounds");
-        return NULL;
+        return nullptr;
     }
     return PyLong_FromLong((int8_t)*reader->ptr++);
 }
@@ -140,7 +140,7 @@ inline PyObject *read_s8_array(ReaderT *reader, int32_t count)
     if (reader->ptr + count > reader->end)
     {
         PyErr_SetString(PyExc_ValueError, "read_s8_array out of bounds");
-        return NULL;
+        return nullptr;
     }
     PyObject *list = PyList_New(count);
     int8_t *ptr = (int8_t *)reader->ptr;
@@ -291,12 +291,12 @@ inline PyObject *read_str(ReaderT *reader)
     int32_t length;
     if (!_read_length<swap>(reader, &length))
     {
-        return NULL;
+        return nullptr;
     }
     if (reader->ptr + length > reader->end)
     {
         PyErr_SetString(PyExc_EOFError, "read_str out of bounds");
-        return NULL;
+        return nullptr;
     }
     PyObject *py_str = PyUnicode_DecodeUTF8((char *)reader->ptr, length, "surrogateescape");
     reader->ptr += length;
@@ -310,12 +310,12 @@ inline PyObject *read_bytes(ReaderT *reader)
     int32_t length;
     if (!_read_length<swap>(reader, &length))
     {
-        return NULL;
+        return nullptr;
     }
     if (reader->ptr + length > reader->end)
     {
         PyErr_SetString(PyExc_ValueError, "read_bytes out of bounds");
-        return NULL;
+        return nullptr;
     }
     PyObject *bytes = PyBytes_FromStringAndSize((char *)reader->ptr, length);
     reader->ptr += length;
@@ -328,19 +328,19 @@ inline PyObject *read_pair(ReaderT *reader, TypeTreeNodeObject *node, TypeTreeRe
     if (PyList_GET_SIZE(node->m_Children) != 2)
     {
         PyErr_SetString(PyExc_ValueError, "Pair node must have 2 children");
-        return NULL;
+        return nullptr;
     }
 
     PyObject *first = read_typetree_value<swap>(reader, (TypeTreeNodeObject *)PyList_GET_ITEM(node->m_Children, 0), config);
-    if (first == NULL)
+    if (first == nullptr)
     {
-        return NULL;
+        return nullptr;
     }
     PyObject *second = read_typetree_value<swap>(reader, (TypeTreeNodeObject *)PyList_GET_ITEM(node->m_Children, 1), config);
-    if (second == NULL)
+    if (second == nullptr)
     {
         Py_DECREF(first);
-        return NULL;
+        return nullptr;
     }
     // PyTuple_Pack creates two strong references
     PyObject *pair = PyTuple_Pack(2, first, second);
@@ -356,31 +356,31 @@ inline PyObject *read_pair_array(ReaderT *reader, TypeTreeNodeObject *node, Type
     if (PyList_GET_SIZE(node->m_Children) != 2)
     {
         PyErr_SetString(PyExc_ValueError, "Pair node must have 2 children");
-        return NULL;
+        return nullptr;
     }
 
     TypeTreeNodeObject *first_child = (TypeTreeNodeObject *)PyList_GET_ITEM(node->m_Children, 0);
     TypeTreeNodeObject *second_child = (TypeTreeNodeObject *)PyList_GET_ITEM(node->m_Children, 1);
 
     PyObject *list = PyList_New(count);
-    if (list == NULL)
+    if (list == nullptr)
     {
-        return NULL;
+        return nullptr;
     }
     for (auto i = 0; i < count; i++)
     {
         PyObject *first = read_typetree_value<swap>(reader, first_child, config);
-        if (first == NULL)
+        if (first == nullptr)
         {
             Py_DECREF(list);
-            return NULL;
+            return nullptr;
         }
         PyObject *second = read_typetree_value<swap>(reader, second_child, config);
-        if (second == NULL)
+        if (second == nullptr)
         {
             Py_DECREF(first);
             Py_DECREF(list);
-            return NULL;
+            return nullptr;
         }
         PyList_SET_ITEM(list, i, PyTuple_Pack(2, first, second)); // pack creates two strong references
         // so we need to decref both values here to bring their ref count back to 1
@@ -412,10 +412,10 @@ inline PyObject *read_class(ReaderT *reader, TypeTreeNodeObject *node, TypeTreeR
             }
         }
         PyObject *child_value = read_typetree_value<swap>(reader, child, config); // child_value: 1 refcount
-        if (child_value == NULL)
+        if (child_value == nullptr)
         {
             Py_DECREF(value); // value: 0 refcount
-            return NULL;
+            return nullptr;
         }
         int set_item_result;
         if constexpr (as_dict == true)
@@ -430,7 +430,7 @@ inline PyObject *read_class(ReaderT *reader, TypeTreeNodeObject *node, TypeTreeR
         {
             Py_DECREF(value);       // value: 0 refcount
             Py_DECREF(child_value); // child_value: 0 refcount
-            return NULL;
+            return nullptr;
         }
         // PyDict_SetItem increases ref count, so we need to decref here
         Py_DECREF(child_value); // child_value: 1 refcount
@@ -449,7 +449,7 @@ static PyObject *_get_annotations = nullptr;
 inline PyObject *get_annotations(PyObject *clz)
 {
 #if PY_VERSION_HEX >= 0x030e0000
-    return PyObject_CallFunctionObjArgs(_get_annotations, clz, NULL);
+    return PyObject_CallFunctionObjArgs(_get_annotations, clz, nullptr);
 #else
     return PyObject_GetAttrString(clz, "__annotations__");
 #endif
@@ -468,9 +468,9 @@ inline PyObject *parse_class(PyObject *kwargs, TypeTreeNodeObject *node, TypeTre
     // slots check
     PyObject *slots = nullptr;
 
-    if (kwargs == NULL)
+    if (kwargs == nullptr)
     {
-        return NULL;
+        return nullptr;
     }
 
     if (node->_data_type == NodeDataType::PPtr)
@@ -587,14 +587,14 @@ TypeTreeNodeObject *get_ref_type_node(PyObject *ref_object, PyObject *assetsfile
     if (assetsfile == Py_None)
     {
         PyErr_SetString(PyExc_ValueError, "Reference Type found but no SerializedFile passed as assetsfile to read_typetree!");
-        return NULL;
+        return nullptr;
     }
     PyObject *ref_types = PyObject_GetAttrString(assetsfile, "ref_types");
     if (!ref_types || !PyList_Check(ref_types))
     {
         Py_XDECREF(ref_types);
         PyErr_SetString(PyExc_ValueError, "No SerializedFile.ref_types");
-        return NULL;
+        return nullptr;
     }
 
     PyObject *type = PyDict_GetItemString(ref_object, "type");
@@ -602,12 +602,12 @@ TypeTreeNodeObject *get_ref_type_node(PyObject *ref_object, PyObject *assetsfile
     {
         Py_DECREF(ref_types);
         PyErr_SetString(PyExc_ValueError, "Failed to get 'type'");
-        return NULL;
+        return nullptr;
     }
 
-    PyObject *cls = NULL;
-    PyObject *ns = NULL;
-    PyObject *asm_ = NULL;
+    PyObject *cls = nullptr;
+    PyObject *ns = nullptr;
+    PyObject *asm_ = nullptr;
     if (PyDict_Check(type))
     {
         cls = PyDict_GetItemString(type, "class");
@@ -631,7 +631,7 @@ TypeTreeNodeObject *get_ref_type_node(PyObject *ref_object, PyObject *assetsfile
         Py_XDECREF(ns);
         Py_XDECREF(asm_);
         PyErr_SetString(PyExc_ValueError, "Failed to get 'class', 'ns' or 'asm'");
-        return NULL;
+        return nullptr;
     }
 
     if (PyUnicode_GET_LENGTH(cls) == 0)
@@ -644,7 +644,7 @@ TypeTreeNodeObject *get_ref_type_node(PyObject *ref_object, PyObject *assetsfile
     }
 
     Py_ssize_t ref_types_len = PyList_Size(ref_types);
-    TypeTreeNodeObject *ref_type_node = NULL;
+    TypeTreeNodeObject *ref_type_node = nullptr;
     for (Py_ssize_t i = 0; i < ref_types_len; i++)
     {
         PyObject *ref_type = PyList_GetItem(ref_types, i);
@@ -762,7 +762,7 @@ PyObject *read_typetree_value(ReaderT *reader, TypeTreeNodeObject *node, TypeTre
                 {
                     PyErr_SetString(PyExc_ValueError, "Failed to get ref type node");
                     Py_DECREF(value);
-                    return NULL;
+                    return nullptr;
                 }
                 else if (ref_node == (TypeTreeNodeObject *)Py_None)
                 {
@@ -777,16 +777,16 @@ PyObject *read_typetree_value(ReaderT *reader, TypeTreeNodeObject *node, TypeTre
                 child_value = read_typetree_value<swap>(reader, child, config);
             }
 
-            if (child_value == NULL)
+            if (child_value == nullptr)
             {
                 Py_DECREF(value);
-                return NULL;
+                return nullptr;
             }
             if (PyDict_SetItem(value, child->m_Name, child_value))
             {
                 Py_DECREF(value);
                 Py_DECREF(child_value);
-                return NULL;
+                return nullptr;
             }
             // dict increases ref count, so we need to decref here
             Py_DECREF(child_value);
@@ -794,11 +794,11 @@ PyObject *read_typetree_value(ReaderT *reader, TypeTreeNodeObject *node, TypeTre
         if (!config->as_dict)
         {
             PyObject *clz = PyObject_GetAttrString(config->classes, "UnknownObject");
-            if (clz == NULL)
+            if (clz == nullptr)
             {
                 PyErr_SetString(PyExc_ValueError, "Failed to get class");
                 Py_DECREF(value);
-                return NULL;
+                return nullptr;
             }
             PyObject *args = PyTuple_Pack(1, (PyObject *)node);
             PyObject *instance = PyObject_Call(clz, args, value);
@@ -822,7 +822,7 @@ PyObject *read_typetree_value(ReaderT *reader, TypeTreeNodeObject *node, TypeTre
             if (PyList_GET_SIZE(child->m_Children) != 2)
             {
                 PyErr_SetString(PyExc_ValueError, "Array node must have 2 children");
-                return NULL;
+                return nullptr;
             }
 
             if (child->_align)
@@ -832,24 +832,24 @@ PyObject *read_typetree_value(ReaderT *reader, TypeTreeNodeObject *node, TypeTre
             int32_t length;
             if (!_read_length<swap>(reader, &length))
             {
-                return NULL;
+                return nullptr;
             }
 
             child = (TypeTreeNodeObject *)PyList_GET_ITEM(child->m_Children, 1);
             if (std::find(std::begin(SUPPORTED_VALUE_ARRAY_READ_TYPES), std::end(SUPPORTED_VALUE_ARRAY_READ_TYPES), child->_data_type) == std::end(SUPPORTED_VALUE_ARRAY_READ_TYPES))
             {
                 value = PyList_New(length);
-                if (value == NULL)
+                if (value == nullptr)
                 {
-                    return NULL;
+                    return nullptr;
                 }
                 for (int i = 0; i < length; i++)
                 {
                     PyObject *item = read_typetree_value<swap>(reader, child, config);
-                    if (item == NULL)
+                    if (item == nullptr)
                     {
                         Py_DECREF(value);
-                        return NULL;
+                        return nullptr;
                     }
                     PyList_SET_ITEM(value, i, item);
                 }
@@ -874,7 +874,7 @@ PyObject *read_typetree_value(ReaderT *reader, TypeTreeNodeObject *node, TypeTre
         }
     }
 
-    if (align && value != NULL)
+    if (align && value != nullptr)
     {
         align4(reader);
     }
@@ -931,7 +931,7 @@ PyObject *read_typetree_value_array(ReaderT *reader, TypeTreeNodeObject *node, T
         PyErr_SetString(PyExc_TypeError, error_msg.c_str());
         value = nullptr;
     }
-    if (align && value != NULL)
+    if (align && value != nullptr)
     {
         align4(reader);
     }
@@ -961,7 +961,7 @@ static bool is_null_none_or_type(PyObject *obj, PyTypeObject *type, const char *
 
 PyObject *read_typetree(PyObject *self, PyObject *args, PyObject *kwargs)
 {
-    const char *kwlist[] = {"data", "node", "endian", "as_dict", "assetsfile", "classes", NULL};
+    const char *kwlist[] = {"data", "node", "endian", "as_dict", "assetsfile", "classes", nullptr};
     Py_buffer view;
     PyObject *node = nullptr;
     int as_dict = 1;
@@ -1027,7 +1027,7 @@ PyObject *read_typetree(PyObject *self, PyObject *args, PyObject *kwargs)
         Py_DECREF(config.assetfile);
         Py_DECREF(config.classes);
         PyErr_SetString(PyExc_ValueError, "Invalid endian");
-        return NULL;
+        return nullptr;
     }
     }
 
@@ -1052,7 +1052,7 @@ READ_TYPETREE_CLEANUP:
     Py_XDECREF(config.assetfile);
     Py_XDECREF(config.classes);
 
-    return (value != NULL) ? Py_BuildValue("(Nn)", value, bytes_read) : NULL;
+    return (value != nullptr) ? Py_BuildValue("(Nn)", value, bytes_read) : nullptr;
 }
 
 // TypeTreeNode impl
@@ -1141,7 +1141,7 @@ static int TypeTreeNode_init(TypeTreeNodeObject *self, PyObject *args, PyObject 
         "m_Index",
         "m_MetaFlag",
         "m_RefTypeHash",
-        NULL};
+        nullptr};
 
     // ensure all fields are set to 0
     // in case init fails, so that dealloc doesn't segfault
@@ -1244,16 +1244,16 @@ static PyMemberDef TypeTreeNode_members[] = {
     {"m_MetaFlag", T_OBJECT_EX, offsetof(TypeTreeNodeObject, m_MetaFlag), 0, ""},
     {"m_RefTypeHash", T_OBJECT_EX, offsetof(TypeTreeNodeObject, m_RefTypeHash), 0, ""},
     {"_clean_name", T_OBJECT_EX, offsetof(TypeTreeNodeObject, _clean_name), 0, ""},
-    {NULL} /* Sentinel */
+    {nullptr} /* Sentinel */
 };
 
 static PyTypeObject TypeTreeNodeType = []() -> PyTypeObject
 {
     PyTypeObject type = {
 #if PY_VERSION_HEX >= 0x03080000
-        PyVarObject_HEAD_INIT(NULL, 0)
+        PyVarObject_HEAD_INIT(nullptr, 0)
 #else
-        PyObject_HEAD_INIT(NULL) 0
+        PyObject_HEAD_INIT(nullptr) 0
 #endif
     };
     type.tp_name = "TypeTreeHelper.TypeTreeNode";
