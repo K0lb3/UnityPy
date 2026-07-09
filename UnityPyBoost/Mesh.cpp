@@ -39,7 +39,7 @@ PyObject *unpack_vertexdata(PyObject *self, PyObject *args)
         {
             PyBuffer_Release(&vertexDataView);
         }
-        return NULL;
+        return nullptr;
     }
 
     uint8_t *vertexData = (uint8_t *)vertexDataView.buf;
@@ -52,14 +52,14 @@ PyObject *unpack_vertexdata(PyObject *self, PyObject *args)
     {
         PyBuffer_Release(&vertexDataView);
         PyErr_SetString(PyExc_ValueError, "Vertex data access out of bounds");
-        return NULL;
+        return nullptr;
     }
 
     PyObject *res = PyBytes_FromStringAndSize(nullptr, componentBytesLength);
     if (!res)
     {
         PyBuffer_Release(&vertexDataView);
-        return NULL;
+        return nullptr;
     }
     uint8_t *componentBytes = (uint8_t *)PyBytes_AS_STRING(res);
 
@@ -102,7 +102,7 @@ PyObject *unpack_vertexdata(PyObject *self, PyObject *args)
     // uint32_t itemCount = componentBytesLength / componentByteSize;
     // PyObject *lst = PyList_New(itemCount);
     // if (!lst)
-    //     return NULL;
+    //     return nullptr;
 
     // switch (format)
     // {
@@ -124,7 +124,7 @@ PyObject *unpack_vertexdata(PyObject *self, PyObject *args)
     //         double x = _PyFloat_Unpack2(items++, 0);
     //         if (x == -1.0 && PyErr_Occurred())
     //         {
-    //             return NULL;
+    //             return nullptr;
     //         }
     //         PyList_SetItem(lst, i, PyFloat_FromDouble(x));
     //     }

@@ -62,15 +62,15 @@ PyObject *decrypt_block(PyObject *self, PyObject *args) {
         if (index_data.buf) PyBuffer_Release(&index_data);
         if (substitute_data.buf) PyBuffer_Release(&substitute_data);
         if (data.buf) PyBuffer_Release(&data);
-        return NULL;
+        return nullptr;
     }
 
-    PyObject *result = PyBytes_FromStringAndSize(NULL, data.len);
-    if (result == NULL) {
+    PyObject *result = PyBytes_FromStringAndSize(nullptr, data.len);
+    if (result == nullptr) {
         PyBuffer_Release(&index_data);
         PyBuffer_Release(&substitute_data);
         PyBuffer_Release(&data);
-        return NULL;
+        return nullptr;
     }
 
     unsigned char *result_raw = (unsigned char *)PyBytes_AS_STRING(result);

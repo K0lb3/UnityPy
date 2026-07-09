@@ -19,10 +19,10 @@ static struct PyMethodDef method_table[] = {
      (PyCFunction)decrypt_block,
      METH_VARARGS,
      "replacement for ArchiveStorageDecryptor.decrypt_block"},
-    {NULL,
-     NULL,
+    {nullptr,
+     nullptr,
      0,
-     NULL} // Sentinel value ending the table
+     nullptr} // Sentinel value ending the table
 };
 
 // A struct contains the definition of a module
@@ -32,10 +32,10 @@ static PyModuleDef UnityPyBoost_module = {
     "TODO",
     -1, // Optional size of the module state memory
     method_table,
-    NULL, // Optional slot definitions
-    NULL, // Optional traversal function
-    NULL, // Optional clear function
-    NULL  // Optional module deallocation function
+    nullptr, // Optional slot definitions
+    nullptr, // Optional traversal function
+    nullptr, // Optional clear function
+    nullptr  // Optional module deallocation function
 };
 
 // The module init function
