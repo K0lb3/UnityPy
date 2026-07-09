@@ -375,19 +375,26 @@ class MeshHandler:
                         swap,
                     )
                 else:
-                    componentBytes = bytearray(m_VertexCount * channel_dimension * component_byte_size)
+                    channelSize = channel_dimension * component_byte_size
 
-                    vertexBaseOffset = m_Stream.offset + m_Channel.offset
-                    for v in range(m_VertexCount):
-                        vertexOffset = vertexBaseOffset + m_Stream.stride * v
-                        for d in range(channel_dimension):
-                            componentOffset = vertexOffset + component_byte_size * d
-                            vertexDataSrc = componentOffset
-                            componentDataSrc = component_byte_size * (v * channel_dimension + d)
-                            buff = m_VertexData.m_DataSize[vertexDataSrc : vertexDataSrc + component_byte_size]
-                            if swap:  # swap bytes
-                                buff = buff[::-1]
-                            componentBytes[componentDataSrc : componentDataSrc + component_byte_size] = buff
+                    componentBytes = bytearray(m_VertexCount * channel_dimension * component_byte_size)
+                    vertexData = m_VertexData.m_DataSize
+
+                    componentOffset = 0
+                    vertexOffset = m_Stream.offset + m_Channel.offset
+
+                    for _ in range(m_VertexCount):
+                        componentBytes[componentOffset : componentOffset + channelSize] = vertexData[
+                            vertexOffset : vertexOffset + channelSize
+                        ]
+                        componentOffset += channelSize
+                        vertexOffset += m_Stream.stride
+
+                    if swap:
+                        for offset in range(0, len(componentBytes), component_byte_size):
+                            item = componentBytes[offset : offset + component_byte_size]
+                            item.reverse()
+                            componentBytes[offset : offset + component_byte_size] = item
 
                 component_data = list(struct.iter_unpack(f">{channel_dimension}{component_dtype}", componentBytes))
                 self.assign_channel_vertex_data(chn, component_data)
