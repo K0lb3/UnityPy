@@ -512,7 +512,7 @@ CONV_TABLE: Dict[TF, Tuple[Callable[..., Image.Image], Tuple[Any, ...]]] = {
     TF.RGB9e5Float: (rgb9e5float, ()),
     TF.BC4: (pillow, ("L", "bcn", 4)),
     TF.BC5: (pillow, ("RGB", "bcn", 5)),
-    TF.BC6H: (pillow, ("RGBA", "bcn", 6)),
+    TF.BC6H: (pillow, ("RGB", "bcn", 6)),
     TF.BC7: (pillow, ("RGBA", "bcn", 7)),
     TF.DXT1Crunched: (pillow, ("RGBA", "bcn", 1)),
     TF.DXT5Crunched: (pillow, ("RGBA", "bcn", 3)),
