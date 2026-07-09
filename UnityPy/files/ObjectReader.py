@@ -198,6 +198,9 @@ class ObjectReader(Generic[T]):
 
     @property
     def container(self):
+        env = self.assets_file.environment
+        if env is not None:
+            env._build_container_index()
         return self.assets_file._container.path_dict.get(self.path_id)
 
     @property
