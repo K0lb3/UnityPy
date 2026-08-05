@@ -191,10 +191,12 @@ class BundleFile(File.File):
 
         packer:
             can be either one of the following strings
-            or tuple consisting of (block_info_flag, data_flag)
+            or tuple consisting of (data_flag, block_info_flag)
             allowed strings:
                 none - no compression, default, safest bet
                 lz4 - lz4 compression
+                lz4hc - lz4hc compression
+                lzma - lzma compression
                 original - uses the original flags
         """
         # file_header
@@ -227,6 +229,8 @@ class BundleFile(File.File):
                 )
             elif packer == "lz4":
                 self.save_fs(writer, data_flag=194, block_info_flag=2)
+            elif packer == "lz4hc":
+                self.save_fs(writer, data_flag=195, block_info_flag=3)
             elif packer == "lzma":
                 self.save_fs(writer, data_flag=65, block_info_flag=1)
             elif isinstance(packer, tuple):
@@ -242,12 +246,13 @@ class BundleFile(File.File):
 
         # 0b1000000 / 0b11000000 | 64 / 192 - uncompressed
         # 0b11000010 | 194 - lz4
+        # 0b11000011 | 195 - lz4hc
         # block_info_flag
 
         # 0 / 0b1000000 | 0 / 64 - uncompressed
         # 0b1   | 1 - lzma
         # 0b10  | 2 - lz4
-        # 0b11  | 3 - lz4hc [not implemented]
+        # 0b11  | 3 - lz4hc
         # 0b100 | 4 - lzham [not implemented]
         # data_flag
 

@@ -176,7 +176,7 @@ class Environment:
     def save(self, pack="none", out_path="output"):
         """Saves all changed assets.
         Mark assets as changed using `.mark_changed()`.
-        pack = "none" (default) or "lz4"
+        pack = "none" (default), "lz4", "lz4hc", "lzma", or "original"
         """
         for fname, fitem in self.files.items():
             if getattr(fitem, "is_changed", False):
