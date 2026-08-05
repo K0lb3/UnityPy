@@ -176,7 +176,11 @@ class Environment:
     def save(self, pack="none", out_path="output"):
         """Saves all changed assets.
         Mark assets as changed using `.mark_changed()`.
-        pack = "none" (default), "lz4", "lz4hc", "lzma", or "original"
+
+        ``pack`` is forwarded as ``packer`` to each file's ``save()``.
+        Supported values depend on the file type, for example:
+            BundleFile - "none", "lz4", "lz4hc", "lzma", "original"
+            WebFile - "none", "gzip", "brotli"
         """
         for fname, fitem in self.files.items():
             if getattr(fitem, "is_changed", False):
