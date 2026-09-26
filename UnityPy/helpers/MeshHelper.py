@@ -635,8 +635,13 @@ class MeshHandler:
             ]
 
     def get_triangles(self) -> List[List[Tuple[int, ...]]]:
-        assert self.m_IndexBuffer is not None
         assert self.src.m_SubMeshes is not None
+
+        if self.m_IndexBuffer is None:
+            # a mesh can have vertices without indices, e.g. an empty placeholder mesh
+            if any(m_SubMesh.indexCount for m_SubMesh in self.src.m_SubMeshes):
+                raise ValueError("Failed getting triangles. The submeshes have indices, but the mesh has none.")
+            return [[] for _ in self.src.m_SubMeshes]
 
         submeshes: List[List[Tuple[int, ...]]] = []
 
