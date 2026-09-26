@@ -353,13 +353,19 @@ def atc(image_data: bytes, width: int, height: int, alpha: bool) -> Image.Image:
     return Image.frombytes("RGBA", (width, height), image_data, "raw", "BGRA")
 
 
-def astc(image_data: bytes, width: int, height: int, block_size: tuple) -> Image.Image:
+def astc(image_data: bytes, width: int, height: int, block_size: tuple, hdr: bool = False) -> Image.Image:
+    """Decode ASTC data to an RGBA image.
+
+    `hdr` selects the HDR decode profile, needed for the ASTC_HDR formats: the LDR profile does not decode HDR
+    blocks and returns magenta for blocks with HDR endpoint modes and white for HDR constant-colour blocks.
+    HDR values are clamped to [0, 1] in the 8-bit image.
+    """
     image = astc_encoder.ASTCImage(astc_encoder.ASTCType.U8, width, height, 1)
     texture_size = calculate_astc_compressed_size(width, height, block_size)
     if len(image_data) < texture_size:
         raise ValueError(f"Invalid ASTC data size: {len(image_data)} < {texture_size}")
 
-    context = get_astc_context(block_size)
+    context = get_astc_context(block_size, hdr)
     context.decompress(image_data[:texture_size], image, astc_encoder.ASTCSwizzle.from_str("RGBA"))
     assert image.data is not None, "Decompression failed, image data is None"
 
@@ -367,24 +373,29 @@ def astc(image_data: bytes, width: int, height: int, block_size: tuple) -> Image
 
 
 @lru_cache(maxsize=128)
-def _get_astc_context(ident: int, block_size: tuple):
-    config = astc_encoder.ASTCConfig(
-        astc_encoder.ASTCProfile.LDR,
-        *block_size,
-        block_z=1,
-        quality=100,
-        flags=astc_encoder.ASTCConfigFlags.USE_DECODE_UNORM8,
-    )
+def _get_astc_context(ident: int, block_size: tuple, hdr: bool = False):
+    if hdr:
+        # the unorm8 decode mode is only valid for the LDR profiles
+        config = astc_encoder.ASTCConfig(astc_encoder.ASTCProfile.HDR, *block_size, block_z=1, quality=100)
+    else:
+        config = astc_encoder.ASTCConfig(
+            astc_encoder.ASTCProfile.LDR,
+            *block_size,
+            block_z=1,
+            quality=100,
+            flags=astc_encoder.ASTCConfigFlags.USE_DECODE_UNORM8,
+        )
     context = astc_encoder.ASTCContext(config)
     return context
 
 
-def get_astc_context(block_size: tuple):
-    """Get the ASTC context for the current thread using the given `block_size`.
+def get_astc_context(block_size: tuple, hdr: bool = False):
+    """Get the ASTC context for the current thread using the given `block_size`,
+    with the HDR profile if `hdr` is set, else the LDR profile.
     Created contexts belong to and only to the calling thread, and may be cached.
     This function is thread safe.
     """
-    return _get_astc_context(get_ident(), block_size)
+    return _get_astc_context(get_ident(), block_size, hdr)
 
 
 def calculate_astc_compressed_size(width: int, height: int, block_size: tuple) -> int:
@@ -546,12 +557,12 @@ CONV_TABLE: Dict[TF, Tuple[Callable[..., Image.Image], Tuple[Any, ...]]] = {
     TF.ETC_RGBA8_3DS: (etc, ("ETC1",)),
     TF.ETC_RGB4Crunched: (etc, ("ETC1",)),
     TF.ETC2_RGBA8Crunched: (etc, ("ETC2_A8",)),
-    TF.ASTC_HDR_4x4: (astc, ((4, 4),)),
-    TF.ASTC_HDR_5x5: (astc, ((5, 5),)),
-    TF.ASTC_HDR_6x6: (astc, ((6, 6),)),
-    TF.ASTC_HDR_8x8: (astc, ((8, 8),)),
-    TF.ASTC_HDR_10x10: (astc, ((10, 10),)),
-    TF.ASTC_HDR_12x12: (astc, ((12, 12),)),
+    TF.ASTC_HDR_4x4: (astc, ((4, 4), True)),
+    TF.ASTC_HDR_5x5: (astc, ((5, 5), True)),
+    TF.ASTC_HDR_6x6: (astc, ((6, 6), True)),
+    TF.ASTC_HDR_8x8: (astc, ((8, 8), True)),
+    TF.ASTC_HDR_10x10: (astc, ((10, 10), True)),
+    TF.ASTC_HDR_12x12: (astc, ((12, 12), True)),
     TF.RG32: (rg, ("RGB", "raw", "RG;16")),
     TF.RGB48: (pillow, ("RGB", "raw", "RGB;16")),
     TF.RGBA64: (pillow, ("RGBA", "raw", "RGBA;16")),
