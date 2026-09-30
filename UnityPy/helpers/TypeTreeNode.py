@@ -108,6 +108,12 @@ class TypeTreeNode(TypeTreeNodeC):
 
     @classmethod
     def parse_blob(cls, reader: EndianBinaryReader, version: int) -> TypeTreeNode:
+        if version >= 23:
+            if reader.read_bytes(4) != b"mhtt":
+                raise ValueError("Invalid type tree blob magic")
+            format_version = reader.read_int()
+            if format_version != version:
+                raise ValueError("Inconsistent type tree format version detected")
         node_count = reader.read_int()
         stringbuffer_size = reader.read_int()
 
@@ -270,6 +276,9 @@ class TypeTreeNode(TypeTreeNodeC):
         node_count = len([write_node(node) for node in self.traverse()])
 
         # write blob
+        if version >= 23:
+            writer.write(b"mhtt")
+            writer.write_int(version)
         writer.write_int(node_count)
         writer.write_int(string_writer.Position)
         writer.write(node_writer.bytes)
