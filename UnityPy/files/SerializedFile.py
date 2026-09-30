@@ -109,6 +109,9 @@ class SerializedType:
     m_AssemblyName: Optional[str] = None
     # 21+
     type_dependencies: Optional[Tuple[int, ...]] = None
+    # 23+
+    type_tree_content_hash: Optional[bytes] = None  # Hash128, XXH3
+    type_tree_serialized_size: Optional[int] = None
 
     def __init__(
         self,
@@ -136,8 +139,13 @@ class SerializedType:
             self.old_type_hash = reader.read_bytes(16)
 
         if serialized_file._enable_type_tree:
+            if version >= 23:
+                self.type_tree_content_hash = reader.read_bytes(16)
+                self.type_tree_serialized_size = reader.read_int()
+
             if version >= 12 or version == 10:
-                self.node = TypeTreeNode.parse_blob(reader, version)
+                if version < 23 or self.type_tree_serialized_size:
+                    self.node = TypeTreeNode.parse_blob(reader, version)
             else:
                 self.node = TypeTreeNode.parse(reader, version)
 
@@ -179,8 +187,19 @@ class SerializedType:
 
         if serialized_file._enable_type_tree:
             assert self.node is not None
+            if version >= 23:
+                assert self.type_tree_content_hash is not None
+                writer.write_bytes(self.type_tree_content_hash)  # Hash128
+
             if version >= 12 or version == 10:
-                self.node.dump_blob(writer, version)
+                if version >= 23:
+                    blob_writer = EndianBinaryWriter(endian=writer.endian)
+                    self.node.dump_blob(blob_writer, version)
+                    blob_data = blob_writer.bytes
+                    writer.write_int(len(blob_data))
+                    writer.write(blob_data)
+                else:
+                    self.node.dump_blob(writer, version)
             else:
                 serialized_file.dump(writer, version)
 
