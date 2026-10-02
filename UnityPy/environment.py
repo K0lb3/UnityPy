@@ -170,7 +170,13 @@ class Environment:
             raise TypeError("Unsupported type for loading zip file")
 
         z = ZipFile(buffer)
-        self.load_assets(z.namelist(), lambda x: z.open(x, "r"))  # type: ignore
+
+        def load_internal_file(name: str):
+            # decode directly first, as the io calls will otherwise be extremely slow
+            file_data = z.open(name, "r").read()
+            return io.BytesIO(file_data)
+
+        self.load_assets(z.namelist(), load_internal_file)
         z.close()
 
     def save(self, pack="none", out_path="output"):
