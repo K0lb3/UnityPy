@@ -186,9 +186,9 @@ def chunk_based_compress(data: ByteString, block_info_flag: int) -> Tuple[ByteSt
     uncompressed_data_size = len(data)
     compressed_file_data = bytearray()
     p = 0
-    while uncompressed_data_size > chunk_size:
+    while uncompressed_data_size >= chunk_size:
         compressed_data = compress_func(data[p : p + chunk_size])
-        if len(compressed_data) > chunk_size:
+        if len(compressed_data) >= chunk_size:
             compressed_file_data.extend(data[p : p + chunk_size])
             block_info.append(
                 (
