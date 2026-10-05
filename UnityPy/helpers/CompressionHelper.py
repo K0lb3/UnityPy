@@ -1,12 +1,14 @@
 import gzip
 import lzma
 import struct
-from typing import Callable, Dict, Tuple, Union
+from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import brotli
 import lz4.block
+from attrs import define
 
 from ..enums.BundleFile import CompressionFlags
+from ..streams import EndianBinaryReader, EndianBinaryWriter
 
 ByteString = Union[bytes, bytearray, memoryview]
 GZIP_MAGIC: bytes = b"\x1f\x8b"
@@ -155,7 +157,31 @@ def compress_gzip(data: ByteString) -> bytes:
     return gzip.compress(data)
 
 
-def chunk_based_compress(data: ByteString, block_info_flag: int) -> Tuple[ByteString, list]:
+@define(slots=True, frozen=True)
+class BlockInfo:
+    uncompressedSize: int
+    compressedSize: int
+    flags: int
+    offset: Optional[int] = None
+
+    @classmethod
+    def from_reader(cls, reader: EndianBinaryReader, version: int):
+        return cls(
+            reader.read_u_int(),  # uncompressedSize
+            reader.read_u_int(),  # compressedSize
+            reader.read_u_short(),  # flags
+            offset=reader.read_u_long() if version >= 9 else None,
+        )
+
+    def write_to(self, writer: EndianBinaryWriter):
+        writer.write_u_int(self.uncompressedSize)
+        writer.write_u_int(self.compressedSize)
+        writer.write_u_short(self.flags)
+        if self.offset is not None:
+            writer.write_u_long(self.offset)
+
+
+def chunk_based_compress(data: ByteString, block_info_flag: int, version: int) -> Tuple[ByteString, List[BlockInfo]]:
     """compresses AssetBundle data based on the block_info_flag
     LZ4/LZ4HC will be chunk-based compression
 
@@ -170,7 +196,7 @@ def chunk_based_compress(data: ByteString, block_info_flag: int) -> Tuple[ByteSt
     chunk_size = None
     compress_func = None
     if switch == 0:  # NONE
-        return data, [(len(data), len(data), block_info_flag)]
+        return data, [BlockInfo(len(data), len(data), block_info_flag, None if version < 9 else 0)]
 
     if switch in COMPRESSION_MAP:
         compress_func = COMPRESSION_MAP[switch]
@@ -183,52 +209,36 @@ def chunk_based_compress(data: ByteString, block_info_flag: int) -> Tuple[ByteSt
         raise NotImplementedError(f"No chunk size in the CompressionHelper.COMPRESSION_CHUNK_SIZE_MAP for {switch}")
 
     block_info = []
-    uncompressed_data_size = len(data)
-    compressed_file_data = bytearray()
-    p = 0
-    while uncompressed_data_size >= chunk_size:
-        compressed_data = compress_func(data[p : p + chunk_size])
-        if len(compressed_data) >= chunk_size:
-            compressed_file_data.extend(data[p : p + chunk_size])
-            block_info.append(
-                (
-                    chunk_size,
-                    chunk_size,
-                    block_info_flag ^ switch,
-                )
+    uncompressed_offset = 0
+    compressed_data = bytearray()
+    while uncompressed_offset < len(data):
+        chunk_flag = block_info_flag
+        uncompressed_chunk = data[uncompressed_offset : uncompressed_offset + chunk_size]
+        compressed_chunk = compress_func(uncompressed_chunk)
+
+        if len(compressed_data) >= chunk_size:  # compression has no effect, so store as uncompressed
+            compressed_chunk = uncompressed_chunk
+            chunk_flag = block_info_flag ^ switch
+
+        block_info.append(
+            BlockInfo(
+                len(uncompressed_chunk),
+                len(compressed_chunk),
+                chunk_flag,
+                len(compressed_data) if version >= 9 else None,
             )
-        else:
-            compressed_file_data.extend(compressed_data)
-            block_info.append(
-                (
-                    chunk_size,
-                    len(compressed_data),
-                    block_info_flag,
-                )
-            )
-        p += chunk_size
-        uncompressed_data_size -= chunk_size
-    if uncompressed_data_size > 0:
-        compressed_data = compress_func(data[p:])
-        if len(compressed_data) > uncompressed_data_size:
-            compressed_file_data.extend(data[p:])
-            block_info.append(
-                (
-                    uncompressed_data_size,
-                    uncompressed_data_size,
-                    block_info_flag ^ switch,
-                )
-            )
-        else:
-            compressed_file_data.extend(compressed_data)
-            block_info.append(
-                (
-                    uncompressed_data_size,
-                    len(compressed_data),
-                    block_info_flag,
-                )
-            )
-    return bytes(compressed_file_data), block_info
+        )
+
+        compressed_data.extend(compressed_chunk)
+        if version >= 9:
+            # align by 16
+            alignment = 16
+            align = (alignment - len(compressed_data) % alignment) % alignment
+            compressed_data.extend(b"\x00" * align)
+
+        uncompressed_offset += chunk_size
+
+    return compressed_data, block_info
 
 
 def decompress_lzham(data: ByteString, uncompressed_size: int) -> bytes:
@@ -272,4 +282,5 @@ __all__ = (
     "COMPRESSION_MAP",
     "DECOMPRESSION_MAP",
     "COMPRESSION_CHUNK_SIZE_MAP",
+    "BlockInfo",
 )

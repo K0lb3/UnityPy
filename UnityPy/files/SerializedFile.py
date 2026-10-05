@@ -9,7 +9,7 @@ from .. import config
 from ..enums import BuildTarget, ClassIDType
 from ..helpers.ContainerHelper import ContainerHelper
 from ..helpers.Tpk import get_common_strings
-from ..helpers.TypeTreeHelper import TypeTreeNode
+from ..helpers.TypeTreeNode import TypeTreeNode, TypeTreeNodeInfoHandler
 from ..helpers.UnityVersion import UnityVersion
 from ..streams import EndianBinaryWriter
 from . import BundleFile, File
@@ -110,8 +110,7 @@ class SerializedType:
     # 21+
     type_dependencies: Optional[Tuple[int, ...]] = None
     # 23+
-    type_tree_content_hash: Optional[bytes] = None  # Hash128, XXH3
-    type_tree_serialized_size: Optional[int] = None
+    node_info_handler: Optional[TypeTreeNodeInfoHandler] = None
 
     def __init__(
         self,
@@ -140,12 +139,11 @@ class SerializedType:
 
         if serialized_file._enable_type_tree:
             if version >= 23:
-                self.type_tree_content_hash = reader.read_bytes(16)
-                self.type_tree_serialized_size = reader.read_int()
-
-            if version >= 12 or version == 10:
-                if version < 23 or self.type_tree_serialized_size:
-                    self.node = TypeTreeNode.parse_blob(reader, version)
+                self.node_info_handler = TypeTreeNodeInfoHandler.from_reader(reader)
+                if self.node_info_handler.info is not None:
+                    self.node = self.node_info_handler.info.node
+            elif version >= 12 or version == 10:
+                self.node = TypeTreeNode.parse_blob(reader, version)
             else:
                 self.node = TypeTreeNode.parse(reader, version)
 
@@ -188,10 +186,10 @@ class SerializedType:
         if serialized_file._enable_type_tree:
             assert self.node is not None
             if version >= 23:
-                assert self.type_tree_content_hash is not None
-                writer.write_bytes(self.type_tree_content_hash)  # Hash128
+                assert self.node_info_handler is not None
+                self.node_info_handler.to_writer(writer)
 
-            if version >= 12 or version == 10:
+            elif version >= 12 or version == 10:
                 if version >= 23:
                     blob_writer = EndianBinaryWriter(endian=writer.endian)
                     self.node.dump_blob(blob_writer, version)
@@ -233,6 +231,7 @@ class SerializedFile(File.File):
     script_types: List[LocalSerializedObjectIdentifier]
     externals: List[FileIdentifier]
     ref_types: Optional[List[SerializedType]]
+    shared_subtrees: Optional[dict[bytes, TypeTreeNodeInfoHandler]]
     objects: Dict[int, ObjectReader]
     unknown: int
     header: SerializedFileHeader
@@ -262,6 +261,8 @@ class SerializedFile(File.File):
         self.types = []
         self.script_types = []
         self.externals = []
+        self.ref_types = None
+        self.shared_subtrees = None
         self.objects = {}
         # used to speed up mass asset extraction
         # some assets refer to each other, so by keeping the result
@@ -327,6 +328,15 @@ class SerializedFile(File.File):
             ref_type_count = reader.read_int()
             self.ref_types = [SerializedType(reader, self, True) for _ in range(ref_type_count)]
 
+        if header.version >= 26:
+            subtrees = {}
+            shared_subtree_count = reader.read_int()
+            for _ in range(shared_subtree_count):
+                info_handler = TypeTreeNodeInfoHandler.from_reader(reader)
+                subtrees[info_handler.hash] = info_handler
+            self.shared_subtrees = subtrees
+            self._resolve_shared_subtrees()
+
         if config.SERIALIZED_FILE_PARSE_TYPETREE is False:
             self._enable_type_tree = False
 
@@ -342,6 +352,46 @@ class SerializedFile(File.File):
         else:
             self.assetbundle = None
             self._container = ContainerHelper([])
+
+    def _resolve_shared_subtrees(self):
+        subtrees = self.shared_subtrees
+        assert subtrees is not None, "Trying to resolve shared subtrees but none are set!"
+        resolved: dict[bytes, List[TypeTreeNode]] = {}
+
+        def resolve_subtree_node(node: TypeTreeNode, hashes: List[bytes]) -> TypeTreeNode:
+            # ensure that the children are all handled
+            for subnode in list(node.traverse())[1:]:
+                if subnode.m_TypeFlags & 32:
+                    resolve_subtree_node(subnode, hashes)
+            # nothing to do here
+            if node.m_TypeFlags is None or node.m_TypeFlags & 32 == 0:
+                return node
+            # resolve the reference to a shared tree
+            ref_type_idx = node.m_RefTypeHash
+            if ref_type_idx is None:
+                raise ValueError("Assempting to resolve subtrees, but got a m_RefTypeHash of type None")
+            ref_type_hash = hashes[node.m_RefTypeHash]
+            # check if we already resolved that shared subtree
+            if ref_type_hash not in resolved:
+                info_handler = subtrees[ref_type_hash]
+                if info_handler.info:
+                    resolved_node = resolve_subtree_node(info_handler.info.node, info_handler.info.ref_hashes)
+                    # cache children
+                    resolved[ref_type_hash] = resolved_node.m_Children
+                else:
+                    resolved[ref_type_hash] = []
+            # assign subtree to node
+            node.m_Children = resolved[ref_type_hash]
+            return node
+
+        for typ in self.types:
+            if typ.node_info_handler and typ.node_info_handler.info:
+                info = typ.node_info_handler.info
+                typ.node = resolve_subtree_node(info.node, info.ref_hashes)
+        for typ in self.ref_types or []:
+            if typ.node_info_handler and typ.node_info_handler.info:
+                info = typ.node_info_handler.info
+                typ.node = resolve_subtree_node(info.node, info.ref_hashes)
 
     @property
     def container(self):
@@ -454,6 +504,12 @@ class SerializedFile(File.File):
             meta_writer.write_int(len(self.ref_types))
             for ref_type in self.ref_types:
                 ref_type.write(self, meta_writer, True)
+
+        if header.version >= 26:
+            assert self.shared_subtrees is not None
+            meta_writer.write_int(len(self.shared_subtrees))
+            for info in self.shared_subtrees.values():
+                info.to_writer(meta_writer)
 
         if header.version >= 5:
             assert self.userInformation is not None

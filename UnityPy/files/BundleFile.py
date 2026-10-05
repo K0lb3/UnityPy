@@ -1,7 +1,8 @@
 # TODO: implement encryption for saving files
 import re
-from collections import namedtuple
 from typing import Optional, Union, cast
+
+from attrs import define
 
 from .. import config
 from ..enums import ArchiveFlags, ArchiveFlagsOld, CompressionFlags
@@ -10,9 +11,15 @@ from ..helpers.UnityVersion import UnityVersion
 from ..streams import EndianBinaryReader, EndianBinaryWriter
 from . import File
 
-BlockInfo = namedtuple("BlockInfo", "uncompressedSize compressedSize flags")
-DirectoryInfoFS = namedtuple("DirectoryInfoFS", "offset size flags path")
 reVersion = re.compile(r"(\d+)\.(\d+)\.(\d+)\w.+")
+
+
+@define(slots=True, frozen=True)
+class DirectoryInfoFS:
+    offset: int
+    size: int
+    flags: int
+    path: str
 
 
 class BundleFile(File.File):
@@ -143,14 +150,8 @@ class BundleFile(File.File):
 
         uncompressedDataHash = blocksInfoReader.read_bytes(16)  # noqa: F841
         blocksInfoCount = blocksInfoReader.read_int()
-
         m_BlocksInfo = [
-            BlockInfo(
-                blocksInfoReader.read_u_int(),  # uncompressedSize
-                blocksInfoReader.read_u_int(),  # compressedSize
-                blocksInfoReader.read_u_short(),  # flags
-            )
-            for _ in range(blocksInfoCount)
+            CompressionHelper.BlockInfo.from_reader(blocksInfoReader, self.version) for _ in range(blocksInfoCount)
         ]
 
         nodesCount = blocksInfoReader.read_int()
@@ -170,15 +171,10 @@ class BundleFile(File.File):
         if isinstance(self.dataflags, ArchiveFlags) and self.dataflags & ArchiveFlags.BlockInfoNeedPaddingAtStart:
             reader.align_stream(16)
 
+        base_offset = reader.Position
         blocksReader = EndianBinaryReader(
             b"".join(
-                self.decompress_data(
-                    reader.read_bytes(blockInfo.compressedSize),
-                    blockInfo.uncompressedSize,
-                    blockInfo.flags,
-                    i,
-                )
-                for i, blockInfo in enumerate(m_BlocksInfo)
+                self.decompress_block(i, blockInfo, reader, base_offset) for i, blockInfo in enumerate(m_BlocksInfo)
             ),
             offset=(blocksInfoReader.real_offset()),
         )
@@ -311,20 +307,15 @@ class BundleFile(File.File):
         if data_flag & self.dataflags.UsesAssetBundleEncryption:
             data_flag ^= self.dataflags.UsesAssetBundleEncryption
 
-        file_data, block_info = CompressionHelper.chunk_based_compress(file_data, block_info_flag)
+        file_data, block_infos = CompressionHelper.chunk_based_compress(file_data, block_info_flag, self.version)
 
         # write the block_info
         # uncompressedDataHash
         block_writer = EndianBinaryWriter(b"\x00" * 0x10)
         # data block info
-        block_writer.write_int(len(block_info))
-        for block_uncompressed_size, block_compressed_size, block_flag in block_info:
-            # uncompressed size
-            block_writer.write_u_int(block_uncompressed_size)
-            # compressed size
-            block_writer.write_u_int(block_compressed_size)
-            # flag
-            block_writer.write_u_short(block_flag)
+        block_writer.write_int(len(block_infos))
+        for block_info in block_infos:
+            block_info.write_to(block_writer)
 
         # file block info
         if not data_flag & 0x40:
@@ -491,6 +482,14 @@ class BundleFile(File.File):
         # Write compressed content
         writer.write(compressed_content)
 
+    def decompress_block(
+        self, index: int, block_info: CompressionHelper.BlockInfo, reader: EndianBinaryReader, base_offset: int
+    ):
+        if block_info.offset is not None:
+            reader.seek(block_info.offset + base_offset)
+        compressed_data = reader.read_bytes(block_info.compressedSize)
+        return self.decompress_data(compressed_data, block_info.uncompressedSize, block_info.flags, index)
+
     def decompress_data(
         self,
         compressed_data: bytes,
@@ -513,6 +512,9 @@ class BundleFile(File.File):
         bytes
             The decompressed data."""
         comp_flag = CompressionFlags(flags & ArchiveFlags.CompressionTypeMask)
+
+        if uncompressed_size == 0:
+            return b""
 
         if self.decryptor is not None and flags & 0x100 and comp_flag != CompressionFlags.NONE:
             compressed_data = self.decryptor.decrypt_block(compressed_data, index)

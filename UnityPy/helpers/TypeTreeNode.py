@@ -21,7 +21,7 @@ from ..streams.EndianBinaryReader import EndianBinaryReader
 from ..streams.EndianBinaryWriter import EndianBinaryWriter
 
 try:
-    from ..UnityPyBoost import TypeTreeNode as TypeTreeNodeC  # type: ignore
+    from ..UnityPyBoost import TypeTreeNode as TypeTreeNodeC
 except ImportError:
 
     @define(slots=True)
@@ -66,11 +66,13 @@ NAME_PEEK_NODE_CACHE: dict[Tuple[str, str, int], Union[Tuple[TypeTreeNode, str],
 
 
 class TypeTreeNode(TypeTreeNodeC):
-    def traverse(self) -> Iterator[TypeTreeNode]:
+    def traverse(self, ignore_shared_children: bool = False) -> Iterator[TypeTreeNode]:
         stack: list[TypeTreeNode] = [self]
         while stack:
             node = stack.pop()
             yield node
+            if ignore_shared_children and node.m_TypeFlags & 32 != 0:
+                continue
             stack.extend(reversed(node.m_Children))
 
     @classmethod
@@ -108,12 +110,6 @@ class TypeTreeNode(TypeTreeNodeC):
 
     @classmethod
     def parse_blob(cls, reader: EndianBinaryReader, version: int) -> TypeTreeNode:
-        if version >= 23:
-            if reader.read_bytes(4) != b"mhtt":
-                raise ValueError("Invalid type tree blob magic")
-            format_version = reader.read_int()
-            if format_version != version:
-                raise ValueError("Inconsistent type tree format version detected")
         node_count = reader.read_int()
         stringbuffer_size = reader.read_int()
 
@@ -173,7 +169,7 @@ class TypeTreeNode(TypeTreeNodeC):
                 patch_dict["m_ByteSize"] = 0
             if "m_Version" not in nodes[0]:
                 patch_dict["m_Version"] = 0
-            nodes = [cls(**node, **patch_dict) for node in nodes]  # type: ignore
+            nodes = [cls(**node, **patch_dict) for node in nodes]
 
         if TYPE_CHECKING:
             nodes = cast(List[TypeTreeNode], nodes)
@@ -273,12 +269,8 @@ class TypeTreeNode(TypeTreeNodeC):
             )
 
         # write nodes
-        node_count = len([write_node(node) for node in self.traverse()])
+        node_count = len([write_node(node) for node in self.traverse(ignore_shared_children=True)])
 
-        # write blob
-        if version >= 23:
-            writer.write(b"mhtt")
-            writer.write_int(version)
         writer.write_int(node_count)
         writer.write_int(string_writer.Position)
         writer.write(node_writer.bytes)
@@ -347,8 +339,64 @@ def clean_name(name: str) -> str:
     return name
 
 
+@define(slots=True, frozen=True)
+class TypeTreeNodeInfo:
+    version: int
+    node: TypeTreeNode
+    ref_hashes: List[bytes]
+
+    @classmethod
+    def from_reader(cls, reader: EndianBinaryReader) -> "TypeTreeNodeInfo":
+        magic = reader.read_bytes(4)
+        if magic != b"mhtt":
+            raise ValueError("Invalid type tree blob magic")
+        version = reader.read_int()
+        node = TypeTreeNode.parse_blob(reader, version)
+        ref_hash_count = reader.read_u_int()
+        ref_hashes = [reader.read_bytes(16) for _ in range(ref_hash_count)]
+        return cls(version, node, ref_hashes)
+
+    def to_bytes(self, endian: str) -> bytes:
+        info_writer = EndianBinaryWriter(endian=endian)
+        info_writer.write_bytes(b"mhtt")
+        info_writer.write_int(self.version)
+        self.node.dump_blob(info_writer, self.version)
+        info_writer.write_u_int(len(self.ref_hashes))
+        for ref_hash in self.ref_hashes:
+            info_writer.write_bytes(ref_hash)
+        return info_writer.bytes
+
+
+@define(slots=True, frozen=True)
+class TypeTreeNodeInfoHandler:
+    hash: bytes
+    info: Optional[TypeTreeNodeInfo]
+
+    @classmethod
+    def from_reader(cls, reader: EndianBinaryReader) -> "TypeTreeNodeInfoHandler":
+        hash = reader.read_bytes(16)
+        serialized_size = reader.read_u_int()
+        if serialized_size >= 8:
+            info = TypeTreeNodeInfo.from_reader(reader)
+            return cls(hash, info)
+        else:
+            return cls(hash, None)
+
+    def to_writer(self, writer: EndianBinaryWriter):
+        start = writer.tell()
+        writer.write(self.hash)
+        if self.info is None:
+            writer.write_u_int(0)
+        else:
+            info_bytes = self.info.to_bytes(writer.endian)
+            writer.write_u_int(len(info_bytes))
+            writer.write_bytes(info_bytes)
+        return writer.tell() - start
+
+
 __all__ = (
     "TypeTreeNode",
+    "TypeTreeNodeInfoHandler",
     "get_common_strings",
     "clean_name",
 )
