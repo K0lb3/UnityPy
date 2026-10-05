@@ -22,6 +22,9 @@ class EndianBinaryWriter:
         self.endian = endian
         self.Position = self.stream.tell()
 
+    def tell(self):
+        return self.stream.tell()
+
     @property
     def bytes(self):
         self.stream.seek(0)
