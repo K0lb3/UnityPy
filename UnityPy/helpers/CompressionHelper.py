@@ -209,9 +209,8 @@ def chunk_based_compress(data: ByteString, block_info_flag: int, version: int) -
         raise NotImplementedError(f"No chunk size in the CompressionHelper.COMPRESSION_CHUNK_SIZE_MAP for {switch}")
 
     block_info = []
-    uncompressed_offset = 0
     compressed_data = bytearray()
-    while uncompressed_offset < len(data):
+    for uncompressed_offset in range(0, len(data), chunk_size):
         chunk_flag = block_info_flag
         uncompressed_chunk = data[uncompressed_offset : uncompressed_offset + chunk_size]
         compressed_chunk = compress_func(uncompressed_chunk)
@@ -235,8 +234,6 @@ def chunk_based_compress(data: ByteString, block_info_flag: int, version: int) -
             alignment = 16
             align = (alignment - len(compressed_data) % alignment) % alignment
             compressed_data.extend(b"\x00" * align)
-
-        uncompressed_offset += chunk_size
 
     return compressed_data, block_info
 
