@@ -13,6 +13,7 @@ from UnityPy.helpers.TypeTreeNode import TypeTreeNode
 from UnityPy.helpers.UnityVersion import UnityVersion
 from UnityPy.streams import EndianBinaryReader, EndianBinaryWriter
 
+random.seed(17)
 PROCESS = psutil.Process(os.getpid())
 
 
