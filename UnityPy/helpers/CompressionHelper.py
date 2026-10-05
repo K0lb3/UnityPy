@@ -26,10 +26,8 @@ def decompress_lzma(data: ByteString, read_decompressed_size: bool = False) -> b
     :rtype: bytes
     """
     props, dict_size = struct.unpack("<BI", data[:5])
-    lc = props % 9
-    remainder = props // 9
-    pb = remainder // 5
-    lp = remainder % 5
+    remainder, lc = divmod(props, 9)
+    pb, lp = divmod(remainder, 5)
     dec = lzma.LZMADecompressor(
         format=lzma.FORMAT_RAW,
         filters=[
