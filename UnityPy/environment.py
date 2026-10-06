@@ -66,6 +66,11 @@ class Environment:
                     elif self.fs.isdir(arg):
                         self.path = arg
                         self.load_folder(arg)
+                    else:
+                        # a path that is neither an existing file nor a directory should fail
+                        # loudly; silently skipping it hides typos behind an empty Environment
+                        if self.load_file(file=arg) is None:
+                            raise FileNotFoundError(f"{arg}: file does not exist")
                 else:
                     self.load_file(file=arg)
 
