@@ -1,5 +1,6 @@
 """Synthetic shader records exercise decompression, parsing and text export."""
 
+import io
 import struct
 from types import SimpleNamespace
 
@@ -197,6 +198,22 @@ def test_entries_may_share_a_program_record():
     segment = single_segment(program_record(code, 201806140), version, copies=2)
     program = ShaderProgram(EndianBinaryReader(segment, endian="<"), version)
     assert [subprogram.m_ProgramCode for subprogram in program.m_SubPrograms] == [code, code]
+
+
+@pytest.mark.parametrize("stream_backed", [False, True])
+def test_shared_record_in_nonzero_segment_with_reader_backends(stream_backed):
+    version = (2022, 3, 0, 0)
+    code = b"void shared_nonzero_record() {}"
+    record = program_record(code, 202012090)
+    table = entry_table([(4, len(record), 2), (4, len(record), 2)], version)
+    segments = [table, b"unused", b"pad!" + record]
+    readers = [EndianBinaryReader(io.BytesIO(part) if stream_backed else part, endian="<") for part in segments]
+    program = ShaderProgram(readers[0], version, readers)
+
+    assert [item.m_ProgramCode for item in program.m_SubPrograms] == [code, code]
+    assert [item.m_Keywords for item in program.m_SubPrograms] == [["SYNTHETIC_GLOBAL"], ["SYNTHETIC_GLOBAL"]]
+    text = program.Export("GpuProgramIndex 0\nGpuProgramIndex 1")
+    assert text.count(code.decode()) == 2
 
 
 @pytest.mark.parametrize("segment", [-1, 1])
