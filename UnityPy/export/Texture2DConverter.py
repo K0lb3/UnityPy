@@ -239,6 +239,8 @@ def get_image_from_texture2d(
     flip: bool = True,
 ) -> Image.Image:
     """Converts the given Texture2D object to PIL Image."""
+    if not texture_2d.m_Width or not texture_2d.m_Height:
+        return Image.new("RGBA", (0, 0))
     return parse_image_data(
         texture_2d.get_image_data(),
         texture_2d.m_Width,
