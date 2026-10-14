@@ -85,3 +85,26 @@ def test_compressed_bone_weights():
         assert weights == pytest.approx(expected_weights)
         assert sum(weights) == pytest.approx(1.0)
     assert handler.m_BoneIndices == [(0, 1, 2, 3), (7, 0, 0, 0)]
+
+
+def test_compressed_uv_sets():
+    # sets 0, 1 and 3 with 2, 3 and 2 components, stored back to back in m_UV
+    uv_sets = {
+        0: [(0.125, 0.25), (0.375, 0.5)],
+        1: [(0.5, 0.625, 0.75), (0.875, 1.0, 0.0)],
+        3: [(0.0625, 0.1875), (0.3125, 0.4375)],
+    }
+    uv_info = 0
+    for channel, values in uv_sets.items():
+        uv_info |= (4 | (len(values[0]) - 1)) << (channel * 4)
+    handler = compressed_mesh(
+        2,
+        m_UVInfo=uv_info,
+        m_UV=pack_floats([v for values in uv_sets.values() for uv in values for v in uv], 16),
+    )
+    for channel, values in uv_sets.items():
+        decoded = getattr(handler, f"m_UV{channel}")
+        assert len(decoded) == len(values)
+        for uv, expected in zip(decoded, values):
+            assert uv == pytest.approx(expected, abs=1e-4)
+    assert handler.m_UV2 is None
