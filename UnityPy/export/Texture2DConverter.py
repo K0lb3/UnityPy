@@ -506,7 +506,7 @@ CONV_TABLE: Dict[TF, Tuple[Callable[..., Image.Image], Tuple[Any, ...]]] = {
     TF.RGB565: (pillow, ("RGB", "raw", "BGR;16")),
     TF.BGR24: (pillow, ("RGB", "raw", "BGR")),
     TF.R8: (pillow, ("RGB", "raw", "R")),
-    TF.R16: (pillow, ("RGB", "raw", "R;16")),
+    TF.R16: (pillow, ("RGB", "raw", "R;16L")),
     TF.RG16: (rg, ("RGB", "raw", "RG")),
     TF.DXT1: (pillow, ("RGBA", "bcn", 1)),
     TF.DXT3: (pillow, ("RGBA", "bcn", 2)),
