@@ -86,15 +86,22 @@ class Environment:
             {ntpath.basename(f): self.load_file(self.fs.open(f, "rb"), self, f) for f in files if self.fs.exists(f)}
         )
 
-    def _load_split_file(self, basename: str) -> bytes:
+    def _load_split_file(self, basename: str, open_f: Callable[[str], BinaryIO] = None) -> bytes:
         file: List[bytes] = []
         for i in range(0, 999):
             item = f"{basename}.split{i}"
-            if self.fs.exists(item):
-                with self.fs.open(item, "rb") as f:
-                    file.append(f.read())  # type: ignore
-            elif i:
-                break
+            if open_f:
+                try:
+                    file.append(open_f(item).read())
+                except:
+                    break
+            else:
+                if self.fs.exists(item):
+                    with self.fs.open(item, "rb") as f:
+                        file.append(f.read())  # type: ignore
+                else:
+                    break
+            
         return b"".join(file)
 
     def load_file(
@@ -311,7 +318,7 @@ class Environment:
                     continue
 
                 split_files.append(basepath)
-                data = self._load_split_file(basepath)
+                data = self._load_split_file(basepath, open_f)
                 path = basepath
             else:
                 data = open_f(path)
