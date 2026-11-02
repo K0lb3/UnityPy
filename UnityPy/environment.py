@@ -94,13 +94,15 @@ class Environment:
                 try:
                     file.append(open_f(item).read())
                 except:
-                    break
+                    if i:
+                        break
             else:
                 if self.fs.exists(item):
                     with self.fs.open(item, "rb") as f:
                         file.append(f.read())  # type: ignore
                 else:
-                    break
+                    if i:
+                        break
             
         return b"".join(file)
 
