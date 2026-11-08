@@ -98,14 +98,16 @@ class Environment:
                 try:
                     f = open_f(item)
                 except (FileNotFoundError, KeyError):
-                    if i: break
+                    if i:
+                        break
                     continue
                 with f:
                     file.append(f.read())
             elif self.fs.exists(item):
                 with self.fs.open(item, "rb") as f:
                     file.append(f.read())  # type: ignore
-            elif i: break
+            elif i:
+                break
         return b"".join(file)
 
     def load_file(
