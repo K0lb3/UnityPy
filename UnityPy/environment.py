@@ -84,26 +84,28 @@ class Environment:
         """Loads all files into the Environment."""
         self.files.update(
             {ntpath.basename(f): self.load_file(self.fs.open(f, "rb"), self, f) for f in files if self.fs.exists(f)}
-        )
+        )  
 
-    def _load_split_file(self, basename: str, open_f: Callable[[str], BinaryIO] = None) -> bytes:
+    def _load_split_file(
+        self,
+        basename: str,
+        open_f: Optional[Callable[[str], BinaryIO]] = None,
+    ) -> bytes:
         file: List[bytes] = []
-        for i in range(0, 999):
+        for i in range(0, 1000):
             item = f"{basename}.split{i}"
-            if open_f:
+            if open_f is not None:
                 try:
-                    file.append(open_f(item).read())
-                except:
-                    if i:
-                        break
-            else:
-                if self.fs.exists(item):
-                    with self.fs.open(item, "rb") as f:
-                        file.append(f.read())  # type: ignore
-                else:
-                    if i:
-                        break
-            
+                    f = open_f(item)
+                except (FileNotFoundError, KeyError):
+                    if i: break
+                    continue
+                with f:
+                    file.append(f.read())
+            elif self.fs.exists(item):
+                with self.fs.open(item, "rb") as f:
+                    file.append(f.read())  # type: ignore
+            elif i: break
         return b"".join(file)
 
     def load_file(
