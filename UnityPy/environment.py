@@ -84,7 +84,7 @@ class Environment:
         """Loads all files into the Environment."""
         self.files.update(
             {ntpath.basename(f): self.load_file(self.fs.open(f, "rb"), self, f) for f in files if self.fs.exists(f)}
-        )  
+        )
 
     def _load_split_file(
         self,
