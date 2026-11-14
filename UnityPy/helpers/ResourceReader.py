@@ -9,6 +9,8 @@ if TYPE_CHECKING:
 
 def get_resource_data(res_path: str, assets_file: "SerializedFile", offset: int, size: int):
     basename = ntpath.basename(res_path)
+    if not basename:
+        raise ValueError(f"Invalid resource path: {res_path!r}")
     name, ext = ntpath.splitext(basename)
     possible_names = [
         basename,
