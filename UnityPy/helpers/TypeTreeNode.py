@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from functools import cache
 from struct import Struct
 from threading import Lock
 from typing import (
@@ -37,10 +38,11 @@ except ImportError:
         m_Index: Optional[int] = None
         m_MetaFlag: Optional[int] = None
         m_RefTypeHash: Optional[int] = None
-        _clean_name: str = field(init=False)
+        _clean_name: str = field()
 
-        def __attrs_post_init__(self):
-            self._clean_name = clean_name(self.m_Name)
+        @_clean_name.default
+        def _clean_name_default(self):
+            return clean_name(self.m_Name)
 
         def __repr__(self):
             return f"TypeTreeNode(m_Level={self.m_Level}, m_Type='{self.m_Type}', \
@@ -90,16 +92,20 @@ class TypeTreeNode(TypeTreeNodeC):
             else:
                 stack[-1] = (parent, count - 1)
 
+            node_type = reader.read_string_to_null()
+            node_name = reader.read_string_to_null()
+
             node = cls(
                 m_Level=parent.m_Level + 1,
-                m_Type=reader.read_string_to_null(),
-                m_Name=reader.read_string_to_null(),
+                m_Type=node_type,
+                m_Name=node_name,
                 m_ByteSize=reader.read_int(),
                 m_VariableCount=reader.read_int() if version == 2 else None,
                 m_Index=reader.read_int() if version != 3 else None,
                 m_TypeFlags=reader.read_int(),
                 m_Version=reader.read_int(),
                 m_MetaFlag=reader.read_int() if version != 3 else None,
+                _clean_name=clean_name(node_name),
             )
             parent.m_Children[-count] = node
             children_count = reader.read_int()
@@ -134,11 +140,34 @@ class TypeTreeNode(TypeTreeNodeC):
         prev = fake_root
 
         for raw_node in node_struct.iter_unpack(struct_data):
+            node_type = read_string(stringbuffer_reader, raw_node[3])
+            node_name = read_string(stringbuffer_reader, raw_node[4])
+
             node = cls(
-                **dict(zip(keys[:3], raw_node[:3])),
-                **dict(zip(keys[5:], raw_node[5:])),
-                m_Type=read_string(stringbuffer_reader, raw_node[3]),
-                m_Name=read_string(stringbuffer_reader, raw_node[4]),
+                # m_Level
+                raw_node[1],
+                # m_Type
+                node_type,
+                # m_Name
+                node_name,
+                # m_ByteSize
+                raw_node[5],
+                # m_Version
+                raw_node[0],
+                # m_Children
+                [],
+                # m_TypeFlags
+                raw_node[2],
+                # m_VariableCount
+                None,
+                # m_Index
+                raw_node[6],
+                # m_MetaFlag
+                raw_node[7],
+                # m_RefTypehash
+                raw_node[8] if len(raw_node) >= 9 else None,
+                # _clean_name
+                clean_name(node_name),
             )
 
             if node.m_Level > prev.m_Level:
@@ -324,6 +353,7 @@ CLEAN_NAME_REMOVE_RE = re.compile(r"[\?\*]")
 CLEAN_NAME_REPLACE_RE = re.compile(r"[ \.:\-\[\]]")
 
 
+@cache
 def clean_name(name: str) -> str:
     # keep in sync with TypeTreeHelper.cpp
     if len(name) == 0:
