@@ -690,6 +690,10 @@ class MeshHandler:
             else:
                 raise ValueError("Failed getting triangles. Submesh topology is lines or points.")
 
+            base_vertex = getattr(m_SubMesh, "baseVertex", 0) or 0
+            if base_vertex:
+                triangles = [tuple(index + base_vertex for index in triangle) for triangle in triangles]
+
             submeshes.append(triangles)
 
         return submeshes
