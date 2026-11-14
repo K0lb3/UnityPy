@@ -1138,6 +1138,7 @@ static int TypeTreeNode_init(TypeTreeNodeObject *self, PyObject *args, PyObject 
         "m_Index",
         "m_MetaFlag",
         "m_RefTypeHash",
+        "_clean_name",
         nullptr};
 
     // ensure all fields are set to 0
@@ -1155,7 +1156,7 @@ static int TypeTreeNode_init(TypeTreeNodeObject *self, PyObject *args, PyObject 
     self->m_RefTypeHash = nullptr;
     self->_clean_name = nullptr;
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O!O!O!O!O!|OOOOOO", (char **)kwlist,
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O!O!O!O!O!|OOOOOOO", (char **)kwlist,
                                      // required fields
                                      &PyLong_Type, &self->m_Level,
                                      &PyUnicode_Type, &self->m_Type,
@@ -1168,7 +1169,8 @@ static int TypeTreeNode_init(TypeTreeNodeObject *self, PyObject *args, PyObject 
                                      &self->m_VariableCount,
                                      &self->m_Index,
                                      &self->m_MetaFlag,
-                                     &self->m_RefTypeHash))
+                                     &self->m_RefTypeHash,
+                                     &self->_clean_name))
     {
         return -1;
     }
@@ -1212,9 +1214,13 @@ static int TypeTreeNode_init(TypeTreeNodeObject *self, PyObject *args, PyObject 
     self->_data_type = get_node_data_type(self->m_Type);
     self->_align = (self->m_MetaFlag != Py_None && PyLong_AsLong(self->m_MetaFlag) & 0x4000);
 
-    std::string sname = PyUnicode_AsUTF8(self->m_Name);
-    std::string sclean_name = clean_name(sname);
-    self->_clean_name = PyUnicode_FromString(sclean_name.c_str()); // comes with strong ref
+    if (self->_clean_name == nullptr){
+        std::string sname = PyUnicode_AsUTF8(self->m_Name);
+        std::string sclean_name = clean_name(sname);
+        self->_clean_name = PyUnicode_FromString(sclean_name.c_str()); // comes with strong ref
+    } else {
+        Py_INCREF(self->_clean_name);
+    }
     return 0;
 }
 
