@@ -9,22 +9,30 @@ if TYPE_CHECKING:
     from PIL import Image
 
 
-def _Texture2DArray_get_images(self: Texture2DArray) -> List[Image.Image]:
-    from ...export import Texture2DConverter
-    from ...helpers.ResourceReader import get_resource_data
+def _Texture2DArray_get_image_data(self: Texture2DArray):
+    if self.image_data:
+        return self.image_data
+    if self.m_StreamData and self.m_StreamData.path:
+        from ...helpers.ResourceReader import get_resource_data
 
-    texture_format = GRAPHICS_TO_TEXTURE_MAP.get(GraphicsFormat(self.m_Format))
-    if not texture_format:
-        raise NotImplementedError(f"GraphicsFormat {self.m_Format} not supported yet")
-
-    image_data = self.image_data
-    if image_data is None:
-        image_data = get_resource_data(
+        return get_resource_data(
             self.m_StreamData.path,
             self.object_reader.assets_file,
             self.m_StreamData.offset,
             self.m_StreamData.size,
         )
+    raise ValueError("No image data found")
+
+
+def _Texture2DArray_get_images(self: Texture2DArray) -> List[Image.Image]:
+    from ...enums import BuildTarget
+    from ...export import Texture2DConverter
+
+    texture_format = GRAPHICS_TO_TEXTURE_MAP.get(GraphicsFormat(self.m_Format))
+    if not texture_format:
+        raise NotImplementedError(f"GraphicsFormat {self.m_Format} not supported yet")
+
+    image_data = self.get_image_data()
 
     # calculate the number of textures in the array
     texture_size = self.m_DataSize // self.m_Depth
@@ -36,7 +44,7 @@ def _Texture2DArray_get_images(self: Texture2DArray) -> List[Image.Image]:
             self.m_Height,
             texture_format,
             self.object_reader.version,
-            0,
+            getattr(self.object_reader, "platform", BuildTarget.UnknownPlatform),
             None,
         )
         for offset in range(0, self.m_DataSize, texture_size)
@@ -44,5 +52,6 @@ def _Texture2DArray_get_images(self: Texture2DArray) -> List[Image.Image]:
 
 
 Texture2DArray.images = property(_Texture2DArray_get_images)
+Texture2DArray.get_image_data = _Texture2DArray_get_image_data
 
 __all__ = ("Texture2DArray",)

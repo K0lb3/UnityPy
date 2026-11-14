@@ -63,7 +63,7 @@ def _Texture2d_set_image(
 def _Texture2D_get_image_data(self: Texture2D):
     if self.image_data:
         return self.image_data
-    if self.m_StreamData:
+    if self.m_StreamData and self.m_StreamData.path:
         from ...helpers.ResourceReader import get_resource_data
 
         return get_resource_data(
