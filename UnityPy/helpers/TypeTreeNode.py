@@ -133,13 +133,46 @@ class TypeTreeNode(TypeTreeNodeC):
         parent = fake_root
         prev = fake_root
 
+        clean_names: dict[str, str] = {}
         for raw_node in node_struct.iter_unpack(struct_data):
-            node = cls(
-                **dict(zip(keys[:3], raw_node[:3])),
-                **dict(zip(keys[5:], raw_node[5:])),
-                m_Type=read_string(stringbuffer_reader, raw_node[3]),
-                m_Name=read_string(stringbuffer_reader, raw_node[4]),
-            )
+            node_type = read_string(stringbuffer_reader, raw_node[3])
+            name = read_string(stringbuffer_reader, raw_node[4])
+            cache_clean_name = cls is TypeTreeNode and type(name) is str
+            cached_clean_name = clean_names.get(name) if cache_clean_name else None
+            if (
+                cache_clean_name
+                and cached_clean_name is None
+                and name.isascii()
+                and name.isidentifier()
+                and name not in ("pass", "from")
+            ):
+                cached_clean_name = name
+                clean_names[name] = name
+            if cls is TypeTreeNode:
+                node = cls(
+                    raw_node[1],
+                    node_type,
+                    name if cached_clean_name is None else "",
+                    raw_node[5],
+                    raw_node[0],
+                    [],
+                    raw_node[2],
+                    None,
+                    raw_node[6],
+                    raw_node[7],
+                    raw_node[8] if len(raw_node) > 8 else None,
+                )
+            else:
+                node = cls(
+                    **{key: raw_node[index] for index, key in enumerate(keys) if index not in (3, 4)},
+                    m_Type=node_type,
+                    m_Name=name,
+                )
+            if cached_clean_name is not None:
+                node.m_Name = name
+                node._clean_name = cached_clean_name
+            elif cache_clean_name:
+                clean_names[name] = node._clean_name
 
             if node.m_Level > prev.m_Level:
                 stack.append(parent)
