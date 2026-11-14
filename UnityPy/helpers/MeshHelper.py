@@ -508,7 +508,7 @@ class MeshHandler:
                             shape=(uvDim,),
                         )
                         setattr(self, f"m_UV{uv_channel}", m_UV)
-                        uvSrcOffset = uvDim * m_VertexCount
+                        uvSrcOffset += uvDim * m_VertexCount
             else:
                 self.m_UV0 = unpack_floats(m_CompressedMesh.m_UV, 0, m_VertexCount * 2, shape=(2,))
                 if m_CompressedMesh.m_UV.m_NumItems >= m_VertexCount * 4:
@@ -608,7 +608,7 @@ class MeshHandler:
                 # we read three weights, but they don't add up to one. calculate the fourth one, and read
                 # missing bone index. continue with next vertex.
                 elif j == 3:  #
-                    boneWeights[vertexIndex][j] = 1 - sum
+                    boneWeights[vertexIndex][j] = (31 - sum) / 31
                     boneIndices[vertexIndex][j] = next(boneIndicesIterator)
 
                     vertexIndex += 1
