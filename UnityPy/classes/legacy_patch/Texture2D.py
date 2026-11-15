@@ -63,8 +63,6 @@ def _Texture2d_set_image(
 def _Texture2D_get_image_data(self: Texture2D):
     if self.image_data:
         return self.image_data
-    # a stream data object without a path is a leftover of incomplete assets
-    # and must not be used to resolve a resource file
     if self.m_StreamData and self.m_StreamData.path:
         from ...helpers.ResourceReader import get_resource_data
 
