@@ -222,7 +222,7 @@ def ConvertSerializedSubPrograms(
                             sb.append("hw_tier{0:02} ".format(subProgram.m_ShaderHardwareTier))
 
                         sb.append('" {\n')
-                        sb.append(shaderPrograms[i].m_SubPrograms[subProgram.m_BlobIndex].Export())
+                        sb.append(shaderPrograms[i].get_subprogram(subProgram.m_BlobIndex).Export())
 
                         sb.append("\n}\n")
 
@@ -545,7 +545,14 @@ def GetPlatformString(platform: int):
 
 
 class ShaderProgram:
-    m_SubPrograms: List[ShaderSubProgram]
+    """The record index of one platform's shader blob.
+
+    Since Unity 2021.2 a blob also holds parameter records, which have a different
+    layout and are only told apart by the parsed form. A record is therefore read
+    when a subprogram asks for it, not up front.
+    """
+
+    m_Entries: List[Tuple[EndianBinaryReader, int]]
 
     def __init__(
         self,
@@ -555,15 +562,15 @@ class ShaderProgram:
     ):
         if segment_readers is None:
             segment_readers = [reader]
-        subProgramCapacity = reader.read_int()
-        self.m_SubPrograms = [None] * subProgramCapacity
+        entryCount = reader.read_int()
+        self.m_Entries = []
 
         if version >= (2019, 3):  # 2019.3 and up
             entrySize = 12
         else:
             entrySize = 8
 
-        for i in range(subProgramCapacity):
+        for i in range(entryCount):
             reader.Position = 4 + i * entrySize
             offset = reader.read_int()
             reader.read_int()  # length
@@ -571,14 +578,17 @@ class ShaderProgram:
             if segment < 0 or segment >= len(segment_readers):
                 raise ValueError(f"Shader subprogram references missing segment {segment}")
             # Entry offsets are relative to the selected decompressed segment.
-            segment_reader = segment_readers[segment]
-            segment_reader.Position = offset
-            self.m_SubPrograms[i] = ShaderSubProgram(segment_reader)
+            self.m_Entries.append((segment_readers[segment], offset))
+
+    def get_subprogram(self, index: int) -> ShaderSubProgram:
+        reader, offset = self.m_Entries[index]
+        reader.Position = offset
+        return ShaderSubProgram(reader)
 
     def Export(self, shader: str) -> str:
         shader = re.sub(
             r"GpuProgramIndex (.+)",
-            lambda math: self.m_SubPrograms[int(math.group(1))].Export(),
+            lambda math: self.get_subprogram(int(math.group(1))).Export(),
             shader,
         )
 
