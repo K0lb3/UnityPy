@@ -608,7 +608,7 @@ class MeshHandler:
                 # we read three weights, but they don't add up to one. calculate the fourth one, and read
                 # missing bone index. continue with next vertex.
                 elif j == 3:  #
-                    boneWeights[vertexIndex][j] = 1 - sum
+                    boneWeights[vertexIndex][j] = (31 - sum) / 31
                     boneIndices[vertexIndex][j] = next(boneIndicesIterator)
 
                     vertexIndex += 1
