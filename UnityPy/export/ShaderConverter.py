@@ -61,28 +61,32 @@ def ConvertSerializedShader(m_Shader: Shader) -> str:
     platformNumber = len(m_Shader.platforms)
     compressed_blob = bytes(m_Shader.compressedBlob)
 
-    def get_entry(array: Union[List[T], List[List[T]]], index: int) -> T:
+    def get_entries(array: Union[List[T], List[List[T]]], index: int) -> List[T]:
         item = array[index]
-        if isinstance(item, List):
-            return item[0]
-        return item
+        return item if isinstance(item, list) else [item]
 
     for i in range(platformNumber):
         if i >= len(m_Shader.compressedLengths) or i >= len(m_Shader.decompressedLengths):
             # m_Shader.platforms shouldn't be longer than m_shader.[de]compressedLengths, but it is
             break
 
-        compressedSize = get_entry(m_Shader.compressedLengths, i)
-        decompressedSize = get_entry(m_Shader.decompressedLengths, i)
-        offset = get_entry(m_Shader.offsets, i)
+        compressedSizes = get_entries(m_Shader.compressedLengths, i)
+        decompressedSizes = get_entries(m_Shader.decompressedLengths, i)
+        offsets = get_entries(m_Shader.offsets, i)
+        if not offsets or not (len(offsets) == len(compressedSizes) == len(decompressedSizes)):
+            raise ValueError("Shader platform has inconsistent segment arrays")
 
-        compressedBytes = compressed_blob[offset : offset + compressedSize]
-        decompressedBytes = CompressionHelper.decompress_lz4(compressedBytes, decompressedSize)
+        segmentReaders = []
+        for offset, compressedSize, decompressedSize in zip(offsets, compressedSizes, decompressedSizes):
+            compressedBytes = compressed_blob[offset : offset + compressedSize]
+            decompressedBytes = CompressionHelper.decompress_lz4(compressedBytes, decompressedSize)
+            segmentReaders.append(EndianBinaryReader(decompressedBytes, endian="<"))
 
         shaderPrograms.append(
             ShaderProgram(
-                EndianBinaryReader(decompressedBytes, endian="<"),
+                segmentReaders[0],
                 m_Shader.object_reader.version,
+                segmentReaders,
             )
         )
 
@@ -543,7 +547,14 @@ def GetPlatformString(platform: int):
 class ShaderProgram:
     m_SubPrograms: List[ShaderSubProgram]
 
-    def __init__(self, reader: EndianBinaryReader, version: Tuple[int, int, int, int]):
+    def __init__(
+        self,
+        reader: EndianBinaryReader,
+        version: Tuple[int, int, int, int],
+        segment_readers: Optional[List[EndianBinaryReader]] = None,
+    ):
+        if segment_readers is None:
+            segment_readers = [reader]
         subProgramCapacity = reader.read_int()
         self.m_SubPrograms = [None] * subProgramCapacity
 
@@ -555,8 +566,14 @@ class ShaderProgram:
         for i in range(subProgramCapacity):
             reader.Position = 4 + i * entrySize
             offset = reader.read_int()
-            reader.Position = offset
-            self.m_SubPrograms[i] = ShaderSubProgram(reader)
+            reader.read_int()  # length
+            segment = reader.read_int() if entrySize == 12 else 0
+            if segment < 0 or segment >= len(segment_readers):
+                raise ValueError(f"Shader subprogram references missing segment {segment}")
+            # Entry offsets are relative to the selected decompressed segment.
+            segment_reader = segment_readers[segment]
+            segment_reader.Position = offset
+            self.m_SubPrograms[i] = ShaderSubProgram(segment_reader)
 
     def Export(self, shader: str) -> str:
         shader = re.sub(
