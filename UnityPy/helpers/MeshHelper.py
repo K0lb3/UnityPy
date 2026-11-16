@@ -508,7 +508,7 @@ class MeshHandler:
                             shape=(uvDim,),
                         )
                         setattr(self, f"m_UV{uv_channel}", m_UV)
-                        uvSrcOffset = uvDim * m_VertexCount
+                        uvSrcOffset += uvDim * m_VertexCount
             else:
                 self.m_UV0 = unpack_floats(m_CompressedMesh.m_UV, 0, m_VertexCount * 2, shape=(2,))
                 if m_CompressedMesh.m_UV.m_NumItems >= m_VertexCount * 4:
