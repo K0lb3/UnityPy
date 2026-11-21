@@ -397,7 +397,49 @@ class MeshHandler:
                             componentBytes[offset : offset + component_byte_size] = item
 
                 component_data = list(struct.iter_unpack(f">{channel_dimension}{component_dtype}", componentBytes))
+                component_data = self.normalize_channel_data(m_Channel, component_data)
                 self.assign_channel_vertex_data(chn, component_data)
+
+    def normalize_channel_data(self, m_Channel: ChannelInfo, component_data: list) -> list:
+        """Convert normalized (UNorm/SNorm) channel values to floats.
+
+        UNorm values are divided by the format maximum (255 / 65535),
+        SNorm values by 127 / 32767 and clamped to -1, matching how
+        compressed meshes and copy_from_mesh already treat colours.
+        All other formats are returned unchanged.
+        """
+        divisor: Optional[float] = None
+        signed = False
+        if self.version[0] < 2017:
+            # legacy channel formats; only the colour format is normalized
+            if m_Channel.format == 2:  # kChannelFormatColor
+                divisor = 255.0
+        elif self.version[0] < 2019:
+            format = VertexFormat2017(m_Channel.format)
+            if format in (VertexFormat2017.kVertexFormatColor, VertexFormat2017.kVertexFormatUNorm8):
+                divisor = 255.0
+            elif format == VertexFormat2017.kVertexFormatSNorm8:
+                divisor, signed = 127.0, True
+            elif format == VertexFormat2017.kVertexFormatUNorm16:
+                divisor = 65535.0
+            elif format == VertexFormat2017.kVertexFormatSNorm16:
+                divisor, signed = 32767.0, True
+        else:
+            format = VertexFormat(m_Channel.format)
+            if format == VertexFormat.kVertexFormatUNorm8:
+                divisor = 255.0
+            elif format == VertexFormat.kVertexFormatSNorm8:
+                divisor, signed = 127.0, True
+            elif format == VertexFormat.kVertexFormatUNorm16:
+                divisor = 65535.0
+            elif format == VertexFormat.kVertexFormatSNorm16:
+                divisor, signed = 32767.0, True
+
+        if divisor is None:
+            return component_data
+        if signed:
+            return [tuple(max(value / divisor, -1.0) for value in vertex) for vertex in component_data]
+        return [tuple(value / divisor for value in vertex) for vertex in component_data]
 
     def assign_channel_vertex_data(self, channel: int, component_data: list):
         if self.version[0] >= 2018:
