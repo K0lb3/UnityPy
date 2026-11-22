@@ -22,16 +22,16 @@ a donation to a charitable cause or a sponsorship of this project is expected.
 >
 > <details>
 > <summary>In case you don't want to actively maintain your project...</summary>
-> 
+>
 > Make a note of the used UnityPy version in your README or add a check in your code.
-> 
+>
 > ```python
 > if UnityPy.__version__ != '1.9.6':
 >     raise ImportError("Invalid UnityPy version detected. Please use version 1.9.6")
 > ```
-> 
+>
 > You can also pin the version in your `requirements.txt` or `pyproject.toml` file, which is the best practice.
-> 
+>
 > </details>
 
 
@@ -217,7 +217,7 @@ The objects with a file path can be found in the `.container` dict - `{path : ob
 Objects \([ObjectReader class](UnityPy/files/ObjectReader.py)\) contain the _actual_ files, e.g., textures, text files, meshes, settings, ...
 
 > [!IMPORTANT]
-> 
+>
 > To acquire the actual data of an object it has to be parsed first.
 This happens via the parse functions mentioned below.
 This isn't done automatically to save time as only a small part of the objects are usually of interest.
@@ -453,7 +453,7 @@ with open(f"{mesh.m_Name}.obj", "wt", newline="") as f:
 ### Renderer, MeshRenderer, SkinnedMeshRenderer
 
 > [!WARNING]
-> 
+>
 > This feature is in alpha version.
 
 -   `.export(export_dir)` - exports the associated mesh, materials, and textures into the given directory
@@ -475,7 +475,7 @@ mesh_renderer.export(export_dir)
 ### Texture2DArray
 
 > [!WARNING]
-> 
+>
 > This feature isn't well tested.
 
 -   `.m_Name`
@@ -576,3 +576,9 @@ Also, many thanks to:
 -   [Razmoth](https://github.com/Razmoth) for figuring out and sharing Unity CN's AssetBundle decryption ([src](https://github.com/Razmoth/PGRStudio)).
 -   [nesrak1](https://github.com/nesrak1) for figuring out the [Switch texture swizzling](https://github.com/nesrak1/UABEA/blob/master/TexturePlugin/Texture2DSwitchDeswizzler.cs)
 -   xiop_13690 (discord) for figuring out unsolved issues of the ManagedReferencesRegistry
+
+## Disclaimer
+
+UnityPy, its maintainers, and its contributors are not affiliated with, associated with, authorized by, endorsed by, or in any way officially connected with Unity Technologies, the Unity engine, or any of its subsidiaries or affiliates. "Unity" and related names, logos, and marks are trademarks or registered trademarks of Unity Technologies or its affiliates; references to them here are strictly for compatibility, interoperability, and descriptive purposes.
+
+This software is provided "as is," without warranty of any kind, express or implied, including but not limited to warranties of merchantability, fitness for a particular purpose, or non-infringement. Users are solely responsible for ensuring their use of UnityPy—including inspecting, extracting, or modifying asset files—complies with applicable laws, licenses, and third-party rights. In no event shall the maintainers or contributors be liable for any claim, damages, or other liability arising from the use of this software.
