@@ -1,22 +1,20 @@
 name: Build & Publish wheels
-on:
-  workflow_dispatch
-
+on: workflow_dispatch
 
 jobs:
   build_sdist:
     name: Build source distribution
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           submodules: recursive
           lfs: true
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
-          python-version: '3.x'
+          python-version: "3.x"
 
       - name: Build sdist
         run: pipx run build --sdist
@@ -24,7 +22,7 @@ jobs:
       - name: Install sdist
         run: pip install dist/*.tar.gz
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: "sdist"
           path: dist/*.tar.gz
@@ -39,104 +37,73 @@ jobs:
         os: [windows-latest, macos-latest]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           submodules: recursive
           lfs: true
 
       - name: Build wheels
-        uses: joerick/cibuildwheel@v3.3
+        uses: joerick/cibuildwheel@v4.3
         env:
           CIBW_TEST_SKIP: "*"
           CIBW_SKIP: "pp*"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: "${{ matrix.os }}"
           path: ./wheelhouse/*.whl
           retention-days: 1
 
-  build_manylinux_wheels_ubuntu:
-    name: Build manylinux wheels on ubuntu-latest
+  build_linux_wheels:
+    name: Build ${{ matrix.libc }} (${{ matrix.arch }})
     runs-on: ubuntu-latest
     needs: [build_sdist]
-
+    strategy:
+      fail-fast: false
+      matrix:
+        libc: [manylinux, musllinux]
+        arch: [x86_64, i686, aarch64, armv7l]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           submodules: recursive
           lfs: true
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+        if: matrix.arch != 'x86_64'
+        uses: docker/setup-qemu-action@v4
         with:
-          platforms: all
+          platforms: >-
+            ${{
+              (matrix.arch == 'i686' && 'linux/386') ||
+              (matrix.arch == 'aarch64' && 'linux/arm64') ||
+              (matrix.arch == 'armv7l' && 'linux/arm/v7')
+            }}
 
       - name: Build wheels
-        uses: joerick/cibuildwheel@v3.3
+        uses: joerick/cibuildwheel@v4.3
         env:
+          CIBW_ARCHS: ${{ matrix.arch }}
           CIBW_TEST_SKIP: "*"
-          CIBW_SKIP: "pp* *-musllinux*"
+          CIBW_SKIP: >-
+            pp*
+            ${{ matrix.libc == 'manylinux' && '*-musllinux*' || '*-manylinux*' }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
-          name: "manylinux"
+          name: ${{ matrix.libc }}-${{ matrix.arch }}
           path: ./wheelhouse/*.whl
           retention-days: 1
-
-  build_musllinux_wheels_ubuntu:
-    name: Build musllinux wheels on ubuntu-latest
-    runs-on: ubuntu-latest
-    needs: [build_sdist]
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-          lfs: true
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: all
-
-      - name: Build wheels
-        uses: joerick/cibuildwheel@v3.3
-        env:
-          CIBW_TEST_SKIP: "*"
-          CIBW_SKIP: "pp* *-manylinux*"
-          # fmod requires:
-          # default via musl: -exclude flag
-          #   libdl.so.2 => /lib/ld-musl-x86_64.so.1 (0x7faeb127d000)
-          #   librt.so.1 => /lib/ld-musl-x86_64.so.1 (0x7faeb127d000)
-          #   libm.so.6 => /lib/ld-musl-x86_64.so.1 (0x7faeb127d000)
-          #   libpthread.so.0 => /lib/ld-musl-x86_64.so.1 (0x7faeb127d000)
-          #   libc.so.6 => /lib/ld-musl-x86_64.so.1 (0x7faeb127d000)
-          # deps:
-          #   libgcc
-          #   libgcc_s.so.1 => /usr/lib/libgcc_s.so.1 (0x7faeb1253000)
-          #   libstdc++
-          #   libstdc++.so.6 => /usr/lib/libstdc++.so.6 (0x7faeb0a00000)
-          CIBW_BEFORE_ALL: "apk add libgcc libstdc++"
-          CIBW_REPAIR_WHEEL_COMMAND: "auditwheel repair -w {dest_dir} {wheel} --exclude libdl.so.2 --exclude librt.so.1 --exclude libm.so.6 --exclude libpthread.so.0 --exclude libc.so.6"
-
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: "musllinux"
-          path: ./wheelhouse/*.whl
-          retention-days: 1
-
 
   upload_pypi:
     name: Publish to PyPI
-    needs: [build_sdist, build_wheels, build_manylinux_wheels_ubuntu, build_musllinux_wheels_ubuntu]
+    needs: [build_sdist, build_wheels, build_linux_wheels]
     runs-on: ubuntu-latest
 
     permissions:
-        id-token: write
+      id-token: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: dist
           merge-multiple: true
