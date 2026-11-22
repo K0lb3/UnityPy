@@ -30,7 +30,7 @@ jobs:
       - name: Install
         run: pip install .[tests]
 
-      - uses: astral-sh/ruff-action@v4
+      - uses: astral-sh/ruff-action@v4.1.0
 
       - name: Check code (ruff check)
         run: ruff check
