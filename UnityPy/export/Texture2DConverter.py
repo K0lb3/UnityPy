@@ -443,6 +443,14 @@ def eac(image_data: bytes, width: int, height: int, fmt: str) -> Image.Image:
     return Image.frombytes("RGBA", (width, height), image_data, "raw", "BGRA")
 
 
+def _float_to_uint8(value: float) -> int:
+    if value != value or value <= 0.0:
+        return 0
+    if value >= 1.0:
+        return 255
+    return int(value * 255 + 0.5)
+
+
 def half(
     image_data: bytes,
     width: int,
@@ -454,7 +462,8 @@ def half(
 ) -> Image.Image:
     # convert half-float to int8
     stream = BytesIO(image_data)
-    image_data = bytes(int(struct.unpack("e", stream.read(2))[0] * 256) for _ in range(width * height * len(codec)))
+    pixel_count = width * height * len(args)
+    image_data = bytes(_float_to_uint8(struct.unpack("e", stream.read(2))[0]) for _ in range(pixel_count))
     return pillow(image_data, width, height, mode, codec, args, swap)
 
 
@@ -481,16 +490,15 @@ def rg(image_data: bytes, width: int, height: int, mode: str, codec: str, args) 
 
 def rgb9e5float(image_data: bytes, width: int, height: int) -> Image.Image:
     rgb = bytearray(width * height * 3)
-    for i, (n,) in enumerate(struct.iter_unpack("<i", image_data)):
+    for i, (n,) in enumerate(struct.iter_unpack("<I", image_data)):
         scale = n >> 27 & 0x1F
-        scalef = 2 ** (scale - 24)
-        scaleb = scalef * 255.0
-        b = (n >> 18 & 0x1FF) * scaleb
-        g = (n >> 9 & 0x1FF) * scaleb
-        r = (n & 0x1FF) * scaleb
+        scale_f = 2 ** (scale - 24)
+        b = (n >> 18 & 0x1FF) * scale_f
+        g = (n >> 9 & 0x1FF) * scale_f
+        r = (n & 0x1FF) * scale_f
 
         offset = i * 3
-        rgb[offset : offset + 3] = [r, g, b]
+        rgb[offset : offset + 3] = [_float_to_uint8(r), _float_to_uint8(g), _float_to_uint8(b)]
 
     return Image.frombytes("RGB", (width, height), rgb, "raw", "RGB")
 
@@ -515,7 +523,7 @@ CONV_TABLE: Dict[TF, Tuple[Callable[..., Image.Image], Tuple[Any, ...]]] = {
     TF.BGRA32: (pillow, ("RGBA", "raw", "BGRA")),
     TF.RHalf: (half, ("R", "raw", "R")),
     TF.RGHalf: (rg, ("RGB", "raw", "RGE")),
-    TF.RGBAHalf: (half, ("RGB", "raw", "RGB")),
+    TF.RGBAHalf: (half, ("RGBA", "raw", "RGBA")),
     TF.RFloat: (pillow, ("RGB", "raw", "RF")),
     TF.RGFloat: (rg, ("RGB", "raw", "RGF")),
     TF.RGBAFloat: (pillow, ("RGBA", "raw", "RGBAF")),
