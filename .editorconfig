@@ -15,3 +15,6 @@ max_line_length = 120
 [*.py]
 spaces_around_brackets = none
 spaces_around_operators = true
+
+[*.yml]
+indent_size = 2
