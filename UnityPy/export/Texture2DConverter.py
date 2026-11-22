@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import struct
 from functools import lru_cache
-from io import BytesIO
 from threading import get_ident
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Union
 
@@ -443,40 +442,56 @@ def eac(image_data: bytes, width: int, height: int, fmt: str) -> Image.Image:
     return Image.frombytes("RGBA", (width, height), image_data, "raw", "BGRA")
 
 
-def half(
+def _channel_to_byte(value, fmt: str) -> int:
+    """Convert a single decoded channel value to an 8-bit value.
+
+    Unsigned integers are scaled by their maximum, half/float values are
+    clamped to [0, 1] (the same convention as the ASTC HDR decoder), and
+    signed integers are treated as SNORM, mapping [-1, 1] to [0, 255].
+    """
+    if fmt == "B":
+        return value
+    if fmt == "H":
+        return round(value * 255 / 0xFFFF)
+    if fmt in "ef":
+        if value != value:  # NaN
+            return 0
+        return round(min(max(value, 0.0), 1.0) * 255)
+    # signed SNORM ("b" / "h")
+    max_value = 0x7F if fmt == "b" else 0x7FFF
+    snorm = min(max(value / max_value, -1.0), 1.0)
+    return round((snorm + 1.0) * 0.5 * 255)
+
+
+def uncompressed(
     image_data: bytes,
     width: int,
     height: int,
-    mode: str,
-    codec: str,
-    args,
-    swap: Optional[tuple] = None,
+    fmt: str,
+    channel_count: int,
+    swap: Optional[Tuple[int, ...]] = None,
 ) -> Image.Image:
-    # convert half-float to int8
-    stream = BytesIO(image_data)
-    image_data = bytes(int(struct.unpack("e", stream.read(2))[0] * 256) for _ in range(width * height * len(codec)))
-    return pillow(image_data, width, height, mode, codec, args, swap)
+    """Decode an uncompressed texture whose channels Pillow's raw decoder
+    cannot handle directly: 16-bit, half, float and signed (SNORM) channels.
 
-
-RG_PADDING_MAP = {
-    "RGE": 16,
-    "RGF": 32,
-    "RG;16": 16,
-    "RG;16s": 16,
-    "RG;8s": 8,
-}
-
-
-def rg(image_data: bytes, width: int, height: int, mode: str, codec: str, args) -> Image.Image:
-    # convert rg to rgb by adding in zeroes
-    padding_size = RG_PADDING_MAP[codec]
-    stream = BytesIO(image_data)
-    padding = bytes(padding_size)
-    rgb_data = b"".join(stream.read(padding_size * 2) + padding for _ in range(len(image_data) // (2 * padding_size)))
-    if codec == "RGE":
-        return half(rgb_data, width, height, mode, "RGB", args)
-    else:
-        return pillow(rgb_data, width, height, mode, codec.replace("RG", "RGB"), args)
+    `fmt` is the struct format character of a single channel
+    ("B", "H", "e", "f", "b" or "h"). Textures with fewer than three
+    channels are expanded to RGB with the missing channels set to 0.
+    """
+    count = width * height * channel_count
+    values = struct.unpack(f"<{count}{fmt}", image_data[: count * struct.calcsize(fmt)])
+    mode = "RGBA" if channel_count == 4 else "RGB"
+    out = bytearray()
+    for i in range(0, count, channel_count):
+        pixel = [_channel_to_byte(value, fmt) for value in values[i : i + channel_count]]
+        if swap:
+            pixel = [pixel[x] for x in swap]
+        if channel_count == 1:
+            pixel += [0, 0]
+        elif channel_count == 2:
+            pixel += [0]
+        out.extend(pixel)
+    return Image.frombytes(mode, (width, height), bytes(out), "raw", mode)
 
 
 def rgb9e5float(image_data: bytes, width: int, height: int) -> Image.Image:
@@ -490,7 +505,7 @@ def rgb9e5float(image_data: bytes, width: int, height: int) -> Image.Image:
         r = (n & 0x1FF) * scaleb
 
         offset = i * 3
-        rgb[offset : offset + 3] = [r, g, b]
+        rgb[offset : offset + 3] = [min(max(round(v), 0), 255) for v in (r, g, b)]
 
     return Image.frombytes("RGB", (width, height), rgb, "raw", "RGB")
 
@@ -502,23 +517,23 @@ CONV_TABLE: Dict[TF, Tuple[Callable[..., Image.Image], Tuple[Any, ...]]] = {
     TF.RGB24: (pillow, ("RGB", "raw", "RGB")),
     TF.RGBA32: (pillow, ("RGBA", "raw", "RGBA")),
     TF.ARGB32: (pillow, ("RGBA", "raw", "ARGB")),
-    TF.ARGBFloat: (pillow, ("RGBA", "raw", "RGBAF", (2, 1, 0, 3))),
+    TF.ARGBFloat: (uncompressed, ("f", 4, (1, 2, 3, 0))),
     TF.RGB565: (pillow, ("RGB", "raw", "BGR;16")),
     TF.BGR24: (pillow, ("RGB", "raw", "BGR")),
     TF.R8: (pillow, ("RGB", "raw", "R")),
     TF.R16: (pillow, ("RGB", "raw", "R;16L")),
-    TF.RG16: (rg, ("RGB", "raw", "RG")),
+    TF.RG16: (uncompressed, ("B", 2)),
     TF.DXT1: (pillow, ("RGBA", "bcn", 1)),
     TF.DXT3: (pillow, ("RGBA", "bcn", 2)),
     TF.DXT5: (pillow, ("RGBA", "bcn", 3)),
     TF.RGBA4444: (pillow, ("RGBA", "raw", "RGBA;4B", (3, 2, 1, 0))),
     TF.BGRA32: (pillow, ("RGBA", "raw", "BGRA")),
-    TF.RHalf: (half, ("R", "raw", "R")),
-    TF.RGHalf: (rg, ("RGB", "raw", "RGE")),
-    TF.RGBAHalf: (half, ("RGB", "raw", "RGB")),
-    TF.RFloat: (pillow, ("RGB", "raw", "RF")),
-    TF.RGFloat: (rg, ("RGB", "raw", "RGF")),
-    TF.RGBAFloat: (pillow, ("RGBA", "raw", "RGBAF")),
+    TF.RHalf: (uncompressed, ("e", 1)),
+    TF.RGHalf: (uncompressed, ("e", 2)),
+    TF.RGBAHalf: (uncompressed, ("e", 4)),
+    TF.RFloat: (uncompressed, ("f", 1)),
+    TF.RGFloat: (uncompressed, ("f", 2)),
+    TF.RGBAFloat: (uncompressed, ("f", 4)),
     # TF.YUY2: NotImplementedError("YUY2 not implemented"),
     TF.RGB9e5Float: (rgb9e5float, ()),
     TF.BC4: (pillow, ("L", "bcn", 4)),
@@ -563,17 +578,17 @@ CONV_TABLE: Dict[TF, Tuple[Callable[..., Image.Image], Tuple[Any, ...]]] = {
     TF.ASTC_HDR_8x8: (astc, ((8, 8), True)),
     TF.ASTC_HDR_10x10: (astc, ((10, 10), True)),
     TF.ASTC_HDR_12x12: (astc, ((12, 12), True)),
-    TF.RG32: (rg, ("RGB", "raw", "RG;16")),
+    TF.RG32: (uncompressed, ("H", 2)),
     TF.RGB48: (pillow, ("RGB", "raw", "RGB;16L")),
     TF.RGBA64: (pillow, ("RGBA", "raw", "RGBA;16L")),
-    TF.R8_SIGNED: (pillow, ("R", "raw", "R;8s")),
-    TF.RG16_SIGNED: (rg, ("RGB", "raw", "RG;8s")),
-    TF.RGB24_SIGNED: (pillow, ("RGB", "raw", "RGB;8s")),
-    TF.RGBA32_SIGNED: (pillow, ("RGBA", "raw", "RGBA;8s")),
-    TF.R16_SIGNED: (pillow, ("R", "raw", "R;16s")),
-    TF.RG32_SIGNED: (rg, ("RGB", "raw", "RG;16s")),
-    TF.RGB48_SIGNED: (pillow, ("RGB", "raw", "RGB;16s")),
-    TF.RGBA64_SIGNED: (pillow, ("RGBA", "raw", "RGBA;16s")),
+    TF.R8_SIGNED: (uncompressed, ("b", 1)),
+    TF.RG16_SIGNED: (uncompressed, ("b", 2)),
+    TF.RGB24_SIGNED: (uncompressed, ("b", 3)),
+    TF.RGBA32_SIGNED: (uncompressed, ("b", 4)),
+    TF.R16_SIGNED: (uncompressed, ("h", 1)),
+    TF.RG32_SIGNED: (uncompressed, ("h", 2)),
+    TF.RGB48_SIGNED: (uncompressed, ("h", 3)),
+    TF.RGBA64_SIGNED: (uncompressed, ("h", 4)),
 }
 
 # XBOX Swap Formats
