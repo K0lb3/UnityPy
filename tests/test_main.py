@@ -119,6 +119,27 @@ def test_save():
         assert save1 == save2, f"Failed to save {name} correctly"
 
 
+def test_load_dependencies_missing_externals():
+    # externals without a path (None) or pointing at files that do not
+    # exist must be skipped instead of crashing load_dependencies (#326)
+    from UnityPy.environment import Environment
+    from UnityPy.files.SerializedFile import FileIdentifier, SerializedFile
+
+    sf = object.__new__(SerializedFile)
+    sf.environment = Environment()
+    sf.externals = []
+    for path in (None, "Library/unity default resources"):
+        file_id = object.__new__(FileIdentifier)
+        file_id.path = path
+        file_id.temp_empty = None
+        file_id.guid = None
+        file_id.type = None
+        sf.externals.append(file_id)
+
+    sf.load_dependencies()
+    sf.load_dependencies(["definitely/not/a/real/file.assets"])
+
+
 if __name__ == "__main__":
     for x in list(locals()):
         if str(x)[:4] == "test":
