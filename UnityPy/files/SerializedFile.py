@@ -407,7 +407,12 @@ class SerializedFile(File.File):
             where the target file is not listed as external.
         """
         for file_id in self.externals:
-            self.environment.load_file(file_id.path, is_dependency=True)
+            if not file_id.path:
+                continue
+            try:
+                self.environment.load_file(file_id.path, is_dependency=True)
+            except FileNotFoundError:
+                pass
 
         if possible_dependencies is None:
             return
