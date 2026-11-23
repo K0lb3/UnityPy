@@ -335,6 +335,9 @@ class ObjectReader(Generic[T]):
         if generator is None:
             raise ValueError("MonoBehaviour detected, but no typetree_generator set to the environment!")
 
+        if mb_node is None:
+            mb_node = get_typetree_node(ClassIDType.MonoBehaviour, self.version)
+
         monobehaviour = self.parse_monobehaviour_head(mb_node)
         script = monobehaviour.m_Script.deref_parse_as_object()
 
@@ -345,6 +348,25 @@ class ObjectReader(Generic[T]):
 
         node = generator.get_nodes_up(script.m_AssemblyName, fullname)
         if node:
+            # The generated node's fields up to m_Name come from a fixed
+            # header in TypeTreeGeneratorAPI that puts the align flag on
+            # m_GameObject, m_Script and m_Name instead of only after
+            # m_Enabled. With that header m_Script is read at the wrong
+            # offset and written back changed on save, so replace the
+            # generated header with the class database one. (#388)
+            gen_header_end = next(
+                (i for i, child in enumerate(node.m_Children) if child.m_Name == "m_Name"),
+                None,
+            )
+            db_header_end = next(
+                (i for i, child in enumerate(mb_node.m_Children) if child.m_Name == "m_Name"),
+                None,
+            )
+            if gen_header_end is not None and db_header_end is not None:
+                node.m_Children = [
+                    *mb_node.m_Children[: db_header_end + 1],
+                    *node.m_Children[gen_header_end + 1 :],
+                ]
             return node
         else:
             raise ValueError(f"Failed to generate MonoBehaviour node for {fullname} of {script.m_AssemblyName}!")
